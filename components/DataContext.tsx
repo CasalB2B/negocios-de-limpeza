@@ -23,7 +23,7 @@ export interface ServiceDefinition {
   name: string;
   description: string;
   icon: string;
-  imageUrl?: string; 
+  imageUrl?: string;
   pricingModel: PricingModel;
   basePrice: number;
   pricePerUnit: number;
@@ -61,6 +61,7 @@ export interface ClientUser {
   id: string;
   name: string;
   email: string;
+  password?: string; // Adicionado senha
   phone: string;
   address: string; // Endereço principal textual
   addresses: Address[]; // Lista completa de endereços
@@ -105,16 +106,16 @@ interface DataContextType {
   collaborators: CollaboratorUser[];
   notifications: Notification[];
   serviceDefinitions: ServiceDefinition[];
-  transactions: Transaction[]; 
+  transactions: Transaction[];
   platformSettings: PlatformSettings;
   currentUser: ClientUser | null;
   currentCollaborator: CollaboratorUser | null;
   adminLoggedIn: boolean;
   loading: boolean;
-  
+
   addService: (service: Service) => Promise<void>;
   updateServiceStatus: (id: string, status: string, additionalData?: Partial<Service>) => Promise<void>;
-  
+
   addServiceDefinition: (def: ServiceDefinition) => Promise<void>;
   updateServiceDefinition: (def: ServiceDefinition) => Promise<void>;
   deleteServiceDefinition: (id: string) => Promise<void>;
@@ -122,9 +123,9 @@ interface DataContextType {
   registerClient: (client: ClientUser) => Promise<void>;
   updateClient: (id: string, data: Partial<ClientUser>) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
-  loginClient: (email: string) => Promise<boolean>;
+  loginClient: (email: string, password?: string) => Promise<boolean>;
   logoutClient: () => void;
-  
+
   addClientAddress: (clientId: string, address: Address) => Promise<void>;
   updateClientAddress: (clientId: string, address: Address) => Promise<void>;
   deleteClientAddress: (clientId: string, addressId: string | number) => Promise<void>;
@@ -134,12 +135,12 @@ interface DataContextType {
   deleteCollaborator: (id: string) => Promise<void>;
   loginCollaborator: (email: string, password: string) => Promise<boolean>;
   logoutCollaborator: () => void;
-  
+
   loginAdmin: (user: string, pass: string) => Promise<boolean>;
   logoutAdmin: () => void;
   markAllNotificationsRead: () => Promise<void>;
   updatePlatformSettings: (settings: PlatformSettings) => Promise<void>;
-  
+
   markTransactionPaid: (id: string) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
 }
@@ -171,9 +172,9 @@ const initialServiceDefinitions: ServiceDefinition[] = [
     pricePerUnit: 0,
     extras: [],
     pricingTiers: [
-        { id: 'tier_1', name: 'Pacote 4 Horas', value: 4, price: 120.00 },
-        { id: 'tier_2', name: 'Pacote 6 Horas', value: 6, price: 170.00 },
-        { id: 'tier_3', name: 'Diária (8 Horas)', value: 8, price: 220.00 }
+      { id: 'tier_1', name: 'Pacote 4 Horas', value: 4, price: 120.00 },
+      { id: 'tier_2', name: 'Pacote 6 Horas', value: 6, price: 170.00 },
+      { id: 'tier_3', name: 'Diária (8 Horas)', value: 8, price: 220.00 }
     ],
     active: true
   }
@@ -181,7 +182,7 @@ const initialServiceDefinitions: ServiceDefinition[] = [
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [loading, setLoading] = useState(true);
-  
+
   const [services, setServices] = useState<Service[]>([]);
   const [serviceDefinitions, setServiceDefinitions] = useState<ServiceDefinition[]>(initialServiceDefinitions);
   const [platformSettings, setPlatformSettings] = useState<PlatformSettings>({ commissionRate: 30, hourlyRate: 50, minDisplacement: 20 });
@@ -202,17 +203,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     phone: u.phone || '',
     address: u.address || '',
     addresses: Array.isArray(addresses) ? addresses.map(a => ({
-        id: a.id,
-        alias: a.title || 'Principal',
-        street: a.street || '',
-        number: a.number || '',
-        complement: a.complement || '',
-        district: a.neighborhood || '',
-        city: a.city || '',
-        state: a.state || '',
-        cep: a.zip || '',
-        type: 'HOUSE', 
-        isMain: false
+      id: a.id,
+      alias: a.title || 'Principal',
+      street: a.street || '',
+      number: a.number || '',
+      complement: a.complement || '',
+      district: a.neighborhood || '',
+      city: a.city || '',
+      state: a.state || '',
+      cep: a.zip || '',
+      type: 'HOUSE',
+      isMain: false
     })) : [],
     type: u.type || 'AVULSO',
     createdAt: u.created_at ? new Date(u.created_at).getTime() : Date.now()
@@ -255,48 +256,48 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     active: d.active !== false,
     extras: Array.isArray(d.extras) ? d.extras : [],
     pricingTiers: Array.isArray(d.pricing_tiers) ? d.pricing_tiers : [],
-    imageUrl: undefined 
+    imageUrl: undefined
   });
 
   // --- FETCH DATA ---
   const fetchData = async () => {
     setLoading(true);
     try {
-        // 1. Service Definitions
-        const { data: sDefs, error: sDefError } = await supabase.from('service_definitions').select('*');
-        if (!sDefError && sDefs && sDefs.length > 0) {
-            setServiceDefinitions(sDefs.map(mapDbDefToApp));
-        }
+      // 1. Service Definitions
+      const { data: sDefs, error: sDefError } = await supabase.from('service_definitions').select('*');
+      if (!sDefError && sDefs && sDefs.length > 0) {
+        setServiceDefinitions(sDefs.map(mapDbDefToApp));
+      }
 
-        // 2. Users (Split into Clients & Collaborators)
-        const { data: users } = await supabase.from('app_users').select('*');
-        const { data: addresses } = await supabase.from('addresses').select('*');
-        
-        if (users) {
-            const rawClients = users.filter(u => u.role === 'CLIENT');
-            const rawCollabs = users.filter(u => u.role === 'COLLABORATOR');
+      // 2. Users (Split into Clients & Collaborators)
+      const { data: users } = await supabase.from('app_users').select('*');
+      const { data: addresses } = await supabase.from('addresses').select('*');
 
-            const mappedClients = rawClients.map(c => {
-                const userAddresses = addresses ? addresses.filter(a => a.user_id === c.id) : [];
-                return mapDbUserToClient(c, userAddresses);
-            });
+      if (users) {
+        const rawClients = users.filter(u => u.role === 'CLIENT');
+        const rawCollabs = users.filter(u => u.role === 'COLLABORATOR');
 
-            setClients(mappedClients);
-            setCollaborators(rawCollabs.map(mapDbUserToCollab));
-        }
+        const mappedClients = rawClients.map(c => {
+          const userAddresses = addresses ? addresses.filter(a => a.user_id === c.id) : [];
+          return mapDbUserToClient(c, userAddresses);
+        });
 
-        // 3. Services
-        const { data: srvs } = await supabase.from('services').select('*').order('created_at', { ascending: false });
-        if (srvs) setServices(srvs.map(mapDbServiceToApp));
+        setClients(mappedClients);
+        setCollaborators(rawCollabs.map(mapDbUserToCollab));
+      }
 
-        // 4. Transactions
-        const { data: trxs } = await supabase.from('transactions').select('*');
-        if (trxs) setTransactions(trxs as any);
+      // 3. Services
+      const { data: srvs } = await supabase.from('services').select('*').order('created_at', { ascending: false });
+      if (srvs) setServices(srvs.map(mapDbServiceToApp));
+
+      // 4. Transactions
+      const { data: trxs } = await supabase.from('transactions').select('*');
+      if (trxs) setTransactions(trxs as any);
 
     } catch (error) {
-        console.error("Erro ao carregar dados (pode ser problema de conexão ou configuração do Supabase):", error);
+      console.error("Erro ao carregar dados (pode ser problema de conexão ou configuração do Supabase):", error);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -319,33 +320,33 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // --- ACTIONS: SERVICES ---
   const addService = async (service: Service) => {
     const dbService = {
-        client_id: service.clientId,
-        client_name: service.clientName,
-        type: service.type,
-        date: service.date,
-        time: service.time,
-        address: service.address,
-        status: service.status,
-        price: service.price,
-        notes: service.notes,
-        collaborator_id: service.collaboratorId,
-        collaborator_name: service.collaboratorName
+      client_id: service.clientId,
+      client_name: service.clientName,
+      type: service.type,
+      date: service.date,
+      time: service.time,
+      address: service.address,
+      status: service.status,
+      price: service.price,
+      notes: service.notes,
+      collaborator_id: service.collaboratorId,
+      collaborator_name: service.collaboratorName
     };
 
     // Optimistic Update
     setServices(prev => [service, ...prev]);
 
     const { data, error } = await supabase.from('services').insert(dbService).select();
-    
+
     if (data && !error) {
-        // Replace optimistic with real data
-        setServices(prev => [mapDbServiceToApp(data[0]), ...prev.filter(s => s.id !== service.id)]);
-        
-        await addNotificationInternal({
-            type: 'NEW_REQUEST',
-            title: 'Nova solicitação',
-            desc: `${service.type} solicitada por ${service.clientName}.`
-        });
+      // Replace optimistic with real data
+      setServices(prev => [mapDbServiceToApp(data[0]), ...prev.filter(s => s.id !== service.id)]);
+
+      await addNotificationInternal({
+        type: 'NEW_REQUEST',
+        title: 'Nova solicitação',
+        desc: `${service.type} solicitada por ${service.clientName}.`
+      });
     }
   };
 
@@ -354,8 +355,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (additionalData?.price) updates.price = additionalData.price;
     if (additionalData?.notes) updates.notes = additionalData.notes;
     if (additionalData?.collaboratorId) {
-        updates.collaborator_id = additionalData.collaboratorId;
-        updates.collaborator_name = additionalData.collaboratorName;
+      updates.collaborator_id = additionalData.collaboratorId;
+      updates.collaborator_name = additionalData.collaboratorName;
     }
 
     // Optimistic Update
@@ -366,16 +367,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addServiceDefinition = async (def: ServiceDefinition) => {
     const dbDef = {
-        name: def.name,
-        description: def.description,
-        icon: def.icon,
-        pricing_model: def.pricingModel,
-        base_price: def.basePrice,
-        price_per_unit: def.pricePerUnit,
-        price_per_bath: def.pricePerBath,
-        active: def.active,
-        extras: def.extras,
-        pricing_tiers: def.pricingTiers
+      name: def.name,
+      description: def.description,
+      icon: def.icon,
+      pricing_model: def.pricingModel,
+      base_price: def.basePrice,
+      price_per_unit: def.pricePerUnit,
+      price_per_bath: def.pricePerBath,
+      active: def.active,
+      extras: def.extras,
+      pricing_tiers: def.pricingTiers
     };
     const { data } = await supabase.from('service_definitions').insert(dbDef).select();
     if (data) setServiceDefinitions(prev => [...prev, mapDbDefToApp(data[0])]);
@@ -383,16 +384,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateServiceDefinition = async (def: ServiceDefinition) => {
     const dbDef = {
-        name: def.name,
-        description: def.description,
-        icon: def.icon,
-        pricing_model: def.pricingModel,
-        base_price: def.basePrice,
-        price_per_unit: def.pricePerUnit,
-        price_per_bath: def.pricePerBath,
-        active: def.active,
-        extras: def.extras,
-        pricing_tiers: def.pricingTiers
+      name: def.name,
+      description: def.description,
+      icon: def.icon,
+      pricing_model: def.pricingModel,
+      base_price: def.basePrice,
+      price_per_unit: def.pricePerUnit,
+      price_per_bath: def.pricePerBath,
+      active: def.active,
+      extras: def.extras,
+      pricing_tiers: def.pricingTiers
     };
     await supabase.from('service_definitions').update(dbDef).eq('id', def.id);
     setServiceDefinitions(prev => prev.map(s => s.id === def.id ? def : s));
@@ -407,32 +408,33 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const registerClient = async (client: ClientUser) => {
     // 1. Insert User
     const { data: userData, error } = await supabase.from('app_users').insert({
-        name: client.name,
-        email: client.email,
-        phone: client.phone,
-        address: client.address,
-        role: 'CLIENT'
+      name: client.name,
+      email: client.email,
+      phone: client.phone,
+      address: client.address,
+      password: client.password, // Salva senha (Assumindo que coluna existe agora)
+      role: 'CLIENT'
     }).select().single();
 
     if (error || !userData) {
-        console.error("Erro ao registrar cliente:", error);
-        return;
+      console.error("Erro ao registrar cliente:", error);
+      return;
     }
 
     // 2. Insert Addresses (if any)
     if (client.addresses && client.addresses.length > 0) {
-        const addressesToInsert = client.addresses.map(a => ({
-            user_id: userData.id,
-            title: a.alias,
-            street: a.street,
-            number: a.number,
-            complement: a.complement,
-            neighborhood: a.district,
-            city: a.city,
-            state: a.state,
-            zip: a.cep
-        }));
-        await supabase.from('addresses').insert(addressesToInsert);
+      const addressesToInsert = client.addresses.map(a => ({
+        user_id: userData.id,
+        title: a.alias,
+        street: a.street,
+        number: a.number,
+        complement: a.complement,
+        neighborhood: a.district,
+        city: a.city,
+        state: a.state,
+        zip: a.cep
+      }));
+      await supabase.from('addresses').insert(addressesToInsert);
     }
 
     // Refresh Local
@@ -446,13 +448,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (data.name) updates.name = data.name;
     if (data.email) updates.email = data.email;
     if (data.phone) updates.phone = data.phone;
-    
+    if (data.password) updates.password = data.password;
+
     await supabase.from('app_users').update(updates).eq('id', id);
-    
+
     // Atualiza estado local
     setClients(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
     if (currentUser && currentUser.id === id) {
-        setCurrentUser(prev => prev ? { ...prev, ...data } : null);
+      setCurrentUser(prev => prev ? { ...prev, ...data } : null);
     }
   };
 
@@ -462,16 +465,27 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (currentUser?.id === id) logoutClient();
   };
 
-  const loginClient = async (email: string): Promise<boolean> => {
-    const { data: user } = await supabase.from('app_users').select('*').eq('email', email).eq('role', 'CLIENT').single();
-    if (user) {
-        // Fetch addresses
-        const { data: addrs } = await supabase.from('addresses').select('*').eq('user_id', user.id);
-        const clientObj = mapDbUserToClient(user, addrs || []);
-        setCurrentUser(clientObj);
-        return true;
+  const loginClient = async (email: string, password?: string): Promise<boolean> => {
+    // Busca usuário pelo e-mail
+    const { data: user, error } = await supabase.from('app_users').select('*').eq('email', email).eq('role', 'CLIENT').single();
+
+    if (error || !user) {
+      console.error("Erro no login:", error);
+      return false;
     }
-    return false;
+
+    // Verifica Senha (se fornecida e se existir no banco)
+    // Nota: Em produção usaríamos hash. Aqui é comparação direta para simplificar o MVP Custom Auth.
+    if (password && user.password && user.password !== password) {
+      console.warn("Senha incorreta");
+      return false;
+    }
+
+    // Se passou, carrega dados completos
+    const { data: addrs } = await supabase.from('addresses').select('*').eq('user_id', user.id);
+    const clientObj = mapDbUserToClient(user, addrs || []);
+    setCurrentUser(clientObj);
+    return true;
   };
 
   const logoutClient = () => setCurrentUser(null);
@@ -479,32 +493,32 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // --- ACTIONS: CLIENT ADDRESSES ---
   const addClientAddress = async (clientId: string, address: Address) => {
     const dbAddress = {
-        user_id: clientId,
-        title: address.alias,
-        street: address.street,
-        number: address.number,
-        complement: address.complement,
-        neighborhood: address.district,
-        city: address.city,
-        state: address.state,
-        zip: address.cep
+      user_id: clientId,
+      title: address.alias,
+      street: address.street,
+      number: address.number,
+      complement: address.complement,
+      neighborhood: address.district,
+      city: address.city,
+      state: address.state,
+      zip: address.cep
     };
     const { data } = await supabase.from('addresses').insert(dbAddress).select();
     if (data) {
-        fetchData();
+      fetchData();
     }
   };
 
   const updateClientAddress = async (clientId: string, address: Address) => {
-     const dbAddress = {
-        title: address.alias,
-        street: address.street,
-        number: address.number,
-        complement: address.complement,
-        neighborhood: address.district,
-        city: address.city,
-        state: address.state,
-        zip: address.cep
+    const dbAddress = {
+      title: address.alias,
+      street: address.street,
+      number: address.number,
+      complement: address.complement,
+      neighborhood: address.district,
+      city: address.city,
+      state: address.state,
+      zip: address.cep
     };
     await supabase.from('addresses').update(dbAddress).eq('id', address.id);
     fetchData();
@@ -518,16 +532,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // --- ACTIONS: COLLABORATORS ---
   const registerCollaborator = async (collab: CollaboratorUser) => {
     const { data } = await supabase.from('app_users').insert({
-        name: collab.name,
-        email: collab.email,
-        phone: collab.phone,
-        role: 'COLLABORATOR',
-        status: 'AVAILABLE',
-        photo: collab.photo
+      name: collab.name,
+      email: collab.email,
+      phone: collab.phone,
+      role: 'COLLABORATOR',
+      status: 'AVAILABLE',
+      photo: collab.photo
     }).select().single();
 
     if (data) {
-        setCollaborators(prev => [...prev, mapDbUserToCollab(data)]);
+      setCollaborators(prev => [...prev, mapDbUserToCollab(data)]);
     }
   };
 
@@ -542,7 +556,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.from('app_users').update(updates).eq('id', id);
     setCollaborators(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
     if (currentCollaborator?.id === id) {
-        setCurrentCollaborator(prev => prev ? { ...prev, ...data } : null);
+      setCurrentCollaborator(prev => prev ? { ...prev, ...data } : null);
     }
   };
 
@@ -554,8 +568,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginCollaborator = async (email: string, password: string): Promise<boolean> => {
     const { data: user } = await supabase.from('app_users').select('*').eq('email', email).eq('role', 'COLLABORATOR').single();
     if (user) {
-        setCurrentCollaborator(mapDbUserToCollab(user));
-        return true;
+      setCurrentCollaborator(mapDbUserToCollab(user));
+      return true;
     }
     return false;
   };
@@ -565,30 +579,30 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // --- ADMIN ---
   const loginAdmin = async (user: string, pass: string): Promise<boolean> => {
     if (user === 'admin' && pass === 'admin') {
-        setAdminLoggedIn(true);
-        return true;
+      setAdminLoggedIn(true);
+      return true;
     }
     return false;
   };
   const logoutAdmin = () => setAdminLoggedIn(false);
 
   // --- MISC ---
-  const markAllNotificationsRead = async () => setNotifications(prev => prev.map(n => ({...n, read: true})));
+  const markAllNotificationsRead = async () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   const updatePlatformSettings = async (s: PlatformSettings) => setPlatformSettings(s);
   const markTransactionPaid = async (id: string) => {
-      setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: 'PAID' } : t));
-      await supabase.from('transactions').update({ status: 'PAID' }).eq('id', id);
+    setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: 'PAID' } : t));
+    await supabase.from('transactions').update({ status: 'PAID' }).eq('id', id);
   };
   const deleteTransaction = async (id: string) => {
-      setTransactions(prev => prev.filter(t => t.id !== id));
-      await supabase.from('transactions').delete().eq('id', id);
+    setTransactions(prev => prev.filter(t => t.id !== id));
+    await supabase.from('transactions').delete().eq('id', id);
   };
 
   return (
-    <DataContext.Provider value={{ 
+    <DataContext.Provider value={{
       services, clients, collaborators, notifications, serviceDefinitions, transactions, platformSettings,
       currentUser, currentCollaborator, adminLoggedIn, loading,
-      addService, updateServiceStatus, 
+      addService, updateServiceStatus,
       addServiceDefinition, updateServiceDefinition, deleteServiceDefinition,
       registerClient, updateClient, deleteClient, loginClient, logoutClient,
       addClientAddress, updateClientAddress, deleteClientAddress,
