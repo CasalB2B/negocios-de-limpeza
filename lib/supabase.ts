@@ -8,6 +8,10 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.warn('⚠️ Supabase Keys faltando! Verifique o arquivo .env.local');
+  console.log('Debug URL:', supabaseUrl ? 'Presente' : 'Ausente');
+  console.log('Debug Key:', supabaseKey ? 'Presente' : 'Ausente');
+} else {
+  console.log('✅ Supabase conectado com sucesso!');
 }
 
 export const supabase = createClient(
