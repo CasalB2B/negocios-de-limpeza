@@ -3,19 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { Card } from '../../components/Card';
-import { BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Calendar, FileText, TrendingUp, TrendingDown, DollarSign, ChevronRight, Bell, UserPlus, AlertCircle, CheckCircle, X, Info } from 'lucide-react';
+import { Calendar, FileText, TrendingUp, TrendingDown, DollarSign, Bell, UserPlus, AlertCircle, CheckCircle, X, Info } from 'lucide-react';
 import { useData } from '../../components/DataContext'; // Import UseData
-
-const data = [
-  { name: 'Seg', solicitacoes: 4, servicos: 2 },
-  { name: 'Ter', solicitacoes: 3, servicos: 5 },
-  { name: 'Qua', solicitacoes: 2, servicos: 8 },
-  { name: 'Qui', solicitacoes: 6, servicos: 4 },
-  { name: 'Sex', solicitacoes: 8, servicos: 7 },
-  { name: 'Sab', solicitacoes: 5, servicos: 9 },
-  { name: 'Dom', solicitacoes: 2, servicos: 3 },
-];
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -71,13 +60,13 @@ export const AdminDashboard: React.FC = () => {
     <Layout role={UserRole.ADMIN}>
       <div className="max-w-7xl mx-auto" onClick={() => showNotifications && setShowNotifications(false)}>
         {/* Header */}
-        <header className="flex justify-between items-center mb-8 relative">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 relative gap-4">
            <div>
-             <p className="text-sm font-bold text-lightText dark:text-darkTextSecondary mb-1">Dashboard</p>
-             <h1 className="text-3xl font-display font-bold text-darkText dark:text-darkTextPrimary">Bem-vindo de volta, Admin</h1>
-             <p className="text-lightText dark:text-darkTextSecondary text-sm">Resumo das atividades da plataforma para hoje, {finalDateString}.</p>
+             <p className="text-xs md:text-sm font-bold text-lightText dark:text-darkTextSecondary mb-1">Dashboard</p>
+             <h1 className="text-2xl md:text-3xl font-display font-bold text-darkText dark:text-darkTextPrimary">Bem-vindo de volta</h1>
+             <p className="text-lightText dark:text-darkTextSecondary text-xs md:text-sm mt-1">{finalDateString}</p>
            </div>
-           <div className="flex gap-4 items-center">
+           <div className="flex gap-4 items-center self-end md:self-auto">
               <div className="relative" onClick={(e) => e.stopPropagation()}>
                  <button 
                     onClick={() => setShowNotifications(!showNotifications)}
@@ -132,9 +121,9 @@ export const AdminDashboard: React.FC = () => {
         </header>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 mb-10">
           {/* Card 1 */}
-          <Card className="flex flex-col justify-between h-40 group hover:shadow-md cursor-pointer" onClick={() => navigate('/admin/requests')}>
+          <Card className="flex flex-col justify-between h-36 md:h-40 group hover:shadow-md cursor-pointer" onClick={() => navigate('/admin/requests')}>
             <div className="flex justify-between items-start">
                <p className="text-lightText dark:text-darkTextSecondary text-sm font-medium">Solicitações<br/>pendentes</p>
                <div className="p-2 bg-purple-50 dark:bg-primary/20 text-primary rounded-lg group-hover:bg-primary group-hover:text-white transition-colors">
@@ -142,16 +131,15 @@ export const AdminDashboard: React.FC = () => {
                </div>
             </div>
             <div className="flex items-end justify-between">
-               <p className="text-4xl font-bold text-darkText dark:text-darkTextPrimary">{pendingRequests}</p>
+               <p className="text-3xl md:text-4xl font-bold text-darkText dark:text-darkTextPrimary">{pendingRequests}</p>
                <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1">
                   <TrendingUp size={12} /> Live
                </span>
             </div>
           </Card>
 
-          {/* ... Rest of Dashboard remains unchanged ... */}
           {/* Card 2 */}
-          <Card className="flex flex-col justify-between h-40 group hover:shadow-md">
+          <Card className="flex flex-col justify-between h-36 md:h-40 group hover:shadow-md">
             <div className="flex justify-between items-start">
                <p className="text-lightText dark:text-darkTextSecondary text-sm font-medium">Orçamentos<br/>prontos</p>
                <div className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
@@ -159,7 +147,7 @@ export const AdminDashboard: React.FC = () => {
                </div>
             </div>
             <div className="flex items-end justify-between">
-               <p className="text-4xl font-bold text-darkText dark:text-darkTextPrimary">{budgetReady}</p>
+               <p className="text-3xl md:text-4xl font-bold text-darkText dark:text-darkTextPrimary">{budgetReady}</p>
                <span className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400 text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1">
                   Aguardando
                </span>
@@ -167,7 +155,7 @@ export const AdminDashboard: React.FC = () => {
           </Card>
 
           {/* Card 3 */}
-          <Card className="flex flex-col justify-between h-40 group hover:shadow-md">
+          <Card className="flex flex-col justify-between h-36 md:h-40 group hover:shadow-md">
             <div className="flex justify-between items-start">
                <p className="text-lightText dark:text-darkTextSecondary text-sm font-medium">Serviços ativos</p>
                <div className="p-2 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg group-hover:bg-green-600 group-hover:text-white transition-colors">
@@ -175,7 +163,7 @@ export const AdminDashboard: React.FC = () => {
                </div>
             </div>
             <div className="flex items-end justify-between">
-               <p className="text-4xl font-bold text-darkText dark:text-darkTextPrimary">{activeServices}</p>
+               <p className="text-3xl md:text-4xl font-bold text-darkText dark:text-darkTextPrimary">{activeServices}</p>
                <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1">
                   <TrendingUp size={12} /> Hoje
                </span>
@@ -183,7 +171,7 @@ export const AdminDashboard: React.FC = () => {
           </Card>
 
           {/* Card 4 (Static for Demo) */}
-          <Card className="flex flex-col justify-between h-40 group hover:shadow-md">
+          <Card className="flex flex-col justify-between h-36 md:h-40 group hover:shadow-md">
             <div className="flex justify-between items-start">
                <p className="text-lightText dark:text-darkTextSecondary text-sm font-medium">Pagamentos<br/>pendentes</p>
                <div className="w-8 h-8 bg-orange-50 dark:bg-orange-900/20 text-orange-500 dark:text-orange-400 rounded-lg flex items-center justify-center text-xs font-bold group-hover:bg-orange-500 group-hover:text-white transition-colors">$</div>
@@ -191,7 +179,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="flex items-end justify-between">
                <div>
                  <p className="text-sm font-bold text-lightText dark:text-darkTextSecondary">R$</p>
-                 <p className="text-3xl font-bold text-darkText dark:text-darkTextPrimary">1.250</p>
+                 <p className="text-2xl md:text-3xl font-bold text-darkText dark:text-darkTextPrimary">1.250</p>
                </div>
                <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1">
                   <TrendingDown size={12} /> -1%
@@ -199,8 +187,6 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </Card>
         </div>
-
-        {/* ... Rest of Dashboard content ... */}
       </div>
     </Layout>
   );

@@ -95,12 +95,12 @@ export const AdminCalendar: React.FC = () => {
   };
 
   const renderWeekView = () => (
-    <>
+    <div className="min-w-[800px] md:min-w-0"> {/* FORÇA SCROLL HORIZONTAL NO MOBILE */}
       <div className="grid grid-cols-7 border-b border-gray-200 dark:border-darkBorder sticky top-0 bg-white dark:bg-darkSurface z-10">
-          <div className="p-4 border-r border-gray-200 dark:border-darkBorder text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase text-center">Horário</div>
+          <div className="p-3 md:p-4 border-r border-gray-200 dark:border-darkBorder text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase text-center bg-gray-50/50 dark:bg-darkBg/50">Horário</div>
           {weekDays.map((day, i) => (
-              <div key={i} className={`p-4 border-r border-gray-200 dark:border-darkBorder text-center ${i === 6 ? 'border-r-0' : ''} ${day.isToday ? 'bg-purple-50 dark:bg-primary/10' : ''}`}>
-                <span className={`text-sm font-bold capitalize ${day.isToday ? 'text-primary' : 'text-darkText dark:text-darkTextPrimary'}`}>
+              <div key={i} className={`p-2 md:p-4 border-r border-gray-200 dark:border-darkBorder text-center ${i === 6 ? 'border-r-0' : ''} ${day.isToday ? 'bg-purple-50 dark:bg-primary/10' : ''}`}>
+                <span className={`text-xs md:text-sm font-bold capitalize block ${day.isToday ? 'text-primary' : 'text-darkText dark:text-darkTextPrimary'}`}>
                     {day.name}
                 </span>
               </div>
@@ -109,29 +109,29 @@ export const AdminCalendar: React.FC = () => {
 
       <div className="divide-y divide-gray-200 dark:divide-darkBorder">
           {timeSlots.map((time) => (
-              <div key={time} className="grid grid-cols-7 min-h-[120px]">
-                <div className="p-4 border-r border-gray-200 dark:border-darkBorder flex items-center justify-center text-sm font-medium text-lightText dark:text-darkTextSecondary bg-gray-50/30 dark:bg-darkBg/30">
+              <div key={time} className="grid grid-cols-7 min-h-[100px] md:min-h-[120px]">
+                <div className="p-2 md:p-4 border-r border-gray-200 dark:border-darkBorder flex items-center justify-center text-xs md:text-sm font-medium text-lightText dark:text-darkTextSecondary bg-gray-50/30 dark:bg-darkBg/30">
                     {time}
                 </div>
                 {weekDays.map((day, dIdx) => {
                     const event = getEventForSlot(day.fullDate, time);
                     return (
-                      <div key={dIdx} className="border-r border-gray-200 dark:border-darkBorder p-2 relative group min-h-[120px]">
+                      <div key={dIdx} className="border-r border-gray-200 dark:border-darkBorder p-1 md:p-2 relative group">
                           {event ? (
                             <div 
                                 onClick={() => { setSelectedEvent(event); setShowDetailModal(true); setAssignCollabId(event.collabId || ''); }}
-                                className={`absolute inset-2 bg-${event.color}-50 dark:bg-${event.color}-900/20 border-l-4 border-${event.color}-500 rounded p-2 cursor-pointer hover:shadow-md transition-shadow flex flex-col justify-between`}
+                                className={`h-full w-full bg-${event.color}-50 dark:bg-${event.color}-900/20 border-l-4 border-${event.color}-500 rounded-r p-1.5 md:p-2 cursor-pointer hover:shadow-md transition-shadow flex flex-col justify-between`}
                             >
                                 <div className="flex justify-between items-start">
                                   <div className="flex items-center gap-1">
-                                     <p className={`text-xs font-bold text-${event.color}-900 dark:text-${event.color}-300`}>
+                                     <p className={`text-[10px] md:text-xs font-bold text-${event.color}-900 dark:text-${event.color}-300 leading-tight`}>
                                          {event.collab !== 'A Definir' ? event.collab.split(' ')[0] : '⚠ S/ Colab'}
                                      </p>
                                   </div>
                                 </div>
                                 <div>
-                                   <p className={`text-[10px] text-${event.color}-700 dark:text-${event.color}-400 leading-tight mb-1 font-bold`}>{event.type}</p>
-                                   <p className={`text-[10px] font-bold text-${event.color}-900 dark:text-${event.color}-300 truncate`}>{event.client}</p>
+                                   <p className={`hidden md:block text-[9px] text-${event.color}-700 dark:text-${event.color}-400 leading-tight mb-0.5 font-bold`}>{event.type}</p>
+                                   <p className={`text-[9px] md:text-[10px] font-bold text-${event.color}-900 dark:text-${event.color}-300 truncate`}>{event.client.split(' ')[0]}</p>
                                 </div>
                             </div>
                           ) : null}
@@ -141,30 +141,32 @@ export const AdminCalendar: React.FC = () => {
               </div>
           ))}
       </div>
-    </>
+    </div>
   );
 
   return (
     <Layout role={UserRole.ADMIN}>
       <div className="max-w-7xl mx-auto h-full flex flex-col">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div>
-            <h1 className="text-3xl font-display font-bold text-darkText dark:text-darkTextPrimary">Calendário Geral</h1>
-            <p className="text-lightText dark:text-darkTextSecondary flex items-center gap-2 mt-1">
+            <h1 className="text-2xl md:text-3xl font-display font-bold text-darkText dark:text-darkTextPrimary">Calendário Geral</h1>
+            <p className="text-lightText dark:text-darkTextSecondary flex items-center gap-2 mt-1 text-sm md:text-base">
                <CalendarIcon size={16} /> Visão Semanal
             </p>
           </div>
-          <div className="flex items-center gap-4">
-             <Button icon={<Plus size={18} />} className="text-sm px-4" onClick={() => setShowModal(true)}>
+          <div className="flex items-center w-full md:w-auto">
+             <Button icon={<Plus size={18} />} className="text-sm px-4 w-full md:w-auto" onClick={() => setShowModal(true)}>
                Criar agendamento
              </Button>
           </div>
         </div>
 
-        {/* Calendar Grid */}
-        <div className="bg-white dark:bg-darkSurface rounded-2xl shadow-sm border border-gray-200 dark:border-darkBorder flex-1 overflow-auto">
-           {renderWeekView()}
+        {/* Calendar Grid Container with Scroll */}
+        <div className="bg-white dark:bg-darkSurface rounded-2xl shadow-sm border border-gray-200 dark:border-darkBorder flex-1 overflow-hidden flex flex-col">
+           <div className="overflow-x-auto flex-1 w-full">
+              {renderWeekView()}
+           </div>
         </div>
 
         {/* Modal: Novo Agendamento */}
@@ -199,7 +201,7 @@ export const AdminCalendar: React.FC = () => {
                         <Input label="Horário" type="time" value={newAppt.time} onChange={(e) => setNewAppt({...newAppt, time: e.target.value})} />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Tipo</label>
                             <select 
@@ -227,8 +229,8 @@ export const AdminCalendar: React.FC = () => {
         {/* Modal: Detalhe do Serviço / Vincular Colaborador */}
         {showDetailModal && selectedEvent && (
            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-              <div className="bg-white dark:bg-darkSurface rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-darkBorder animate-in fade-in zoom-in duration-200 overflow-hidden">
-                 <div className={`p-6 border-b border-gray-100 dark:border-darkBorder flex justify-between items-center bg-${selectedEvent.color}-50 dark:bg-${selectedEvent.color}-900/20`}>
+              <div className="bg-white dark:bg-darkSurface rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-darkBorder animate-in fade-in zoom-in duration-200 overflow-hidden max-h-[90vh] flex flex-col">
+                 <div className={`p-6 border-b border-gray-100 dark:border-darkBorder flex justify-between items-center bg-${selectedEvent.color}-50 dark:bg-${selectedEvent.color}-900/20 shrink-0`}>
                     <div>
                        <h2 className="text-xl font-bold text-darkText dark:text-darkTextPrimary">Detalhes do Serviço</h2>
                        <p className="text-xs text-lightText dark:text-darkTextSecondary font-bold uppercase tracking-wider">#{selectedEvent.id}</p>
@@ -238,13 +240,13 @@ export const AdminCalendar: React.FC = () => {
                     </button>
                  </div>
                  
-                 <div className="p-6 space-y-5">
+                 <div className="p-6 space-y-5 overflow-y-auto">
                     <div className="p-4 bg-gray-50 dark:bg-darkBg rounded-xl border border-gray-100 dark:border-darkBorder space-y-3">
                        <div className="flex items-start gap-3">
                           <MapPin size={18} className="text-lightText dark:text-darkTextSecondary mt-0.5" />
                           <div>
                              <p className="text-xs text-lightText dark:text-darkTextSecondary font-bold uppercase">ENDEREÇO</p>
-                             <p className="font-bold text-darkText dark:text-darkTextPrimary">{selectedEvent.address}</p>
+                             <p className="font-bold text-darkText dark:text-darkTextPrimary text-sm">{selectedEvent.address}</p>
                           </div>
                        </div>
                        <div className="flex items-center gap-3">

@@ -37,7 +37,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       <div className="min-h-screen bg-background dark:bg-darkBg flex flex-col font-sans transition-colors duration-300">
         {/* Top Header */}
         <header className="bg-white dark:bg-darkSurface border-b border-gray-200 dark:border-darkBorder sticky top-0 z-50 shadow-sm transition-colors duration-300">
-          <div className="max-w-7xl mx-auto px-4 md:px-8 h-20 flex items-center justify-between">
+          <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 md:h-20 flex items-center justify-between">
             
             {/* Logo & Nav */}
             <div className="flex items-center gap-12">
@@ -49,7 +49,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
                   <CheckCircle size={18} strokeWidth={3} />
                 </div>
-                <h1 className="font-bold text-darkText dark:text-darkTextPrimary text-lg tracking-tight">Negócios de Limpeza</h1>
+                <h1 className="font-bold text-darkText dark:text-darkTextPrimary text-lg tracking-tight leading-tight">Negócios de<br className="md:hidden"/> Limpeza</h1>
               </div>
 
               {/* Desktop Nav */}
@@ -109,10 +109,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
             </div>
 
             {/* Mobile Menu Button */}
-            <div className="flex items-center gap-4 md:hidden">
+            <div className="flex items-center gap-3 md:hidden">
               <ThemeToggle />
               <button 
-                className="text-darkText dark:text-darkTextPrimary"
+                className="text-darkText dark:text-darkTextPrimary p-2 active:bg-gray-100 dark:active:bg-darkBorder rounded-lg transition-colors"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               >
                 {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -122,15 +122,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
 
           {/* Mobile Menu Dropdown */}
           {mobileMenuOpen && (
-            <div className="md:hidden bg-white dark:bg-darkSurface border-t border-gray-100 dark:border-darkBorder absolute w-full left-0 top-20 shadow-xl p-4 flex flex-col gap-4 z-40">
+            <div className="md:hidden bg-white dark:bg-darkSurface border-t border-gray-100 dark:border-darkBorder absolute w-full left-0 top-16 shadow-xl p-4 flex flex-col gap-4 z-40 animate-in slide-in-from-top-2">
                 <Button onClick={() => { navigate('/client/new-request'); setMobileMenuOpen(false); }} fullWidth>Novo Agendamento</Button>
-                <button onClick={() => { navigate('/client/profile'); setMobileMenuOpen(false); }} className="text-darkText dark:text-darkTextPrimary font-bold text-sm p-3 flex items-center gap-2">
+                <button onClick={() => { navigate('/client/profile'); setMobileMenuOpen(false); }} className="text-darkText dark:text-darkTextPrimary font-bold text-sm p-3 flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-darkBorder rounded-xl">
                    <User size={16} /> Meu Perfil
                 </button>
-                <button onClick={handleSupportClick} className="text-darkText dark:text-darkTextPrimary font-bold text-sm p-3 flex items-center gap-2">
+                <button onClick={handleSupportClick} className="text-darkText dark:text-darkTextPrimary font-bold text-sm p-3 flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-darkBorder rounded-xl">
                    <HelpCircle size={16} /> Suporte WhatsApp
                 </button>
-                <button onClick={handleLogout} className="text-red-500 font-bold text-sm p-3 flex items-center gap-2">
+                <button onClick={handleLogout} className="text-red-500 font-bold text-sm p-3 flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl">
                    <LogOut size={16} /> Sair da conta
                 </button>
             </div>
@@ -142,12 +142,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
         </main>
 
         {/* Bottom Navigation for Client Mobile */}
-        <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white dark:bg-darkSurface border-t border-gray-200 dark:border-darkBorder flex justify-around p-2 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white dark:bg-darkSurface border-t border-gray-200 dark:border-darkBorder flex justify-around p-2 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe">
            {navLinks.map((link) => (
             <button
               key={link.path}
               onClick={() => navigate(link.path)}
-              className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all w-full ${
+              className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all w-full active:scale-95 ${
                 location.pathname === link.path 
                   ? 'text-primary' 
                   : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder'
@@ -246,37 +246,37 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Mobile Header (Admin/Collab) */}
-        <header className="md:hidden bg-white dark:bg-darkSurface border-b border-gray-200 dark:border-darkBorder p-4 flex justify-between items-center z-10 transition-colors duration-300">
+        <header className="md:hidden bg-white dark:bg-darkSurface border-b border-gray-200 dark:border-darkBorder p-4 flex justify-between items-center z-10 transition-colors duration-300 shadow-sm h-16">
            <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center text-white">
               <CheckCircle size={18} />
             </div>
-            <h1 className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Negócios de Limpeza</h1>
+            <h1 className="font-bold text-sm text-darkText dark:text-darkTextPrimary leading-tight">Negócios de<br/>Limpeza</h1>
           </div>
           <div className="flex gap-4 items-center">
             <ThemeToggle />
-            <button onClick={handleLogout} className="text-lightText dark:text-darkTextSecondary">
+            <button onClick={handleLogout} className="text-lightText dark:text-darkTextSecondary p-2 hover:bg-gray-100 rounded-lg">
               <LogOut size={20} />
             </button>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
           {children}
         </main>
 
         {/* Mobile Bottom Nav (Admin/Collab) */}
-        <nav className="md:hidden bg-white dark:bg-darkSurface border-t border-gray-200 dark:border-darkBorder flex justify-around p-2">
+        <nav className="md:hidden bg-white dark:bg-darkSurface border-t border-gray-200 dark:border-darkBorder flex justify-around p-2 fixed bottom-0 left-0 w-full z-50 pb-safe">
            {menuItems.slice(0, 4).map((item) => (
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className={`flex flex-col items-center p-2 rounded-lg ${
+              className={`flex flex-col items-center justify-center p-2 rounded-lg w-full transition-all active:scale-95 ${
                 location.pathname === item.path ? 'text-primary' : 'text-lightText dark:text-darkTextSecondary'
               }`}
             >
               {item.icon}
-              <span className="text-[10px] mt-1 font-medium">{item.label}</span>
+              <span className="text-[10px] mt-1 font-medium truncate w-full text-center">{item.label}</span>
             </button>
           ))}
         </nav>

@@ -23,10 +23,21 @@ export const ClientDashboard: React.FC = () => {
   const myServices = services.filter(s => s.clientId === currentUser?.id && s.status === 'CONFIRMED');
   const nextAppt = myServices.length > 0 ? myServices[0] : null;
 
+  // Extração segura dos dias ativos
   const activeDays = myServices.map(s => {
-     const d = new Date(s.date.split('/').reverse().join('-')); // Simple parse assuming PT format
-     return d.getDate();
-  });
+     if (!s.date) return null;
+     try {
+       // Tenta parsear formato DD/MM/YYYY
+       const parts = s.date.split('/');
+       if (parts.length === 3) {
+          const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+          return d.getDate();
+       }
+       return null;
+     } catch (e) { 
+       return null; 
+     }
+  }).filter(d => d !== null) as number[];
 
   return (
     <Layout role={UserRole.CLIENT}>

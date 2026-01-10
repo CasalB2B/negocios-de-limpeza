@@ -146,11 +146,44 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
+// Dados iniciais para seed (caso o banco esteja vazio ou inacessível)
+const initialServiceDefinitions: ServiceDefinition[] = [
+  {
+    id: 'srv_1',
+    name: 'Limpeza Padrão',
+    description: 'Ideal para manutenção semanal.',
+    icon: 'sparkles',
+    pricingModel: 'ROOMS',
+    basePrice: 120.00,
+    pricePerUnit: 40.00,
+    pricePerBath: 30.00,
+    extras: [],
+    pricingTiers: [],
+    active: true
+  },
+  {
+    id: 'srv_2',
+    name: 'Passadoria',
+    description: 'Roupas lavadas e passadas.',
+    icon: 'shirt',
+    pricingModel: 'HOURLY',
+    basePrice: 0,
+    pricePerUnit: 0,
+    extras: [],
+    pricingTiers: [
+        { id: 'tier_1', name: 'Pacote 4 Horas', value: 4, price: 120.00 },
+        { id: 'tier_2', name: 'Pacote 6 Horas', value: 6, price: 170.00 },
+        { id: 'tier_3', name: 'Diária (8 Horas)', value: 8, price: 220.00 }
+    ],
+    active: true
+  }
+];
+
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   
   const [services, setServices] = useState<Service[]>([]);
-  const [serviceDefinitions, setServiceDefinitions] = useState<ServiceDefinition[]>([]);
+  const [serviceDefinitions, setServiceDefinitions] = useState<ServiceDefinition[]>(initialServiceDefinitions);
   const [platformSettings, setPlatformSettings] = useState<PlatformSettings>({ commissionRate: 30, hourlyRate: 50, minDisplacement: 20 });
   const [clients, setClients] = useState<ClientUser[]>([]);
   const [collaborators, setCollaborators] = useState<CollaboratorUser[]>([]);
@@ -164,31 +197,31 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // --- MAPPERS (DB <-> APP) ---
   const mapDbUserToClient = (u: any, addresses: any[] = []): ClientUser => ({
     id: u.id,
-    name: u.name,
-    email: u.email,
+    name: u.name || 'Cliente Sem Nome',
+    email: u.email || '',
     phone: u.phone || '',
     address: u.address || '',
-    addresses: addresses.map(a => ({
+    addresses: Array.isArray(addresses) ? addresses.map(a => ({
         id: a.id,
         alias: a.title || 'Principal',
-        street: a.street,
-        number: a.number,
-        complement: a.complement,
-        district: a.neighborhood,
-        city: a.city,
-        state: a.state,
-        cep: a.zip,
-        type: 'HOUSE', // Default fallback
+        street: a.street || '',
+        number: a.number || '',
+        complement: a.complement || '',
+        district: a.neighborhood || '',
+        city: a.city || '',
+        state: a.state || '',
+        cep: a.zip || '',
+        type: 'HOUSE', 
         isMain: false
-    })),
-    type: 'AVULSO', // Default fallback
-    createdAt: new Date(u.created_at).getTime()
+    })) : [],
+    type: u.type || 'AVULSO',
+    createdAt: u.created_at ? new Date(u.created_at).getTime() : Date.now()
   });
 
   const mapDbUserToCollab = (u: any): CollaboratorUser => ({
     id: u.id,
-    name: u.name,
-    email: u.email,
+    name: u.name || 'Colaboradora',
+    email: u.email || '',
     phone: u.phone || '',
     photo: u.photo,
     status: (u.status as any) || 'AVAILABLE'
@@ -197,31 +230,31 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const mapDbServiceToApp = (s: any): Service => ({
     id: s.id,
     clientId: s.client_id,
-    clientName: s.client_name,
+    clientName: s.client_name || 'Cliente',
     collaboratorId: s.collaborator_id,
     collaboratorName: s.collaborator_name,
-    type: s.type,
-    date: s.date,
-    time: s.time,
-    address: s.address,
-    status: s.status,
-    price: s.price,
-    notes: s.notes,
-    createdAt: new Date(s.created_at).getTime()
+    type: s.type || 'Serviço',
+    date: s.date || '',
+    time: s.time || '',
+    address: s.address || '',
+    status: s.status || 'PENDING',
+    price: s.price || 0,
+    notes: s.notes || '',
+    createdAt: s.created_at ? new Date(s.created_at).getTime() : Date.now()
   });
 
   const mapDbDefToApp = (d: any): ServiceDefinition => ({
     id: d.id,
     name: d.name,
-    description: d.description,
-    icon: d.icon,
-    pricingModel: d.pricing_model as PricingModel,
-    basePrice: d.base_price,
-    pricePerUnit: d.price_per_unit,
-    pricePerBath: d.price_per_bath,
-    active: d.active,
-    extras: d.extras || [],
-    pricingTiers: d.pricing_tiers || [],
+    description: d.description || '',
+    icon: d.icon || 'sparkles',
+    pricingModel: (d.pricing_model as PricingModel) || 'ROOMS',
+    basePrice: d.base_price || 0,
+    pricePerUnit: d.price_per_unit || 0,
+    pricePerBath: d.price_per_bath || 0,
+    active: d.active !== false,
+    extras: Array.isArray(d.extras) ? d.extras : [],
+    pricingTiers: Array.isArray(d.pricing_tiers) ? d.pricing_tiers : [],
     imageUrl: undefined 
   });
 
@@ -230,8 +263,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
         // 1. Service Definitions
-        const { data: sDefs } = await supabase.from('service_definitions').select('*');
-        if (sDefs) setServiceDefinitions(sDefs.map(mapDbDefToApp));
+        const { data: sDefs, error: sDefError } = await supabase.from('service_definitions').select('*');
+        if (!sDefError && sDefs && sDefs.length > 0) {
+            setServiceDefinitions(sDefs.map(mapDbDefToApp));
+        }
 
         // 2. Users (Split into Clients & Collaborators)
         const { data: users } = await supabase.from('app_users').select('*');
@@ -259,7 +294,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (trxs) setTransactions(trxs as any);
 
     } catch (error) {
-        console.error("Erro ao carregar dados:", error);
+        console.error("Erro ao carregar dados (pode ser problema de conexão ou configuração do Supabase):", error);
     } finally {
         setLoading(false);
     }
@@ -297,10 +332,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         collaborator_name: service.collaboratorName
     };
 
+    // Optimistic Update
+    setServices(prev => [service, ...prev]);
+
     const { data, error } = await supabase.from('services').insert(dbService).select();
     
     if (data && !error) {
-        setServices(prev => [mapDbServiceToApp(data[0]), ...prev]);
+        // Replace optimistic with real data
+        setServices(prev => [mapDbServiceToApp(data[0]), ...prev.filter(s => s.id !== service.id)]);
+        
         await addNotificationInternal({
             type: 'NEW_REQUEST',
             title: 'Nova solicitação',
@@ -402,7 +442,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateClient = async (id: string, data: Partial<ClientUser>) => {
-    // Apenas updates básicos na tabela de user por enquanto
     const updates: any = {};
     if (data.name) updates.name = data.name;
     if (data.email) updates.email = data.email;
@@ -452,14 +491,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     const { data } = await supabase.from('addresses').insert(dbAddress).select();
     if (data) {
-        // Refresh Clients to update UI
         fetchData();
     }
   };
 
   const updateClientAddress = async (clientId: string, address: Address) => {
-     // Na implementação real, precisaria do ID do endereço vindo do banco.
-     // Como o tipo Address pode ter ID string ou number, assumimos que ele já vem correto.
      const dbAddress = {
         title: address.alias,
         street: address.street,
@@ -516,9 +552,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginCollaborator = async (email: string, password: string): Promise<boolean> => {
-    // Nota: Em produção, usar Supabase Auth. Aqui simula checagem na tabela
-    // OBS: O campo 'password' não existe no SQL fornecido para 'app_users'.
-    // Vou assumir login apenas por email para este demo ou que a senha seria tratada via Auth.
     const { data: user } = await supabase.from('app_users').select('*').eq('email', email).eq('role', 'COLLABORATOR').single();
     if (user) {
         setCurrentCollaborator(mapDbUserToCollab(user));
