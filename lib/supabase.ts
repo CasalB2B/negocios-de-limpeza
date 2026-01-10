@@ -1,18 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
-// As chaves serão carregadas das variáveis de ambiente
-// Quando rodar localmente, ele pega do .env.local
-// Na Vercel, pega das Environment Variables do painel
-// FALLBACK DE EMERGÊNCIA (Hardcoded)
-const HARD_URL = 'https://yhdxmutbreihrtlnbcaf.supabase.co';
-const HARD_KEY = 'sb_publishable_zVE4vViBZXsun3RYfEf-mg_ETIBXV8X';
+// Configuração Padrão (Fallback)
+const DEFAULT_URL = 'https://yhdxmutbreihrtlnbcaf.supabase.co';
+const DEFAULT_KEY = 'sb_publishable_zVE4vViBZXsun3RYfEf-mg_ETIBXV8X';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || HARD_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || HARD_KEY;
-
-if (supabaseUrl === HARD_URL) {
-  console.log('⚠️ Usando chaves Hardcoded (Fallback)');
-}
+// Tenta pegar das variáveis de ambiente, se falhar, usa o padrão
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || DEFAULT_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_KEY;
 
 export const supabase = createClient(
   supabaseUrl,
