@@ -1,20 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button';
-import { ArrowLeft, LogIn } from 'lucide-react';
+import { ArrowLeft, LogIn, Loader } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 
 export const CollaboratorLogin: React.FC = () => {
   const navigate = useNavigate();
-  const { loginCollaborator } = useData();
+  const { loginCollaborator, currentCollaborator } = useData();
   const [loginData, setLoginData] = useState({ email: 'ana@email.com', password: '123' }); // Pre-filled
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Verifica se já está logado ao carregar a página
+  useEffect(() => {
+    if (currentCollaborator) {
+      navigate('/collab/agenda');
+    }
+  }, [currentCollaborator, navigate]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginCollaborator(loginData.email, loginData.password)) {
-        navigate('/collab/agenda');
-    } else {
-        alert('Credenciais incorretas. Tente "ana@email.com" / "123"');
+    setIsLoading(true);
+    try {
+        const success = await loginCollaborator(loginData.email, loginData.password);
+        if (success) {
+            navigate('/collab/agenda');
+        } else {
+            alert('Credenciais incorretas. Tente "ana@email.com" / "123"');
+        }
+    } finally {
+        setIsLoading(false);
     }
   };
 
@@ -28,7 +42,9 @@ export const CollaboratorLogin: React.FC = () => {
         <form onSubmit={handleLogin} className="space-y-4">
             <input type="text" autoComplete="email" className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50" value={loginData.email} onChange={e => setLoginData({...loginData, email: e.target.value})} placeholder="E-mail" />
             <input type="password" autoComplete="current-password" className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50" value={loginData.password} onChange={e => setLoginData({...loginData, password: e.target.value})} placeholder="Senha" />
-            <Button fullWidth type="submit" variant="secondary" className="mt-4" icon={<LogIn size={18}/>}>Acessar Agenda</Button>
+            <Button fullWidth type="submit" variant="secondary" disabled={isLoading} className="mt-4" icon={isLoading ? <Loader size={18} className="animate-spin"/> : <LogIn size={18}/>}>
+                {isLoading ? 'Entrando...' : 'Acessar Agenda'}
+            </Button>
         </form>
       </div>
     </div>

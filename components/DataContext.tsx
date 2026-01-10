@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { ServiceStatus, Address } from '../types';
+import { supabase } from '../lib/supabase';
 
-// --- TYPES (Mantendo os originais para não quebrar componentes) ---
+// --- TIPOS DE DADOS ---
 export type PricingModel = 'ROOMS' | 'HOURLY' | 'SQM' | 'FIXED';
 
 export interface ServiceExtra {
@@ -23,7 +23,7 @@ export interface ServiceDefinition {
   name: string;
   description: string;
   icon: string;
-  imageUrl?: string;
+  imageUrl?: string; 
   pricingModel: PricingModel;
   basePrice: number;
   pricePerUnit: number;
@@ -31,6 +31,12 @@ export interface ServiceDefinition {
   extras: ServiceExtra[];
   pricingTiers?: PricingTier[];
   active: boolean;
+}
+
+export interface PlatformSettings {
+  commissionRate: number;
+  hourlyRate: number;
+  minDisplacement: number;
 }
 
 export interface Service {
@@ -42,6 +48,7 @@ export interface Service {
   time: string;
   address: string;
   status: ServiceStatus | string;
+  paymentStatus?: 'PENDING' | 'SIGNAL_PAID' | 'FULL_PAID';
   price?: number;
   notes?: string;
   photos?: { before: string[], after: string[] };
@@ -55,9 +62,9 @@ export interface ClientUser {
   name: string;
   email: string;
   phone: string;
-  address: string;
-  addresses: Address[];
-  type: 'FIXO' | 'AVULSO';
+  address: string; // Endereço principal textual
+  addresses: Address[]; // Lista completa de endereços
+  type: 'FIXO' | 'AVULSO' | 'POS_OBRA' | 'PRIMEIRA_LIMPEZA' | string;
   createdAt: number;
 }
 
@@ -68,7 +75,7 @@ export interface CollaboratorUser {
   password?: string;
   phone: string;
   photo?: string;
-  status: 'AVAILABLE' | 'BUSY';
+  status: 'AVAILABLE' | 'BUSY' | 'ON_SERVICE' | 'OFFLINE';
 }
 
 export interface Notification {
@@ -98,99 +105,53 @@ interface DataContextType {
   collaborators: CollaboratorUser[];
   notifications: Notification[];
   serviceDefinitions: ServiceDefinition[];
-  transactions: Transaction[];
+  transactions: Transaction[]; 
+  platformSettings: PlatformSettings;
   currentUser: ClientUser | null;
   currentCollaborator: CollaboratorUser | null;
   adminLoggedIn: boolean;
+  loading: boolean;
+  
+  addService: (service: Service) => Promise<void>;
+  updateServiceStatus: (id: string, status: string, additionalData?: Partial<Service>) => Promise<void>;
+  
+  addServiceDefinition: (def: ServiceDefinition) => Promise<void>;
+  updateServiceDefinition: (def: ServiceDefinition) => Promise<void>;
+  deleteServiceDefinition: (id: string) => Promise<void>;
 
-  addService: (service: Service) => void;
-  updateServiceStatus: (id: string, status: string, additionalData?: Partial<Service>) => void;
-
-  addServiceDefinition: (def: ServiceDefinition) => void;
-  updateServiceDefinition: (def: ServiceDefinition) => void;
-  deleteServiceDefinition: (id: string) => void;
-
-  registerClient: (client: ClientUser) => void;
-  updateClient: (id: string, data: Partial<ClientUser>) => void;
-  deleteClient: (id: string) => void;
-  loginClient: (email: string) => Promise<boolean>; // Mudou para Promise
+  registerClient: (client: ClientUser) => Promise<void>;
+  updateClient: (id: string, data: Partial<ClientUser>) => Promise<void>;
+  deleteClient: (id: string) => Promise<void>;
+  loginClient: (email: string) => Promise<boolean>;
   logoutClient: () => void;
+  
+  addClientAddress: (clientId: string, address: Address) => Promise<void>;
+  updateClientAddress: (clientId: string, address: Address) => Promise<void>;
+  deleteClientAddress: (clientId: string, addressId: string | number) => Promise<void>;
 
-  addClientAddress: (clientId: string, address: Address) => void;
-  updateClientAddress: (clientId: string, address: Address) => void;
-  deleteClientAddress: (clientId: string, addressId: string | number) => void;
-
-  registerCollaborator: (collab: CollaboratorUser) => void;
-  updateCollaborator: (id: string, data: Partial<CollaboratorUser>) => void;
-  deleteCollaborator: (id: string) => void;
-  loginCollaborator: (email: string, password: string) => Promise<boolean>; // Mudou para Promise
+  registerCollaborator: (collab: CollaboratorUser) => Promise<void>;
+  updateCollaborator: (id: string, data: Partial<CollaboratorUser>) => Promise<void>;
+  deleteCollaborator: (id: string) => Promise<void>;
+  loginCollaborator: (email: string, password: string) => Promise<boolean>;
   logoutCollaborator: () => void;
-
-  loginAdmin: (user: string, pass: string) => boolean;
+  
+  loginAdmin: (user: string, pass: string) => Promise<boolean>;
   logoutAdmin: () => void;
-  markAllNotificationsRead: () => void;
-
-  markTransactionPaid: (id: string) => void;
-  deleteTransaction: (id: string) => void;
+  markAllNotificationsRead: () => Promise<void>;
+  updatePlatformSettings: (settings: PlatformSettings) => Promise<void>;
+  
+  markTransactionPaid: (id: string) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-// --- MAPPERS (Snake Case DB <-> Camel Case App) ---
-const mapDefFromDB = (db: any): ServiceDefinition => ({
-  id: db.id,
-  name: db.name,
-  description: db.description,
-  icon: db.icon,
-  pricingModel: db.pricing_model as PricingModel,
-  basePrice: db.base_price,
-  pricePerUnit: db.price_per_unit,
-  pricePerBath: db.price_per_bath,
-  extras: db.extras || [],
-  pricingTiers: db.pricing_tiers || [],
-  active: db.active
-});
-
-const mapServiceFromDB = (db: any): Service => ({
-  id: db.id,
-  clientId: db.client_id,
-  clientName: db.client_name,
-  type: db.type,
-  date: db.date,
-  time: db.time,
-  address: db.address,
-  status: db.status,
-  price: db.price,
-  notes: db.notes,
-  collaboratorId: db.collaborator_id,
-  collaboratorName: db.collaborator_name,
-  createdAt: new Date(db.created_at).getTime()
-});
-
-const mapUserFromDB = (db: any): ClientUser => ({
-  id: db.id,
-  name: db.name,
-  email: db.email,
-  phone: db.phone,
-  address: db.address,
-  addresses: [], // Carregar separado se precisar
-  type: 'FIXO', // Padrão
-  createdAt: new Date(db.created_at).getTime()
-});
-
-const mapCollabFromDB = (db: any): CollaboratorUser => ({
-  id: db.id,
-  name: db.name,
-  email: db.email,
-  phone: db.phone,
-  photo: db.photo,
-  status: db.status as 'AVAILABLE' | 'BUSY'
-});
-
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // --- STATES ---
+  const [loading, setLoading] = useState(true);
+  
   const [services, setServices] = useState<Service[]>([]);
   const [serviceDefinitions, setServiceDefinitions] = useState<ServiceDefinition[]>([]);
+  const [platformSettings, setPlatformSettings] = useState<PlatformSettings>({ commissionRate: 30, hourlyRate: 50, minDisplacement: 20 });
   const [clients, setClients] = useState<ClientUser[]>([]);
   const [collaborators, setCollaborators] = useState<CollaboratorUser[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -200,90 +161,201 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentCollaborator, setCurrentCollaborator] = useState<CollaboratorUser | null>(null);
   const [adminLoggedIn, setAdminLoggedIn] = useState<boolean>(false);
 
-  // --- INITIAL LOAD ---
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
+  // --- MAPPERS (DB <-> APP) ---
+  const mapDbUserToClient = (u: any, addresses: any[] = []): ClientUser => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    phone: u.phone || '',
+    address: u.address || '',
+    addresses: addresses.map(a => ({
+        id: a.id,
+        alias: a.title || 'Principal',
+        street: a.street,
+        number: a.number,
+        complement: a.complement,
+        district: a.neighborhood,
+        city: a.city,
+        state: a.state,
+        cep: a.zip,
+        type: 'HOUSE', // Default fallback
+        isMain: false
+    })),
+    type: 'AVULSO', // Default fallback
+    createdAt: new Date(u.created_at).getTime()
+  });
 
-  const fetchInitialData = async () => {
-    // 1. Service Definitions
-    const { data: defs } = await supabase.from('service_definitions').select('*');
-    if (defs) setServiceDefinitions(defs.map(mapDefFromDB));
+  const mapDbUserToCollab = (u: any): CollaboratorUser => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    phone: u.phone || '',
+    photo: u.photo,
+    status: (u.status as any) || 'AVAILABLE'
+  });
 
-    // 2. Services
-    const { data: srvs } = await supabase.from('services').select('*').order('created_at', { ascending: false });
-    if (srvs) setServices(srvs.map(mapServiceFromDB));
+  const mapDbServiceToApp = (s: any): Service => ({
+    id: s.id,
+    clientId: s.client_id,
+    clientName: s.client_name,
+    collaboratorId: s.collaborator_id,
+    collaboratorName: s.collaborator_name,
+    type: s.type,
+    date: s.date,
+    time: s.time,
+    address: s.address,
+    status: s.status,
+    price: s.price,
+    notes: s.notes,
+    createdAt: new Date(s.created_at).getTime()
+  });
 
-    // 3. Users (Separar Clientes de Colaboradores)
-    const { data: users } = await supabase.from('app_users').select('*');
-    if (users) {
-      setClients(users.filter(u => u.role === 'CLIENT').map(mapUserFromDB));
-      setCollaborators(users.filter(u => u.role === 'COLLABORATOR').map(mapCollabFromDB));
+  const mapDbDefToApp = (d: any): ServiceDefinition => ({
+    id: d.id,
+    name: d.name,
+    description: d.description,
+    icon: d.icon,
+    pricingModel: d.pricing_model as PricingModel,
+    basePrice: d.base_price,
+    pricePerUnit: d.price_per_unit,
+    pricePerBath: d.price_per_bath,
+    active: d.active,
+    extras: d.extras || [],
+    pricingTiers: d.pricing_tiers || [],
+    imageUrl: undefined 
+  });
+
+  // --- FETCH DATA ---
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+        // 1. Service Definitions
+        const { data: sDefs } = await supabase.from('service_definitions').select('*');
+        if (sDefs) setServiceDefinitions(sDefs.map(mapDbDefToApp));
+
+        // 2. Users (Split into Clients & Collaborators)
+        const { data: users } = await supabase.from('app_users').select('*');
+        const { data: addresses } = await supabase.from('addresses').select('*');
+        
+        if (users) {
+            const rawClients = users.filter(u => u.role === 'CLIENT');
+            const rawCollabs = users.filter(u => u.role === 'COLLABORATOR');
+
+            const mappedClients = rawClients.map(c => {
+                const userAddresses = addresses ? addresses.filter(a => a.user_id === c.id) : [];
+                return mapDbUserToClient(c, userAddresses);
+            });
+
+            setClients(mappedClients);
+            setCollaborators(rawCollabs.map(mapDbUserToCollab));
+        }
+
+        // 3. Services
+        const { data: srvs } = await supabase.from('services').select('*').order('created_at', { ascending: false });
+        if (srvs) setServices(srvs.map(mapDbServiceToApp));
+
+        // 4. Transactions
+        const { data: trxs } = await supabase.from('transactions').select('*');
+        if (trxs) setTransactions(trxs as any);
+
+    } catch (error) {
+        console.error("Erro ao carregar dados:", error);
+    } finally {
+        setLoading(false);
     }
-
-    // 4. Transactions
-    const { data: trans } = await supabase.from('transactions').select('*');
-    if (trans) setTransactions(trans.map((t: any) => ({ ...t, createdAt: new Date(t.created_at).getTime() })));
   };
 
-  // --- ACTIONS ---
+  useEffect(() => {
+    fetchData();
+  }, []);
 
+  const addNotificationInternal = async (notif: Omit<Notification, 'id' | 'read' | 'time'>) => {
+    const newNotif = {
+      id: Date.now().toString(),
+      type: notif.type,
+      title: notif.title,
+      desc: notif.desc,
+      time: new Date().toISOString(),
+      read: false
+    };
+    setNotifications(prev => [newNotif, ...prev]);
+  };
+
+  // --- ACTIONS: SERVICES ---
   const addService = async (service: Service) => {
-    // Optimistic Update
-    setServices(prev => [service, ...prev]);
+    const dbService = {
+        client_id: service.clientId,
+        client_name: service.clientName,
+        type: service.type,
+        date: service.date,
+        time: service.time,
+        address: service.address,
+        status: service.status,
+        price: service.price,
+        notes: service.notes,
+        collaborator_id: service.collaboratorId,
+        collaborator_name: service.collaboratorName
+    };
 
-    // DB Insert
-    const { data, error } = await supabase.from('services').insert({
-      client_id: service.clientId,
-      client_name: service.clientName,
-      type: service.type,
-      date: service.date,
-      time: service.time,
-      address: service.address,
-      status: service.status,
-      price: service.price,
-      notes: service.notes,
-      collaborator_id: service.collaboratorId
-    }).select().single();
-
-    if (data) {
-      // Replace optimistic item with real one (with ID)
-      setServices(prev => prev.map(s => s.id === service.id ? mapServiceFromDB(data) : s));
-    } else if (error) {
-      console.error("Erro ao criar serviço:", error);
+    const { data, error } = await supabase.from('services').insert(dbService).select();
+    
+    if (data && !error) {
+        setServices(prev => [mapDbServiceToApp(data[0]), ...prev]);
+        await addNotificationInternal({
+            type: 'NEW_REQUEST',
+            title: 'Nova solicitação',
+            desc: `${service.type} solicitada por ${service.clientName}.`
+        });
     }
   };
 
   const updateServiceStatus = async (id: string, status: string, additionalData?: Partial<Service>) => {
+    const updates: any = { status };
+    if (additionalData?.price) updates.price = additionalData.price;
+    if (additionalData?.notes) updates.notes = additionalData.notes;
+    if (additionalData?.collaboratorId) {
+        updates.collaborator_id = additionalData.collaboratorId;
+        updates.collaborator_name = additionalData.collaboratorName;
+    }
+
+    // Optimistic Update
     setServices(prev => prev.map(s => s.id === id ? { ...s, status, ...additionalData } : s));
 
-    await supabase.from('services').update({
-      status,
-      collaborator_id: additionalData?.collaboratorId,
-      collaborator_name: additionalData?.collaboratorName
-    }).eq('id', id);
+    await supabase.from('services').update(updates).eq('id', id);
   };
 
-  // --- DEFINITIONS ---
   const addServiceDefinition = async (def: ServiceDefinition) => {
-    setServiceDefinitions(prev => [...prev, def]);
-    await supabase.from('service_definitions').insert({
-      name: def.name,
-      description: def.description,
-      icon: def.icon,
-      pricing_model: def.pricingModel,
-      base_price: def.basePrice,
-      price_per_unit: def.pricePerUnit,
-      price_per_bath: def.pricePerBath,
-      active: def.active,
-      extras: def.extras,
-      pricing_tiers: def.pricingTiers
-    });
+    const dbDef = {
+        name: def.name,
+        description: def.description,
+        icon: def.icon,
+        pricing_model: def.pricingModel,
+        base_price: def.basePrice,
+        price_per_unit: def.pricePerUnit,
+        price_per_bath: def.pricePerBath,
+        active: def.active,
+        extras: def.extras,
+        pricing_tiers: def.pricingTiers
+    };
+    const { data } = await supabase.from('service_definitions').insert(dbDef).select();
+    if (data) setServiceDefinitions(prev => [...prev, mapDbDefToApp(data[0])]);
   };
 
   const updateServiceDefinition = async (def: ServiceDefinition) => {
+    const dbDef = {
+        name: def.name,
+        description: def.description,
+        icon: def.icon,
+        pricing_model: def.pricingModel,
+        base_price: def.basePrice,
+        price_per_unit: def.pricePerUnit,
+        price_per_bath: def.pricePerBath,
+        active: def.active,
+        extras: def.extras,
+        pricing_tiers: def.pricingTiers
+    };
+    await supabase.from('service_definitions').update(dbDef).eq('id', def.id);
     setServiceDefinitions(prev => prev.map(s => s.id === def.id ? def : s));
-    // TODO: Update no Banco
   };
 
   const deleteServiceDefinition = async (id: string) => {
@@ -291,93 +363,166 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.from('service_definitions').delete().eq('id', id);
   };
 
-  // --- CLIENTS ---
+  // --- ACTIONS: CLIENTS ---
   const registerClient = async (client: ClientUser) => {
-    setClients(prev => [...prev, client]);
-    if (!currentUser) setCurrentUser(client);
+    // 1. Insert User
+    const { data: userData, error } = await supabase.from('app_users').insert({
+        name: client.name,
+        email: client.email,
+        phone: client.phone,
+        address: client.address,
+        role: 'CLIENT'
+    }).select().single();
 
-    await supabase.from('app_users').insert({
-      name: client.name,
-      email: client.email,
-      phone: client.phone,
-      address: client.address,
-      role: 'CLIENT'
-    });
+    if (error || !userData) {
+        console.error("Erro ao registrar cliente:", error);
+        return;
+    }
+
+    // 2. Insert Addresses (if any)
+    if (client.addresses && client.addresses.length > 0) {
+        const addressesToInsert = client.addresses.map(a => ({
+            user_id: userData.id,
+            title: a.alias,
+            street: a.street,
+            number: a.number,
+            complement: a.complement,
+            neighborhood: a.district,
+            city: a.city,
+            state: a.state,
+            zip: a.cep
+        }));
+        await supabase.from('addresses').insert(addressesToInsert);
+    }
+
+    // Refresh Local
+    const newClient = mapDbUserToClient(userData, client.addresses);
+    setClients(prev => [...prev, newClient]);
+    setCurrentUser(newClient);
   };
 
   const updateClient = async (id: string, data: Partial<ClientUser>) => {
+    // Apenas updates básicos na tabela de user por enquanto
+    const updates: any = {};
+    if (data.name) updates.name = data.name;
+    if (data.email) updates.email = data.email;
+    if (data.phone) updates.phone = data.phone;
+    
+    await supabase.from('app_users').update(updates).eq('id', id);
+    
+    // Atualiza estado local
     setClients(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
-    // Simplificado para update
-    await supabase.from('app_users').update({
-      name: data.name,
-      phone: data.phone,
-      address: data.address
-    }).eq('id', id);
+    if (currentUser && currentUser.id === id) {
+        setCurrentUser(prev => prev ? { ...prev, ...data } : null);
+    }
   };
 
   const deleteClient = async (id: string) => {
     setClients(prev => prev.filter(c => c.id !== id));
     await supabase.from('app_users').delete().eq('id', id);
+    if (currentUser?.id === id) logoutClient();
   };
 
-  const loginClient = async (email: string) => {
-    // Busca REAL no banco
-    const { data } = await supabase.from('app_users')
-      .select('*')
-      .eq('email', email)
-      .eq('role', 'CLIENT')
-      .single();
-
-    if (data) {
-      setCurrentUser(mapUserFromDB(data));
-      return true;
+  const loginClient = async (email: string): Promise<boolean> => {
+    const { data: user } = await supabase.from('app_users').select('*').eq('email', email).eq('role', 'CLIENT').single();
+    if (user) {
+        // Fetch addresses
+        const { data: addrs } = await supabase.from('addresses').select('*').eq('user_id', user.id);
+        const clientObj = mapDbUserToClient(user, addrs || []);
+        setCurrentUser(clientObj);
+        return true;
     }
     return false;
   };
 
   const logoutClient = () => setCurrentUser(null);
 
-  // --- ADDRESSES ---
+  // --- ACTIONS: CLIENT ADDRESSES ---
   const addClientAddress = async (clientId: string, address: Address) => {
-    // TODO: Implementar tabela addresses separada no Supabase
-    // Por enquanto mantemos no state local do App (mas não salva no DB pq a estrutura mudou)
-    // Para simplicidade, vamos pular a persistência de endereços extras agora
+    const dbAddress = {
+        user_id: clientId,
+        title: address.alias,
+        street: address.street,
+        number: address.number,
+        complement: address.complement,
+        neighborhood: address.district,
+        city: address.city,
+        state: address.state,
+        zip: address.cep
+    };
+    const { data } = await supabase.from('addresses').insert(dbAddress).select();
+    if (data) {
+        // Refresh Clients to update UI
+        fetchData();
+    }
   };
-  const updateClientAddress = (clientId: string, address: Address) => { };
-  const deleteClientAddress = (clientId: string, addressId: string | number) => { };
 
-  // --- COLLABORATORS ---
+  const updateClientAddress = async (clientId: string, address: Address) => {
+     // Na implementação real, precisaria do ID do endereço vindo do banco.
+     // Como o tipo Address pode ter ID string ou number, assumimos que ele já vem correto.
+     const dbAddress = {
+        title: address.alias,
+        street: address.street,
+        number: address.number,
+        complement: address.complement,
+        neighborhood: address.district,
+        city: address.city,
+        state: address.state,
+        zip: address.cep
+    };
+    await supabase.from('addresses').update(dbAddress).eq('id', address.id);
+    fetchData();
+  };
+
+  const deleteClientAddress = async (clientId: string, addressId: string | number) => {
+    await supabase.from('addresses').delete().eq('id', addressId);
+    fetchData();
+  };
+
+  // --- ACTIONS: COLLABORATORS ---
   const registerCollaborator = async (collab: CollaboratorUser) => {
-    setCollaborators(prev => [...prev, collab]);
-    await supabase.from('app_users').insert({
-      name: collab.name,
-      email: collab.email,
-      phone: collab.phone,
-      role: 'COLLABORATOR',
-      status: 'AVAILABLE'
-      // password não estamos salvando em plain text por segurança, ideal usar Auth
-    });
-  };
-
-  const updateCollaborator = (id: string, data: Partial<CollaboratorUser>) => {
-    setCollaborators(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
-  };
-
-  const deleteCollaborator = (id: string) => {
-    setCollaborators(prev => prev.filter(c => c.id !== id));
-  };
-
-  const loginCollaborator = async (email: string, password: string) => {
-    // Login insecurity check (apenas email por enquanto pois não temos senha no DB profile)
-    const { data } = await supabase.from('app_users')
-      .select('*')
-      .eq('email', email)
-      .eq('role', 'COLLABORATOR')
-      .single();
+    const { data } = await supabase.from('app_users').insert({
+        name: collab.name,
+        email: collab.email,
+        phone: collab.phone,
+        role: 'COLLABORATOR',
+        status: 'AVAILABLE',
+        photo: collab.photo
+    }).select().single();
 
     if (data) {
-      setCurrentCollaborator(mapCollabFromDB(data));
-      return true;
+        setCollaborators(prev => [...prev, mapDbUserToCollab(data)]);
+    }
+  };
+
+  const updateCollaborator = async (id: string, data: Partial<CollaboratorUser>) => {
+    const updates: any = {};
+    if (data.name) updates.name = data.name;
+    if (data.email) updates.email = data.email;
+    if (data.phone) updates.phone = data.phone;
+    if (data.status) updates.status = data.status;
+    if (data.photo) updates.photo = data.photo;
+
+    await supabase.from('app_users').update(updates).eq('id', id);
+    setCollaborators(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
+    if (currentCollaborator?.id === id) {
+        setCurrentCollaborator(prev => prev ? { ...prev, ...data } : null);
+    }
+  };
+
+  const deleteCollaborator = async (id: string) => {
+    setCollaborators(prev => prev.filter(c => c.id !== id));
+    await supabase.from('app_users').delete().eq('id', id);
+  };
+
+  const loginCollaborator = async (email: string, password: string): Promise<boolean> => {
+    // Nota: Em produção, usar Supabase Auth. Aqui simula checagem na tabela
+    // OBS: O campo 'password' não existe no SQL fornecido para 'app_users'.
+    // Vou assumir login apenas por email para este demo ou que a senha seria tratada via Auth.
+    const { data: user } = await supabase.from('app_users').select('*').eq('email', email).eq('role', 'COLLABORATOR').single();
+    if (user) {
+        setCurrentCollaborator(mapDbUserToCollab(user));
+        return true;
     }
     return false;
   };
@@ -385,40 +530,37 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logoutCollaborator = () => setCurrentCollaborator(null);
 
   // --- ADMIN ---
-  const loginAdmin = (user: string, pass: string) => {
+  const loginAdmin = async (user: string, pass: string): Promise<boolean> => {
     if (user === 'admin' && pass === 'admin') {
-      setAdminLoggedIn(true);
-      return true;
+        setAdminLoggedIn(true);
+        return true;
     }
     return false;
   };
   const logoutAdmin = () => setAdminLoggedIn(false);
 
-  // --- OTHERS ---
-  const markAllNotificationsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  };
-
+  // --- MISC ---
+  const markAllNotificationsRead = async () => setNotifications(prev => prev.map(n => ({...n, read: true})));
+  const updatePlatformSettings = async (s: PlatformSettings) => setPlatformSettings(s);
   const markTransactionPaid = async (id: string) => {
-    setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: 'PAID' } : t));
-    await supabase.from('transactions').update({ status: 'PAID' }).eq('id', id);
+      setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: 'PAID' } : t));
+      await supabase.from('transactions').update({ status: 'PAID' }).eq('id', id);
   };
-
-  const deleteTransaction = (id: string) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
+  const deleteTransaction = async (id: string) => {
+      setTransactions(prev => prev.filter(t => t.id !== id));
+      await supabase.from('transactions').delete().eq('id', id);
   };
 
   return (
-    <DataContext.Provider value={{
-      services, clients, collaborators, notifications, serviceDefinitions, transactions,
-      currentUser, currentCollaborator, adminLoggedIn,
-      addService, updateServiceStatus,
+    <DataContext.Provider value={{ 
+      services, clients, collaborators, notifications, serviceDefinitions, transactions, platformSettings,
+      currentUser, currentCollaborator, adminLoggedIn, loading,
+      addService, updateServiceStatus, 
       addServiceDefinition, updateServiceDefinition, deleteServiceDefinition,
       registerClient, updateClient, deleteClient, loginClient, logoutClient,
       addClientAddress, updateClientAddress, deleteClientAddress,
       registerCollaborator, updateCollaborator, deleteCollaborator, loginCollaborator, logoutCollaborator,
-      loginAdmin, logoutAdmin,
-      markAllNotificationsRead, markTransactionPaid, deleteTransaction
+      loginAdmin, logoutAdmin, markAllNotificationsRead, updatePlatformSettings, markTransactionPaid, deleteTransaction
     }}>
       {children}
     </DataContext.Provider>

@@ -1,212 +1,191 @@
 import React, { useState } from 'react';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
-import { CheckCircle, Clock, ArrowUpRight, CreditCard, Lock, X, AlertTriangle, Calendar, Info, Wallet } from 'lucide-react';
-import { useData } from '../../components/DataContext'; // Import DataContext
+import { CheckCircle, Clock, Wallet, X, Upload, FileText, Check } from 'lucide-react';
+import { useData, Service } from '../../components/DataContext';
+import { Button } from '../../components/Button';
+import { Modal } from '../../components/Modal';
 
 export const ClientPayments: React.FC = () => {
   const { services, currentUser, updateServiceStatus } = useData();
-  const [showInfinitePayModal, setShowInfinitePayModal] = useState(false);
-  const [selectedPaymentType, setSelectedPaymentType] = useState<'signal' | 'final' | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [paymentStep, setPaymentStep] = useState<'SIGNAL' | 'FINAL'>('SIGNAL');
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const activeService = services.find(s => 
+  // Filtra serviços do cliente que têm orçamento pronto ou já estão em andamento/concluídos
+  const clientServices = services.filter(s => 
       s.clientId === currentUser?.id && 
-      (s.status === 'WAITING_SIGNAL' || s.status === 'SCHEDULED' || s.status === 'BUDGET_READY' || s.status === 'PENDING' || s.status === 'CONFIRMED' || s.status === 'IN_PROGRESS' || s.status === 'COMPLETED' || s.status === 'SIGNAL_PROCESSING')
-  );
+      (s.status !== 'PENDING' && s.status !== 'CANCELED')
+  ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  // Estados de Bloqueio/Vazio
-  if (!activeService || activeService.status === 'PENDING') {
-      return (
-        <Layout role={UserRole.CLIENT}>
-            <div className="max-w-5xl mx-auto pb-20 text-center py-20">
-                <div className="w-24 h-24 bg-gray-100 dark:bg-darkSurface rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
-                    <Wallet size={40} />
-                </div>
-                <h2 className="text-2xl font-bold text-darkText dark:text-darkTextPrimary mb-2">Nenhum pagamento pendente</h2>
-                <p className="text-lightText dark:text-darkTextSecondary max-w-md mx-auto">
-                    Aguarde o envio do orçamento pelo administrador.
-                </p>
-            </div>
-        </Layout>
-      );
-  }
+  // Lógica para determinar o estado do pagamento e do botão
+  const getServicePaymentState = (service: Service) => {
+      const price = service.price || 0;
+      const isSignalPaid = service.paymentStatus === 'SIGNAL_PAID' || service.paymentStatus === 'FULL_PAID';
+      const isFullPaid = service.paymentStatus === 'FULL_PAID';
+      const isWorkFinished = service.status === 'COMPLETED';
 
-  if (activeService.status === 'BUDGET_READY') {
-      return (
-        <Layout role={UserRole.CLIENT}>
-            <div className="max-w-5xl mx-auto pb-20 text-center py-20">
-                <div className="w-24 h-24 bg-yellow-50 dark:bg-yellow-900/20 rounded-full flex items-center justify-center mx-auto mb-6 text-yellow-500">
-                    <AlertTriangle size={40} />
-                </div>
-                <h2 className="text-2xl font-bold text-darkText dark:text-darkTextPrimary mb-2">Orçamento Disponível</h2>
-                <p className="text-lightText dark:text-darkTextSecondary max-w-md mx-auto mb-6">
-                    Você possui um orçamento pronto. Aprove-o na aba de Agendamentos para liberar a área de pagamentos.
-                </p>
-            </div>
-        </Layout>
-      );
-  }
-
-  // Dados reais
-  const totalValue = activeService.price || 0;
-  const signalValue = totalValue / 2;
-  const finalValue = totalValue / 2;
-
-  // Lógica de Status de Pagamento
-  // Se STATUS > WAITING_SIGNAL, o sinal foi pago.
-  const isSignalProcessing = activeService.status === 'SIGNAL_PROCESSING';
-  const isSignalPaid = ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED'].includes(activeService.status);
-  
-  // O Final só é pago se for COMPLETED (após admin confirmar execução e pagamento final)
-  // Para simulação, vamos considerar pago se tiver uma flag no futuro, por enquanto baseamos no status
-  const isFinalPaid = activeService.status === 'COMPLETED'; 
-
-  const handleOpenPayment = (type: 'signal' | 'final') => {
-    setSelectedPaymentType(type);
-    setShowInfinitePayModal(true);
+      return { price, isSignalPaid, isFullPaid, isWorkFinished };
   };
 
-  const handleConfirmPayment = () => {
-      // O Cliente paga, mas o sistema aguarda confirmação do Admin
-      // STATUS vai para SIGNAL_PROCESSING
-      if (selectedPaymentType === 'signal') {
-          updateServiceStatus(activeService.id, 'SIGNAL_PROCESSING');
-          alert("Comprovante enviado! Aguarde a confirmação do administrador.");
-      } else {
-          // Pagamento final também vai para processamento ou direto se for cartão
-          alert("Pagamento final registrado! Aguarde validação.");
-      }
-      setShowInfinitePayModal(false);
+  const handleOpenPayment = (service: Service, step: 'SIGNAL' | 'FINAL') => {
+      setSelectedService(service);
+      setPaymentStep(step);
+      setShowPaymentModal(true);
+  };
+
+  const confirmPayment = () => {
+      if (!selectedService) return;
+      setIsProcessing(true);
+
+      setTimeout(() => {
+          if (paymentStep === 'SIGNAL') {
+              // Paga o sinal, status muda para SCHEDULED (Confirmado na agenda)
+              updateServiceStatus(selectedService.id, 'SCHEDULED', {
+                  paymentStatus: 'SIGNAL_PAID'
+              });
+          } else {
+              // Paga o restante, pagamento completo
+              updateServiceStatus(selectedService.id, 'COMPLETED', { // Mantém completed ou muda para algo como ARCHIVED
+                  paymentStatus: 'FULL_PAID'
+              });
+          }
+          setIsProcessing(false);
+          setShowPaymentModal(false);
+          setSelectedService(null);
+          alert("Comprovante enviado com sucesso! O pagamento foi registrado.");
+      }, 1500);
   };
 
   return (
     <Layout role={UserRole.CLIENT}>
       <div className="max-w-5xl mx-auto pb-20">
         <header className="mb-10">
-          <h1 className="text-4xl font-display font-bold text-darkText dark:text-darkTextPrimary mb-2">Pagamentos</h1>
-          <p className="text-lightText dark:text-darkTextSecondary">Área segura para gestão financeira dos seus serviços.</p>
+          <h1 className="text-4xl font-display font-bold text-darkText dark:text-darkTextPrimary mb-2">Meus Pagamentos</h1>
+          <p className="text-lightText dark:text-darkTextSecondary">Gerencie os pagamentos das suas faxinas com segurança.</p>
         </header>
 
-        {/* Card Horizontal do Serviço */}
-        <div className="bg-white dark:bg-darkSurface rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-darkBorder mb-8 flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-purple-100 dark:bg-primary/20 rounded-xl flex items-center justify-center text-primary font-bold text-xl">
-                    R$
+        {clientServices.length === 0 ? (
+            <div className="text-center py-20 bg-white dark:bg-darkSurface rounded-3xl border border-gray-100 dark:border-darkBorder">
+                <div className="w-20 h-20 bg-gray-100 dark:bg-darkBg rounded-full flex items-center justify-center mx-auto mb-6 text-gray-400">
+                    <Wallet size={32} />
                 </div>
-                <div>
-                    <p className="text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase mb-1">TOTAL DO SERVIÇO</p>
-                    <h2 className="text-3xl font-bold text-darkText dark:text-darkTextPrimary">R$ {totalValue.toFixed(2)}</h2>
-                    <p className="text-sm text-lightText dark:text-darkTextSecondary">{activeService.type} • {activeService.date}</p>
-                </div>
+                <h2 className="text-xl font-bold text-darkText dark:text-darkTextPrimary">Nenhuma cobrança ativa</h2>
+                <p className="text-lightText dark:text-darkTextSecondary">Seus orçamentos aprovados aparecerão aqui.</p>
             </div>
-            <div className="flex gap-2">
-                <div className={`px-4 py-2 rounded-lg text-xs font-bold uppercase ${isSignalPaid ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                    Sinal {isSignalPaid ? 'Pago' : 'Pendente'}
-                </div>
-                <div className={`px-4 py-2 rounded-lg text-xs font-bold uppercase ${isFinalPaid ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                    Final {isFinalPaid ? 'Pago' : 'Pendente'}
-                </div>
+        ) : (
+            <div className="space-y-6">
+                {clientServices.map(service => {
+                    const { price, isSignalPaid, isFullPaid, isWorkFinished } = getServicePaymentState(service);
+                    const signalAmount = price / 2;
+                    const finalAmount = price / 2;
+
+                    return (
+                        <div key={service.id} className="bg-white dark:bg-darkSurface rounded-2xl p-6 border border-gray-100 dark:border-darkBorder shadow-sm relative overflow-hidden">
+                            {/* Status Strip */}
+                            <div className={`absolute top-0 left-0 w-2 h-full ${isFullPaid ? 'bg-green-500' : isSignalPaid ? 'bg-orange-400' : 'bg-gray-300'}`}></div>
+                            
+                            <div className="flex flex-col md:flex-row justify-between gap-6 pl-4">
+                                {/* Info do Serviço */}
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <span className="text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">#{service.id}</span>
+                                        <span className="text-xs font-bold bg-gray-100 dark:bg-darkBg px-2 py-1 rounded text-darkText dark:text-darkTextPrimary">{service.date}</span>
+                                    </div>
+                                    <h3 className="text-xl font-bold text-darkText dark:text-darkTextPrimary mb-1">{service.type}</h3>
+                                    <p className="text-sm text-lightText dark:text-darkTextSecondary mb-4 flex items-center gap-1">
+                                        <FileText size={14}/> {service.address}
+                                    </p>
+                                    
+                                    <div className="flex items-center gap-2">
+                                        <div className="text-2xl font-bold text-primary">R$ {price.toFixed(2)}</div>
+                                        <span className="text-xs text-lightText dark:text-darkTextSecondary">(Total)</span>
+                                    </div>
+                                </div>
+
+                                {/* Área de Pagamento (Etapas) */}
+                                <div className="flex-1 flex flex-col gap-3">
+                                    {/* Etapa 1: Sinal */}
+                                    <div className={`p-4 rounded-xl border flex justify-between items-center ${isSignalPaid ? 'bg-green-50 border-green-100 dark:bg-green-900/10 dark:border-green-800' : 'bg-white border-gray-200 dark:bg-darkBg dark:border-darkBorder'}`}>
+                                        <div>
+                                            <p className="text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase">1ª Etapa: Sinal (50%)</p>
+                                            <p className={`font-bold ${isSignalPaid ? 'text-green-700 dark:text-green-400' : 'text-darkText dark:text-darkTextPrimary'}`}>R$ {signalAmount.toFixed(2)}</p>
+                                        </div>
+                                        {isSignalPaid ? (
+                                            <span className="text-green-600 dark:text-green-400 flex items-center gap-1 text-xs font-bold"><CheckCircle size={16}/> Pago</span>
+                                        ) : (
+                                            <Button size="sm" onClick={() => handleOpenPayment(service, 'SIGNAL')}>Pagar Agora</Button>
+                                        )}
+                                    </div>
+
+                                    {/* Etapa 2: Final */}
+                                    <div className={`p-4 rounded-xl border flex justify-between items-center ${isFullPaid ? 'bg-green-50 border-green-100 dark:bg-green-900/10 dark:border-green-800' : 'bg-white border-gray-200 dark:bg-darkBg dark:border-darkBorder'}`}>
+                                        <div>
+                                            <p className="text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase">2ª Etapa: Final (50%)</p>
+                                            <p className={`font-bold ${isFullPaid ? 'text-green-700 dark:text-green-400' : 'text-darkText dark:text-darkTextPrimary'}`}>R$ {finalAmount.toFixed(2)}</p>
+                                        </div>
+                                        
+                                        {isFullPaid ? (
+                                            <span className="text-green-600 dark:text-green-400 flex items-center gap-1 text-xs font-bold"><CheckCircle size={16}/> Pago</span>
+                                        ) : (
+                                            <Button 
+                                                size="sm" 
+                                                disabled={!isSignalPaid || !isWorkFinished} 
+                                                variant={(!isSignalPaid || !isWorkFinished) ? 'ghost' : 'primary'}
+                                                className={(!isSignalPaid || !isWorkFinished) ? 'bg-gray-100 text-gray-400' : ''}
+                                                onClick={() => handleOpenPayment(service, 'FINAL')}
+                                            >
+                                                {!isSignalPaid ? 'Aguardando Sinal' : !isWorkFinished ? 'Aguardando Conclusão' : 'Pagar Restante'}
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
-        </div>
-
-        {/* Grid Horizontal de Cards de Pagamento */}
-        <div className="space-y-4">
-          
-          {/* CARD 1: SINAL */}
-          <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-100 dark:border-darkBorder overflow-hidden flex flex-col md:flex-row">
-             <div className={`w-full md:w-2 ${isSignalPaid ? 'bg-green-500' : isSignalProcessing ? 'bg-yellow-500' : 'bg-orange-500'}`}></div>
-             <div className="p-6 flex-1 flex flex-col md:flex-row justify-between items-center gap-6">
-                <div className="flex items-start gap-4 w-full">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${isSignalPaid ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
-                        {isSignalPaid ? <CheckCircle size={24} /> : <Clock size={24} />}
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-lg text-darkText dark:text-darkTextPrimary">Sinal de Reserva (50%)</h3>
-                        <p className="text-sm text-lightText dark:text-darkTextSecondary mb-2">Necessário para confirmar o agendamento na agenda.</p>
-                        <span className="text-2xl font-bold text-primary">R$ {signalValue.toFixed(2)}</span>
-                    </div>
-                </div>
-
-                <div className="w-full md:w-auto shrink-0">
-                    {isSignalPaid ? (
-                        <span className="flex items-center justify-center gap-2 px-6 py-3 bg-green-50 text-green-700 font-bold rounded-xl w-full md:w-48">
-                            <CheckCircle size={18} /> Pago
-                        </span>
-                    ) : isSignalProcessing ? (
-                        <span className="flex items-center justify-center gap-2 px-6 py-3 bg-yellow-50 text-yellow-700 font-bold rounded-xl w-full md:w-48 border border-yellow-200">
-                            <Clock size={18} /> Em Análise
-                        </span>
-                    ) : (
-                        <button 
-                            onClick={() => handleOpenPayment('signal')}
-                            className="flex items-center justify-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl w-full md:w-48 shadow-lg shadow-orange-200 transition-all"
-                        >
-                            Pagar Agora
-                        </button>
-                    )}
-                </div>
-             </div>
-          </div>
-
-          {/* CARD 2: FINAL */}
-          <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-100 dark:border-darkBorder overflow-hidden flex flex-col md:flex-row opacity-90">
-             <div className={`w-full md:w-2 ${isFinalPaid ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-             <div className="p-6 flex-1 flex flex-col md:flex-row justify-between items-center gap-6">
-                <div className="flex items-start gap-4 w-full">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${isFinalPaid ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                        {isFinalPaid ? <CheckCircle size={24} /> : <Lock size={24} />}
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-lg text-darkText dark:text-darkTextPrimary">Pagamento Final (50%)</h3>
-                        <p className="text-sm text-lightText dark:text-darkTextSecondary mb-2">Liberado após a conclusão do serviço.</p>
-                        <span className={`text-2xl font-bold ${isFinalPaid ? 'text-primary' : 'text-gray-400'}`}>R$ {finalValue.toFixed(2)}</span>
-                    </div>
-                </div>
-
-                <div className="w-full md:w-auto shrink-0">
-                    {isFinalPaid ? (
-                        <span className="flex items-center justify-center gap-2 px-6 py-3 bg-green-50 text-green-700 font-bold rounded-xl w-full md:w-48">
-                            <CheckCircle size={18} /> Pago
-                        </span>
-                    ) : (
-                        <button 
-                            onClick={() => handleOpenPayment('final')}
-                            disabled={!isSignalPaid}
-                            className={`flex items-center justify-center gap-2 px-6 py-3 font-bold rounded-xl w-full md:w-48 transition-all ${!isSignalPaid ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-primary text-white hover:bg-primaryHover shadow-lg shadow-primary/20'}`}
-                        >
-                            {isSignalPaid ? 'Pagar Restante' : 'Bloqueado'}
-                        </button>
-                    )}
-                </div>
-             </div>
-          </div>
-
-        </div>
+        )}
 
         {/* Payment Modal */}
-        {showInfinitePayModal && (
-           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-              <div className="bg-white dark:bg-darkSurface w-full max-w-md rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[500px]">
-                 <div className="bg-[#00D664] p-4 flex justify-between items-center text-white">
-                    <span className="font-bold">Pagamento Seguro</span>
-                    <button onClick={() => setShowInfinitePayModal(false)}><X size={24} /></button>
-                 </div>
-                 <div className="flex-1 p-8 bg-gray-50 dark:bg-darkBg flex flex-col items-center justify-center">
-                    <p className="text-lg text-darkText dark:text-darkTextPrimary font-bold mb-6">Escolha a forma de pagamento</p>
-                    <div className="w-full space-y-4">
-                       <button onClick={handleConfirmPayment} className="w-full p-4 bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder rounded-xl flex justify-between items-center hover:border-[#00D664] shadow-sm transition-all">
-                          <span className="font-bold text-darkText dark:text-darkTextPrimary">Pix (Aprovação Imediata)</span>
-                          <span className="text-[#00D664] font-bold">R$ {selectedPaymentType === 'signal' ? signalValue.toFixed(2) : finalValue.toFixed(2)}</span>
-                       </button>
-                       <button onClick={handleConfirmPayment} className="w-full p-4 bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder rounded-xl flex justify-between items-center hover:border-[#00D664] shadow-sm transition-all">
-                          <span className="font-bold text-darkText dark:text-darkTextPrimary">Cartão de Crédito</span>
-                          <span className="text-lightText text-sm">Até 12x</span>
-                       </button>
+        <Modal
+            isOpen={showPaymentModal}
+            onClose={() => setShowPaymentModal(false)}
+            title={paymentStep === 'SIGNAL' ? 'Pagamento do Sinal' : 'Pagamento Final'}
+            maxWidth="md"
+        >
+            <div className="space-y-6">
+                <div className="bg-purple-50 dark:bg-primary/10 p-4 rounded-xl text-center">
+                    <p className="text-sm text-lightText dark:text-darkTextSecondary mb-1">Valor a Pagar</p>
+                    <h2 className="text-4xl font-bold text-primary">
+                        R$ {(selectedService?.price ? selectedService.price / 2 : 0).toFixed(2)}
+                    </h2>
+                </div>
+
+                <div>
+                    <h3 className="font-bold text-darkText dark:text-darkTextPrimary mb-2">Chave PIX</h3>
+                    <div className="flex items-center gap-2 p-3 border border-gray-200 dark:border-darkBorder rounded-xl bg-gray-50 dark:bg-darkBg">
+                        <code className="flex-1 text-sm font-mono text-darkText dark:text-darkTextPrimary overflow-hidden text-ellipsis">
+                            00020126580014br.gov.bcb.pix0136123e4567-e89b-12d3-a456-426614174000
+                        </code>
+                        <button className="text-primary text-xs font-bold hover:underline">Copiar</button>
                     </div>
-                 </div>
-              </div>
-           </div>
-        )}
+                </div>
+
+                <div className="border-t border-gray-100 dark:border-darkBorder pt-4">
+                    <h3 className="font-bold text-darkText dark:text-darkTextPrimary mb-2">Enviar Comprovante</h3>
+                    <div className="border-2 border-dashed border-gray-300 dark:border-darkBorder rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 dark:hover:bg-darkBg/50 transition-colors">
+                        <Upload size={24} className="text-gray-400 mb-2"/>
+                        <p className="text-sm text-lightText dark:text-darkTextSecondary">Clique para selecionar o arquivo</p>
+                    </div>
+                </div>
+
+                <Button fullWidth onClick={confirmPayment} disabled={isProcessing}>
+                    {isProcessing ? 'Confirmando...' : 'Confirmar Pagamento'}
+                </Button>
+            </div>
+        </Modal>
       </div>
     </Layout>
   );

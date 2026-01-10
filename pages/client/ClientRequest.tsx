@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button';
-import { Check, ArrowLeft, ChevronRight, CheckCircle, Shirt, HardHat, Sparkles, Send, ChevronLeft as ChevronLeftIcon, User } from 'lucide-react';
+import { Check, ArrowLeft, ChevronRight, CheckCircle, Shirt, HardHat, Sparkles, Send, ChevronLeft as ChevronLeftIcon, User, Facebook, Loader } from 'lucide-react';
 import { useData } from '../../components/DataContext'; // Import useData
 import { Address } from '../../types';
 
@@ -10,6 +10,7 @@ export const ClientRequest: React.FC = () => {
   const { addService, services, registerClient, serviceDefinitions, currentUser } = useData(); 
   const [step, setStep] = useState(1);
   const totalSteps = 6; 
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // --- STATE ---
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
@@ -73,24 +74,21 @@ export const ClientRequest: React.FC = () => {
     else setSelectedExtras(prev => [...prev, id]);
   };
 
-  const handleFinalize = () => {
-    if (!selectedDef) return;
+  const handleCancel = () => {
+      if (currentUser) {
+          navigate('/client/dashboard');
+      } else {
+          navigate('/');
+      }
+  };
 
-    let clientId = currentUser?.id;
-    let clientName = currentUser?.name;
-    const fullAddressString = `${addrStreet}, ${addrNumber} - ${addrDistrict}`;
-
-    // Se não estiver logado, cria a conta. Se estiver, usa a atual.
-    if (!currentUser) {
-        if (!regData.name || !regData.email || !regData.password) {
-            alert("Por favor, preencha todos os dados do cadastro para continuar.");
-            return;
-        }
-
-        const newClientId = `user_${Date.now()}`;
-        
-        // Criar objeto de endereço estruturado
-        const newAddressObj: Address = {
+  const handleSocialRegister = async (provider: string) => {
+      // Simulação de cadastro via Google/Facebook
+      setIsSubmitting(true);
+      const newClientId = `user_social_${Date.now()}`;
+      const fakeName = provider === 'Google' ? 'Usuário Google' : 'Usuário Facebook';
+      
+      const newAddressObj: Address = {
             id: Date.now(),
             alias: 'Endereço do Pedido',
             street: addrStreet,
@@ -101,49 +99,109 @@ export const ClientRequest: React.FC = () => {
             cep: '',
             type: 'HOUSE',
             isMain: true
-        };
+      };
 
-        const newClient = {
+      const newClient = {
           id: newClientId,
-          name: regData.name,
-          email: regData.email,
-          phone: regData.phone,
-          address: fullAddressString, // Legacy support
-          addresses: [newAddressObj], // New structured address
+          name: fakeName,
+          email: `${provider.toLowerCase()}@exemplo.com`,
+          phone: '',
+          address: `${addrStreet}, ${addrNumber} - ${addrDistrict}`,
+          addresses: [newAddressObj],
           type: 'AVULSO' as const,
           createdAt: Date.now()
-        };
+      };
 
-        registerClient(newClient);
-        clientId = newClientId;
-        clientName = regData.name;
-    }
+      await registerClient(newClient);
+      
+      // Cria o serviço automaticamente
+      await createService(newClientId, fakeName);
+      setIsSubmitting(false);
+  };
 
-    // Construir notas detalhadas
-    let details = "";
-    if (selectedDef.pricingModel === 'ROOMS') details = `${rooms} Quartos, ${bathrooms} Banheiros`;
-    else if (selectedDef.pricingModel === 'HOURLY') details = `${qtyUnit} Horas`;
-    else details = `${qtyUnit} m²`;
+  const createService = async (clientId: string, clientName: string) => {
+      if (!selectedDef) return;
+      
+      let details = "";
+      if (selectedDef.pricingModel === 'ROOMS') details = `${rooms} Quartos, ${bathrooms} Banheiros`;
+      else if (selectedDef.pricingModel === 'HOURLY') details = `${qtyUnit} Horas`;
+      else details = `${qtyUnit} m²`;
 
-    const extraLabels = selectedExtras.map(eid => selectedDef.extras.find(e => e.id === eid)?.label).join(', ');
+      const extraLabels = selectedExtras.map(eid => selectedDef.extras.find(e => e.id === eid)?.label).join(', ');
+      const fullAddressString = `${addrStreet}, ${addrNumber} - ${addrDistrict}`;
 
-    // Criar serviço
-    const newService = {
+      const newService = {
         id: Math.floor(Math.random() * 10000).toString(),
-        clientId: clientId!,
-        clientName: clientName!,
+        clientId: clientId,
+        clientName: clientName,
         type: selectedDef.name,
         date: selectedDateStr || '',
-        time: '08:00', // Padrão
+        time: '08:00', 
         address: fullAddressString,
         status: 'PENDING',
         price: totalPrice, 
         createdAt: Date.now(),
         notes: `Detalhes: ${details}. Extras: ${extraLabels}`
-    };
+      };
 
-    addService(newService);
-    navigate('/client/dashboard');
+      await addService(newService);
+      navigate('/client/dashboard');
+  };
+
+  const handleFinalize = async () => {
+    if (!selectedDef) return;
+    setIsSubmitting(true);
+
+    try {
+        let clientId = currentUser?.id;
+        let clientName = currentUser?.name;
+        const fullAddressString = `${addrStreet}, ${addrNumber} - ${addrDistrict}`;
+
+        if (!currentUser) {
+            if (!regData.name || !regData.email || !regData.password) {
+                alert("Por favor, preencha todos os dados do cadastro para continuar.");
+                setIsSubmitting(false);
+                return;
+            }
+
+            const newClientId = `user_${Date.now()}`;
+            
+            const newAddressObj: Address = {
+                id: Date.now(),
+                alias: 'Endereço do Pedido',
+                street: addrStreet,
+                number: addrNumber,
+                district: addrDistrict,
+                city: addrCity || 'Não informada',
+                state: 'UF',
+                cep: '',
+                type: 'HOUSE',
+                isMain: true
+            };
+
+            const newClient = {
+              id: newClientId,
+              name: regData.name,
+              email: regData.email,
+              phone: regData.phone,
+              address: fullAddressString, 
+              addresses: [newAddressObj], 
+              type: 'AVULSO' as const,
+              createdAt: Date.now()
+            };
+
+            await registerClient(newClient);
+            clientId = newClientId;
+            clientName = regData.name;
+        }
+
+        await createService(clientId!, clientName!);
+    } catch (e) {
+        console.error("Erro ao finalizar:", e);
+        alert("Ocorreu um erro ao processar seu pedido. Tente novamente.");
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   const nextStep = () => {
@@ -159,7 +217,7 @@ export const ClientRequest: React.FC = () => {
   
   const prevStep = () => setStep(s => s - 1);
 
-  // --- RENDERERS ---
+  // --- RENDERERS (Mantidos iguais, omitindo apenas para brevidade se não houve alteração lógica interna) ---
   const getIcon = (iconName: string) => {
     switch(iconName) {
       case 'sparkles': return <Sparkles size={24} />;
@@ -210,9 +268,6 @@ export const ClientRequest: React.FC = () => {
     </div>
   );
 
-  // ... (Rest of renderSteps 2, 3, 4, 5, 6 remain largely the same, just keeping the structure)
-  // To save space, I will omit re-writing unchanged render functions but include them in the final file content block.
-  
   const renderStep2 = () => {
     if (!selectedDef) return null;
     return (
@@ -378,9 +433,6 @@ export const ClientRequest: React.FC = () => {
                 <span className="font-bold text-darkText dark:text-darkTextPrimary text-right max-w-[200px] truncate">{addrStreet}, {addrNumber}</span>
              </div>
              
-             {/* Dynamic Items and Extras */}
-             {/* ... (Same as before) ... */}
-
              <div className="flex justify-between pt-4 border-t border-gray-200 dark:border-darkBorder items-center">
                 <span className="text-lg font-bold text-darkText dark:text-darkTextPrimary">Total Estimado</span>
                 <span className="text-3xl font-bold text-primary">R$ {totalPrice.toFixed(2)}</span>
@@ -409,7 +461,9 @@ export const ClientRequest: React.FC = () => {
                 <User size={32} className="text-green-600 dark:text-green-400" />
              </div>
              <h3 className="font-bold text-lg text-darkText dark:text-darkTextPrimary">Logado como {currentUser.name}</h3>
-             <Button onClick={nextStep} fullWidth className="mt-2 h-12" icon={<Send size={18}/>}>Finalizar Solicitação</Button>
+             <Button onClick={nextStep} disabled={isSubmitting} fullWidth className="mt-2 h-12" icon={isSubmitting ? <Loader size={18} className="animate-spin" /> : <Send size={18}/>}>
+                {isSubmitting ? 'Enviando...' : 'Finalizar Solicitação'}
+             </Button>
           </div>
        ) : (
           <div className="space-y-5 bg-white dark:bg-darkSurface p-8 rounded-3xl shadow-sm border border-gray-100 dark:border-darkBorder">
@@ -417,7 +471,28 @@ export const ClientRequest: React.FC = () => {
              <input type="email" className="w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl text-darkText dark:text-darkTextPrimary" placeholder="E-mail" value={regData.email} onChange={e => setRegData({...regData, email: e.target.value})} />
              <input type="text" className="w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl text-darkText dark:text-darkTextPrimary" placeholder="Celular" value={regData.phone} onChange={e => setRegData({...regData, phone: e.target.value})} />
              <input type="password" className="w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl text-darkText dark:text-darkTextPrimary" placeholder="Senha" value={regData.password} onChange={e => setRegData({...regData, password: e.target.value})} />
-             <Button onClick={nextStep} fullWidth className="mt-2 h-12" icon={<Send size={18}/>}>Finalizar e Criar Conta</Button>
+             
+             <Button onClick={nextStep} disabled={isSubmitting} fullWidth className="mt-2 h-12" icon={isSubmitting ? <Loader size={18} className="animate-spin"/> : <Send size={18}/>}>
+                {isSubmitting ? 'Criando Conta...' : 'Finalizar e Criar Conta'}
+             </Button>
+
+             <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200 dark:border-darkBorder"></div></div>
+                <div className="relative flex justify-center text-xs uppercase tracking-wider">
+                    <span className="bg-white dark:bg-darkSurface px-4 text-gray-400 font-bold">Ou finalize com</span>
+                </div>
+             </div>
+
+             <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => handleSocialRegister('Google')} disabled={isSubmitting} className="flex items-center justify-center gap-2 p-3 border border-gray-200 dark:border-darkBorder rounded-xl bg-white dark:bg-darkBg hover:bg-gray-50 transition-colors text-sm font-bold text-gray-700 dark:text-gray-200 disabled:opacity-50">
+                    <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                    Google
+                </button>
+                <button onClick={() => handleSocialRegister('Facebook')} disabled={isSubmitting} className="flex items-center justify-center gap-2 p-3 border border-gray-200 dark:border-darkBorder rounded-xl bg-white dark:bg-darkBg hover:bg-gray-50 transition-colors text-sm font-bold text-gray-700 dark:text-gray-200 disabled:opacity-50">
+                    <Facebook size={20} className="text-[#1877F2]" fill="currentColor" />
+                    Facebook
+                </button>
+             </div>
           </div>
        )}
     </div>
@@ -438,7 +513,7 @@ export const ClientRequest: React.FC = () => {
     <div className="min-h-screen bg-background dark:bg-darkBg font-sans flex flex-col transition-colors duration-300">
       <header className="bg-white dark:bg-darkSurface border-b border-gray-200 dark:border-darkBorder py-4">
          <div className="max-w-5xl mx-auto px-6 flex justify-between items-center">
-            <button onClick={() => navigate('/')} className="flex items-center gap-2 text-darkText dark:text-darkTextPrimary font-bold hover:text-primary">
+            <button onClick={handleCancel} className="flex items-center gap-2 text-darkText dark:text-darkTextPrimary font-bold hover:text-primary">
                <ArrowLeft size={20} /> Cancelar
             </button>
             <div className="flex items-center gap-2">

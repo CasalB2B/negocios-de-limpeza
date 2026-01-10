@@ -5,11 +5,11 @@ import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { Badge } from '../../components/Badge';
 import { Modal } from '../../components/Modal'; 
-import { Search, Filter, Mail, Phone, MapPin, Edit, Trash2, UserPlus, Download, Check } from 'lucide-react';
+import { Search, Filter, Mail, Phone, MapPin, Edit, Trash2, UserPlus, Download, Check, DollarSign } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 
 export const AdminClients: React.FC = () => {
-  const { clients, deleteClient, registerClient } = useData(); 
+  const { clients, deleteClient, registerClient, updateClient } = useData(); 
   const [searchTerm, setSearchTerm] = useState('');
   const [editingClient, setEditingClient] = useState<any | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -36,8 +36,10 @@ export const AdminClients: React.FC = () => {
         return <span className="bg-orange-100 text-orange-700 border border-orange-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Pós-Obra</span>;
       case 'AVULSO':
         return <span className="bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Avulso</span>;
+      case 'PRIMEIRA_LIMPEZA':
+        return <span className="bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Primeira Limpeza</span>;
       default:
-        return null;
+        return <span className="bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">{type}</span>;
     }
   };
 
@@ -59,12 +61,19 @@ export const AdminClients: React.FC = () => {
           phone: newClientData.phone,
           address: newClientData.address,
           addresses: [],
-          type: newClientData.type as 'FIXO' | 'AVULSO',
+          type: newClientData.type as any,
           createdAt: Date.now()
       });
 
       setShowAddModal(false);
       setNewClientData({ name: '', email: '', phone: '', address: '', type: 'AVULSO' }); 
+  };
+
+  const handleUpdateClient = () => {
+      if (editingClient) {
+          updateClient(editingClient.id, editingClient);
+          setEditingClient(null);
+      }
   };
 
   return (
@@ -137,7 +146,10 @@ export const AdminClients: React.FC = () => {
                        </td>
                        <td className="p-5 text-right">
                           <div className="flex justify-end gap-2">
-                             <button onClick={() => { setEditingClient(client); }} className="p-2 hover:bg-gray-100 dark:hover:bg-darkBorder rounded-lg text-lightText hover:text-primary transition-colors">
+                             <button title="Ver Pagamentos" className="p-2 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg text-lightText hover:text-green-600 transition-colors">
+                                <DollarSign size={18} />
+                             </button>
+                             <button onClick={() => { setEditingClient({...client}); }} className="p-2 hover:bg-gray-100 dark:hover:bg-darkBorder rounded-lg text-lightText hover:text-primary transition-colors">
                                 <Edit size={18} />
                              </button>
                              <button onClick={(e) => handleDelete(e, client.id)} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-lightText hover:text-red-500 transition-colors">
@@ -196,6 +208,7 @@ export const AdminClients: React.FC = () => {
                         onChange={(e) => setNewClientData({...newClientData, type: e.target.value})}
                     >
                         <option value="AVULSO">Avulso</option>
+                        <option value="PRIMEIRA_LIMPEZA">Primeira Limpeza</option>
                         <option value="FIXO">Fixo (Contrato)</option>
                         <option value="POS_OBRA">Pós-Obra</option>
                     </select>
@@ -209,14 +222,43 @@ export const AdminClients: React.FC = () => {
             onClose={() => setEditingClient(null)} 
             title="Editar Cliente"
             footer={
-                <Button onClick={() => setEditingClient(null)}>Salvar</Button>
+                <Button onClick={handleUpdateClient}>Salvar Alterações</Button>
             }
         >
             <div className="space-y-4">
-                <Input label="Nome Completo" defaultValue={editingClient?.name} />
-                <Input label="E-mail" defaultValue={editingClient?.email} />
-                <Input label="Telefone" defaultValue={editingClient?.phone} />
-                <Input label="Endereço" defaultValue={editingClient?.address} />
+                <Input 
+                    label="Nome Completo" 
+                    defaultValue={editingClient?.name} 
+                    onChange={(e) => setEditingClient({...editingClient, name: e.target.value})}
+                />
+                <Input 
+                    label="E-mail" 
+                    defaultValue={editingClient?.email} 
+                    onChange={(e) => setEditingClient({...editingClient, email: e.target.value})}
+                />
+                <Input 
+                    label="Telefone" 
+                    defaultValue={editingClient?.phone} 
+                    onChange={(e) => setEditingClient({...editingClient, phone: e.target.value})}
+                />
+                <Input 
+                    label="Endereço" 
+                    defaultValue={editingClient?.address} 
+                    onChange={(e) => setEditingClient({...editingClient, address: e.target.value})}
+                />
+                <div>
+                    <label className="block text-sm font-bold text-darkText mb-1.5">Tipo de Cliente</label>
+                    <select 
+                        className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-primary text-darkText"
+                        value={editingClient?.type || 'AVULSO'}
+                        onChange={(e) => setEditingClient({...editingClient, type: e.target.value})}
+                    >
+                        <option value="AVULSO">Avulso</option>
+                        <option value="PRIMEIRA_LIMPEZA">Primeira Limpeza</option>
+                        <option value="FIXO">Fixo (Contrato)</option>
+                        <option value="POS_OBRA">Pós-Obra</option>
+                    </select>
+                </div>
             </div>
         </Modal>
       </div>

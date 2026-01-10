@@ -24,7 +24,10 @@ export const AdminRequests: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
-  const requestsData = services.filter(s => s.status === 'PENDING' || s.status === 'BUDGET_READY' || s.status === 'SOLICITADO');
+  // Ordena por data de criação (mais recente primeiro) para garantir visibilidade
+  const requestsData = services
+    .filter(s => s.status === 'PENDING' || s.status === 'BUDGET_READY' || s.status === 'SOLICITADO')
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
   const filteredRequests = requestsData.filter(req => {
      const matchesStatus = statusFilter === 'Todos' || req.status === statusFilter;
@@ -153,6 +156,13 @@ export const AdminRequests: React.FC = () => {
                           </td>
                        </tr>
                     ))}
+                    {filteredRequests.length === 0 && (
+                        <tr>
+                            <td colSpan={6} className="p-8 text-center text-lightText dark:text-darkTextSecondary">
+                                Nenhuma solicitação encontrada.
+                            </td>
+                        </tr>
+                    )}
                  </tbody>
               </table>
            </div>

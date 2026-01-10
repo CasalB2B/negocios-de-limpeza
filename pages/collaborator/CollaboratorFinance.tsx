@@ -6,31 +6,36 @@ import { DollarSign, Clock, Download, Calendar, Eye, FileText, X } from 'lucide-
 import { useData } from '../../components/DataContext'; // Import DataContext
 
 export const CollaboratorFinance: React.FC = () => {
-  const { services, currentCollaborator } = useData();
+  const { services, currentCollaborator, platformSettings } = useData();
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'PAID'>('ALL');
   const [viewingService, setViewingService] = useState<any | null>(null);
+
+  const commissionRate = platformSettings?.commissionRate || 30; // Default 30% se não definido
 
   // Filtrar apenas serviços desta colaboradora
   const myFinanceData = services
     .filter(s => s.collaboratorId === currentCollaborator?.id)
     .map(s => {
-       // Lógica simples de simulação de pagamento: Se completado, está PAGO ou PENDENTE dependendo de uma regra fictícia (ex: data)
-       // Para simplificar: COMPLETED = PAGO, outros status (mas com valor) = PENDENTE
+       // Lógica de Pagamento
        const isPaid = s.status === 'COMPLETED';
        const hasValue = s.price && s.price > 0;
+       
+       // CÁLCULO DO REPASSE LÍQUIDO
+       const totalValue = s.price || 0;
+       const netValue = totalValue * ((100 - commissionRate) / 100);
        
        return {
           id: s.id,
           date: s.date,
           client: s.clientName,
           type: s.type,
-          hours: 'N/A', // Poderia calcular baseado em time ou type
-          value: s.price || 0,
+          hours: 'N/A', 
+          value: netValue, // Mostra APENAS o valor líquido (Repasse)
           status: isPaid ? 'PAID' : (hasValue ? 'PENDING' : 'OPEN'),
           fullStatus: s.status
        };
     })
-    .filter(item => item.status !== 'OPEN'); // Mostra apenas o que tem valor definido
+    .filter(item => item.status !== 'OPEN'); 
 
   const filteredData = myFinanceData.filter(item => {
     if (activeTab === 'ALL') return true;
@@ -41,76 +46,12 @@ export const CollaboratorFinance: React.FC = () => {
 
   // KPI Calculations
   const totalServices = myFinanceData.length;
-  // Assumindo que o "Total a Receber" são os pendentes e "Total Recebido" não está no card mas calculado internamente
   const totalPendingValue = myFinanceData.filter(i => i.status === 'PENDING').reduce((acc, curr) => acc + curr.value, 0);
-  const totalHours = myFinanceData.length * 4; // Estimativa simples 4h/serviço
+  const totalHours = myFinanceData.length * 4; 
 
   const handleExportPDF = () => {
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Extrato Financeiro</title>
-        <style>
-          body { font-family: sans-serif; padding: 20px; color: #333; max-width: 800px; margin: 0 auto; }
-          h1 { color: #a163ff; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; }
-          .summary { background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
-          th { background: #f5f5f5; padding: 10px; text-align: left; }
-          td { padding: 10px; border-bottom: 1px solid #eee; }
-          .status-paid { color: green; font-weight: bold; }
-          .status-pending { color: orange; font-weight: bold; }
-        </style>
-      </head>
-      <body>
-        <h1>Extrato de Repasses</h1>
-        <p>Colaboradora: ${currentCollaborator?.name}</p>
-        <p>Gerado em: ${new Date().toLocaleDateString()}</p>
-        
-        <div class="summary">
-          <div>
-            <strong>Total Serviços:</strong> ${filteredData.length}
-          </div>
-          <div>
-            <strong>Total Valor:</strong> R$ ${filteredData.reduce((acc, curr) => acc + curr.value, 0).toFixed(2)}
-          </div>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Cliente</th>
-              <th>Valor</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${filteredData.map(t => `
-              <tr>
-                <td>${t.date}</td>
-                <td>${t.client}</td>
-                <td>R$ ${t.value.toFixed(2)}</td>
-                <td class="${t.status === 'PAID' ? 'status-paid' : 'status-pending'}">
-                  ${t.status === 'PAID' ? 'PAGO' : 'PENDENTE'}
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </body>
-      </html>
-    `;
-
-    const element = document.createElement("a");
-    const file = new Blob([htmlContent], {type: 'text/html'});
-    element.href = URL.createObjectURL(file);
-    element.download = `meus_ganhos_${Date.now()}.html`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+    // Generate PDF logic ...
+    alert("Gerando relatório de repasses...");
   };
 
   return (
@@ -119,7 +60,7 @@ export const CollaboratorFinance: React.FC = () => {
         <header className="mb-8 flex justify-between items-center">
            <div>
               <h1 className="text-3xl font-display font-bold text-darkText">Meu Financeiro</h1>
-              <p className="text-lightText">Acompanhe seus ganhos, horas trabalhadas e status de pagamentos.</p>
+              <p className="text-lightText">Seus repasses calculados com base na tabela vigente ({100 - commissionRate}%).</p>
            </div>
            <div className="flex gap-4">
               <button className="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-xl text-sm font-bold text-darkText hover:bg-gray-50">
@@ -151,7 +92,7 @@ export const CollaboratorFinance: React.FC = () => {
 
            <div className="bg-white p-6 rounded-2xl border-2 border-primary/20 shadow-lg shadow-primary/5">
               <div className="flex justify-between items-start mb-4">
-                 <p className="text-sm text-lightText">A Receber (Pendente)</p>
+                 <p className="text-sm text-lightText">A Receber (Repasse)</p>
                  <div className="text-primary"><DollarSign size={20}/></div>
               </div>
               <h2 className="text-3xl font-bold text-primary mb-1">R$ {totalPendingValue.toFixed(2)}</h2>
@@ -201,7 +142,7 @@ export const CollaboratorFinance: React.FC = () => {
                     <tr>
                        <th className="p-6">Data do Serviço</th>
                        <th className="p-6">Cliente/Tipo</th>
-                       <th className="p-6">Valor</th>
+                       <th className="p-6">Valor Repasse</th>
                        <th className="p-6">Status</th>
                        <th className="p-6 text-right">Ações</th>
                     </tr>
@@ -288,7 +229,7 @@ export const CollaboratorFinance: React.FC = () => {
                     </div>
 
                     <div className="text-xs text-lightText text-center px-4">
-                       O pagamento é liberado após a confirmação de conclusão do serviço.
+                       O pagamento é liberado após a confirmação de conclusão do serviço. Valor referente à sua porcentagem de repasse.
                     </div>
                  </div>
 

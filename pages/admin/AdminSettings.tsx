@@ -1,15 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { Settings, Shield, Bell, CreditCard, Building, Save, ToggleLeft, ToggleRight, DollarSign, Lock, Smartphone, List, Users, UserPlus, X, CheckSquare, Square, Trash2 } from 'lucide-react';
+import { useData } from '../../components/DataContext';
 
 export const AdminSettings: React.FC = () => {
+  const { platformSettings, updatePlatformSettings } = useData(); // Use Global Settings
   const [activeTab, setActiveTab] = useState('general');
   const [notifications, setNotifications] = useState({ email: true, sms: false, whatsapp: true });
   const [showUserModal, setShowUserModal] = useState(false);
   
+  // Local state for settings form
+  const [localSettings, setLocalSettings] = useState({ ...platformSettings });
+
+  useEffect(() => {
+      setLocalSettings(platformSettings);
+  }, [platformSettings]);
+
   // Estado para Edição/Criação de Usuário
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [userFormData, setUserFormData] = useState({ name: '', email: '', role: 'Suporte', permissions: [] as string[], password: '', confirmPassword: '' });
@@ -66,6 +75,11 @@ export const AdminSettings: React.FC = () => {
      }
   };
 
+  const handleSavePlatformSettings = () => {
+      updatePlatformSettings(localSettings);
+      alert("Configurações financeiras atualizadas com sucesso!");
+  };
+
   const renderContent = () => {
     switch(activeTab) {
       case 'general':
@@ -97,7 +111,7 @@ export const AdminSettings: React.FC = () => {
           <div className="space-y-8 animate-in fade-in duration-300">
              <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 mb-6">
                 <p className="text-sm text-primary font-bold flex items-center gap-2">
-                   <DollarSign size={16} /> Estes valores são usados para calcular automaticamente os orçamentos no app do cliente.
+                   <DollarSign size={16} /> Estes valores definem o repasse para o colaborador e taxas base.
                 </p>
              </div>
              
@@ -105,29 +119,27 @@ export const AdminSettings: React.FC = () => {
                 <h3 className="text-xl font-bold text-darkText mb-4">Precificação Base</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                    <Input 
-                      label="Valor Hora (Limpeza Padrão)" 
-                      defaultValue="45.00" 
-                      icon={<span className="text-xs font-bold">R$</span>} 
+                      label="Comissão da Plataforma (%)" 
+                      value={localSettings.commissionRate}
+                      onChange={e => setLocalSettings({...localSettings, commissionRate: parseFloat(e.target.value) || 0})}
+                      icon={<span className="text-xs font-bold">%</span>} 
                    />
                    <Input 
-                      label="Valor Hora (Passadoria)" 
-                      defaultValue="50.00" 
+                      label="Valor Hora Base (Referência)" 
+                      value={localSettings.hourlyRate}
+                      onChange={e => setLocalSettings({...localSettings, hourlyRate: parseFloat(e.target.value) || 0})}
                       icon={<span className="text-xs font-bold">R$</span>} 
                    />
                    <Input 
                       label="Taxa Mínima de Deslocamento" 
-                      defaultValue="20.00" 
+                      value={localSettings.minDisplacement}
+                      onChange={e => setLocalSettings({...localSettings, minDisplacement: parseFloat(e.target.value) || 0})}
                       icon={<span className="text-xs font-bold">R$</span>} 
-                   />
-                   <Input 
-                      label="Comissão da Plataforma (%)" 
-                      defaultValue="20" 
-                      icon={<span className="text-xs font-bold">%</span>} 
                    />
                 </div>
              </div>
              <div className="flex justify-end pt-4 border-t border-gray-100">
-                <Button icon={<Save size={18}/>}>Atualizar Preços</Button>
+                <Button onClick={handleSavePlatformSettings} icon={<Save size={18}/>}>Atualizar Taxas</Button>
              </div>
           </div>
         );

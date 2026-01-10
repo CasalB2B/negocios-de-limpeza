@@ -1,14 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Configuração Padrão (Fallback)
-const DEFAULT_URL = 'https://yhdxmutbreihrtlnbcaf.supabase.co';
-const DEFAULT_KEY = 'sb_publishable_zVE4vViBZXsun3RYfEf-mg_ETIBXV8X';
+// As variáveis de ambiente devem ser configuradas no arquivo .env na raiz do projeto
+// Exemplo: VITE_SUPABASE_URL=https://sua-url.supabase.co
+//          VITE_SUPABASE_ANON_KEY=sua-chave-anonima
 
-// Tenta pegar das variáveis de ambiente, se falhar, usa o padrão
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || DEFAULT_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_KEY;
+const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
+const supabaseKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
 
-export const supabase = createClient(
-  supabaseUrl,
-  supabaseKey
-);
+if (!supabaseUrl || !supabaseKey) {
+  console.warn('⚠️ Supabase URL ou Key não encontradas. Verifique suas variáveis de ambiente.');
+}
+
+export const supabase = createClient(supabaseUrl, supabaseKey);

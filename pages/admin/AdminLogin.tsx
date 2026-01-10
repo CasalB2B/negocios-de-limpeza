@@ -1,21 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button';
-import { ArrowLeft, Lock, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Lock, AlertCircle, Loader } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 
 export const AdminLogin: React.FC = () => {
   const navigate = useNavigate();
-  const { loginAdmin } = useData();
+  const { loginAdmin, adminLoggedIn } = useData();
   const [formData, setFormData] = useState({ user: '', pass: '' });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Verifica se já está logado ao carregar a página
+  useEffect(() => {
+    if (adminLoggedIn) {
+      navigate('/admin/dashboard');
+    }
+  }, [adminLoggedIn, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginAdmin(formData.user, formData.pass)) {
-        navigate('/admin/dashboard');
-    } else {
-        setError('Credenciais inválidas. Tente "admin" / "admin".');
+    setIsLoading(true);
+    try {
+        const success = await loginAdmin(formData.user, formData.pass);
+        if (success) {
+            navigate('/admin/dashboard');
+        } else {
+            setError('Credenciais inválidas. Tente "admin" / "admin".');
+        }
+    } finally {
+        setIsLoading(false);
     }
   };
 
@@ -65,8 +79,8 @@ export const AdminLogin: React.FC = () => {
                 onChange={(e) => setFormData({...formData, pass: e.target.value})}
             />
           </div>
-          <Button fullWidth type="submit" className="bg-darkSlate text-white hover:bg-black mt-4 shadow-lg shadow-gray-400/20">
-            Acessar Sistema
+          <Button fullWidth type="submit" disabled={isLoading} className="bg-darkSlate text-white hover:bg-black mt-4 shadow-lg shadow-gray-400/20">
+            {isLoading ? <Loader size={20} className="animate-spin" /> : 'Acessar Sistema'}
           </Button>
         </form>
       </div>
