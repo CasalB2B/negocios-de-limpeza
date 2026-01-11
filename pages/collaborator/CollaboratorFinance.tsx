@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { Button } from '../../components/Button';
-import { DollarSign, Clock, Download, Calendar, Eye, FileText, X } from 'lucide-react';
+import { DollarSign, Clock, Download, Calendar, Eye, FileText, X, Star } from 'lucide-react';
 import { useData } from '../../components/DataContext'; // Import DataContext
 
 export const CollaboratorFinance: React.FC = () => {
@@ -10,7 +10,17 @@ export const CollaboratorFinance: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'PAID'>('ALL');
   const [viewingService, setViewingService] = useState<any | null>(null);
 
-  const commissionRate = platformSettings?.commissionRate || 30; // Default 30% se não definido
+  // Determina o valor fixo baseado no nível e nas horas
+  const getPayoutValue = (duration: 4 | 6 | 8) => {
+      const level = (currentCollaborator?.level || 'JUNIOR').toLowerCase() as 'junior' | 'senior' | 'master';
+      const hoursKey = `hours${duration}` as 'hours4' | 'hours6' | 'hours8';
+      
+      // Fallback seguro caso a configuração ainda não exista
+      if (platformSettings.payouts && platformSettings.payouts[level]) {
+          return platformSettings.payouts[level][hoursKey];
+      }
+      return 0;
+  };
 
   // Filtrar apenas serviços desta colaboradora
   const myFinanceData = services
@@ -20,17 +30,20 @@ export const CollaboratorFinance: React.FC = () => {
        const isPaid = s.status === 'COMPLETED';
        const hasValue = s.price && s.price > 0;
        
-       // CÁLCULO DO REPASSE LÍQUIDO
-       const totalValue = s.price || 0;
-       const netValue = totalValue * ((100 - commissionRate) / 100);
+       // Duração Estimada (Se não vier do banco, infere pelo preço ou padrão 4h)
+       // No DataContext atualizado, já garantimos que duration existe, mas por segurança:
+       const duration = (s.duration === 4 || s.duration === 6 || s.duration === 8) ? s.duration : 4;
+
+       // CÁLCULO DO REPASSE LÍQUIDO (Valor Fixo por Nível e Horas)
+       const netValue = getPayoutValue(duration);
        
        return {
           id: s.id,
           date: s.date,
           client: s.clientName,
           type: s.type,
-          hours: 'N/A', 
-          value: netValue, // Mostra APENAS o valor líquido (Repasse)
+          hours: `${duration}h`, 
+          value: netValue, // Valor líquido (Repasse Fixo)
           status: isPaid ? 'PAID' : (hasValue ? 'PENDING' : 'OPEN'),
           fullStatus: s.status
        };
@@ -47,12 +60,18 @@ export const CollaboratorFinance: React.FC = () => {
   // KPI Calculations
   const totalServices = myFinanceData.length;
   const totalPendingValue = myFinanceData.filter(i => i.status === 'PENDING').reduce((acc, curr) => acc + curr.value, 0);
-  const totalHours = myFinanceData.length * 4; 
+  const totalHours = myFinanceData.reduce((acc, curr) => acc + parseInt(curr.hours), 0); 
 
   const handleExportPDF = () => {
-    // Generate PDF logic ...
     alert("Gerando relatório de repasses...");
   };
+
+  const getLevelLabel = () => {
+      const lvl = currentCollaborator?.level;
+      if (lvl === 'SENIOR') return 'Sênior';
+      if (lvl === 'MASTER') return 'Mestre';
+      return 'Júnior';
+  }
 
   return (
     <Layout role={UserRole.COLLABORATOR}>
@@ -60,7 +79,9 @@ export const CollaboratorFinance: React.FC = () => {
         <header className="mb-8 flex justify-between items-center">
            <div>
               <h1 className="text-3xl font-display font-bold text-darkText">Meu Financeiro</h1>
-              <p className="text-lightText">Seus repasses calculados com base na tabela vigente ({100 - commissionRate}%).</p>
+              <div className="flex items-center gap-2 mt-1">
+                  <p className="text-lightText">Nível: <strong>{getLevelLabel()}</strong></p>
+              </div>
            </div>
            <div className="flex gap-4">
               <button className="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-xl text-sm font-bold text-darkText hover:bg-gray-50">
@@ -83,11 +104,11 @@ export const CollaboratorFinance: React.FC = () => {
 
            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
               <div className="flex justify-between items-start mb-4">
-                 <p className="text-sm text-lightText">Total de Horas (Est.)</p>
+                 <p className="text-sm text-lightText">Total de Horas</p>
                  <div className="text-primary"><Clock size={20}/></div>
               </div>
               <h2 className="text-4xl font-bold text-darkText mb-1">{totalHours}h</h2>
-              <p className="text-xs text-lightText">Baseado em serviços concluídos</p>
+              <p className="text-xs text-lightText">Calculado por serviço</p>
            </div>
 
            <div className="bg-white p-6 rounded-2xl border-2 border-primary/20 shadow-lg shadow-primary/5">
@@ -96,7 +117,7 @@ export const CollaboratorFinance: React.FC = () => {
                  <div className="text-primary"><DollarSign size={20}/></div>
               </div>
               <h2 className="text-3xl font-bold text-primary mb-1">R$ {totalPendingValue.toFixed(2)}</h2>
-              <p className="text-xs text-lightText">Liberação após conclusão</p>
+              <p className="text-xs text-lightText">Baseado na sua tabela de horas</p>
            </div>
 
            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
@@ -142,6 +163,7 @@ export const CollaboratorFinance: React.FC = () => {
                     <tr>
                        <th className="p-6">Data do Serviço</th>
                        <th className="p-6">Cliente/Tipo</th>
+                       <th className="p-6">Duração</th>
                        <th className="p-6">Valor Repasse</th>
                        <th className="p-6">Status</th>
                        <th className="p-6 text-right">Ações</th>
@@ -154,6 +176,9 @@ export const CollaboratorFinance: React.FC = () => {
                          <td className="p-6">
                             <p className="font-bold text-darkText text-sm">{item.client}</p>
                             <p className="text-xs text-lightText">{item.type}</p>
+                         </td>
+                         <td className="p-6">
+                            <span className="bg-gray-100 text-darkText px-2 py-1 rounded text-xs font-bold">{item.hours}</span>
                          </td>
                          <td className="p-6 font-bold text-darkText text-sm">R$ {item.value.toFixed(2)}</td>
                          <td className="p-6">
@@ -175,7 +200,7 @@ export const CollaboratorFinance: React.FC = () => {
                     ))}
                     {filteredData.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="p-12 text-center text-lightText">
+                        <td colSpan={6} className="p-12 text-center text-lightText">
                           Nenhum registro encontrado. Realize serviços para visualizar seus ganhos.
                         </td>
                       </tr>
@@ -219,6 +244,10 @@ export const CollaboratorFinance: React.FC = () => {
                           <span className="font-bold text-darkText">{viewingService.date}</span>
                        </div>
                        <div className="flex justify-between">
+                          <span className="text-lightText">Duração</span>
+                          <span className="font-bold text-darkText">{viewingService.hours}</span>
+                       </div>
+                       <div className="flex justify-between">
                           <span className="text-lightText">Cliente</span>
                           <span className="font-bold text-darkText text-right">{viewingService.client}</span>
                        </div>
@@ -229,7 +258,7 @@ export const CollaboratorFinance: React.FC = () => {
                     </div>
 
                     <div className="text-xs text-lightText text-center px-4">
-                       O pagamento é liberado após a confirmação de conclusão do serviço. Valor referente à sua porcentagem de repasse.
+                       O pagamento é liberado após a confirmação de conclusão do serviço. Valor tabelado para {viewingService.hours} no nível {getLevelLabel()}.
                     </div>
                  </div>
 

@@ -120,6 +120,7 @@ export const AdminServices: React.FC = () => {
   const handleSave = () => {
     if (!formData.name || !formData.pricingModel) return;
 
+    // Garante que a ID é gerada aqui para consistência no estado local
     const finalService: ServiceDefinition = {
       id: editingService ? editingService.id : `srv_${Date.now()}`,
       name: formData.name!,

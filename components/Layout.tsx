@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
-import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, Plus, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles } from 'lucide-react';
+import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, Plus, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid } from 'lucide-react';
 import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -267,6 +267,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
 
         {/* Mobile Bottom Nav (Admin/Collab) */}
         <nav className="md:hidden bg-white dark:bg-darkSurface border-t border-gray-200 dark:border-darkBorder flex justify-around p-2 fixed bottom-0 left-0 w-full z-50 pb-safe">
+           {/* Renderiza os primeiros 4 itens normalmente */}
            {menuItems.slice(0, 4).map((item) => (
             <button
               key={item.path}
@@ -279,7 +280,55 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
               <span className="text-[10px] mt-1 font-medium truncate w-full text-center">{item.label}</span>
             </button>
           ))}
+          
+          {/* Menu "Mais" se houver mais de 4 itens (Admin) */}
+          {menuItems.length > 4 && (
+             <button
+                onClick={() => setMobileMenuOpen(true)}
+                className={`flex flex-col items-center justify-center p-2 rounded-lg w-full transition-all active:scale-95 ${mobileMenuOpen ? 'text-primary' : 'text-lightText dark:text-darkTextSecondary'}`}
+             >
+                <Grid size={20} />
+                <span className="text-[10px] mt-1 font-medium truncate w-full text-center">Menu</span>
+             </button>
+          )}
         </nav>
+
+        {/* Mobile Full Menu Overlay (Drawer) */}
+        {mobileMenuOpen && (
+           <div className="md:hidden fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm animate-in fade-in" onClick={() => setMobileMenuOpen(false)}>
+              <div 
+                 className="absolute bottom-0 left-0 w-full bg-white dark:bg-darkSurface rounded-t-3xl p-6 shadow-2xl border-t border-gray-100 dark:border-darkBorder animate-in slide-in-from-bottom-10"
+                 onClick={(e) => e.stopPropagation()}
+              >
+                 <div className="flex justify-between items-center mb-6">
+                    <h3 className="font-bold text-lg text-darkText dark:text-darkTextPrimary">Menu Completo</h3>
+                    <button 
+                       onClick={() => setMobileMenuOpen(false)}
+                       className="p-2 hover:bg-gray-100 dark:hover:bg-darkBorder rounded-full text-lightText"
+                    >
+                       <X size={20} />
+                    </button>
+                 </div>
+                 
+                 <div className="grid grid-cols-4 gap-4">
+                    {menuItems.map((item) => (
+                       <button 
+                          key={item.path} 
+                          onClick={() => { navigate(item.path); setMobileMenuOpen(false); }} 
+                          className={`flex flex-col items-center gap-2 group p-2 rounded-xl transition-colors ${location.pathname === item.path ? 'bg-primary/5' : ''}`}
+                       >
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${location.pathname === item.path ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'bg-gray-50 dark:bg-darkBg text-lightText dark:text-darkTextSecondary group-hover:text-primary group-hover:bg-primary/10'}`}>
+                             {item.icon}
+                          </div>
+                          <span className={`text-[10px] font-bold text-center leading-tight ${location.pathname === item.path ? 'text-primary' : 'text-darkText dark:text-darkTextPrimary'}`}>
+                             {item.label}
+                          </span>
+                       </button>
+                    ))}
+                 </div>
+              </div>
+           </div>
+        )}
       </div>
     </div>
   );
