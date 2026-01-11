@@ -80,20 +80,6 @@ export const AdminSettings: React.FC = () => {
       alert("Configurações financeiras atualizadas com sucesso!");
   };
 
-  // Helper para atualizar matriz de valores
-  const updatePayout = (level: 'junior' | 'senior' | 'master', hours: 'hours4' | 'hours6' | 'hours8', value: number) => {
-      setLocalSettings(prev => ({
-          ...prev,
-          payouts: {
-              ...prev.payouts,
-              [level]: {
-                  ...prev.payouts[level],
-                  [hours]: value
-              }
-          }
-      }));
-  };
-
   const renderContent = () => {
     switch(activeTab) {
       case 'general':
@@ -125,106 +111,21 @@ export const AdminSettings: React.FC = () => {
           <div className="space-y-8 animate-in fade-in duration-300">
              <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 mb-6">
                 <p className="text-sm text-primary font-bold flex items-center gap-2">
-                   <DollarSign size={16} /> Defina os valores fixos de repasse para cada nível de experiência e duração do serviço.
+                   <DollarSign size={16} /> Estes valores definem o repasse para o colaborador e taxas base.
                 </p>
              </div>
              
              <div>
-                <h3 className="text-xl font-bold text-darkText mb-4">Tabela de Repasse (Matriz por Horas)</h3>
-                
-                {/* Matriz de Inputs */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* JUNIOR COL */}
-                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-4">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold uppercase">JUNIOR</span>
-                        </div>
-                        <Input 
-                            label="Valor para 4 Horas" 
-                            icon={<span className="text-xs font-bold text-gray-500">R$</span>}
-                            type="number"
-                            value={localSettings.payouts.junior.hours4}
-                            onChange={e => updatePayout('junior', 'hours4', parseFloat(e.target.value) || 0)}
-                        />
-                        <Input 
-                            label="Valor para 6 Horas" 
-                            icon={<span className="text-xs font-bold text-gray-500">R$</span>}
-                            type="number"
-                            value={localSettings.payouts.junior.hours6}
-                            onChange={e => updatePayout('junior', 'hours6', parseFloat(e.target.value) || 0)}
-                        />
-                        <Input 
-                            label="Valor para 8 Horas" 
-                            icon={<span className="text-xs font-bold text-gray-500">R$</span>}
-                            type="number"
-                            value={localSettings.payouts.junior.hours8}
-                            onChange={e => updatePayout('junior', 'hours8', parseFloat(e.target.value) || 0)}
-                        />
-                    </div>
-
-                    {/* SENIOR COL */}
-                    <div className="bg-purple-50/50 p-4 rounded-xl border border-purple-100 space-y-4">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold uppercase">SENIOR</span>
-                        </div>
-                        <Input 
-                            label="Valor para 4 Horas" 
-                            icon={<span className="text-xs font-bold text-gray-500">R$</span>}
-                            type="number"
-                            value={localSettings.payouts.senior.hours4}
-                            onChange={e => updatePayout('senior', 'hours4', parseFloat(e.target.value) || 0)}
-                        />
-                        <Input 
-                            label="Valor para 6 Horas" 
-                            icon={<span className="text-xs font-bold text-gray-500">R$</span>}
-                            type="number"
-                            value={localSettings.payouts.senior.hours6}
-                            onChange={e => updatePayout('senior', 'hours6', parseFloat(e.target.value) || 0)}
-                        />
-                        <Input 
-                            label="Valor para 8 Horas" 
-                            icon={<span className="text-xs font-bold text-gray-500">R$</span>}
-                            type="number"
-                            value={localSettings.payouts.senior.hours8}
-                            onChange={e => updatePayout('senior', 'hours8', parseFloat(e.target.value) || 0)}
-                        />
-                    </div>
-
-                    {/* MASTER COL */}
-                    <div className="bg-yellow-50/50 p-4 rounded-xl border border-yellow-100 space-y-4">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold uppercase">MESTRE</span>
-                        </div>
-                        <Input 
-                            label="Valor para 4 Horas" 
-                            icon={<span className="text-xs font-bold text-gray-500">R$</span>}
-                            type="number"
-                            value={localSettings.payouts.master.hours4}
-                            onChange={e => updatePayout('master', 'hours4', parseFloat(e.target.value) || 0)}
-                        />
-                        <Input 
-                            label="Valor para 6 Horas" 
-                            icon={<span className="text-xs font-bold text-gray-500">R$</span>}
-                            type="number"
-                            value={localSettings.payouts.master.hours6}
-                            onChange={e => updatePayout('master', 'hours6', parseFloat(e.target.value) || 0)}
-                        />
-                        <Input 
-                            label="Valor para 8 Horas" 
-                            icon={<span className="text-xs font-bold text-gray-500">R$</span>}
-                            type="number"
-                            value={localSettings.payouts.master.hours8}
-                            onChange={e => updatePayout('master', 'hours8', parseFloat(e.target.value) || 0)}
-                        />
-                    </div>
-                </div>
-             </div>
-
-             <div className="border-t border-gray-100 pt-6">
-                <h3 className="text-xl font-bold text-darkText mb-4">Taxas Operacionais</h3>
+                <h3 className="text-xl font-bold text-darkText mb-4">Precificação Base</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                    <Input 
-                      label="Valor Hora Base (Referência Cliente)" 
+                      label="Comissão da Plataforma (%)" 
+                      value={localSettings.commissionRate}
+                      onChange={e => setLocalSettings({...localSettings, commissionRate: parseFloat(e.target.value) || 0})}
+                      icon={<span className="text-xs font-bold">%</span>} 
+                   />
+                   <Input 
+                      label="Valor Hora Base (Referência)" 
                       value={localSettings.hourlyRate}
                       onChange={e => setLocalSettings({...localSettings, hourlyRate: parseFloat(e.target.value) || 0})}
                       icon={<span className="text-xs font-bold">R$</span>} 
@@ -237,7 +138,6 @@ export const AdminSettings: React.FC = () => {
                    />
                 </div>
              </div>
-
              <div className="flex justify-end pt-4 border-t border-gray-100">
                 <Button onClick={handleSavePlatformSettings} icon={<Save size={18}/>}>Atualizar Taxas</Button>
              </div>

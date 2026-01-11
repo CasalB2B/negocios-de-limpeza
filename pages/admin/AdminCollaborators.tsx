@@ -5,24 +5,17 @@ import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { Badge } from '../../components/Badge';
 import { Modal } from '../../components/Modal'; 
-import { Search, UserPlus, X, Mail, Phone, Edit, Trash2, Lock, Camera, Star } from 'lucide-react';
+import { Search, UserPlus, X, Mail, Phone, Edit, Trash2, Lock, Camera } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 
 export const AdminCollaborators: React.FC = () => {
-  const { collaborators, registerCollaborator, updateCollaborator, deleteCollaborator } = useData(); 
+  const { collaborators, registerCollaborator, deleteCollaborator } = useData(); 
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewCollab, setViewCollab] = useState<any | null>(null);
   const [filterText, setFilterText] = useState('');
   
   // Add/Edit State
-  const [collabData, setCollabData] = useState({ 
-      name: '', 
-      email: '', 
-      phone: '', 
-      password: '', 
-      photoUrl: '',
-      level: 'JUNIOR' as 'JUNIOR' | 'SENIOR' | 'MASTER'
-  });
+  const [collabData, setCollabData] = useState({ name: '', email: '', phone: '', password: '', photoUrl: '' });
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -33,15 +26,6 @@ export const AdminCollaborators: React.FC = () => {
       case 'PENDING': return <Badge variant="warning">Pendente</Badge>;
       default: return null;
     }
-  };
-
-  const getLevelBadge = (level: string) => {
-      switch (level) {
-          case 'JUNIOR': return <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"><Star size={10} /> Junior</span>;
-          case 'SENIOR': return <span className="bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"><Star size={10} fill="currentColor" /> Senior</span>;
-          case 'MASTER': return <span className="bg-yellow-50 text-yellow-700 border border-yellow-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"><Star size={10} fill="currentColor" /> Mestre</span>;
-          default: return null;
-      }
   };
 
   const handleDelete = (e: React.MouseEvent | null, id: string) => {
@@ -64,23 +48,13 @@ export const AdminCollaborators: React.FC = () => {
             phone: collabData.phone,
             password: collabData.password,
             photo: collabData.photoUrl || `https://i.pravatar.cc/150?u=${collabData.email}`,
-            status: 'AVAILABLE',
-            level: collabData.level
+            status: 'AVAILABLE'
         });
         setShowAddModal(false);
-        setCollabData({ name: '', email: '', phone: '', password: '', photoUrl: '', level: 'JUNIOR' });
+        setCollabData({ name: '', email: '', phone: '', password: '', photoUrl: '' });
      } else {
          alert("Nome, Email e Senha são obrigatórios.");
      }
-  };
-
-  const handleUpdate = () => {
-      if (viewCollab) {
-          updateCollaborator(viewCollab.id, { 
-              level: viewCollab.level 
-          });
-          setViewCollab(null);
-      }
   };
 
   const filteredCollaborators = collaborators.filter(c => 
@@ -96,7 +70,7 @@ export const AdminCollaborators: React.FC = () => {
               <h1 className="text-3xl font-display font-bold text-darkText dark:text-darkTextPrimary">Colaboradoras</h1>
               <p className="text-lightText dark:text-darkTextSecondary mt-1">Gerencie e acompanhe o status da sua equipe em tempo real.</p>
            </div>
-           <Button icon={<UserPlus size={18} />} onClick={() => { setShowAddModal(true); setCollabData({ name: '', email: '', phone: '', password: '', photoUrl: '', level: 'JUNIOR' }); }}>Adicionar Colaboradora</Button>
+           <Button icon={<UserPlus size={18} />} onClick={() => { setShowAddModal(true); }}>Adicionar Colaboradora</Button>
         </div>
 
         {/* Filters */}
@@ -119,7 +93,6 @@ export const AdminCollaborators: React.FC = () => {
               <thead className="bg-gray-50/50 dark:bg-darkBg/50 border-b border-gray-100 dark:border-darkBorder">
                  <tr>
                     <th className="p-5 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Colaboradora</th>
-                    <th className="p-5 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Classificação</th>
                     <th className="p-5 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Contato</th>
                     <th className="p-5 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Status Atual</th>
                     <th className="p-5 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider text-right">Ações</th>
@@ -136,9 +109,6 @@ export const AdminCollaborators: React.FC = () => {
                                 <p className="text-xs text-lightText dark:text-darkTextSecondary">ID: {collab.id}</p>
                              </div>
                           </div>
-                       </td>
-                       <td className="p-5">
-                          {getLevelBadge(collab.level || 'JUNIOR')}
                        </td>
                        <td className="p-5">
                           <p className="text-sm text-darkText dark:text-darkTextPrimary">{collab.email}</p>
@@ -179,7 +149,7 @@ export const AdminCollaborators: React.FC = () => {
                     <button onClick={() => handleDelete(null, viewCollab?.id)} className="mr-auto px-4 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
                        <Trash2 size={16} /> Excluir Conta
                     </button>
-                    <button onClick={handleUpdate} className="px-6 py-3 font-bold text-white bg-primary hover:bg-primaryHover rounded-xl transition-colors">Salvar Alterações</button>
+                    <button onClick={() => setViewCollab(null)} className="px-6 py-3 font-bold text-lightText hover:text-darkText hover:bg-gray-100 rounded-xl transition-colors">Fechar</button>
                 </>
             }
         >
@@ -195,26 +165,8 @@ export const AdminCollaborators: React.FC = () => {
                              <h3 className="text-2xl font-bold text-darkText dark:text-darkTextPrimary">{viewCollab.name}</h3>
                              {getStatusBadge(viewCollab.status)}
                           </div>
-                          <p className="text-sm text-lightText dark:text-darkTextSecondary mb-2">Senha: {viewCollab.password}</p>
-                          {getLevelBadge(viewCollab.level || 'JUNIOR')}
+                          <p className="text-sm text-lightText dark:text-darkTextSecondary">Senha: {viewCollab.password}</p>
                        </div>
-                    </div>
-
-                    {/* Change Classification */}
-                    <div className="bg-gray-50 dark:bg-darkBg p-4 rounded-xl border border-gray-100 dark:border-darkBorder">
-                        <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-2">Classificação (Nível)</label>
-                        <p className="text-xs text-lightText dark:text-darkTextSecondary mb-3">Alterar o nível muda o valor do repasse automaticamente.</p>
-                        <div className="grid grid-cols-3 gap-2">
-                            {['JUNIOR', 'SENIOR', 'MASTER'].map(lvl => (
-                                <button 
-                                    key={lvl}
-                                    onClick={() => setViewCollab({...viewCollab, level: lvl})}
-                                    className={`py-2 rounded-lg text-xs font-bold border transition-colors ${viewCollab.level === lvl ? 'bg-primary text-white border-primary' : 'bg-white dark:bg-darkSurface border-gray-200 dark:border-darkBorder text-lightText'}`}
-                                >
-                                    {lvl}
-                                </button>
-                            ))}
-                        </div>
                     </div>
 
                     {/* Content Fields */}
@@ -244,20 +196,6 @@ export const AdminCollaborators: React.FC = () => {
                     <Input label="Telefone / WhatsApp" placeholder="(00) 00000-0000" value={collabData.phone} onChange={e => setCollabData({...collabData, phone: e.target.value})}/>
                     <Input label="E-mail" placeholder="email@exemplo.com" value={collabData.email} onChange={e => setCollabData({...collabData, email: e.target.value})}/>
                 </div>
-                
-                <div>
-                    <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-2">Nível Inicial</label>
-                    <select 
-                        className="w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary"
-                        value={collabData.level}
-                        onChange={(e) => setCollabData({...collabData, level: e.target.value as any})}
-                    >
-                        <option value="JUNIOR">Junior (Iniciante)</option>
-                        <option value="SENIOR">Senior (Experiente)</option>
-                        <option value="MASTER">Mestre (Especialista)</option>
-                    </select>
-                </div>
-
                 <Input label="Definir Senha de Acesso" icon={<Lock size={16}/>} type="text" placeholder="Senha segura" value={collabData.password} onChange={e => setCollabData({...collabData, password: e.target.value})}/>
                 <Input label="URL da Foto (Opcional)" icon={<Camera size={16}/>} placeholder="https://..." value={collabData.photoUrl} onChange={e => setCollabData({...collabData, photoUrl: e.target.value})}/>
             </div>
