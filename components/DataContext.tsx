@@ -158,10 +158,8 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-// --- DADOS MOCK (FALLBACK) ---
-const mockServiceDefinitions: ServiceDefinition[] = [
-  { id: 'srv_1', name: 'Limpeza Residencial', description: 'Manutenção semanal.', icon: 'sparkles', pricingModel: 'ROOMS', basePrice: 150.00, pricePerUnit: 40.00, pricePerBath: 30.00, extras: [], active: true }
-];
+// --- DADOS MOCK (REMOVIDOS PARA USAR BANCO REAL) ---
+const mockServiceDefinitions: ServiceDefinition[] = [];
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [loading, setLoading] = useState(true);
@@ -402,7 +400,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       image_url: def.imageUrl
     };
 
-    await supabase.from('service_definitions').insert(dbDef);
+    const { error } = await supabase.from('service_definitions').insert(dbDef);
+    if (error) {
+      console.error("Erro ao salvar serviço no banco:", error);
+      alert("Erro ao salvar no banco de dados. Verifique a conexão.");
+    }
   };
 
   const updateServiceDefinition = async (def: ServiceDefinition) => {
@@ -438,15 +440,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('auth_client', JSON.stringify(client));
     }
 
-    const { data: userData } = await supabase.from('app_users').insert({
+    const { data: userData, error: userError } = await supabase.from('app_users').insert({
       id: client.id,
       name: client.name,
       email: client.email,
       phone: client.phone,
       address: client.address,
       role: 'CLIENT',
-      type: client.type
+      type: client.type,
+      password: client.password // Garante que a senha vai junto
     }).select().single();
+
+    if (userError) {
+      console.error("Erro ao registrar no banco:", userError);
+      return;
+    }
 
     if (userData) {
       if (client.addresses && client.addresses.length > 0) {
@@ -463,7 +471,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }));
         await supabase.from('addresses').insert(addressesToInsert);
       }
-      // Re-fetch to ensure sync
       fetchData();
     }
   };
