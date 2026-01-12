@@ -23,7 +23,7 @@ export interface ServiceDefinition {
   name: string;
   description: string;
   icon: string;
-  imageUrl?: string; 
+  imageUrl?: string;
   pricingModel: PricingModel;
   basePrice: number;
   pricePerUnit: number;
@@ -34,16 +34,16 @@ export interface ServiceDefinition {
 }
 
 export interface PayoutMatrix {
-    hours4: number;
-    hours6: number;
-    hours8: number;
+  hours4: number;
+  hours6: number;
+  hours8: number;
 }
 
 export interface PlatformSettings {
   payouts: {
-      junior: PayoutMatrix;
-      senior: PayoutMatrix;
-      master: PayoutMatrix;
+    junior: PayoutMatrix;
+    senior: PayoutMatrix;
+    master: PayoutMatrix;
   };
   hourlyRate: number;
   minDisplacement: number;
@@ -64,7 +64,7 @@ export interface Service {
   photos?: { before: string[], after: string[] };
   collaboratorId?: string;
   collaboratorName?: string;
-  duration: 4 | 6 | 8; 
+  duration: string | number; // Alterado para aceitar '2h' e números 
   createdAt: number;
 }
 
@@ -73,7 +73,7 @@ export interface ClientUser {
   name: string;
   email: string;
   phone: string;
-  address: string; 
+  address: string;
   addresses: Address[];
   type: 'FIXO' | 'AVULSO' | 'POS_OBRA' | 'PRIMEIRA_LIMPEZA' | string;
   createdAt: number;
@@ -117,16 +117,16 @@ interface DataContextType {
   collaborators: CollaboratorUser[];
   notifications: Notification[];
   serviceDefinitions: ServiceDefinition[];
-  transactions: Transaction[]; 
+  transactions: Transaction[];
   platformSettings: PlatformSettings;
   currentUser: ClientUser | null;
   currentCollaborator: CollaboratorUser | null;
   adminLoggedIn: boolean;
   loading: boolean;
-  
+
   addService: (service: Service) => Promise<void>;
   updateServiceStatus: (id: string, status: string, additionalData?: Partial<Service>) => Promise<void>;
-  
+
   addServiceDefinition: (def: ServiceDefinition) => Promise<void>;
   updateServiceDefinition: (def: ServiceDefinition) => Promise<void>;
   deleteServiceDefinition: (id: string) => Promise<void>;
@@ -136,7 +136,7 @@ interface DataContextType {
   deleteClient: (id: string) => Promise<void>;
   loginClient: (email: string) => Promise<boolean>;
   logoutClient: () => void;
-  
+
   addClientAddress: (clientId: string, address: Address) => Promise<void>;
   updateClientAddress: (clientId: string, address: Address) => Promise<void>;
   deleteClientAddress: (clientId: string, addressId: string | number) => Promise<void>;
@@ -146,12 +146,12 @@ interface DataContextType {
   deleteCollaborator: (id: string) => Promise<void>;
   loginCollaborator: (email: string, password: string) => Promise<boolean>;
   logoutCollaborator: () => void;
-  
+
   loginAdmin: (user: string, pass: string) => Promise<boolean>;
   logoutAdmin: () => void;
   markAllNotificationsRead: () => Promise<void>;
   updatePlatformSettings: (settings: PlatformSettings) => Promise<void>;
-  
+
   markTransactionPaid: (id: string) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
 }
@@ -165,18 +165,18 @@ const mockServiceDefinitions: ServiceDefinition[] = [
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [loading, setLoading] = useState(true);
-  
+
   const [services, setServices] = useState<Service[]>([]);
   const [serviceDefinitions, setServiceDefinitions] = useState<ServiceDefinition[]>(mockServiceDefinitions);
-  
-  const [platformSettings, setPlatformSettings] = useState<PlatformSettings>({ 
-      payouts: {
-          junior: { hours4: 60, hours6: 90, hours8: 120 },
-          senior: { hours4: 80, hours6: 120, hours8: 160 },
-          master: { hours4: 100, hours6: 150, hours8: 200 },
-      },
-      hourlyRate: 60, 
-      minDisplacement: 20 
+
+  const [platformSettings, setPlatformSettings] = useState<PlatformSettings>({
+    payouts: {
+      junior: { hours4: 60, hours6: 90, hours8: 120 },
+      senior: { hours4: 80, hours6: 120, hours8: 160 },
+      master: { hours4: 100, hours6: 150, hours8: 200 },
+    },
+    hourlyRate: 60,
+    minDisplacement: 20
   });
 
   const [clients, setClients] = useState<ClientUser[]>([]);
@@ -206,17 +206,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     phone: u.phone || '',
     address: u.address || '',
     addresses: Array.isArray(addresses) ? addresses.map(a => ({
-        id: a.id,
-        alias: a.title || 'Principal',
-        street: a.street || '',
-        number: a.number || '',
-        complement: a.complement || '',
-        district: a.neighborhood || '',
-        city: a.city || '',
-        state: a.state || '',
-        cep: a.zip || '',
-        type: 'HOUSE', 
-        isMain: false
+      id: a.id,
+      alias: a.title || 'Principal',
+      street: a.street || '',
+      number: a.number || '',
+      complement: a.complement || '',
+      district: a.neighborhood || '',
+      city: a.city || '',
+      state: a.state || '',
+      cep: a.zip || '',
+      type: 'HOUSE',
+      isMain: false
     })) : [],
     type: u.type || 'AVULSO',
     createdAt: u.created_at ? new Date(u.created_at).getTime() : Date.now()
@@ -263,56 +263,56 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     active: d.active !== false,
     extras: Array.isArray(d.extras) ? d.extras : [],
     pricingTiers: Array.isArray(d.pricing_tiers) ? d.pricing_tiers : [],
-    imageUrl: d.image_url 
+    imageUrl: d.image_url
   });
 
   // --- FETCH DATA ---
   const fetchData = async () => {
     setLoading(true);
     try {
-        // Definitions
-        const { data: sDefs } = await supabase.from('service_definitions').select('*');
-        if (sDefs && sDefs.length > 0) setServiceDefinitions(sDefs.map(mapDbDefToApp));
+      // Definitions
+      const { data: sDefs } = await supabase.from('service_definitions').select('*');
+      if (sDefs && sDefs.length > 0) setServiceDefinitions(sDefs.map(mapDbDefToApp));
 
-        // Settings
-        const { data: settingsData } = await supabase.from('platform_settings').select('*').single();
-        if (settingsData) {
-            setPlatformSettings({
-                hourlyRate: settingsData.hourly_rate || 60,
-                minDisplacement: settingsData.min_displacement || 20,
-                payouts: settingsData.payouts || platformSettings.payouts
-            });
-        }
+      // Settings
+      const { data: settingsData } = await supabase.from('platform_settings').select('*').single();
+      if (settingsData) {
+        setPlatformSettings({
+          hourlyRate: settingsData.hourly_rate || 60,
+          minDisplacement: settingsData.min_displacement || 20,
+          payouts: settingsData.payouts || platformSettings.payouts
+        });
+      }
 
-        // Users
-        const { data: users } = await supabase.from('app_users').select('*');
-        const { data: addresses } = await supabase.from('addresses').select('*');
-        
-        if (users) {
-            const rawClients = users.filter(u => u.role === 'CLIENT');
-            const rawCollabs = users.filter(u => u.role === 'COLLABORATOR');
+      // Users
+      const { data: users } = await supabase.from('app_users').select('*');
+      const { data: addresses } = await supabase.from('addresses').select('*');
 
-            const mappedClients = rawClients.map(c => {
-                const userAddresses = addresses ? addresses.filter(a => a.user_id === c.id) : [];
-                return mapDbUserToClient(c, userAddresses);
-            });
+      if (users) {
+        const rawClients = users.filter(u => u.role === 'CLIENT');
+        const rawCollabs = users.filter(u => u.role === 'COLLABORATOR');
 
-            setClients(mappedClients);
-            setCollaborators(rawCollabs.map(mapDbUserToCollab));
-        }
+        const mappedClients = rawClients.map(c => {
+          const userAddresses = addresses ? addresses.filter(a => a.user_id === c.id) : [];
+          return mapDbUserToClient(c, userAddresses);
+        });
 
-        // Services
-        const { data: srvs } = await supabase.from('services').select('*').order('created_at', { ascending: false });
-        if (srvs) setServices(srvs.map(mapDbServiceToApp));
+        setClients(mappedClients);
+        setCollaborators(rawCollabs.map(mapDbUserToCollab));
+      }
 
-        // Transactions
-        const { data: trxs } = await supabase.from('transactions').select('*');
-        if (trxs) setTransactions(trxs as any);
+      // Services
+      const { data: srvs } = await supabase.from('services').select('*').order('created_at', { ascending: false });
+      if (srvs) setServices(srvs.map(mapDbServiceToApp));
+
+      // Transactions
+      const { data: trxs } = await supabase.from('transactions').select('*');
+      if (trxs) setTransactions(trxs as any);
 
     } catch (error) {
-        console.warn("Offline ou erro de conexão:", error);
+      console.warn("Offline ou erro de conexão:", error);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -341,27 +341,27 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Update Local
     setServices(prev => [enrichedService, ...prev]);
     await addNotificationInternal({
-        type: 'NEW_REQUEST',
-        title: 'Nova solicitação',
-        desc: `${service.type} solicitada por ${service.clientName}.`
+      type: 'NEW_REQUEST',
+      title: 'Nova solicitação',
+      desc: `${service.type} solicitada por ${service.clientName}.`
     });
 
     // DB Insert
     const dbService = {
-        id: service.id,
-        client_id: service.clientId,
-        client_name: service.clientName,
-        type: service.type,
-        date: service.date,
-        time: service.time,
-        address: service.address,
-        status: service.status,
-        price: service.price,
-        notes: service.notes,
-        duration: estimatedDuration,
-        collaborator_id: service.collaboratorId,
-        collaborator_name: service.collaboratorName,
-        created_at: new Date(service.createdAt).toISOString()
+      id: service.id,
+      client_id: service.clientId,
+      client_name: service.clientName,
+      type: service.type,
+      date: service.date,
+      time: service.time,
+      address: service.address,
+      status: service.status,
+      price: service.price,
+      notes: service.notes,
+      duration: estimatedDuration,
+      collaborator_id: service.collaboratorId,
+      collaborator_name: service.collaboratorName,
+      created_at: new Date(service.createdAt).toISOString()
     };
 
     const { data } = await supabase.from('services').insert(dbService).select();
@@ -376,8 +376,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (additionalData?.notes !== undefined) updates.notes = additionalData.notes;
     if (additionalData?.paymentStatus !== undefined) updates.payment_status = additionalData.paymentStatus;
     if (additionalData?.collaboratorId) {
-        updates.collaborator_id = additionalData.collaboratorId;
-        updates.collaborator_name = additionalData.collaboratorName;
+      updates.collaborator_id = additionalData.collaboratorId;
+      updates.collaborator_name = additionalData.collaboratorName;
     }
 
     await supabase.from('services').update(updates).eq('id', id);
@@ -386,22 +386,22 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // --- ACTIONS: SERVICE DEFINITIONS ---
   const addServiceDefinition = async (def: ServiceDefinition) => {
     setServiceDefinitions(prev => [...prev, def]);
-    
+
     const dbDef = {
-        id: def.id,
-        name: def.name,
-        description: def.description,
-        icon: def.icon,
-        pricing_model: def.pricingModel,
-        base_price: def.basePrice,
-        price_per_unit: def.pricePerUnit,
-        price_per_bath: def.pricePerBath,
-        active: def.active,
-        extras: def.extras,
-        pricing_tiers: def.pricingTiers,
-        image_url: def.imageUrl
+      id: def.id,
+      name: def.name,
+      description: def.description,
+      icon: def.icon,
+      pricing_model: def.pricingModel,
+      base_price: def.basePrice,
+      price_per_unit: def.pricePerUnit,
+      price_per_bath: def.pricePerBath,
+      active: def.active,
+      extras: def.extras,
+      pricing_tiers: def.pricingTiers,
+      image_url: def.imageUrl
     };
-    
+
     await supabase.from('service_definitions').insert(dbDef);
   };
 
@@ -409,17 +409,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setServiceDefinitions(prev => prev.map(s => s.id === def.id ? def : s));
 
     const dbDef = {
-        name: def.name,
-        description: def.description,
-        icon: def.icon,
-        pricing_model: def.pricingModel,
-        base_price: def.basePrice,
-        price_per_unit: def.pricePerUnit,
-        price_per_bath: def.pricePerBath,
-        active: def.active,
-        extras: def.extras,
-        pricing_tiers: def.pricingTiers,
-        image_url: def.imageUrl
+      name: def.name,
+      description: def.description,
+      icon: def.icon,
+      pricing_model: def.pricingModel,
+      base_price: def.basePrice,
+      price_per_unit: def.pricePerUnit,
+      price_per_bath: def.pricePerBath,
+      active: def.active,
+      extras: def.extras,
+      pricing_tiers: def.pricingTiers,
+      image_url: def.imageUrl
     };
     await supabase.from('service_definitions').update(dbDef).eq('id', def.id);
   };
@@ -434,53 +434,53 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setClients(prev => [...prev, client]);
     // Auto-login se for cadastro proprio
     if (client.id.startsWith('user_') || client.id.startsWith('manual')) {
-        setCurrentUser(client);
-        localStorage.setItem('auth_client', JSON.stringify(client));
+      setCurrentUser(client);
+      localStorage.setItem('auth_client', JSON.stringify(client));
     }
 
     const { data: userData } = await supabase.from('app_users').insert({
-        id: client.id,
-        name: client.name,
-        email: client.email,
-        phone: client.phone,
-        address: client.address,
-        role: 'CLIENT',
-        type: client.type
+      id: client.id,
+      name: client.name,
+      email: client.email,
+      phone: client.phone,
+      address: client.address,
+      role: 'CLIENT',
+      type: client.type
     }).select().single();
 
     if (userData) {
-        if (client.addresses && client.addresses.length > 0) {
-            const addressesToInsert = client.addresses.map(a => ({
-                user_id: userData.id,
-                title: a.alias,
-                street: a.street,
-                number: a.number,
-                complement: a.complement,
-                neighborhood: a.district,
-                city: a.city,
-                state: a.state,
-                zip: a.cep
-            }));
-            await supabase.from('addresses').insert(addressesToInsert);
-        }
-        // Re-fetch to ensure sync
-        fetchData();
+      if (client.addresses && client.addresses.length > 0) {
+        const addressesToInsert = client.addresses.map(a => ({
+          user_id: userData.id,
+          title: a.alias,
+          street: a.street,
+          number: a.number,
+          complement: a.complement,
+          neighborhood: a.district,
+          city: a.city,
+          state: a.state,
+          zip: a.cep
+        }));
+        await supabase.from('addresses').insert(addressesToInsert);
+      }
+      // Re-fetch to ensure sync
+      fetchData();
     }
   };
 
   const updateClient = async (id: string, data: Partial<ClientUser>) => {
     setClients(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
     if (currentUser && currentUser.id === id) {
-        const updatedUser = { ...currentUser, ...data };
-        setCurrentUser(updatedUser);
-        localStorage.setItem('auth_client', JSON.stringify(updatedUser));
+      const updatedUser = { ...currentUser, ...data };
+      setCurrentUser(updatedUser);
+      localStorage.setItem('auth_client', JSON.stringify(updatedUser));
     }
 
     const updates: any = {};
     if (data.name) updates.name = data.name;
     if (data.email) updates.email = data.email;
     if (data.phone) updates.phone = data.phone;
-    
+
     await supabase.from('app_users').update(updates).eq('id', id);
   };
 
@@ -494,81 +494,81 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 1. Try Local State (Fast)
     const localUser = clients.find(c => c.email === email);
     if (localUser) {
-        setCurrentUser(localUser);
-        localStorage.setItem('auth_client', JSON.stringify(localUser));
-        return true;
+      setCurrentUser(localUser);
+      localStorage.setItem('auth_client', JSON.stringify(localUser));
+      return true;
     }
     // 2. Try DB (Slow but accurate)
     const { data: user } = await supabase.from('app_users').select('*').eq('email', email).eq('role', 'CLIENT').single();
     if (user) {
-        const { data: addrs } = await supabase.from('addresses').select('*').eq('user_id', user.id);
-        const clientObj = mapDbUserToClient(user, addrs || []);
-        setCurrentUser(clientObj);
-        localStorage.setItem('auth_client', JSON.stringify(clientObj));
-        return true;
+      const { data: addrs } = await supabase.from('addresses').select('*').eq('user_id', user.id);
+      const clientObj = mapDbUserToClient(user, addrs || []);
+      setCurrentUser(clientObj);
+      localStorage.setItem('auth_client', JSON.stringify(clientObj));
+      return true;
     }
     return false;
   };
 
   const logoutClient = () => {
-      setCurrentUser(null);
-      localStorage.removeItem('auth_client');
+    setCurrentUser(null);
+    localStorage.removeItem('auth_client');
   }
 
   // --- ACTIONS: CLIENT ADDRESSES ---
   const addClientAddress = async (clientId: string, address: Address) => {
     // Optimistic Update
     if (currentUser) {
-        const updatedAddresses = [...currentUser.addresses, address];
-        const updatedUser = { ...currentUser, addresses: updatedAddresses };
-        setCurrentUser(updatedUser);
-        localStorage.setItem('auth_client', JSON.stringify(updatedUser));
-        setClients(prev => prev.map(c => c.id === currentUser.id ? updatedUser : c));
+      const updatedAddresses = [...currentUser.addresses, address];
+      const updatedUser = { ...currentUser, addresses: updatedAddresses };
+      setCurrentUser(updatedUser);
+      localStorage.setItem('auth_client', JSON.stringify(updatedUser));
+      setClients(prev => prev.map(c => c.id === currentUser.id ? updatedUser : c));
     }
 
     const dbAddress = {
-        user_id: clientId,
-        title: address.alias,
-        street: address.street,
-        number: address.number,
-        complement: address.complement,
-        neighborhood: address.district,
-        city: address.city,
-        state: address.state,
-        zip: address.cep
+      user_id: clientId,
+      title: address.alias,
+      street: address.street,
+      number: address.number,
+      complement: address.complement,
+      neighborhood: address.district,
+      city: address.city,
+      state: address.state,
+      zip: address.cep
     };
     await supabase.from('addresses').insert(dbAddress);
   };
 
   const updateClientAddress = async (clientId: string, address: Address) => {
-     if (currentUser) {
-        const updatedAddresses = currentUser.addresses.map(a => a.id === address.id ? address : a);
-        const updatedUser = { ...currentUser, addresses: updatedAddresses };
-        setCurrentUser(updatedUser);
-        localStorage.setItem('auth_client', JSON.stringify(updatedUser));
-        setClients(prev => prev.map(c => c.id === currentUser.id ? updatedUser : c));
-     }
+    if (currentUser) {
+      const updatedAddresses = currentUser.addresses.map(a => a.id === address.id ? address : a);
+      const updatedUser = { ...currentUser, addresses: updatedAddresses };
+      setCurrentUser(updatedUser);
+      localStorage.setItem('auth_client', JSON.stringify(updatedUser));
+      setClients(prev => prev.map(c => c.id === currentUser.id ? updatedUser : c));
+    }
 
-     const dbAddress = {
-        title: address.alias,
-        street: address.street,
-        number: address.number,
-        complement: address.complement,
-        neighborhood: address.district,
-        city: address.city,
-        state: address.state,
-        zip: address.cep
+    const dbAddress = {
+      title: address.alias,
+      street: address.street,
+      number: address.number,
+      complement: address.complement,
+      neighborhood: address.district,
+      city: address.city,
+      state: address.state,
+      zip: address.cep
     };
     await supabase.from('addresses').update(dbAddress).eq('id', address.id);
   };
 
   const deleteClientAddress = async (clientId: string, addressId: string | number) => {
     if (currentUser) {
-        const updatedAddresses = currentUser.addresses.filter(a => a.id !== addressId);
-        const updatedUser = { ...currentUser, addresses: updatedAddresses };
-        setCurrentUser(updatedUser);
-        localStorage.setItem('auth_client', JSON.stringify(updatedUser));
-        setClients(prev => prev.map(c => c.id === currentUser.id ? updatedUser : c));
+      const updatedAddresses = currentUser.addresses.filter(a => a.id !== addressId);
+      const updatedUser = { ...currentUser, addresses: updatedAddresses };
+      setCurrentUser(updatedUser);
+      localStorage.setItem('auth_client', JSON.stringify(updatedUser));
+      setClients(prev => prev.map(c => c.id === currentUser.id ? updatedUser : c));
     }
     await supabase.from('addresses').delete().eq('id', addressId);
   };
@@ -578,28 +578,28 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCollaborators(prev => [...prev, collab]);
 
     const { data } = await supabase.from('app_users').insert({
-        id: collab.id,
-        name: collab.name,
-        email: collab.email,
-        phone: collab.phone,
-        role: 'COLLABORATOR',
-        status: 'AVAILABLE',
-        photo: collab.photo,
-        password: collab.password,
-        level: collab.level 
+      id: collab.id,
+      name: collab.name,
+      email: collab.email,
+      phone: collab.phone,
+      role: 'COLLABORATOR',
+      status: 'AVAILABLE',
+      photo: collab.photo,
+      password: collab.password,
+      level: collab.level
     }).select().single();
 
     if (data) {
-        setCollaborators(prev => prev.map(c => c.id === collab.id ? mapDbUserToCollab(data) : c));
+      setCollaborators(prev => prev.map(c => c.id === collab.id ? mapDbUserToCollab(data) : c));
     }
   };
 
   const updateCollaborator = async (id: string, data: Partial<CollaboratorUser>) => {
     setCollaborators(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
     if (currentCollaborator?.id === id) {
-        const updatedCollab = { ...currentCollaborator, ...data };
-        setCurrentCollaborator(updatedCollab);
-        localStorage.setItem('auth_collab', JSON.stringify(updatedCollab));
+      const updatedCollab = { ...currentCollaborator, ...data };
+      setCurrentCollaborator(updatedCollab);
+      localStorage.setItem('auth_collab', JSON.stringify(updatedCollab));
     }
 
     const updates: any = {};
@@ -622,74 +622,74 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginCollaborator = async (email: string, password: string): Promise<boolean> => {
     const localUser = collaborators.find(c => c.email === email && c.password === password);
     if (localUser) {
-        setCurrentCollaborator(localUser);
-        localStorage.setItem('auth_collab', JSON.stringify(localUser));
-        return true;
+      setCurrentCollaborator(localUser);
+      localStorage.setItem('auth_collab', JSON.stringify(localUser));
+      return true;
     }
     const { data: user } = await supabase.from('app_users').select('*').eq('email', email).eq('role', 'COLLABORATOR').single();
     if (user && user.password === password) {
-        const collabObj = mapDbUserToCollab(user);
-        setCurrentCollaborator(collabObj);
-        localStorage.setItem('auth_collab', JSON.stringify(collabObj));
-        return true;
+      const collabObj = mapDbUserToCollab(user);
+      setCurrentCollaborator(collabObj);
+      localStorage.setItem('auth_collab', JSON.stringify(collabObj));
+      return true;
     }
     return false;
   };
 
   const logoutCollaborator = () => {
-      setCurrentCollaborator(null);
-      localStorage.removeItem('auth_collab');
+    setCurrentCollaborator(null);
+    localStorage.removeItem('auth_collab');
   }
 
   // --- ADMIN ---
   const loginAdmin = async (user: string, pass: string): Promise<boolean> => {
     // 1. Hardcoded fallback (for instant access)
     if (user === 'admin' && pass === 'admin') {
-        setAdminLoggedIn(true);
-        localStorage.setItem('auth_admin', 'true');
-        return true;
+      setAdminLoggedIn(true);
+      localStorage.setItem('auth_admin', 'true');
+      return true;
     }
     // 2. DB Check
     const { data: dbUser } = await supabase.from('app_users').select('*').eq('email', user).eq('role', 'ADMIN').single();
     if (dbUser && dbUser.password === pass) {
-        setAdminLoggedIn(true);
-        localStorage.setItem('auth_admin', 'true');
-        return true;
+      setAdminLoggedIn(true);
+      localStorage.setItem('auth_admin', 'true');
+      return true;
     }
     return false;
   };
   const logoutAdmin = () => {
-      setAdminLoggedIn(false);
-      localStorage.removeItem('auth_admin');
+    setAdminLoggedIn(false);
+    localStorage.removeItem('auth_admin');
   }
 
   // --- MISC & SETTINGS ---
-  const markAllNotificationsRead = async () => setNotifications(prev => prev.map(n => ({...n, read: true})));
-  
+  const markAllNotificationsRead = async () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+
   const updatePlatformSettings = async (s: PlatformSettings) => {
-      setPlatformSettings(s);
-      await supabase.from('platform_settings').upsert({
-          id: 1, 
-          hourly_rate: s.hourlyRate,
-          min_displacement: s.minDisplacement,
-          payouts: s.payouts
-      });
+    setPlatformSettings(s);
+    await supabase.from('platform_settings').upsert({
+      id: 1,
+      hourly_rate: s.hourlyRate,
+      min_displacement: s.minDisplacement,
+      payouts: s.payouts
+    });
   };
 
   const markTransactionPaid = async (id: string) => {
-      setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: 'PAID' } : t));
-      await supabase.from('transactions').update({ status: 'PAID' }).eq('id', id);
+    setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: 'PAID' } : t));
+    await supabase.from('transactions').update({ status: 'PAID' }).eq('id', id);
   };
   const deleteTransaction = async (id: string) => {
-      setTransactions(prev => prev.filter(t => t.id !== id));
-      await supabase.from('transactions').delete().eq('id', id);
+    setTransactions(prev => prev.filter(t => t.id !== id));
+    await supabase.from('transactions').delete().eq('id', id);
   };
 
   return (
-    <DataContext.Provider value={{ 
+    <DataContext.Provider value={{
       services, clients, collaborators, notifications, serviceDefinitions, transactions, platformSettings,
       currentUser, currentCollaborator, adminLoggedIn, loading,
-      addService, updateServiceStatus, 
+      addService, updateServiceStatus,
       addServiceDefinition, updateServiceDefinition, deleteServiceDefinition,
       registerClient, updateClient, deleteClient, loginClient, logoutClient,
       addClientAddress, updateClientAddress, deleteClientAddress,
