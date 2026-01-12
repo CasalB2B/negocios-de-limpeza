@@ -62,10 +62,11 @@ export interface Service {
   paymentStatus?: 'PENDING' | 'SIGNAL_PAID' | 'FULL_PAID';
   price?: number;
   notes?: string;
-  photos?: { before: string[], after: string[] };
+  duration?: string | number;
   collaboratorId?: string;
   collaboratorName?: string;
-  duration: string | number; // Alterado para aceitar '2h' e números 
+  paymentLinkSignal?: string;
+  paymentLinkFinal?: string;
   createdAt: number;
 }
 
@@ -250,6 +251,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     price: s.price || 0,
     notes: s.notes || '',
     duration: s.duration || 4,
+    paymentLinkSignal: s.payment_link_signal || '',
+    paymentLinkFinal: s.payment_link_final || '',
     createdAt: s.created_at ? new Date(s.created_at).getTime() : Date.now()
   });
 
@@ -383,18 +386,100 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateServiceStatus = async (id: string, status: string, additionalData?: Partial<Service>) => {
+    const currentService = services.find(s => s.id === id);
+    if (!currentService) return;
+
     setServices(prev => prev.map(s => s.id === id ? { ...s, status, ...additionalData } : s));
 
     const updates: any = { status };
     if (additionalData?.price !== undefined) updates.price = additionalData.price;
     if (additionalData?.notes !== undefined) updates.notes = additionalData.notes;
     if (additionalData?.paymentStatus !== undefined) updates.payment_status = additionalData.paymentStatus;
+    if (additionalData?.paymentLinkSignal !== undefined) updates.payment_link_signal = additionalData.paymentLinkSignal;
+    if (additionalData?.paymentLinkFinal !== undefined) updates.payment_link_final = additionalData.paymentLinkFinal;
     if (additionalData?.collaboratorId) {
       updates.collaborator_id = additionalData.collaboratorId;
       updates.collaborator_name = additionalData.collaboratorName;
     }
 
     await supabase.from('services').update(updates).eq('id', id);
+
+    // --- AUTOMAÇÃO FINANCEIRA ---
+
+    // 1. Receita: Pagamento de Sinal (50%)
+    if (additionalData?.paymentStatus === 'SIGNAL_PAID' && currentService.paymentStatus !== 'SIGNAL_PAID') {
+      const amount = (additionalData.price || currentService.price || 0) / 2;
+      if (amount > 0) {
+        await createTransaction({
+          type: 'INCOME',
+          entity: currentService.clientName,
+          serviceType: currentService.type,
+          amount: amount,
+          method: 'PIX/Link',
+          status: 'PAID'
+        });
+      }
+    }
+
+    // 2. Receita: Pagamento Final (50%)
+    if (additionalData?.paymentStatus === 'FULL_PAID' && currentService.paymentStatus !== 'FULL_PAID') {
+      const amount = (additionalData.price || currentService.price || 0) / 2;
+      if (amount > 0) {
+        await createTransaction({
+          type: 'INCOME',
+          entity: currentService.clientName,
+          serviceType: currentService.type,
+          amount: amount,
+          method: 'PIX/Link',
+          status: 'PAID'
+        });
+      }
+    }
+
+    // 3. Repasse: Conclusão do Serviço
+    if (status === 'COMPLETED' && currentService.status !== 'COMPLETED') {
+      const collabId = additionalData?.collaboratorId || currentService.collaboratorId;
+      const collab = collaborators.find(c => c.id === collabId);
+
+      if (collab) {
+        // Cálculo básico de repasse baseado no nível (mock da lógica dos settings)
+        const level = collab.level.toLowerCase();
+        const duration = parseInt(String(currentService.duration)) || 4;
+        const payoutMap: any = platformSettings.payouts;
+        const hoursKey = duration <= 4 ? 'hours4' : duration <= 6 ? 'hours6' : 'hours8';
+        const payoutAmount = payoutMap[level]?.[hoursKey] || 80;
+
+        await createTransaction({
+          type: 'EXPENSE',
+          entity: collab.name,
+          serviceType: `Repasse: ${currentService.type}`,
+          amount: payoutAmount,
+          method: 'Transferência',
+          status: 'PENDING'
+        });
+      }
+    }
+  };
+
+  const createTransaction = async (trx: Omit<Transaction, 'id' | 'date'>) => {
+    const newTrx = {
+      id: `trx_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      date: new Date().toLocaleDateString('pt-BR'),
+      ...trx
+    };
+
+    setTransactions(prev => [newTrx, ...prev]);
+
+    await supabase.from('transactions').insert({
+      id: newTrx.id,
+      type: newTrx.type,
+      entity: newTrx.entity,
+      service_type: newTrx.serviceType,
+      amount: newTrx.amount,
+      date: newTrx.date,
+      status: newTrx.status,
+      method: newTrx.method
+    });
   };
 
   // --- ACTIONS: SERVICE DEFINITIONS ---
