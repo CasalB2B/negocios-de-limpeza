@@ -130,16 +130,22 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
 
           {/* Mobile Menu Dropdown */}
           {mobileMenuOpen && (
-            <div className="md:hidden bg-white dark:bg-darkSurface border-t border-gray-100 dark:border-darkBorder absolute w-full left-0 top-16 shadow-xl p-4 flex flex-col gap-4 z-40 animate-in slide-in-from-top-2">
-              <Button onClick={() => { navigate('/client/new-request'); setMobileMenuOpen(false); }} fullWidth>Novo Agendamento</Button>
-              <button onClick={() => { navigate('/client/profile'); setMobileMenuOpen(false); }} className="text-darkText dark:text-darkTextPrimary font-bold text-sm p-3 flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-darkBorder rounded-xl">
-                <User size={16} /> Meu Perfil
+            <div className="md:hidden bg-white/95 dark:bg-darkSurface/95 backdrop-blur-md border-t border-gray-100 dark:border-darkBorder absolute w-full left-0 top-16 shadow-xl p-4 flex flex-col gap-2 z-[100] animate-in slide-in-from-top-2">
+              <div className="mb-2">
+                <Button onClick={() => { navigate('/client/new-request'); setMobileMenuOpen(false); }} fullWidth>Novo Agendamento</Button>
+              </div>
+              <button onClick={() => { navigate('/client/profile'); setMobileMenuOpen(false); }} className="text-darkText dark:text-darkTextPrimary font-bold text-sm p-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-darkBorder rounded-xl transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-darkBg flex items-center justify-center"><User size={18} /></div>
+                Meu Perfil
               </button>
-              <button onClick={handleSupportClick} className="text-darkText dark:text-darkTextPrimary font-bold text-sm p-3 flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-darkBorder rounded-xl">
-                <HelpCircle size={16} /> Suporte WhatsApp
+              <button onClick={handleSupportClick} className="text-darkText dark:text-darkTextPrimary font-bold text-sm p-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-darkBorder rounded-xl transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 flex items-center justify-center"><HelpCircle size={18} /></div>
+                Suporte WhatsApp
               </button>
-              <button onClick={handleLogout} className="text-red-500 font-bold text-sm p-3 flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl">
-                <LogOut size={16} /> Sair da conta
+              <div className="h-px bg-gray-100 dark:bg-darkBorder my-2"></div>
+              <button onClick={handleLogout} className="text-red-500 font-bold text-sm p-4 flex items-center gap-3 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center"><LogOut size={18} /></div>
+                Sair da conta
               </button>
             </div>
           )}
@@ -150,14 +156,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
         </main>
 
         {/* Bottom Navigation for Client Mobile */}
-        <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white dark:bg-darkSurface border-t border-gray-200 dark:border-darkBorder flex justify-around p-2 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe">
+        <nav className="md:hidden fixed bottom-1 left-1 right-1 bg-white/80 dark:bg-darkSurface/80 backdrop-blur-lg border border-gray-200 dark:border-darkBorder flex justify-around p-2 z-50 rounded-2xl shadow-xl pb-safe">
           {navLinks.map((link) => (
             <button
               key={link.path}
               onClick={() => navigate(link.path)}
               className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all w-full active:scale-95 ${location.pathname === link.path
-                ? 'text-primary'
-                : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder'
+                ? 'text-primary bg-primary/5'
+                : 'text-lightText dark:text-darkTextSecondary'
                 }`}
             >
               {link.icon}
@@ -276,17 +282,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
         </main>
 
         {/* Mobile Bottom Nav (Admin/Collab) */}
-        <nav className="md:hidden bg-white dark:bg-darkSurface border-t border-gray-200 dark:border-darkBorder flex justify-around p-2 fixed bottom-0 left-0 w-full z-50 pb-safe">
+        <nav className="md:hidden bg-white/80 dark:bg-darkSurface/80 backdrop-blur-lg border border-gray-200 dark:border-darkBorder flex justify-around p-2 fixed bottom-1 left-1 right-1 rounded-2xl z-50 shadow-xl pb-safe">
           {/* Renderiza os primeiros 4 itens normalmente */}
           {menuItems.slice(0, 4).map((item) => (
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className={`flex flex-col items-center justify-center p-2 rounded-lg w-full transition-all active:scale-95 ${location.pathname === item.path ? 'text-primary' : 'text-lightText dark:text-darkTextSecondary'
+              className={`flex flex-col items-center justify-center p-2 rounded-xl w-full transition-all active:scale-95 ${location.pathname === item.path ? 'text-primary bg-primary/5' : 'text-lightText dark:text-darkTextSecondary'
                 }`}
             >
               {item.icon}
-              <span className="text-[10px] mt-1 font-medium truncate w-full text-center">{item.label}</span>
+              <span className="text-[10px] mt-1 font-bold truncate w-full text-center">{item.label}</span>
             </button>
           ))}
 
@@ -294,10 +300,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           {menuItems.length > 4 && (
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className={`flex flex-col items-center justify-center p-2 rounded-lg w-full transition-all active:scale-95 ${mobileMenuOpen ? 'text-primary' : 'text-lightText dark:text-darkTextSecondary'}`}
+              className={`flex flex-col items-center justify-center p-2 rounded-xl w-full transition-all active:scale-95 ${mobileMenuOpen ? 'text-primary bg-primary/5' : 'text-lightText dark:text-darkTextSecondary'}`}
             >
               <Grid size={20} />
-              <span className="text-[10px] mt-1 font-medium truncate w-full text-center">Menu</span>
+              <span className="text-[10px] mt-1 font-bold truncate w-full text-center">Mais</span>
             </button>
           )}
         </nav>
