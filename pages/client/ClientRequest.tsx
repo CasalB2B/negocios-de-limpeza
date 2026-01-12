@@ -109,6 +109,7 @@ export const ClientRequest: React.FC = () => {
          address: `${addrStreet}, ${addrNumber} - ${addrDistrict}`,
          addresses: [newAddressObj],
          type: 'AVULSO' as const,
+         password: '123456', // Senha padrão para login social
          createdAt: Date.now()
       };
 
@@ -188,6 +189,7 @@ export const ClientRequest: React.FC = () => {
                address: fullAddressString,
                addresses: [newAddressObj],
                type: 'AVULSO' as const,
+               password: regData.password || '123456', // Senha do formulário ou padrão
                createdAt: Date.now()
             };
 

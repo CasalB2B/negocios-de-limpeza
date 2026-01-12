@@ -467,6 +467,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (userError) {
       console.error("Erro ao registrar no banco:", userError);
+      alert(`Erro ao criar conta: ${userError.message || 'Verifique a conexão'}`);
       return;
     }
 
