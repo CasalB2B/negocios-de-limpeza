@@ -67,6 +67,8 @@ export interface Service {
   collaboratorName?: string;
   paymentLinkSignal?: string;
   paymentLinkFinal?: string;
+  proofSignal?: string;
+  proofFinal?: string;
   createdAt: number;
 }
 
@@ -253,6 +255,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     duration: s.duration || 4,
     paymentLinkSignal: s.payment_link_signal || '',
     paymentLinkFinal: s.payment_link_final || '',
+    proofSignal: s.proof_signal || '',
+    proofFinal: s.proof_final || '',
     createdAt: s.created_at ? new Date(s.created_at).getTime() : Date.now()
   });
 
@@ -324,6 +328,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Sync currentUser with latest data from clients list
+  useEffect(() => {
+    if (currentUser) {
+      const updatedClient = clients.find(c => c.id === currentUser.id);
+      if (updatedClient && JSON.stringify(updatedClient) !== JSON.stringify(currentUser)) {
+        setCurrentUser(updatedClient);
+        localStorage.setItem('auth_client', JSON.stringify(updatedClient));
+      }
+    }
+  }, [clients, currentUser?.id]);
 
   const addNotificationInternal = async (notif: Omit<Notification, 'id' | 'read' | 'time'>) => {
     const newNotif = {
@@ -397,6 +412,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (additionalData?.paymentStatus !== undefined) updates.payment_status = additionalData.paymentStatus;
     if (additionalData?.paymentLinkSignal !== undefined) updates.payment_link_signal = additionalData.paymentLinkSignal;
     if (additionalData?.paymentLinkFinal !== undefined) updates.payment_link_final = additionalData.paymentLinkFinal;
+    if (additionalData?.proofSignal !== undefined) updates.proof_signal = additionalData.proofSignal;
+    if (additionalData?.proofFinal !== undefined) updates.proof_final = additionalData.proofFinal;
     if (additionalData?.collaboratorId) {
       updates.collaborator_id = additionalData.collaboratorId;
       updates.collaborator_name = additionalData.collaboratorName;
@@ -569,7 +586,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           neighborhood: a.district,
           city: a.city,
           state: a.state,
-          zip: a.cep
+          zip: a.cep,
+          type: a.type || 'HOUSE',
+          is_main: a.isMain || false
         }));
         await supabase.from('addresses').insert(addressesToInsert);
       }

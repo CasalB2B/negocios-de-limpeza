@@ -6,12 +6,22 @@ import { useData, Service } from '../../components/DataContext';
 import { Button } from '../../components/Button';
 import { Modal } from '../../components/Modal';
 
+const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (error) => reject(error);
+    });
+};
+
 export const ClientPayments: React.FC = () => {
     const { services, currentUser, updateServiceStatus } = useData();
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
     const [paymentStep, setPaymentStep] = useState<'SIGNAL' | 'FINAL'>('SIGNAL');
     const [isProcessing, setIsProcessing] = useState(false);
+    const [proofBase64, setProofBase64] = useState<string | null>(null);
 
     // Filtra serviços do cliente que têm orçamento pronto ou já estão em andamento/concluídos
     const clientServices = services.filter(s =>
@@ -39,29 +49,33 @@ export const ClientPayments: React.FC = () => {
 
         setSelectedService(service);
         setPaymentStep(step);
+        setProofBase64(null); // Reset proof
         setShowPaymentModal(true);
     };
 
     const confirmPayment = () => {
-        if (!selectedService) return;
+        if (!selectedService || !proofBase64) {
+            alert("Por favor, anexe o comprovante de pagamento.");
+            return;
+        }
         setIsProcessing(true);
 
         setTimeout(() => {
+            const updates: any = {};
             if (paymentStep === 'SIGNAL') {
-                // Paga o sinal, status muda para SCHEDULED (Confirmado na agenda)
-                updateServiceStatus(selectedService.id, 'SCHEDULED', {
-                    paymentStatus: 'SIGNAL_PAID'
-                });
+                updates.proofSignal = proofBase64;
+                // Opcional: Você pode manter como PENDING até o adm confirmar, 
+                // ou mudar para um status intermediário. Por enquanto, vamos apenas salvar o comprovante.
             } else {
-                // Paga o restante, pagamento completo
-                updateServiceStatus(selectedService.id, 'COMPLETED', { // Mantém completed ou muda para algo como ARCHIVED
-                    paymentStatus: 'FULL_PAID'
-                });
+                updates.proofFinal = proofBase64;
             }
+
+            updateServiceStatus(selectedService.id, selectedService.status as any, updates);
+
             setIsProcessing(false);
             setShowPaymentModal(false);
             setSelectedService(null);
-            alert("Comprovante enviado com sucesso! O pagamento foi registrado.");
+            alert("Comprovante enviado com sucesso! O administrador irá validar o pagamento.");
         }, 1500);
     };
 
@@ -182,10 +196,35 @@ export const ClientPayments: React.FC = () => {
 
                         <div className="border-t border-gray-100 dark:border-darkBorder pt-4">
                             <h3 className="font-bold text-darkText dark:text-darkTextPrimary mb-2">Enviar Comprovante</h3>
-                            <div className="border-2 border-dashed border-gray-300 dark:border-darkBorder rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 dark:hover:bg-darkBg/50 transition-colors">
-                                <Upload size={24} className="text-gray-400 mb-2" />
-                                <p className="text-sm text-lightText dark:text-darkTextSecondary">Clique para selecionar o arquivo</p>
-                            </div>
+                            <label className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors ${proofBase64 ? 'border-green-500 bg-green-50 dark:bg-green-900/10' : 'border-gray-300 dark:border-darkBorder hover:bg-gray-50 dark:hover:bg-darkBg/50'}`}>
+                                {proofBase64 ? (
+                                    <>
+                                        <CheckCircle size={24} className="text-green-500 mb-2" />
+                                        <p className="text-sm text-green-700 dark:text-green-400 font-bold">Comprovante anexado!</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Upload size={24} className="text-gray-400 mb-2" />
+                                        <p className="text-sm text-lightText dark:text-darkTextSecondary">Clique para selecionar o arquivo</p>
+                                    </>
+                                )}
+                                <input
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={async (e) => {
+                                        if (e.target.files?.[0]) {
+                                            const base64 = await fileToBase64(e.target.files[0]);
+                                            setProofBase64(base64);
+                                        }
+                                    }}
+                                />
+                            </label>
+                            {proofBase64 && (
+                                <div className="mt-4 flex justify-center">
+                                    <img src={proofBase64} alt="Comprovante" className="max-h-32 rounded-lg border shadow-sm" />
+                                </div>
+                            )}
                         </div>
 
                         <Button fullWidth onClick={confirmPayment} disabled={isProcessing}>

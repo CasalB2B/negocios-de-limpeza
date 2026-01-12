@@ -5,7 +5,7 @@ import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { Badge } from '../../components/Badge';
 import { Modal } from '../../components/Modal';
-import { Search, Filter, Mail, Phone, MapPin, Edit, Trash2, UserPlus, Download, Check, DollarSign } from 'lucide-react';
+import { Search, Filter, Mail, Phone, MapPin, Edit, Trash2, UserPlus, Download, Check, DollarSign, X, Lock, Info, FileText } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 
 export const AdminClients: React.FC = () => {
@@ -14,6 +14,7 @@ export const AdminClients: React.FC = () => {
     const [editingClient, setEditingClient] = useState<any | null>(null);
     const [showAddModal, setShowAddModal] = useState(false);
     const [managingPaymentsClient, setManagingPaymentsClient] = useState<any | null>(null);
+    const [viewingProof, setViewingProof] = useState<string | null>(null);
     const { services, updateServiceStatus } = useData();
 
     // State for Manual Registration
@@ -291,25 +292,59 @@ export const AdminClients: React.FC = () => {
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-lightText uppercase mb-1">Link Sinal (50%)</label>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <label className="block text-[10px] font-bold text-lightText uppercase">Sinal (50%)</label>
+                                                {service.paymentStatus === 'SIGNAL_PAID' || service.paymentStatus === 'FULL_PAID' ? (
+                                                    <span className="text-[10px] font-bold text-green-600 flex items-center gap-1"><Check size={10} /> Confirmado</span>
+                                                ) : service.proofSignal ? (
+                                                    <button onClick={() => setViewingProof(service.proofSignal!)} className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1 animate-pulse">
+                                                        <FileText size={10} /> Ver Comprovante
+                                                    </button>
+                                                ) : null}
+                                            </div>
                                             <input
                                                 type="text"
-                                                placeholder="https://..."
+                                                placeholder="Link de Pagamento"
                                                 className="w-full p-2 text-xs bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder rounded-lg outline-none focus:border-primary"
                                                 defaultValue={service.paymentLinkSignal}
                                                 onBlur={(e) => updateServiceStatus(service.id, service.status, { paymentLinkSignal: e.target.value })}
                                             />
+                                            {service.paymentStatus === 'PENDING' && service.proofSignal && (
+                                                <button
+                                                    onClick={() => updateServiceStatus(service.id, 'SCHEDULED', { paymentStatus: 'SIGNAL_PAID' })}
+                                                    className="w-full py-1.5 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1"
+                                                >
+                                                    <Check size={12} /> Confirmar Recebimento
+                                                </button>
+                                            )}
                                         </div>
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-lightText uppercase mb-1">Link Final (50%)</label>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <label className="block text-[10px] font-bold text-lightText uppercase">Final (50%)</label>
+                                                {service.paymentStatus === 'FULL_PAID' ? (
+                                                    <span className="text-[10px] font-bold text-green-600 flex items-center gap-1"><Check size={10} /> Confirmado</span>
+                                                ) : service.proofFinal ? (
+                                                    <button onClick={() => setViewingProof(service.proofFinal!)} className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1 animate-pulse">
+                                                        <FileText size={10} /> Ver Comprovante
+                                                    </button>
+                                                ) : null}
+                                            </div>
                                             <input
                                                 type="text"
-                                                placeholder="https://..."
+                                                placeholder="Link de Pagamento"
                                                 className="w-full p-2 text-xs bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder rounded-lg outline-none focus:border-primary"
                                                 defaultValue={service.paymentLinkFinal}
                                                 onBlur={(e) => updateServiceStatus(service.id, service.status, { paymentLinkFinal: e.target.value })}
                                             />
+                                            {service.paymentStatus === 'SIGNAL_PAID' && service.proofFinal && (
+                                                <button
+                                                    onClick={() => updateServiceStatus(service.id, service.status, { paymentStatus: 'FULL_PAID' })}
+                                                    className="w-full py-1.5 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1"
+                                                >
+                                                    <Check size={12} /> Confirmar Recebimento
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -322,6 +357,18 @@ export const AdminClients: React.FC = () => {
                         <div className="pt-4 border-t border-gray-100 dark:border-darkBorder">
                             <Button onClick={() => setManagingPaymentsClient(null)} fullWidth>Fechar</Button>
                         </div>
+                    </div>
+                </Modal>
+
+                {/* Modal: Visualizar Comprovante */}
+                <Modal
+                    isOpen={!!viewingProof}
+                    onClose={() => setViewingProof(null)}
+                    title="Comprovante de Pagamento"
+                >
+                    <div className="flex flex-col items-center gap-4">
+                        <img src={viewingProof || ''} alt="Comprovante" className="max-w-full rounded-xl shadow-lg border" />
+                        <Button onClick={() => setViewingProof(null)} fullWidth>Fechar</Button>
                     </div>
                 </Modal>
             </div>
