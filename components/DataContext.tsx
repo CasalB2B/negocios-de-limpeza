@@ -75,6 +75,7 @@ export interface ClientUser {
   email: string;
   password?: string; // Adicionado para correção do build
   phone: string;
+  photo?: string;
   address: string;
   addresses: Address[];
   type: 'FIXO' | 'AVULSO' | 'POS_OBRA' | 'PRIMEIRA_LIMPEZA' | string;
@@ -204,6 +205,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     name: u.name || 'Cliente Sem Nome',
     email: u.email || '',
     phone: u.phone || '',
+    photo: u.photo || '',
     address: u.address || '',
     addresses: Array.isArray(addresses) ? addresses.map(a => ({
       id: a.id,
@@ -502,6 +504,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (data.name) updates.name = data.name;
     if (data.email) updates.email = data.email;
     if (data.phone) updates.phone = data.phone;
+    if (data.photo) updates.photo = data.photo;
 
     await supabase.from('app_users').update(updates).eq('id', id);
   };
