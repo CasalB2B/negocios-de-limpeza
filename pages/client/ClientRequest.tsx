@@ -131,7 +131,7 @@ export const ClientRequest: React.FC = () => {
       const fullAddressString = `${addrStreet}, ${addrNumber} - ${addrDistrict}`;
 
       const newService = {
-         id: Math.floor(Math.random() * 10000).toString(),
+         id: `srv_${Date.now()}`, // ID único baseado em timestamp
          clientId: clientId,
          clientName: clientName,
          type: selectedDef.name,

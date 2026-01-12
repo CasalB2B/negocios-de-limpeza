@@ -347,25 +347,37 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     // DB Insert
-    const dbService = {
-      id: service.id,
-      client_id: service.clientId,
-      client_name: service.clientName,
-      type: service.type,
-      date: service.date,
-      time: service.time,
-      address: service.address,
-      status: service.status,
-      price: service.price,
-      notes: service.notes,
-      duration: estimatedDuration,
-      collaborator_id: service.collaboratorId,
-      collaborator_name: service.collaboratorName,
-      created_at: new Date(service.createdAt).toISOString()
-    };
+    try {
+      const dbService = {
+        id: service.id,
+        client_id: service.clientId,
+        client_name: service.clientName,
+        type: service.type,
+        date: service.date,
+        time: service.time,
+        address: service.address,
+        status: service.status,
+        price: service.price,
+        notes: service.notes,
+        duration: estimatedDuration,
+        collaborator_id: service.collaboratorId,
+        collaborator_name: service.collaboratorName,
+        created_at: new Date(service.createdAt).toISOString()
+      };
 
-    const { data } = await supabase.from('services').insert(dbService).select();
-    if (data) setServices(prev => [mapDbServiceToApp(data[0]), ...prev.filter(s => s.id !== service.id)]);
+      const { data, error } = await supabase.from('services').insert(dbService).select();
+
+      if (error) {
+        console.error("Erro ao salvar serviço:", error);
+        alert("Erro ao salvar solicitação no banco de dados. Verifique a conexão.");
+        return;
+      }
+
+      if (data) setServices(prev => [mapDbServiceToApp(data[0]), ...prev.filter(s => s.id !== service.id)]);
+    } catch (err) {
+      console.error("Erro ao salvar serviço:", err);
+      alert("Erro ao salvar solicitação. Tente novamente.");
+    }
   };
 
   const updateServiceStatus = async (id: string, status: string, additionalData?: Partial<Service>) => {
