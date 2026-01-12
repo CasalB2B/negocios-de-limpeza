@@ -14,10 +14,13 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentUser, currentCollaborator, logoutClient } = useData();
+  const { currentUser, currentCollaborator, logoutClient, logoutCollaborator, logoutAdmin } = useData();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
+    logoutClient();
+    logoutCollaborator();
+    logoutAdmin();
     navigate('/');
   };
 
@@ -61,8 +64,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                     key={link.path}
                     onClick={() => navigate(link.path)}
                     className={`text-sm font-bold transition-colors ${location.pathname === link.path
-                        ? 'text-primary'
-                        : 'text-lightText dark:text-darkTextSecondary hover:text-darkText dark:hover:text-darkTextPrimary'
+                      ? 'text-primary'
+                      : 'text-lightText dark:text-darkTextSecondary hover:text-darkText dark:hover:text-darkTextPrimary'
                       }`}
                   >
                     {link.label}
@@ -153,8 +156,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
               key={link.path}
               onClick={() => navigate(link.path)}
               className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all w-full active:scale-95 ${location.pathname === link.path
-                  ? 'text-primary'
-                  : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder'
+                ? 'text-primary'
+                : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder'
                 }`}
             >
               {link.icon}
@@ -213,8 +216,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
               key={item.path}
               onClick={() => navigate(item.path)}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl w-full transition-colors border-l-4 ${location.pathname === item.path
-                  ? 'bg-primary/5 dark:bg-primary/10 text-primary font-bold border-primary'
-                  : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder border-transparent'
+                ? 'bg-primary/5 dark:bg-primary/10 text-primary font-bold border-primary'
+                : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder border-transparent'
                 }`}
             >
               {item.icon}

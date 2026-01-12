@@ -69,6 +69,9 @@ export interface Service {
   paymentLinkFinal?: string;
   proofSignal?: string;
   proofFinal?: string;
+  checkedInAt?: string;
+  photosBefore?: string[];
+  photosAfter?: string[];
   createdAt: number;
 }
 
@@ -220,8 +223,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       city: a.city || '',
       state: a.state || '',
       cep: a.zip || '',
-      type: 'HOUSE',
-      isMain: false
+      type: a.type || 'HOUSE',
+      isMain: a.is_main || false
     })) : [],
     type: u.type || 'AVULSO',
     createdAt: u.created_at ? new Date(u.created_at).getTime() : Date.now()
@@ -257,6 +260,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     paymentLinkFinal: s.payment_link_final || '',
     proofSignal: s.proof_signal || '',
     proofFinal: s.proof_final || '',
+    checkedInAt: s.checked_in_at || undefined,
+    photosBefore: Array.isArray(s.photos_before) ? s.photos_before : [],
+    photosAfter: Array.isArray(s.photos_after) ? s.photos_after : [],
     createdAt: s.created_at ? new Date(s.created_at).getTime() : Date.now()
   });
 
@@ -414,6 +420,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (additionalData?.paymentLinkFinal !== undefined) updates.payment_link_final = additionalData.paymentLinkFinal;
     if (additionalData?.proofSignal !== undefined) updates.proof_signal = additionalData.proofSignal;
     if (additionalData?.proofFinal !== undefined) updates.proof_final = additionalData.proofFinal;
+    if (additionalData?.checkedInAt !== undefined) updates.checked_in_at = additionalData.checkedInAt;
+    if (additionalData?.photosBefore !== undefined) updates.photos_before = additionalData.photosBefore;
+    if (additionalData?.photosAfter !== undefined) updates.photos_after = additionalData.photosAfter;
     if (additionalData?.collaboratorId) {
       updates.collaborator_id = additionalData.collaboratorId;
       updates.collaborator_name = additionalData.collaboratorName;
@@ -665,7 +674,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       neighborhood: address.district,
       city: address.city,
       state: address.state,
-      zip: address.cep
+      zip: address.cep,
+      type: address.type || 'HOUSE',
+      is_main: address.isMain || false
     };
     await supabase.from('addresses').insert(dbAddress);
   };

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
-import { Plus, Calendar as CalendarIcon, X, Clock, MapPin, User, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, X, Clock, MapPin, User, CheckCircle, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../../components/Button';
 import { Badge } from '../../components/Badge';
 import { Input } from '../../components/Input';
@@ -27,11 +27,17 @@ export const AdminCalendar: React.FC = () => {
     });
 
     const timeSlots = ['08:00', '10:00', '12:00', '14:00', '16:00'];
-    const today = new Date();
+    const [currentDate, setCurrentDate] = useState(new Date());
+
+    const changeWeek = (days: number) => {
+        const next = new Date(currentDate);
+        next.setDate(currentDate.getDate() + days);
+        setCurrentDate(next);
+    };
 
     const weekDays = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(today);
-        d.setDate(today.getDate() + i);
+        const d = new Date(currentDate);
+        d.setDate(currentDate.getDate() + i);
         return {
             name: d.toLocaleDateString('pt-BR', { weekday: 'long' }).split('-')[0] + ' ' + d.getDate(),
             fullDate: d.toLocaleDateString('pt-BR'),
@@ -156,7 +162,29 @@ export const AdminCalendar: React.FC = () => {
                             <CalendarIcon size={16} /> Visão Semanal
                         </p>
                     </div>
-                    <div className="flex items-center w-full md:w-auto">
+                    <div className="flex items-center w-full md:w-auto gap-2">
+                        <div className="flex items-center bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder rounded-xl p-1 gap-1">
+                            <button
+                                onClick={() => changeWeek(-7)}
+                                className="p-2 hover:bg-gray-100 dark:hover:bg-darkBorder rounded-lg transition-colors text-lightText"
+                                title="Semana Anterior"
+                            >
+                                <ChevronLeft size={18} />
+                            </button>
+                            <button
+                                onClick={() => setCurrentDate(new Date())}
+                                className="px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/5 rounded-lg"
+                            >
+                                Hoje
+                            </button>
+                            <button
+                                onClick={() => changeWeek(7)}
+                                className="p-2 hover:bg-gray-100 dark:hover:bg-darkBorder rounded-lg transition-colors text-lightText"
+                                title="Próxima Semana"
+                            >
+                                <ChevronRight size={18} />
+                            </button>
+                        </div>
                         <Button icon={<Plus size={18} />} className="text-sm px-4 w-full md:w-auto" onClick={() => setShowModal(true)}>
                             Criar agendamento
                         </Button>

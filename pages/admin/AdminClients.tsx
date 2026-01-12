@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { Badge } from '../../components/Badge';
 import { Modal } from '../../components/Modal';
-import { Search, Filter, Mail, Phone, MapPin, Edit, Trash2, UserPlus, Download, Check, DollarSign, X, Lock, Info, FileText } from 'lucide-react';
+import { Search, Filter, Mail, Phone, MapPin, Edit, Trash2, UserPlus, Download, Check, DollarSign, X, Lock, Info, FileText, Camera } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 
 export const AdminClients: React.FC = () => {
     const { clients, deleteClient, registerClient, updateClient } = useData();
+    const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [editingClient, setEditingClient] = useState<any | null>(null);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -157,6 +159,17 @@ export const AdminClients: React.FC = () => {
                                                         className="p-2 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg text-lightText hover:text-green-600 transition-colors"
                                                     >
                                                         <DollarSign size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            const lastCompleted = services.filter(s => s.clientId === client.id && s.status === 'COMPLETED').sort((a, b) => b.createdAt - a.createdAt)[0];
+                                                            if (lastCompleted) navigate(`/admin/service-photos/${lastCompleted.id}`);
+                                                            else alert("Nenhum serviço concluído com fotos encontrado para este cliente.");
+                                                        }}
+                                                        title="Ver Fotos dos Serviços"
+                                                        className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-lightText hover:text-blue-600 transition-colors"
+                                                    >
+                                                        <Camera size={18} />
                                                     </button>
                                                     <button onClick={() => { setEditingClient({ ...client }); }} className="p-2 hover:bg-gray-100 dark:hover:bg-darkBorder rounded-lg text-lightText hover:text-primary transition-colors">
                                                         <Edit size={18} />

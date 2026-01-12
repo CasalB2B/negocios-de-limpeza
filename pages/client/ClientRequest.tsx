@@ -1,13 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button';
-import { Check, ArrowLeft, ChevronRight, CheckCircle, Shirt, HardHat, Sparkles, Send, ChevronLeft as ChevronLeftIcon, User, Facebook, Loader } from 'lucide-react';
+import { Check, ArrowLeft, ChevronRight, CheckCircle, Shirt, HardHat, Sparkles, Send, ChevronLeft as ChevronLeftIcon, User, Facebook, Loader, Plus, MapPin } from 'lucide-react';
 import { useData } from '../../components/DataContext'; // Import useData
 import { Address } from '../../types';
 
 export const ClientRequest: React.FC = () => {
    const navigate = useNavigate();
-   const { addService, services, registerClient, serviceDefinitions, currentUser } = useData();
+   const { addService, services, registerClient, serviceDefinitions, currentUser, addClientAddress } = useData();
    const [step, setStep] = useState(1);
    const totalSteps = 6;
    const [isSubmitting, setIsSubmitting] = useState(false);
@@ -20,6 +20,9 @@ export const ClientRequest: React.FC = () => {
    const [addrNumber, setAddrNumber] = useState('');
    const [addrDistrict, setAddrDistrict] = useState('');
    const [addrCity, setAddrCity] = useState('');
+   const [addrState, setAddrState] = useState('');
+   const [selectedAddressId, setSelectedAddressId] = useState<number | string | null>(null);
+   const [isNewAddress, setIsNewAddress] = useState(false);
 
    // Dynamic Details States
    const [qtyUnit, setQtyUnit] = useState(1); // Hours, or SQM base
@@ -95,7 +98,7 @@ export const ClientRequest: React.FC = () => {
          number: addrNumber,
          district: addrDistrict,
          city: addrCity || 'Não informada',
-         state: 'UF',
+         state: addrState || 'UF',
          cep: '',
          type: 'HOUSE',
          isMain: true
@@ -106,7 +109,7 @@ export const ClientRequest: React.FC = () => {
          name: fakeName,
          email: `${provider.toLowerCase()}@exemplo.com`,
          phone: '',
-         address: `${addrStreet}, ${addrNumber} - ${addrDistrict}`,
+         address: `${addrStreet}, ${addrNumber} - ${addrDistrict}, ${addrCity} - ${addrState}`,
          addresses: [newAddressObj],
          type: 'AVULSO' as const,
          password: '123456', // Senha padrão para login social
@@ -129,7 +132,7 @@ export const ClientRequest: React.FC = () => {
       else details = `${qtyUnit} m²`;
 
       const extraLabels = selectedExtras.map(eid => selectedDef.extras.find(e => e.id === eid)?.label).join(', ');
-      const fullAddressString = `${addrStreet}, ${addrNumber} - ${addrDistrict}`;
+      const fullAddressString = `${addrStreet}, ${addrNumber} - ${addrDistrict}, ${addrCity} - ${addrState}`;
 
       const newService = {
          id: `srv_${Date.now()}`, // ID único baseado em timestamp
@@ -157,7 +160,7 @@ export const ClientRequest: React.FC = () => {
       try {
          let clientId = currentUser?.id;
          let clientName = currentUser?.name;
-         const fullAddressString = `${addrStreet}, ${addrNumber} - ${addrDistrict}`;
+         const fullAddressString = `${addrStreet}, ${addrNumber} - ${addrDistrict}, ${addrCity} - ${addrState}`;
 
          if (!currentUser) {
             if (!regData.name || !regData.email || !regData.password) {
@@ -199,6 +202,23 @@ export const ClientRequest: React.FC = () => {
          }
 
          await createService(clientId!, clientName!);
+
+         // Salva novo endereço se o usuário estiver logado e escolheu 'Novo Endereço'
+         if (currentUser && isNewAddress) {
+            const newAddr: Address = {
+               id: Date.now(),
+               alias: `Endereço ${currentUser.addresses ? currentUser.addresses.length + 1 : 1}`,
+               street: addrStreet,
+               number: addrNumber,
+               district: addrDistrict,
+               city: addrCity || 'Não informada',
+               state: addrState || 'UF',
+               cep: '',
+               type: 'HOUSE',
+               isMain: false
+            };
+            await addClientAddress(currentUser.id, newAddr);
+         }
       } catch (e) {
          console.error("Erro ao finalizar:", e);
          alert("Ocorreu um erro ao processar seu pedido. Tente novamente.");
@@ -252,21 +272,71 @@ export const ClientRequest: React.FC = () => {
          </div>
 
          <div className="bg-white dark:bg-darkSurface p-6 rounded-2xl border border-gray-100 dark:border-darkBorder">
-            <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-4">Onde será o serviço?</label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div className="md:col-span-2">
-                  <input type="text" placeholder="Rua / Avenida" value={addrStreet} onChange={(e) => setAddrStreet(e.target.value)} className="w-full p-4 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary" />
+            <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-4 text-center md:text-left">Onde será o serviço?</label>
+
+            {currentUser && currentUser.addresses && currentUser.addresses.length > 0 && (
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+                  {currentUser.addresses.map((addr) => (
+                     <button
+                        key={addr.id}
+                        onClick={() => {
+                           setSelectedAddressId(addr.id);
+                           setIsNewAddress(false);
+                           setAddrStreet(addr.street);
+                           setAddrNumber(addr.number);
+                           setAddrDistrict(addr.district);
+                           setAddrCity(addr.city);
+                           setAddrState(addr.state);
+                        }}
+                        className={`p-4 rounded-xl border-2 text-left transition-all relative ${selectedAddressId === addr.id && !isNewAddress ? 'border-primary bg-primary/5' : 'border-gray-100 dark:border-darkBorder bg-gray-50 dark:bg-darkBg hover:border-primary/30'}`}
+                     >
+                        <div className="flex items-center gap-3">
+                           <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedAddressId === addr.id && !isNewAddress ? 'border-primary' : 'border-gray-300'}`}>
+                              {selectedAddressId === addr.id && !isNewAddress && <div className="w-2.5 h-2.5 bg-primary rounded-full"></div>}
+                           </div>
+                           <div>
+                              <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">{addr.alias}</p>
+                              <p className="text-xs text-lightText dark:text-darkTextSecondary truncate max-w-[150px]">{addr.street}, {addr.number}</p>
+                           </div>
+                        </div>
+                     </button>
+                  ))}
+                  <button
+                     onClick={() => {
+                        setIsNewAddress(true);
+                        setSelectedAddressId(null);
+                        setAddrStreet('');
+                        setAddrNumber('');
+                        setAddrDistrict('');
+                        setAddrCity('');
+                        setAddrState('');
+                     }}
+                     className={`p-4 rounded-xl border-2 border-dashed text-left transition-all ${isNewAddress ? 'border-primary bg-primary/5' : 'border-gray-100 dark:border-darkBorder bg-transparent hover:border-primary/50'}`}
+                  >
+                     <div className="flex items-center gap-3">
+                        <Plus size={20} className="text-primary" />
+                        <span className="font-bold text-sm text-primary">Novo Endereço</span>
+                     </div>
+                  </button>
                </div>
-               <div>
-                  <input type="text" placeholder="Número" value={addrNumber} onChange={(e) => setAddrNumber(e.target.value)} className="w-full p-4 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary" />
+            )}
+
+            {(isNewAddress || !currentUser || (currentUser && currentUser.addresses.length === 0)) && (
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-300">
+                  <div className="md:col-span-2">
+                     <input type="text" placeholder="Rua / Avenida" value={addrStreet} onChange={(e) => setAddrStreet(e.target.value)} className="w-full p-4 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary" />
+                  </div>
+                  <div>
+                     <input type="text" placeholder="Número" value={addrNumber} onChange={(e) => setAddrNumber(e.target.value)} className="w-full p-4 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary" />
+                  </div>
+                  <div>
+                     <input type="text" placeholder="Bairro" value={addrDistrict} onChange={(e) => setAddrDistrict(e.target.value)} className="w-full p-4 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary" />
+                  </div>
+                  <div className="md:col-span-2">
+                     <input type="text" placeholder="Cidade (Opcional)" value={addrCity} onChange={(e) => setAddrCity(e.target.value)} className="w-full p-4 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary" />
+                  </div>
                </div>
-               <div>
-                  <input type="text" placeholder="Bairro" value={addrDistrict} onChange={(e) => setAddrDistrict(e.target.value)} className="w-full p-4 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary" />
-               </div>
-               <div className="md:col-span-2">
-                  <input type="text" placeholder="Cidade (Opcional)" value={addrCity} onChange={(e) => setAddrCity(e.target.value)} className="w-full p-4 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary" />
-               </div>
-            </div>
+            )}
          </div>
       </div>
    );

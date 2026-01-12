@@ -34,6 +34,7 @@ import { AdminClients } from './pages/admin/AdminClients';
 import { AdminPayments } from './pages/admin/AdminPayments';
 import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminServices } from './pages/admin/AdminServices';
+import { AdminServicePhotos } from './pages/admin/AdminServicePhotos';
 
 const App: React.FC = () => {
   return (
@@ -46,7 +47,7 @@ const App: React.FC = () => {
             <Route path="/client/login" element={<ClientLogin />} />
             <Route path="/collab/login" element={<CollaboratorLogin />} />
             <Route path="/admin/login" element={<AdminLogin />} />
-            
+
             {/* Rota pública para fazer orçamento (pode ser acessada sem login, mas exige no final) */}
             <Route path="/client/new-request" element={<ClientRequest />} />
 
@@ -83,6 +84,7 @@ const App: React.FC = () => {
               <Route path="/admin/services" element={<AdminServices />} />
               <Route path="/admin/payments" element={<AdminPayments />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
+              <Route path="/admin/service-photos/:id" element={<AdminServicePhotos />} />
             </Route>
 
             {/* Fallback */}
