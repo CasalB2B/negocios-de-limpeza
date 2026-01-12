@@ -86,7 +86,12 @@ export const AdminCollaborators: React.FC = () => {
    const handleUpdate = () => {
       if (viewCollab) {
          updateCollaborator(viewCollab.id, {
-            level: viewCollab.level
+            name: viewCollab.name,
+            email: viewCollab.email,
+            phone: viewCollab.phone,
+            level: viewCollab.level,
+            photo: viewCollab.photo,
+            status: viewCollab.status
          });
          setViewCollab(null);
       }

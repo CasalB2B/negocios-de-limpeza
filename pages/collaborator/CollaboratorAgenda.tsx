@@ -7,7 +7,7 @@ import { useData } from '../../components/DataContext'; // Import Context
 
 export const CollaboratorAgenda: React.FC = () => {
    const navigate = useNavigate();
-   const { services, currentUser, platformSettings } = useData();
+   const { services, currentCollaborator, platformSettings } = useData();
 
    // Filter only relevant services for the collaborator
    // WAITING_SIGNAL, PENDING, BUDGET_READY do NOT appear here.
@@ -62,8 +62,8 @@ export const CollaboratorAgenda: React.FC = () => {
    };
 
    const calculatePayout = (service: any) => {
-      if (!currentUser || !platformSettings) return 0;
-      const level = (currentUser.level || 'JUNIOR').toLowerCase() as 'junior' | 'senior' | 'master';
+      if (!currentCollaborator || !platformSettings) return 0;
+      const level = (currentCollaborator.level || 'JUNIOR').toLowerCase() as 'junior' | 'senior' | 'master';
       const hours = parseInt(service.duration) || 4;
 
       const matrix = platformSettings.payouts[level];

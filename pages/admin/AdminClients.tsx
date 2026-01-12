@@ -310,13 +310,20 @@ export const AdminClients: React.FC = () => {
                                                 defaultValue={service.paymentLinkSignal}
                                                 onBlur={(e) => updateServiceStatus(service.id, service.status, { paymentLinkSignal: e.target.value })}
                                             />
-                                            {service.paymentStatus === 'PENDING' && service.proofSignal && (
-                                                <button
-                                                    onClick={() => updateServiceStatus(service.id, 'SCHEDULED', { paymentStatus: 'SIGNAL_PAID' })}
-                                                    className="w-full py-1.5 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1"
-                                                >
-                                                    <Check size={12} /> Confirmar Recebimento
-                                                </button>
+                                            {(service.paymentStatus === 'PENDING' || !service.paymentStatus) && (
+                                                <div className="space-y-2">
+                                                    {service.proofSignal && (
+                                                        <button onClick={() => setViewingProof(service.proofSignal!)} className="w-full py-1 border border-primary text-primary text-[10px] font-bold rounded-lg hover:bg-primary/5 transition-colors flex items-center justify-center gap-1">
+                                                            <FileText size={12} /> Ver Comprovante
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => updateServiceStatus(service.id, 'SCHEDULED', { paymentStatus: 'SIGNAL_PAID' })}
+                                                        className="w-full py-1.5 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1"
+                                                    >
+                                                        <Check size={12} /> {service.proofSignal ? 'Validar Comprovante' : 'Confirmar manual (sem comprovante)'}
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                         <div className="space-y-2">
@@ -337,13 +344,20 @@ export const AdminClients: React.FC = () => {
                                                 defaultValue={service.paymentLinkFinal}
                                                 onBlur={(e) => updateServiceStatus(service.id, service.status, { paymentLinkFinal: e.target.value })}
                                             />
-                                            {service.paymentStatus === 'SIGNAL_PAID' && service.proofFinal && (
-                                                <button
-                                                    onClick={() => updateServiceStatus(service.id, service.status, { paymentStatus: 'FULL_PAID' })}
-                                                    className="w-full py-1.5 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1"
-                                                >
-                                                    <Check size={12} /> Confirmar Recebimento
-                                                </button>
+                                            {service.paymentStatus === 'SIGNAL_PAID' && (
+                                                <div className="space-y-2">
+                                                    {service.proofFinal && (
+                                                        <button onClick={() => setViewingProof(service.proofFinal!)} className="w-full py-1 border border-primary text-primary text-[10px] font-bold rounded-lg hover:bg-primary/5 transition-colors flex items-center justify-center gap-1">
+                                                            <FileText size={12} /> Ver Comprovante
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => updateServiceStatus(service.id, service.status, { paymentStatus: 'FULL_PAID' })}
+                                                        className="w-full py-1.5 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1"
+                                                    >
+                                                        <Check size={12} /> {service.proofFinal ? 'Validar Comprovante' : 'Finalizar manual (sem comprovante)'}
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                     </div>

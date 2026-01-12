@@ -566,7 +566,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       address: client.address,
       role: 'CLIENT',
       type: client.type,
-      password: (client as any).password // Usando cast para garantir que passe no build da Vercel
+      password: (client as any).password,
+      photo: client.photo
     }).select().single();
 
     if (userError) {
