@@ -1,0 +1,9 @@
+{
+  "name": "Negócios de Limpeza",
+  "description": "Uma plataforma completa para gestão de serviços de limpeza, conectando clientes, colaboradores e administradores com fluxos de trabalho dedicados e identidade visual vibrante.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Negócios de Limpeza</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          container: {
+            center: true,
+            padding: "2rem",
+            screens: {
+              "2xl": "1400px",
+            },
+          },
+          extend: {
+            colors: {
+              border: "var(--border)",
+              input: "var(--input)",
+              ring: "#a163ff", // Primary Ring
+              background: "var(--background)",
+              foreground: "var(--foreground)",
+              primary: {
+                DEFAULT: "#a163ff",
+                foreground: "#ffffff",
+                hover: "#8a4fe0",
+              },
+              secondary: {
+                DEFAULT: "#EC4899",
+                foreground: "#ffffff",
+                hover: "#db2777",
+              },
+              destructive: {
+                DEFAULT: "#ef4444",
+                foreground: "#ffffff",
+              },
+              muted: {
+                DEFAULT: "#f1f5f9",
+                foreground: "#64748b",
+              },
+              accent: {
+                DEFAULT: "#f1f5f9",
+                foreground: "#0f172a",
+              },
+              // Legacy/Custom Palette Support
+              darkText: '#141118',
+              lightText: '#726189',
+              darkBg: '#0f172a',      
+              darkSurface: '#1e293b', 
+              darkBorder: '#334155',
+              darkTextPrimary: '#f8fafc',
+              darkTextSecondary: '#94a3b8'
+            },
+            borderRadius: {
+              lg: "0.75rem", // 12px
+              xl: "1rem",    // 16px
+              "2xl": "1.5rem", // 24px
+              "3xl": "2rem", // 32px
+            },
+            fontFamily: {
+              sans: ['Manrope', 'sans-serif'],
+              display: ['Manrope', 'sans-serif'],
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      :root {
+        --background: #f7f6f8;
+        --foreground: #141118;
+        --border: #e2e8f0;
+        --input: #e2e8f0;
+        --radius: 1rem;
+      }
+ 
+      .dark {
+        --background: #0f172a;
+        --foreground: #f8fafc;
+        --border: #334155;
+        --input: #334155;
+      }
+
+      body {
+        font-family: 'Manrope', sans-serif;
+        background-color: var(--background);
+        color: var(--foreground);
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1; 
+        border-radius: 4px;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #475569;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8; 
+      }
+      
+      /* Utility for hiding scrollbar but keeping functionality */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "recharts": "https://esm.sh/recharts@^3.6.0",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.90.1"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
