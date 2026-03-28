@@ -102,6 +102,23 @@ export interface Notification {
   read: boolean;
 }
 
+export interface Quote {
+  id: string;
+  name: string;
+  email: string;
+  whatsapp: string;
+  cep: string;
+  propertyType: string;
+  rooms: string;
+  priorities: string;
+  internalCleaning: string;
+  renovation: string;
+  serviceOption: string;
+  status: 'NEW' | 'CONTACTED' | 'CONVERTED' | 'LOST';
+  chatSummary?: string;
+  createdAt: number;
+}
+
 export interface Transaction {
   id: string;
   type: 'INCOME' | 'EXPENSE';
@@ -157,6 +174,10 @@ interface DataContextType {
   
   markTransactionPaid: (id: string) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
+
+  quotes: Quote[];
+  addQuote: (quote: Omit<Quote, 'id' | 'createdAt' | 'status'>) => Promise<Quote>;
+  updateQuoteStatus: (id: string, status: Quote['status']) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -246,6 +267,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [collaborators, setCollaborators] = useState<CollaboratorUser[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
 
   // --- PERSISTÊNCIA DE SESSÃO (INIT) ---
   const [currentUser, setCurrentUser] = useState<ClientUser | null>(() => {
@@ -372,6 +394,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const { data: trxs } = await supabase.from('transactions').select('*');
         if (trxs) setTransactions(trxs as any);
+
+        const { data: qts } = await supabase.from('quotes').select('*').order('created_at', { ascending: false });
+        if (qts) setQuotes(qts.map((q: any) => ({
+            id: q.id,
+            name: q.name || '',
+            email: q.email || '',
+            whatsapp: q.whatsapp || '',
+            cep: q.cep || '',
+            propertyType: q.property_type || '',
+            rooms: q.rooms || '',
+            priorities: q.priorities || '',
+            internalCleaning: q.internal_cleaning || '',
+            renovation: q.renovation || '',
+            serviceOption: q.service_option || '',
+            status: q.status || 'NEW',
+            chatSummary: q.chat_summary || '',
+            createdAt: q.created_at ? new Date(q.created_at).getTime() : Date.now()
+        })));
 
     } catch (error) {
         console.warn("Modo Demonstração: Usando dados Mock (Supabase não configurado ou offline).");
@@ -752,6 +792,45 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await supabase.from('transactions').delete().eq('id', id);
   };
 
+  // --- ACTIONS: QUOTES ---
+  const addQuote = async (quoteData: Omit<Quote, 'id' | 'createdAt' | 'status'>): Promise<Quote> => {
+    const localQuote: Quote = {
+        ...quoteData,
+        id: `quote_${Date.now()}`,
+        status: 'NEW',
+        createdAt: Date.now()
+    };
+    setQuotes(prev => [localQuote, ...prev]);
+    await addNotificationInternal({ type: 'NEW_REQUEST', title: 'Novo Orçamento', desc: `${quoteData.name} solicitou orçamento via chat.` });
+
+    const { data, error } = await supabase.from('quotes').insert({
+        name: quoteData.name,
+        email: quoteData.email,
+        whatsapp: quoteData.whatsapp,
+        cep: quoteData.cep,
+        property_type: quoteData.propertyType,
+        rooms: quoteData.rooms,
+        priorities: quoteData.priorities,
+        internal_cleaning: quoteData.internalCleaning,
+        renovation: quoteData.renovation,
+        service_option: quoteData.serviceOption,
+        status: 'NEW',
+        chat_summary: quoteData.chatSummary || ''
+    }).select().single();
+
+    if (data && !error) {
+        const saved: Quote = { ...localQuote, id: data.id, createdAt: new Date(data.created_at).getTime() };
+        setQuotes(prev => prev.map(q => q.id === localQuote.id ? saved : q));
+        return saved;
+    }
+    return localQuote;
+  };
+
+  const updateQuoteStatus = async (id: string, status: Quote['status']) => {
+      setQuotes(prev => prev.map(q => q.id === id ? { ...q, status } : q));
+      await supabase.from('quotes').update({ status }).eq('id', id);
+  };
+
   return (
     <DataContext.Provider value={{ 
       services, clients, collaborators, notifications, serviceDefinitions, transactions, platformSettings,
@@ -761,7 +840,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       registerClient, updateClient, deleteClient, loginClient, logoutClient,
       addClientAddress, updateClientAddress, deleteClientAddress,
       registerCollaborator, updateCollaborator, deleteCollaborator, loginCollaborator, logoutCollaborator,
-      loginAdmin, logoutAdmin, markAllNotificationsRead, updatePlatformSettings, markTransactionPaid, deleteTransaction
+      loginAdmin, logoutAdmin, markAllNotificationsRead, updatePlatformSettings, markTransactionPaid, deleteTransaction,
+      quotes, addQuote, updateQuoteStatus
     }}>
       {children}
     </DataContext.Provider>

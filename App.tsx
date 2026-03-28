@@ -34,6 +34,8 @@ import { AdminClients } from './pages/admin/AdminClients';
 import { AdminPayments } from './pages/admin/AdminPayments';
 import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminServices } from './pages/admin/AdminServices';
+import { AdminQuotes } from './pages/admin/AdminQuotes';
+import { QuoteChat } from './pages/client/QuoteChat';
 
 const App: React.FC = () => {
   return (
@@ -49,6 +51,8 @@ const App: React.FC = () => {
             
             {/* Rota pública para fazer orçamento (pode ser acessada sem login, mas exige no final) */}
             <Route path="/client/new-request" element={<ClientRequest />} />
+            {/* Chat de orçamento com IA - rota pública */}
+            <Route path="/client/quote-chat" element={<QuoteChat />} />
 
             {/* Protected Client Routes */}
             <Route element={<PrivateRoute role={UserRole.CLIENT} />}>
@@ -81,6 +85,7 @@ const App: React.FC = () => {
               <Route path="/admin/collaborators" element={<AdminCollaborators />} />
               <Route path="/admin/clients" element={<AdminClients />} />
               <Route path="/admin/services" element={<AdminServices />} />
+              <Route path="/admin/quotes" element={<AdminQuotes />} />
               <Route path="/admin/payments" element={<AdminPayments />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
             </Route>

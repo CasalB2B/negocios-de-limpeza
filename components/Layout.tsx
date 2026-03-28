@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
-import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, Plus, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid } from 'lucide-react';
+import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, Plus, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare } from 'lucide-react';
 import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -172,7 +172,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           { icon: <Calendar size={20} />, label: 'Calendário', path: '/admin/calendar' },
           { icon: <Smile size={20} />, label: 'Clientes', path: '/admin/clients' },
           { icon: <Users size={20} />, label: 'Equipe', path: '/admin/collaborators' },
-          { icon: <Sparkles size={20} />, label: 'Serviços', path: '/admin/services' }, // Novo Link
+          { icon: <Sparkles size={20} />, label: 'Serviços', path: '/admin/services' },
+          { icon: <MessageSquare size={20} />, label: 'Orçamentos', path: '/admin/quotes' },
           { icon: <DollarSign size={20} />, label: 'Financeiro', path: '/admin/payments' },
           { icon: <Settings size={20} />, label: 'Configurações', path: '/admin/settings' },
         ];
