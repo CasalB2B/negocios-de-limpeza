@@ -55,7 +55,7 @@ export const QuoteChat: React.FC = () => {
   const [chatPhotos, setChatPhotos] = useState<string[]>([]);
   const [savedName, setSavedName] = useState(isDemo ? 'Maria' : '');
   const [credentials, setCredentials] = useState<{ login: string; password: string; phone: string } | null>(
-    isDemo ? { login: '27999998888@cliente.ndl', password: '888', phone: '(27) 99999-8888' } : null
+    isDemo ? { login: 'Maria', password: '8888', phone: '(27) 99999-8888' } : null
   );
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState<'login' | 'password' | null>(null);
@@ -129,7 +129,7 @@ export const QuoteChat: React.FC = () => {
         const loginEmail = quoteData.email?.trim()
           ? quoteData.email.trim()
           : `${phoneDigits}@cliente.ndl`;
-        const loginPassword = phoneDigits.slice(-3) || '000';
+        const loginPassword = phoneDigits.slice(-4) || '0000';
 
         try {
           await registerClient({
@@ -147,8 +147,9 @@ export const QuoteChat: React.FC = () => {
           // Account may already exist — still show success
         }
 
-        setSavedName((quoteData.name || '').split(' ')[0]);
-        setCredentials({ login: loginEmail, password: loginPassword, phone: quoteData.whatsapp || '' });
+        const firstName = (quoteData.name || '').split(' ')[0];
+        setSavedName(firstName);
+        setCredentials({ login: firstName, password: loginPassword, phone: quoteData.whatsapp || '' });
         setIsComplete(true);
       }
     } catch (err: any) {
@@ -221,8 +222,8 @@ export const QuoteChat: React.FC = () => {
                 {/* Login = phone number */}
                 <div className="bg-gray-50 rounded-xl p-3 flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Login — seu número de celular</p>
-                    <p className="font-bold text-gray-800 text-sm">{credentials.phone || credentials.login}</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Login — seu primeiro nome</p>
+                    <p className="font-bold text-gray-800 text-sm">{credentials.login}</p>
                   </div>
                   <button onClick={() => handleCopy(credentials.phone || credentials.login, 'login')}
                     className="ml-2 p-2 rounded-lg hover:bg-gray-200 transition-colors flex-shrink-0">
@@ -233,8 +234,8 @@ export const QuoteChat: React.FC = () => {
                 {/* Password = last 3 digits */}
                 <div className="bg-gray-50 rounded-xl p-3 flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Senha — últimos 3 dígitos do celular</p>
-                    <p className="font-bold text-gray-800 text-sm tracking-widest">{showPassword ? credentials.password : '•••'}</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Senha — últimos 4 dígitos do celular</p>
+                    <p className="font-bold text-gray-800 text-sm tracking-widest">{showPassword ? credentials.password : '••••'}</p>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                     <button onClick={() => setShowPassword(p => !p)}

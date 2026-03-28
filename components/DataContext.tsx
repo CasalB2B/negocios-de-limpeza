@@ -614,11 +614,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (currentUser?.id === id) logoutClient();
   };
 
-  const loginClient = async (emailOrPhone: string, password: string): Promise<boolean> => {
-    const phoneDigits = emailOrPhone.replace(/\D/g, '');
-    // Match by email OR by phone number (digits only)
+  const loginClient = async (nameOrEmail: string, password: string): Promise<boolean> => {
+    const inputLower = nameOrEmail.trim().toLowerCase();
+    // Match by first name (case-insensitive) OR email
     const localUser = clients.find(c =>
-      (c.email === emailOrPhone || c.phone.replace(/\D/g, '') === phoneDigits) &&
+      (c.name.split(' ')[0].toLowerCase() === inputLower || c.email === nameOrEmail) &&
       c.password === password
     );
     if (localUser) {
@@ -626,26 +626,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('auth_client', JSON.stringify(localUser));
         return true;
     }
-    // Try Supabase by email
-    const { data: userByEmail } = await supabase.from('app_users').select('*').eq('email', emailOrPhone).eq('role', 'CLIENT').single();
-    if (userByEmail && userByEmail.password === password) {
-        const { data: addrs } = await supabase.from('addresses').select('*').eq('user_id', userByEmail.id);
-        const clientObj = mapDbUserToClient(userByEmail, addrs || []);
+    // Try Supabase — fetch all clients and match by first name or email
+    const { data: users } = await supabase.from('app_users').select('*').eq('role', 'CLIENT');
+    const match = (users || []).find((u: any) =>
+      (u.name?.split(' ')[0].toLowerCase() === inputLower || u.email === nameOrEmail) &&
+      u.password === password
+    );
+    if (match) {
+        const { data: addrs } = await supabase.from('addresses').select('*').eq('user_id', match.id);
+        const clientObj = mapDbUserToClient(match, addrs || []);
         setCurrentUser(clientObj);
         localStorage.setItem('auth_client', JSON.stringify(clientObj));
         return true;
-    }
-    // Try Supabase by phone
-    if (phoneDigits) {
-        const { data: users } = await supabase.from('app_users').select('*').eq('role', 'CLIENT');
-        const userByPhone = (users || []).find((u: any) => u.phone?.replace(/\D/g, '') === phoneDigits && u.password === password);
-        if (userByPhone) {
-            const { data: addrs } = await supabase.from('addresses').select('*').eq('user_id', userByPhone.id);
-            const clientObj = mapDbUserToClient(userByPhone, addrs || []);
-            setCurrentUser(clientObj);
-            localStorage.setItem('auth_client', JSON.stringify(clientObj));
-            return true;
-        }
     }
     return false;
   };

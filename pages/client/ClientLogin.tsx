@@ -100,12 +100,12 @@ export const ClientLogin: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase">Número de celular</label>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase">Seu nome</label>
               <input
                 type="text"
-                autoComplete="tel"
+                autoComplete="name"
                 className="w-full p-4 rounded-xl border border-gray-200 bg-white text-gray-900 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder-gray-300"
-                placeholder="(27) 99999-0000"
+                placeholder="Ex: Maria"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
               />
@@ -113,7 +113,7 @@ export const ClientLogin: React.FC = () => {
 
             <div className="relative">
               <div className="flex justify-between mb-1.5">
-                 <label className="block text-xs font-bold text-gray-700 uppercase">Senha — últimos 3 dígitos do celular</label>
+                 <label className="block text-xs font-bold text-gray-700 uppercase">Senha — últimos 4 dígitos do celular</label>
                  <button type="button" className="text-xs font-bold text-primary hover:underline">Esqueci minha senha</button>
               </div>
               <input 
