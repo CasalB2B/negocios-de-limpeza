@@ -39,17 +39,22 @@ export const QuoteChat: React.FC = () => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
+  // Demo mode: ?demo=true skips the chat and shows the onboarding screen with fake data
+  const isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
+
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'model', text: INITIAL_AI_MESSAGE, timestamp: new Date() }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
+  const [isComplete, setIsComplete] = useState(isDemo);
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [chatPhotos, setChatPhotos] = useState<string[]>([]);
-  const [savedName, setSavedName] = useState('');
-  const [credentials, setCredentials] = useState<{ login: string; password: string } | null>(null);
+  const [savedName, setSavedName] = useState(isDemo ? 'Maria' : '');
+  const [credentials, setCredentials] = useState<{ login: string; password: string } | null>(
+    isDemo ? { login: '27999998888@cliente.ndl', password: '27999998888' } : null
+  );
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState<'login' | 'password' | null>(null);
 
