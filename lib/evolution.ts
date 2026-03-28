@@ -2,6 +2,11 @@ const EVOLUTION_URL = import.meta.env.VITE_EVOLUTION_URL || 'http://localhost:80
 const EVOLUTION_KEY = import.meta.env.VITE_EVOLUTION_KEY || 'ndl-evolution-key-2024';
 const INSTANCE = import.meta.env.VITE_EVOLUTION_INSTANCE || 'ndl-whatsapp';
 
+const BASE_HEADERS: Record<string, string> = {
+  apikey: EVOLUTION_KEY,
+  'ngrok-skip-browser-warning': 'true',
+};
+
 export interface EvolutionStatus {
   connected: boolean;
   profileName: string | null;
@@ -11,7 +16,7 @@ export interface EvolutionStatus {
 export async function getStatus(): Promise<EvolutionStatus> {
   try {
     const res = await fetch(`${EVOLUTION_URL}/instance/fetchInstances`, {
-      headers: { apikey: EVOLUTION_KEY },
+      headers: BASE_HEADERS,
     });
     const data = await res.json();
     const instance = Array.isArray(data) ? data[0] : data?.instance;
@@ -29,7 +34,7 @@ export async function getStatus(): Promise<EvolutionStatus> {
 export async function getQrCode(): Promise<string | null> {
   try {
     const res = await fetch(`${EVOLUTION_URL}/instance/connect/${INSTANCE}`, {
-      headers: { apikey: EVOLUTION_KEY },
+      headers: BASE_HEADERS,
     });
     const data = await res.json();
     return data?.base64 ?? null;
@@ -43,7 +48,7 @@ export async function sendMessage(phone: string, text: string): Promise<boolean>
     const number = '55' + phone.replace(/\D/g, '');
     const res = await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_KEY },
+      headers: { 'Content-Type': 'application/json', ...BASE_HEADERS },
       body: JSON.stringify({ number, text, delay: 1000 }),
     });
     return res.ok;
