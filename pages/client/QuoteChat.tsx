@@ -6,13 +6,9 @@ import { sendMessage, GeminiMessage, extractQuoteData, cleanAIResponse } from '.
 
 const INITIAL_AI_MESSAGE = `Olá! 👋 Bem-vindo à **Negócios de Limpeza**!
 
-Sou a assistente virtual da empresa e estou aqui para te ajudar a gerar um **orçamento gratuito e personalizado** para o seu imóvel. 🏠✨
+Sou a assistente virtual e vou te ajudar a gerar um **orçamento gratuito** rapidinho. 🏠✨
 
-Para começar, pode me informar:
-• **Nome completo**
-• **E-mail**
-• **WhatsApp** (com DDD)
-• **CEP**`;
+Para começar... qual é o seu **nome**? 😊`;
 
 interface ChatMessage {
   role: 'user' | 'model';
@@ -197,7 +193,7 @@ export const QuoteChat: React.FC = () => {
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto max-w-2xl mx-auto w-full px-4 py-6 space-y-4">
+      <div className="flex-1 overflow-y-auto max-w-2xl mx-auto w-full px-3 md:px-4 py-4 space-y-4 pb-4">
         {messages.map((msg, idx) => (
           <div
             key={idx}
@@ -257,29 +253,34 @@ export const QuoteChat: React.FC = () => {
       </div>
 
       {/* Input */}
-      <div className="sticky bottom-0 bg-white border-t border-gray-200 shadow-lg">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-end gap-3">
+      <div className="sticky bottom-0 bg-white border-t border-gray-200 shadow-lg pb-safe">
+        <div className="max-w-2xl mx-auto px-3 py-3 flex items-end gap-2">
           <textarea
             ref={inputRef}
             value={input}
-            onChange={e => setInput(e.target.value)}
+            onChange={e => {
+              setInput(e.target.value);
+              // Auto-resize
+              e.target.style.height = 'auto';
+              e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+            }}
             onKeyDown={handleKeyDown}
             placeholder="Digite sua resposta..."
             rows={1}
-            className="flex-1 resize-none border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-800 focus:border-[#a163ff] focus:ring-1 focus:ring-[#a163ff] outline-none transition-all bg-gray-50 max-h-32 overflow-y-auto"
-            style={{ minHeight: '48px' }}
+            className="flex-1 resize-none border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-800 focus:border-[#a163ff] focus:ring-2 focus:ring-[#a163ff]/20 outline-none transition-all bg-gray-50"
+            style={{ minHeight: '48px', maxHeight: '120px' }}
             disabled={isLoading || isComplete}
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading || isComplete}
-            className="w-12 h-12 bg-[#a163ff] hover:bg-[#8f4ee0] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-full flex items-center justify-center transition-colors flex-shrink-0 shadow-md shadow-purple-200"
+            className="w-12 h-12 min-w-[48px] bg-[#a163ff] hover:bg-[#8f4ee0] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-full flex items-center justify-center transition-colors flex-shrink-0 shadow-md shadow-purple-200 active:scale-95"
           >
             {isLoading ? <Loader size={18} className="animate-spin" /> : <Send size={18} />}
           </button>
         </div>
-        <p className="text-center text-xs text-gray-400 pb-3">
-          Pressione Enter para enviar · Shift+Enter para nova linha
+        <p className="text-center text-xs text-gray-400 pb-2 hidden md:block">
+          Enter para enviar · Shift+Enter para nova linha
         </p>
       </div>
     </div>
