@@ -49,7 +49,7 @@ export async function sendMessage(phone: string, text: string): Promise<boolean>
     const res = await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...BASE_HEADERS },
-      body: JSON.stringify({ number, text, delay: 1000 }),
+      body: JSON.stringify({ number, textMessage: { text }, delay: 1000 }),
     });
     return res.ok;
   } catch {
