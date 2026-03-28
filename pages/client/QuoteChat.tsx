@@ -40,7 +40,9 @@ export const QuoteChat: React.FC = () => {
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   // Demo mode: ?demo=true skips the chat and shows the onboarding screen with fake data
-  const isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
+  // HashRouter puts params in the hash: /#/client/quote-chat?demo=true
+  const hashSearch = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
+  const isDemo = new URLSearchParams(hashSearch).get('demo') === 'true';
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'model', text: INITIAL_AI_MESSAGE, timestamp: new Date() }
