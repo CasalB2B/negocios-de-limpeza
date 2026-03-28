@@ -139,7 +139,8 @@ export const ClientRequest: React.FC = () => {
         time: '08:00', 
         address: fullAddressString,
         status: 'PENDING',
-        price: totalPrice, 
+        price: totalPrice,
+        duration: 4 as 4 | 6 | 8,
         createdAt: Date.now(),
         notes: `Detalhes: ${details}. Extras: ${extraLabels}`
       };

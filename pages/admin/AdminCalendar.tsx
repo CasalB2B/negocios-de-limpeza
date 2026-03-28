@@ -76,6 +76,7 @@ export const AdminCalendar: React.FC = () => {
         address: selectedClient?.address || 'Endereço Principal',
         status: newAppt.collaboratorId ? 'CONFIRMED' : 'WAITING_SIGNAL', // Se tem collab e cria manual, assume confirmado
         price: parseFloat(newAppt.price) || 0,
+        duration: 4 as 4 | 6 | 8,
         createdAt: Date.now()
      });
      setShowModal(false);
