@@ -5,9 +5,10 @@ import { useData, Quote, ClientUser } from '../../components/DataContext';
 import {
   MessageSquare, Phone, Mail, ChevronDown,
   CheckCircle, Clock, TrendingUp, X, Plus, FileText, UserPlus,
-  Wand2, Loader2, ImagePlus, Camera,
+  Wand2, Loader2, ImagePlus, Camera, Send,
 } from 'lucide-react';
 import { extractFromConversation } from '../../lib/gemini';
+import { sendMessage as sendWhatsApp, buildMessage } from '../../lib/evolution';
 
 // --- STATUS ---
 const STATUS_LABELS: Record<Quote['status'], { label: string; color: string; bg: string }> = {
@@ -488,6 +489,32 @@ interface QuoteCardProps {
 const QuoteCard: React.FC<QuoteCardProps> = ({ quote, onStatusChange, onCreateAccount }) => {
   const [showChat, setShowChat] = useState(false);
   const [showPDF, setShowPDF] = useState(false);
+  const [sendingWpp, setSendingWpp] = useState(false);
+  const [wppResult, setWppResult] = useState<'ok' | 'err' | null>(null);
+
+  const handleSendProposal = async () => {
+    if (!quote.whatsapp) return;
+    setSendingWpp(true);
+    setWppResult(null);
+    try {
+      const storedTemplates = localStorage.getItem('ndl_whatsapp_templates');
+      const templates = storedTemplates ? JSON.parse(storedTemplates) : null;
+      const proposalTemplate = templates?.proposal || `Olá, [Nome]! Sua proposta está pronta! 🎉\n\n🏠 *Serviço:* [Servico]\n\nEntre em contato para confirmar o agendamento! 😊`;
+      const msg = buildMessage(proposalTemplate, {
+        Nome: quote.name.split(' ')[0],
+        Servico: quote.serviceOption || 'Limpeza',
+        Endereco: quote.cep || '',
+        Valor: '',
+        Data: '',
+      });
+      const ok = await sendWhatsApp(quote.whatsapp, msg);
+      setWppResult(ok ? 'ok' : 'err');
+      if (ok) onStatusChange(quote.id, 'CONTACTED');
+    } catch {
+      setWppResult('err');
+    }
+    setSendingWpp(false);
+  };
   const status = STATUS_LABELS[quote.status];
   const date = new Date(quote.createdAt).toLocaleDateString('pt-BR', {
     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -626,7 +653,32 @@ const QuoteCard: React.FC<QuoteCardProps> = ({ quote, onStatusChange, onCreateAc
             >
               <UserPlus size={12} /> Criar Conta
             </button>
+            {quote.whatsapp && (
+              <button
+                onClick={handleSendProposal}
+                disabled={sendingWpp}
+                className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-60 ${
+                  wppResult === 'ok'
+                    ? 'text-green-700 bg-green-50 border-green-300'
+                    : wppResult === 'err'
+                    ? 'text-red-700 bg-red-50 border-red-200'
+                    : 'text-white bg-green-600 border-green-600 hover:bg-green-700'
+                }`}
+              >
+                {sendingWpp
+                  ? <><Loader2 size={12} className="animate-spin" /> Enviando...</>
+                  : wppResult === 'ok'
+                  ? <><CheckCircle size={12} /> Proposta Enviada!</>
+                  : wppResult === 'err'
+                  ? <><X size={12} /> Falha no envio</>
+                  : <><Send size={12} /> Enviar Proposta WhatsApp</>
+                }
+              </button>
+            )}
           </div>
+          {wppResult === 'ok' && (
+            <p className="text-[10px] text-green-600 mt-1">✅ Mensagem enviada e status atualizado para "Contatado"</p>
+          )}
         </div>
 
         {/* Ver histórico completo */}

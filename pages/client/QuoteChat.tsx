@@ -4,6 +4,7 @@ import { Send, ArrowLeft, Bot, Loader, CheckCircle, Phone, Sparkles, Camera, X, 
 import { useData } from '../../components/DataContext';
 import { UserRole } from '../../types';
 import { sendMessage, GeminiMessage, extractQuoteData, cleanAIResponse } from '../../lib/gemini';
+import { sendMessage as sendWhatsApp, buildMessage } from '../../lib/evolution';
 
 const INITIAL_AI_MESSAGE = `Olá! 👋 Bem-vindo à **Negócios de Limpeza**!
 
@@ -15,6 +16,7 @@ interface ChatMessage {
   role: 'user' | 'model';
   text: string;
   timestamp: Date;
+  photos?: string[];
 }
 
 const formatText = (text: string): React.ReactNode => {
@@ -68,11 +70,16 @@ export const QuoteChat: React.FC = () => {
     const trimmed = input.trim();
     if ((!trimmed && chatPhotos.length === 0) || isLoading || isComplete) return;
 
-    const photoNote = chatPhotos.length > 0 ? `\n[${chatPhotos.length} foto(s) enviada(s)]` : '';
-    const userMessage: ChatMessage = { role: 'user', text: trimmed + photoNote, timestamp: new Date() };
+    const userMessage: ChatMessage = {
+      role: 'user',
+      text: trimmed,
+      timestamp: new Date(),
+      photos: chatPhotos.length > 0 ? [...chatPhotos] : undefined,
+    };
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     setInput('');
+    setChatPhotos([]);
     setIsLoading(true);
     setApiError(null);
 
@@ -82,7 +89,7 @@ export const QuoteChat: React.FC = () => {
         .slice(1) // skip hardcoded initial greeting
         .map(m => ({
           role: m.role,
-          parts: [{ text: m.text }],
+          parts: [{ text: m.text + (m.photos && m.photos.length > 0 ? ` [${m.photos.length} foto(s) enviada(s)]` : '') }],
         }));
 
       // Ensure valid alternating structure (Gemini requires user/model alternation)
@@ -150,6 +157,22 @@ export const QuoteChat: React.FC = () => {
         setSavedName((quoteData.name || '').split(' ')[0]);
         setCredentials({ login: loginEmail, password: loginPassword });
         setIsComplete(true);
+
+        // Envio automático de boas-vindas via WhatsApp
+        if (quoteData.whatsapp) {
+          try {
+            const storedTemplates = localStorage.getItem('ndl_whatsapp_templates');
+            const templates = storedTemplates ? JSON.parse(storedTemplates) : null;
+            const welcomeTemplate = templates?.welcome || `Olá, [Nome]! 👋 Aqui é a *Negócios de Limpeza*.\n\nRecebemos seu pedido de orçamento para *[Servico]* e já estamos analisando tudo! 🧹✨\n\nEm breve nossa equipe entra em contato com sua proposta personalizada.`;
+            const msg = buildMessage(welcomeTemplate, {
+              Nome: (quoteData.name || '').split(' ')[0],
+              Servico: quoteData.serviceOption || 'limpeza',
+            });
+            await sendWhatsApp(quoteData.whatsapp, msg);
+          } catch {
+            // Falha silenciosa — não bloqueia o fluxo do cliente
+          }
+        }
       }
     } catch (err: any) {
       setApiError(err.message || 'Erro ao conectar com a assistente. Tente novamente.');
@@ -289,7 +312,7 @@ export const QuoteChat: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+    <div className="h-[100dvh] bg-gray-50 flex flex-col font-sans overflow-hidden">
       {/* Header */}
       <header className="bg-[#a163ff] shadow-lg sticky top-0 z-50">
         <div className="max-w-2xl mx-auto px-4 h-16 flex items-center gap-4">
@@ -340,7 +363,16 @@ export const QuoteChat: React.FC = () => {
               {msg.role === 'model' ? (
                 <span>{formatText(msg.text)}</span>
               ) : (
-                <span>{msg.text}</span>
+                <>
+                  {msg.photos && msg.photos.length > 0 && (
+                    <div className="flex gap-1 flex-wrap mb-2">
+                      {msg.photos.map((photo, pi) => (
+                        <img key={pi} src={photo} alt="" className="w-20 h-20 object-cover rounded-xl border border-white/30" />
+                      ))}
+                    </div>
+                  )}
+                  {msg.text && <span>{msg.text}</span>}
+                </>
               )}
               <div className={`text-[10px] mt-1 ${msg.role === 'user' ? 'text-white/60 text-right' : 'text-gray-400'}`}>
                 {msg.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
@@ -395,14 +427,6 @@ export const QuoteChat: React.FC = () => {
           </div>
         )}
         <div className="max-w-2xl mx-auto px-3 py-3 flex items-end gap-2">
-          <button
-            onClick={() => photoInputRef.current?.click()}
-            disabled={isComplete}
-            className="w-12 h-12 min-w-[48px] border border-gray-200 bg-gray-50 hover:bg-purple-50 hover:border-purple-300 disabled:opacity-30 text-gray-500 hover:text-purple-600 rounded-full flex items-center justify-center transition-colors flex-shrink-0"
-            title="Enviar foto"
-          >
-            <Camera size={18} />
-          </button>
           <input
             ref={photoInputRef}
             type="file"
@@ -443,6 +467,14 @@ export const QuoteChat: React.FC = () => {
             className="w-12 h-12 min-w-[48px] bg-[#a163ff] hover:bg-[#8f4ee0] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-full flex items-center justify-center transition-colors flex-shrink-0 shadow-md shadow-purple-200 active:scale-95"
           >
             {isLoading ? <Loader size={18} className="animate-spin" /> : <Send size={18} />}
+          </button>
+          <button
+            onClick={() => photoInputRef.current?.click()}
+            disabled={isComplete}
+            className="w-12 h-12 min-w-[48px] border border-gray-200 bg-gray-50 hover:bg-purple-50 hover:border-purple-300 disabled:opacity-30 text-gray-500 hover:text-purple-600 rounded-full flex items-center justify-center transition-colors flex-shrink-0"
+            title="Enviar foto"
+          >
+            <Camera size={18} />
           </button>
         </div>
         <p className="text-center text-xs text-gray-400 pb-2 hidden md:block">
