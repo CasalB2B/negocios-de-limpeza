@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
-import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, Plus, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare } from 'lucide-react';
+import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare } from 'lucide-react';
 import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -81,14 +81,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                   <HelpCircle size={18} /> Suporte
                </button>
                
-               <Button 
-                  onClick={() => navigate('/client/new-request')}
-                  className="rounded-full px-6 py-2.5 h-auto text-sm"
-                  icon={<Plus size={16} />}
-               >
-                  Novo Agendamento
-               </Button>
-
                <div className="relative group cursor-pointer">
                   <div className="w-10 h-10 rounded-full border border-gray-200 dark:border-darkBorder overflow-hidden">
                     <img src="https://i.pravatar.cc/150?u=ju" alt="Perfil" className="w-full h-full object-cover" />
@@ -123,7 +115,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           {/* Mobile Menu Dropdown */}
           {mobileMenuOpen && (
             <div className="md:hidden bg-white dark:bg-darkSurface border-t border-gray-100 dark:border-darkBorder absolute w-full left-0 top-16 shadow-xl p-4 flex flex-col gap-4 z-40 animate-in slide-in-from-top-2">
-                <Button onClick={() => { navigate('/client/new-request'); setMobileMenuOpen(false); }} fullWidth>Novo Agendamento</Button>
                 <button onClick={() => { navigate('/client/profile'); setMobileMenuOpen(false); }} className="text-darkText dark:text-darkTextPrimary font-bold text-sm p-3 flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-darkBorder rounded-xl">
                    <User size={16} /> Meu Perfil
                 </button>

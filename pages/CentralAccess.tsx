@@ -66,29 +66,45 @@ export const CentralAccess: React.FC = () => {
                   <img key={i} className="w-8 h-8 rounded-full border-2 border-white dark:border-darkBg" src={`https://i.pravatar.cc/100?img=${i+10}`} alt="User" />
                 ))}
               </div>
-              <p>Mais de <strong>5.000 clientes</strong> satisfeitos</p>
+              <p>Mais de <strong>600 clientes</strong> satisfeitos</p>
             </div>
           </div>
 
-          <div className="relative">
-             <img
-               src="https://i0.wp.com/negociosdelimpeza.com.br/wp-content/uploads/2025/07/Imagem-da-bio.webp"
-               alt="Fundadoras da Negócios de Limpeza"
-               className="rounded-3xl shadow-2xl transform rotate-2 hover:rotate-0 transition-transform duration-500 opacity-90 hover:opacity-100 object-cover"
-             />
-             
-             {/* Float Card */}
-             <div className="absolute -bottom-6 -left-6 bg-white dark:bg-darkSurface p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-darkBorder max-w-xs animate-bounce-slow transition-colors">
-               <div className="flex items-center gap-3 mb-3">
-                 <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center text-green-600 dark:text-green-400">
-                   <ShieldCheck size={20} />
-                 </div>
-                 <div>
-                   <p className="font-bold text-darkText dark:text-darkTextPrimary">Garantia Total</p>
-                   <p className="text-xs text-lightText dark:text-darkTextSecondary">Seguro contra danos incluso</p>
-                 </div>
-               </div>
-             </div>
+          <div className="relative flex items-center justify-center">
+            {/* Decorative blob behind the photo */}
+            <div className="absolute inset-0 -z-10 rounded-[60px] bg-gradient-to-br from-purple-100 via-pink-50 to-purple-50 dark:from-purple-900/20 dark:via-pink-900/10 dark:to-purple-900/20 blur-2xl scale-110" />
+
+            <img
+              src="/img/foto-home.jpg"
+              alt="Fundadoras da Negócios de Limpeza"
+              className="w-full max-w-lg rounded-[40px] object-cover object-top"
+              style={{ mixBlendMode: 'multiply' }}
+            />
+
+            {/* Float Card — bottom left */}
+            <div className="absolute -bottom-4 -left-4 bg-white dark:bg-darkSurface p-4 rounded-2xl shadow-xl border border-gray-100 dark:border-darkBorder animate-bounce-slow transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center text-green-600 dark:text-green-400 flex-shrink-0">
+                  <ShieldCheck size={20} />
+                </div>
+                <div>
+                  <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Garantia Total</p>
+                  <p className="text-xs text-lightText dark:text-darkTextSecondary">Seguro contra danos incluso</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Float Card — top right */}
+            <div className="absolute -top-4 -right-4 bg-white dark:bg-darkSurface px-4 py-3 rounded-2xl shadow-xl border border-gray-100 dark:border-darkBorder transition-colors">
+              <div className="flex items-center gap-2">
+                <div className="flex">
+                  {[1,2,3,4,5].map(i => (
+                    <Star key={i} size={12} className="text-yellow-400" fill="currentColor" />
+                  ))}
+                </div>
+                <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary">5.0 · 600+ clientes</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>

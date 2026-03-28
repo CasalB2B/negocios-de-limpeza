@@ -4,40 +4,16 @@ import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { Card } from '../../components/Card'; 
 import { Button } from '../../components/Button';
-import { Clock, MapPin, FileText, CheckCircle, DollarSign, Sparkles, Calendar as CalendarIcon } from 'lucide-react';
+import { Clock, MapPin, FileText, CheckCircle, Sparkles, Calendar as CalendarIcon } from 'lucide-react';
 import { useData } from '../../components/DataContext'; // Import context
 
 export const ClientDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser, services } = useData(); // Get current user
 
-  // Dynamic Date Logic
-  const today = new Date();
-  const currentMonth = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(today);
-  const formattedMonth = currentMonth.charAt(0).toUpperCase() + currentMonth.slice(1);
-  
-  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-  const calendarDays = Array.from({length: daysInMonth}, (_, i) => i + 1);
-  
   // Find next confirmed appointment for this user
   const myServices = services.filter(s => s.clientId === currentUser?.id && s.status === 'CONFIRMED');
   const nextAppt = myServices.length > 0 ? myServices[0] : null;
-
-  // Extração segura dos dias ativos
-  const activeDays = myServices.map(s => {
-     if (!s.date) return null;
-     try {
-       // Tenta parsear formato DD/MM/YYYY
-       const parts = s.date.split('/');
-       if (parts.length === 3) {
-          const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
-          return d.getDate();
-       }
-       return null;
-     } catch (e) { 
-       return null; 
-     }
-  }).filter(d => d !== null) as number[];
 
   return (
     <Layout role={UserRole.CLIENT}>
@@ -51,9 +27,9 @@ export const ClientDashboard: React.FC = () => {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+        <div className="grid grid-cols-1 gap-8 mb-10">
            {/* Featured Card - Próxima Limpeza */}
-           <Card className="lg:col-span-2 relative overflow-hidden group">
+           <Card className="relative overflow-hidden group">
              {nextAppt ? (
                <>
                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 relative z-10">
@@ -109,38 +85,11 @@ export const ClientDashboard: React.FC = () => {
                       <CalendarIcon size={32} />
                    </div>
                    <h3 className="font-bold text-darkText dark:text-darkTextPrimary text-lg">Sem limpezas agendadas</h3>
-                   <p className="text-lightText dark:text-darkTextSecondary text-sm mb-6 max-w-xs">Agende sua próxima limpeza agora mesmo.</p>
-                   <Button onClick={() => navigate('/client/new-request')}>Agendar Agora</Button>
+                   <p className="text-lightText dark:text-darkTextSecondary text-sm max-w-xs">Nossa equipe entrará em contato para agendar seu próximo serviço.</p>
                 </div>
              )}
            </Card>
 
-           {/* Calendar Widget */}
-           <Card className="flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                 <h3 className="font-bold text-darkText dark:text-darkTextPrimary flex items-center gap-2"><CalendarIcon size={18} className="text-primary"/> {formattedMonth}</h3>
-              </div>
-              
-              <div className="grid grid-cols-7 gap-1 text-center text-xs mb-2 text-lightText dark:text-darkTextSecondary font-bold">
-                 <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
-              </div>
-              <div className="grid grid-cols-7 gap-2 flex-1">
-                 <div/><div/><div/>
-                 {calendarDays.map(day => (
-                    <div 
-                       key={day} 
-                       className={`
-                          aspect-square rounded-lg flex items-center justify-center text-xs font-bold relative
-                          ${activeDays.includes(day) ? 'bg-primary text-white shadow-md' : 'text-darkText dark:text-darkTextPrimary hover:bg-gray-50 dark:hover:bg-darkBg'}
-                          ${day === today.getDate() ? 'border border-primary text-primary' : ''}
-                       `}
-                    >
-                       {day}
-                       {activeDays.includes(day) && <div className="absolute -bottom-1 w-1 h-1 bg-white dark:bg-darkBg rounded-full" />}
-                    </div>
-                 ))}
-              </div>
-           </Card>
         </div>
 
         <div className="flex items-center justify-between mb-4">

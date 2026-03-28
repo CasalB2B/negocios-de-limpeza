@@ -26,6 +26,7 @@ function generateProposalWindow(
   neighborhood: string,
   serviceType: string,
 ) {
+  const origin = window.location.origin;
   const win = window.open('', '_blank');
   if (!win) { alert('Permita popups para abrir a proposta.'); return; }
   const e = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -117,7 +118,7 @@ body{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;background:#fff}
     </div>
   </div>
   <div style="width:100%;height:220px;overflow:hidden;margin-bottom:56px">
-    <img src="https://i0.wp.com/negociosdelimpeza.com.br/wp-content/uploads/2025/07/Imagem-da-bio.webp"
+    <img src="${origin}/img/foto-pdf-p1.jpg"
       style="width:100%;height:100%;object-fit:cover;object-position:top" alt="Negócios de Limpeza" />
   </div>
   <div class="ftr"><span>Neg&oacute;cios de Limpeza</span><span>Proposta Comercial &middot; P&aacute;gina 1 de 2</span><span>Validade: 7 dias</span></div>
@@ -154,7 +155,7 @@ body{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;background:#fff}
   </div>
   <div class="cta"><h3>Transforme seu lar com a Neg&oacute;cios de Limpeza!</h3><p>Entre em contato e agende sua faxina com quem cuida de verdade.</p></div>
   <div style="width:100%;height:220px;overflow:hidden;margin-bottom:56px">
-    <img src="https://i0.wp.com/negociosdelimpeza.com.br/wp-content/uploads/2025/07/Imagem-da-bio.webp"
+    <img src="${origin}/img/foto-pdf-p2.jpg"
       style="width:100%;height:100%;object-fit:cover;object-position:center" alt="Negócios de Limpeza" />
   </div>
   <div class="ftr"><span>Neg&oacute;cios de Limpeza</span><span>Proposta Comercial &middot; P&aacute;gina 2 de 2</span><span>Validade: 7 dias</span></div>
