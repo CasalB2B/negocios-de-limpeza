@@ -75,9 +75,10 @@ export interface ClientUser {
   name: string;
   email: string;
   phone: string;
-  address: string; 
+  address: string;
   addresses: Address[];
   type: 'FIXO' | 'AVULSO' | 'POS_OBRA' | 'PRIMEIRA_LIMPEZA' | string;
+  password?: string;
   createdAt: number;
 }
 
@@ -136,7 +137,7 @@ interface DataContextType {
   registerClient: (client: ClientUser) => Promise<void>;
   updateClient: (id: string, data: Partial<ClientUser>) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
-  loginClient: (email: string) => Promise<boolean>;
+  loginClient: (email: string, password: string) => Promise<boolean>;
   logoutClient: () => void;
   
   addClientAddress: (clientId: string, address: Address) => Promise<void>;
@@ -166,36 +167,53 @@ const mockServiceDefinitions: ServiceDefinition[] = [
   {
     id: 'srv_1',
     name: 'Limpeza Residencial',
-    description: 'Ideal para manutenção semanal de casas e apartamentos.',
+    description: 'Limpeza completa de casas e apartamentos. Preço por porte do imóvel.',
     icon: 'sparkles',
     pricingModel: 'ROOMS',
-    basePrice: 150.00,
-    pricePerUnit: 40.00,
-    pricePerBath: 30.00,
-    extras: [{id: 'ex_1', label: 'Geladeira', price: 30}, {id: 'ex_2', label: 'Forno', price: 30}],
+    basePrice: 320.00,    // Até 2 quartos e 2 banheiros (1 colaboradora)
+    pricePerUnit: 0,
+    pricePerBath: 0,
+    extras: [
+      {id: 'ex_1', label: 'Limpeza de Geladeira', price: 50},
+      {id: 'ex_2', label: 'Limpeza de Forno', price: 40},
+      {id: 'ex_3', label: 'Limpeza de Janelas (todas)', price: 60},
+    ],
+    pricingTiers: [
+      // Imóvel grande: 3+ quartos OU 3+ banheiros → 2 colaboradoras = R$520
+      { id: 'tier_grande', name: 'Imóvel Grande (2 colaboradoras)', value: 3, price: 520 }
+    ],
     active: true
   },
   {
     id: 'srv_2',
-    name: 'Passadoria Express',
-    description: 'Roupas lavadas e passadas no local.',
+    name: 'Limpeza Pós-Obra',
+    description: 'Limpeza profunda após reformas e construções. Cobrado por m².',
+    icon: 'hardhat',
+    pricingModel: 'SQM',
+    basePrice: 0,
+    pricePerUnit: 25.00,  // R$25 por m²
+    extras: [
+      {id: 'ex_po_1', label: 'Remoção de Entulho Leve', price: 120},
+      {id: 'ex_po_2', label: 'Limpeza de Vidros (tinta)', price: 80},
+    ],
+    active: true
+  },
+  {
+    id: 'srv_3',
+    name: 'Diarista por Hora',
+    description: 'Colaboradora para tarefas específicas. Valor por hora.',
     icon: 'shirt',
     pricingModel: 'HOURLY',
     basePrice: 0,
-    pricePerUnit: 0,
+    pricePerUnit: 18.50,  // R$18,50 por hora
     extras: [],
-    pricingTiers: [
-        { id: 'tier_1', name: 'Pacote 4 Horas', value: 4, price: 140.00 },
-        { id: 'tier_2', name: 'Pacote 6 Horas', value: 6, price: 190.00 },
-        { id: 'tier_3', name: 'Diária (8 Horas)', value: 8, price: 240.00 }
-    ],
     active: true
   }
 ];
 
 const mockClients: ClientUser[] = [
-    { id: 'cli_1', name: 'Julia Roberts', email: 'julia@email.com', phone: '(27) 99999-1111', address: 'Av. Beira Mar, 100 - Praia do Morro', type: 'FIXO', addresses: [], createdAt: Date.now() },
-    { id: 'cli_2', name: 'Carlos Andrade', email: 'carlos@email.com', phone: '(27) 99999-2222', address: 'Rua das Flores, 50 - Centro', type: 'AVULSO', addresses: [], createdAt: Date.now() },
+    { id: 'cli_1', name: 'Julia Roberts', email: 'julia@email.com', phone: '(27) 99999-1111', address: 'Av. Beira Mar, 100 - Praia do Morro', type: 'FIXO', addresses: [], password: '123456', createdAt: Date.now() },
+    { id: 'cli_2', name: 'Carlos Andrade', email: 'carlos@email.com', phone: '(27) 99999-2222', address: 'Rua das Flores, 50 - Centro', type: 'AVULSO', addresses: [], password: '123456', createdAt: Date.now() },
 ];
 
 const mockCollaborators: CollaboratorUser[] = [
@@ -492,7 +510,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: client.email,
         phone: client.phone,
         address: client.address,
-        role: 'CLIENT'
+        role: 'CLIENT',
+        password: client.password
     }).select().single();
 
     if (!error && userData) {
@@ -539,15 +558,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (currentUser?.id === id) logoutClient();
   };
 
-  const loginClient = async (email: string): Promise<boolean> => {
-    const localUser = clients.find(c => c.email === email);
+  const loginClient = async (email: string, password: string): Promise<boolean> => {
+    const localUser = clients.find(c => c.email === email && c.password === password);
     if (localUser) {
         setCurrentUser(localUser);
         localStorage.setItem('auth_client', JSON.stringify(localUser));
         return true;
     }
     const { data: user } = await supabase.from('app_users').select('*').eq('email', email).eq('role', 'CLIENT').single();
-    if (user) {
+    if (user && user.password === password) {
         const { data: addrs } = await supabase.from('addresses').select('*').eq('user_id', user.id);
         const clientObj = mapDbUserToClient(user, addrs || []);
         setCurrentUser(clientObj);

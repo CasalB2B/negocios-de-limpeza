@@ -26,11 +26,11 @@ export const ClientLogin: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-        const success = await loginClient(email);
+        const success = await loginClient(email, password);
         if (success) {
             navigate('/client/dashboard');
         } else {
-            alert("Cliente não encontrado. Verifique seu e-mail ou cadastre-se.");
+            alert("E-mail ou senha incorretos. Verifique seus dados ou cadastre-se.");
         }
     } finally {
         setIsLoading(false);

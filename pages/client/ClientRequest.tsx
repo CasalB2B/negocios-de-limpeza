@@ -49,14 +49,17 @@ export const ClientRequest: React.FC = () => {
   // --- HELPER: CALCULATE PRICE ---
   const totalPrice = useMemo(() => {
     if (!selectedDef) return 0;
-    
+
     let total = selectedDef.basePrice;
 
     if (selectedDef.pricingModel === 'ROOMS') {
-      total += (rooms * selectedDef.pricePerUnit);
-      total += (bathrooms * (selectedDef.pricePerBath || 0));
+      // Preço por porte: 3+ quartos OU 3+ banheiros = pacote 2 colaboradoras
+      const upgradeTier = selectedDef.pricingTiers?.find(t => t.id === 'tier_grande');
+      if (upgradeTier && (rooms >= upgradeTier.value || bathrooms >= upgradeTier.value)) {
+        total = upgradeTier.price; // R$520
+      }
+      // Senão mantém basePrice = R$320
     } else {
-      // Hourly or SQM
       total += (qtyUnit * selectedDef.pricePerUnit);
     }
 
@@ -185,9 +188,10 @@ export const ClientRequest: React.FC = () => {
               name: regData.name,
               email: regData.email,
               phone: regData.phone,
-              address: fullAddressString, 
-              addresses: [newAddressObj], 
+              address: fullAddressString,
+              addresses: [newAddressObj],
               type: 'AVULSO' as const,
+              password: regData.password,
               createdAt: Date.now()
             };
 
