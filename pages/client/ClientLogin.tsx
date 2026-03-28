@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button';
-import { ArrowRight, Eye, EyeOff, Facebook, ArrowLeft, CheckCircle, Loader } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, ArrowLeft, CheckCircle, Loader } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 
 export const ClientLogin: React.FC = () => {
@@ -37,10 +37,6 @@ export const ClientLogin: React.FC = () => {
     }
   };
 
-  const handleSocialLogin = (provider: string) => {
-      // Mock Social Login
-      alert(`Login com ${provider} em desenvolvimento (requer Supabase Auth).`);
-  };
 
   return (
     <div className="min-h-screen bg-white flex flex-col md:flex-row font-sans">
@@ -141,31 +137,8 @@ export const ClientLogin: React.FC = () => {
             </Button>
           </form>
 
-          <div className="relative my-8">
-             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
-             <div className="relative flex justify-center text-xs uppercase tracking-wider">
-                <span className="bg-[#fcfcfc] px-4 text-gray-400 font-bold">Ou continue com</span>
-             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-             <button 
-                onClick={() => handleSocialLogin('Google')}
-                className="flex items-center justify-center gap-2 p-3 border border-gray-200 rounded-xl bg-white hover:bg-gray-50 transition-colors text-sm font-bold text-gray-700"
-             >
-                Google
-             </button>
-             <button 
-                onClick={() => handleSocialLogin('Facebook')}
-                className="flex items-center justify-center gap-2 p-3 border border-gray-200 rounded-xl bg-white hover:bg-gray-50 transition-colors text-sm font-bold text-gray-700"
-             >
-                <Facebook size={20} className="text-[#1877F2]" fill="currentColor" />
-                Facebook
-             </button>
-          </div>
-
           <p className="text-center text-sm text-gray-500 mt-8">
-             Ainda não tem conta? <button onClick={() => navigate('/client/new-request')} className="text-primary font-bold hover:underline">Faça um orçamento</button> para se cadastrar.
+             Ainda não tem conta? <button onClick={() => navigate('/client/quote-chat')} className="text-primary font-bold hover:underline">Faça um orçamento grátis</button> para se cadastrar.
           </p>
         </div>
       </div>
