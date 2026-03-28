@@ -83,3 +83,48 @@ export const extractQuoteData = (text: string): Record<string, string> | null =>
 export const cleanAIResponse = (text: string): string => {
   return text.replace(/<<QUOTE_DATA>>[\s\S]*?<<END_QUOTE>>/, '').trim();
 };
+
+export const extractFromConversation = async (conversationText: string): Promise<Record<string, string>> => {
+  if (!GEMINI_API_KEY || GEMINI_API_KEY.includes('PLACEHOLDER')) {
+    throw new Error('GEMINI_API_KEY não configurada');
+  }
+
+  const prompt = `Você é um assistente de vendas. Analise esta conversa e extraia os dados do cliente para um orçamento de limpeza.
+
+Retorne APENAS um JSON válido com os campos abaixo. Se um campo não estiver disponível, use string vazia "".
+
+{
+  "name": "nome completo do cliente",
+  "whatsapp": "telefone com DDD",
+  "email": "email se mencionado",
+  "propertyType": "tipo de imóvel: casa, apartamento, escritório, etc",
+  "rooms": "descrição dos cômodos: quartos, banheiros, sala, etc",
+  "priorities": "o que o cliente quer priorizar ou o que está incomodando",
+  "internalCleaning": "sim ou não, e quais: geladeira, fogão, armários",
+  "renovation": "sim ou não — se o imóvel passou por reforma recente",
+  "serviceOption": "tipo de serviço: Primeira limpeza, Manutenção, Pós-obra, Passadoria, etc"
+}
+
+CONVERSA:
+${conversationText}`;
+
+  const res = await fetch(`${API_URL}?key=${GEMINI_API_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `Erro: ${res.status}`);
+  }
+
+  const data = await res.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return {};
+  try { return JSON.parse(jsonMatch[0]); } catch { return {}; }
+};

@@ -168,7 +168,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       case UserRole.ADMIN:
         return [
           { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/admin/dashboard' },
-          { icon: <FileText size={20} />, label: 'Solicitações', path: '/admin/requests' },
           { icon: <Calendar size={20} />, label: 'Calendário', path: '/admin/calendar' },
           { icon: <Smile size={20} />, label: 'Clientes', path: '/admin/clients' },
           { icon: <Users size={20} />, label: 'Equipe', path: '/admin/collaborators' },
