@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { useData, Quote, ClientUser } from '../../components/DataContext';
 import {
   MessageSquare, Phone, Mail, ChevronDown,
   CheckCircle, Clock, TrendingUp, X, Plus, FileText, UserPlus,
-  Wand2, Loader2,
+  Wand2, Loader2, ImagePlus, Camera,
 } from 'lucide-react';
 import { extractFromConversation } from '../../lib/gemini';
 
@@ -173,16 +173,40 @@ interface WhatsAppModalProps {
 
 const WhatsAppModal: React.FC<WhatsAppModalProps> = ({ onClose, onSave }) => {
   const [text, setText] = useState('');
+  const [imageBase64, setImageBase64] = useState('');
+  const [imageMimeType, setImageMimeType] = useState('image/jpeg');
+  const [imagePreview, setImagePreview] = useState('');
   const [loading, setLoading] = useState(false);
   const [extracted, setExtracted] = useState<Record<string, string> | null>(null);
   const [error, setError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setImagePreview(dataUrl);
+      setImageBase64(dataUrl.split(',')[1]);
+      setImageMimeType(file.type || 'image/jpeg');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    for (const item of e.clipboardData.items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) { handleImageFile(file); break; }
+      }
+    }
+  };
 
   const handleExtract = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() && !imageBase64) return;
     setLoading(true);
     setError('');
     try {
-      const data = await extractFromConversation(text);
+      const data = await extractFromConversation(text, imageBase64 || undefined, imageMimeType);
       setExtracted(data);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao processar');
@@ -197,24 +221,45 @@ const WhatsAppModal: React.FC<WhatsAppModalProps> = ({ onClose, onSave }) => {
         <div className="flex items-center justify-between p-5 border-b">
           <div>
             <h3 className="font-bold text-gray-900">Entrada Manual via WhatsApp</h3>
-            <p className="text-xs text-gray-500 mt-0.5">Cole o texto da conversa — a IA vai extrair os dados automaticamente</p>
+            <p className="text-xs text-gray-500 mt-0.5">Cole o texto ou um print da conversa — a IA extrai os dados automaticamente</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100"><X size={18} /></button>
         </div>
 
-        <div className="overflow-y-auto p-5 space-y-4">
+        <div className="overflow-y-auto p-5 space-y-4" onPaste={handlePaste}>
           {!extracted ? (
             <>
+              {imagePreview ? (
+                <div className="relative rounded-xl overflow-hidden border border-purple-200">
+                  <img src={imagePreview} alt="Print da conversa" className="w-full max-h-64 object-contain bg-gray-50" />
+                  <button
+                    onClick={() => { setImagePreview(''); setImageBase64(''); }}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                  ><X size={14} /></button>
+                  <p className="text-xs text-center text-purple-600 font-medium py-1.5 bg-purple-50">Print carregado ✓</p>
+                </div>
+              ) : (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-purple-200 rounded-xl p-4 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50/40 transition-colors"
+                >
+                  <Camera size={28} className="mx-auto mb-1.5 text-purple-400" />
+                  <p className="text-sm font-bold text-purple-600">Cole (Ctrl+V) ou clique para enviar um print</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Print de tela do WhatsApp, PNG, JPG</p>
+                </div>
+              )}
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
+
               <textarea
                 value={text}
                 onChange={e => setText(e.target.value)}
-                placeholder="Cole aqui a conversa do WhatsApp com o cliente..."
-                className="w-full h-52 p-3 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300"
+                placeholder="Ou cole aqui o texto copiado da conversa do WhatsApp..."
+                className="w-full h-36 p-3 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300"
               />
               {error && <p className="text-red-500 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
               <button
                 onClick={handleExtract}
-                disabled={loading || !text.trim()}
+                disabled={loading || (!text.trim() && !imageBase64)}
                 className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 transition-colors disabled:opacity-50"
               >
                 {loading ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
@@ -549,6 +594,20 @@ const QuoteCard: React.FC<QuoteCardProps> = ({ quote, onStatusChange, onCreateAc
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Fotos do cliente */}
+          {quote.clientPhotos && quote.clientPhotos.length > 0 && (
+            <div className="mb-3">
+              <p className="text-[9px] text-gray-400 uppercase font-bold mb-2">Fotos enviadas pelo cliente</p>
+              <div className="flex gap-2 flex-wrap">
+                {quote.clientPhotos.map((photo, i) => (
+                  <a key={i} href={photo} target="_blank" rel="noopener noreferrer">
+                    <img src={photo} alt={`Foto ${i + 1}`} className="w-20 h-20 object-cover rounded-xl border border-gray-200 hover:opacity-80 transition-opacity cursor-zoom-in" />
+                  </a>
+                ))}
+              </div>
             </div>
           )}
 

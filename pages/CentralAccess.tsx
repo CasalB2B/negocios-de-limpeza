@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { CheckCircle, ArrowRight, User, Briefcase, ShieldCheck, Star, Clock, Shield } from 'lucide-react';
+import { CheckCircle, ArrowRight, User, Briefcase, ShieldCheck, Star, Clock, Shield, MessageCircle, FileText, Sparkles, Package } from 'lucide-react';
 
 export const CentralAccess: React.FC = () => {
   const navigate = useNavigate();
@@ -114,26 +114,100 @@ export const CentralAccess: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-display font-bold text-darkText dark:text-darkTextPrimary mb-4">Como funciona?</h2>
-            <p className="text-lightText dark:text-darkTextSecondary">É muito simples ter sua casa limpa com a Negócios de Limpeza.</p>
+            <p className="text-lightText dark:text-darkTextSecondary max-w-xl mx-auto">Do orçamento à faxina impecável, em 4 passos simples.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-background dark:bg-darkSurface p-8 rounded-3xl text-center group hover:bg-white dark:hover:bg-slate-800 hover:shadow-xl transition-all border border-transparent hover:border-gray-100 dark:hover:border-darkBorder">
-              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold group-hover:scale-110 transition-transform">1</div>
-              <h3 className="text-xl font-bold text-darkText dark:text-darkTextPrimary mb-3">Configure seu pedido</h3>
-              <p className="text-lightText dark:text-darkTextSecondary">Informe o tamanho da sua casa e o tipo de limpeza que você precisa.</p>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-background dark:bg-darkSurface p-7 rounded-3xl text-center group hover:bg-white dark:hover:bg-slate-800 hover:shadow-xl transition-all border border-transparent hover:border-gray-100 dark:hover:border-darkBorder">
+              <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform">
+                <MessageCircle size={26} />
+              </div>
+              <p className="text-xs font-bold text-blue-500 uppercase tracking-wider mb-2">Passo 1</p>
+              <h3 className="text-lg font-bold text-darkText dark:text-darkTextPrimary mb-2">Fale sobre seu imóvel</h3>
+              <p className="text-sm text-lightText dark:text-darkTextSecondary">Responda algumas perguntas rápidas pelo nosso chat. Tipo de serviço, cômodos e o que precisa de mais atenção.</p>
             </div>
 
-            <div className="bg-background dark:bg-darkSurface p-8 rounded-3xl text-center group hover:bg-white dark:hover:bg-slate-800 hover:shadow-xl transition-all border border-transparent hover:border-gray-100 dark:hover:border-darkBorder">
-              <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold group-hover:scale-110 transition-transform">2</div>
-              <h3 className="text-xl font-bold text-darkText dark:text-darkTextPrimary mb-3">Escolha a data</h3>
-              <p className="text-lightText dark:text-darkTextSecondary">Selecione o melhor dia e horário na nossa agenda inteligente.</p>
+            <div className="bg-background dark:bg-darkSurface p-7 rounded-3xl text-center group hover:bg-white dark:hover:bg-slate-800 hover:shadow-xl transition-all border border-transparent hover:border-gray-100 dark:hover:border-darkBorder">
+              <div className="w-14 h-14 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform">
+                <FileText size={26} />
+              </div>
+              <p className="text-xs font-bold text-purple-500 uppercase tracking-wider mb-2">Passo 2</p>
+              <h3 className="text-lg font-bold text-darkText dark:text-darkTextPrimary mb-2">Receba seu orçamento</h3>
+              <p className="text-sm text-lightText dark:text-darkTextSecondary">Nossa equipe avalia suas necessidades e entra em contato pelo WhatsApp em até 24h com uma proposta personalizada.</p>
             </div>
 
-            <div className="bg-background dark:bg-darkSurface p-8 rounded-3xl text-center group hover:bg-white dark:hover:bg-slate-800 hover:shadow-xl transition-all border border-transparent hover:border-gray-100 dark:hover:border-darkBorder">
-              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold group-hover:scale-110 transition-transform">3</div>
-              <h3 className="text-xl font-bold text-darkText dark:text-darkTextPrimary mb-3">Relaxe e aproveite</h3>
-              <p className="text-lightText dark:text-darkTextSecondary">Nossa profissional chega no horário combinado e deixa tudo brilhando.</p>
+            <div className="bg-background dark:bg-darkSurface p-7 rounded-3xl text-center group hover:bg-white dark:hover:bg-slate-800 hover:shadow-xl transition-all border border-transparent hover:border-gray-100 dark:hover:border-darkBorder">
+              <div className="w-14 h-14 bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform">
+                <Sparkles size={26} />
+              </div>
+              <p className="text-xs font-bold text-pink-500 uppercase tracking-wider mb-2">Passo 3</p>
+              <h3 className="text-lg font-bold text-darkText dark:text-darkTextPrimary mb-2">Aprovação e pagamento</h3>
+              <p className="text-sm text-lightText dark:text-darkTextSecondary">Aprovou? Confirmamos a data e horário. Pagamento fácil via <strong>Pix</strong> ou <strong>cartão</strong> — sem complicação.</p>
+            </div>
+
+            <div className="bg-background dark:bg-darkSurface p-7 rounded-3xl text-center group hover:bg-white dark:hover:bg-slate-800 hover:shadow-xl transition-all border border-transparent hover:border-gray-100 dark:hover:border-darkBorder">
+              <div className="w-14 h-14 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform">
+                <Package size={26} />
+              </div>
+              <p className="text-xs font-bold text-green-500 uppercase tracking-wider mb-2">Passo 4</p>
+              <h3 className="text-lg font-bold text-darkText dark:text-darkTextPrimary mb-2">Profissionais na sua porta</h3>
+              <p className="text-sm text-lightText dark:text-darkTextSecondary">Nossa equipe chega equipada com todos os materiais. Faxina completa, não superficial — cada cantinho tratado com capricho.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* About / Methodology */}
+      <section className="py-20 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/10 dark:to-pink-900/10 transition-colors">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-100 dark:bg-primary/20 text-primary rounded-full text-xs font-bold uppercase tracking-wider mb-6">
+                <Sparkles size={14} /> Nossa metodologia
+              </div>
+              <h2 className="text-3xl md:text-4xl font-display font-bold text-darkText dark:text-darkTextPrimary mb-6 leading-tight">
+                Mais do que limpeza.<br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Uma faxina de verdade.</span>
+              </h2>
+              <p className="text-lightText dark:text-darkTextSecondary leading-relaxed mb-6">
+                Não fazemos limpeza superficial. Nossa equipe é treinada para uma faxina profunda e completa — do chão ao teto, de dentro dos armários ao box do banheiro.
+              </p>
+              <div className="space-y-4">
+                {[
+                  { icon: <Package size={18} />, title: 'Materiais e equipamentos próprios', desc: 'Nossas profissionais chegam com tudo que precisam. Você não precisa se preocupar com nada.' },
+                  { icon: <ShieldCheck size={18} />, title: 'Equipe treinada e uniformizada', desc: 'Profissionais capacitadas, comprometidas com excelência e apresentação.' },
+                  { icon: <Star size={18} />, title: 'Atenção aos detalhes', desc: 'Cada cômodo recebe atenção especial. Priorizamos o que mais incomoda você.' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-4 bg-white dark:bg-darkSurface p-4 rounded-2xl border border-gray-100 dark:border-darkBorder shadow-sm">
+                    <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center text-primary flex-shrink-0">
+                      {item.icon}
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">{item.title}</p>
+                      <p className="text-xs text-lightText dark:text-darkTextSecondary mt-0.5">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-col gap-4">
+              <div className="bg-white dark:bg-darkSurface rounded-3xl p-8 border border-gray-100 dark:border-darkBorder shadow-sm text-center">
+                <p className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary mb-2">600+</p>
+                <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">Clientes atendidos em Guarapari</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white dark:bg-darkSurface rounded-2xl p-5 border border-gray-100 dark:border-darkBorder shadow-sm text-center">
+                  <p className="text-3xl font-black text-primary mb-1">5.0</p>
+                  <div className="flex justify-center mb-1">
+                    {[1,2,3,4,5].map(i => <Star key={i} size={12} className="text-yellow-400" fill="currentColor" />)}
+                  </div>
+                  <p className="text-xs text-lightText dark:text-darkTextSecondary">Avaliação média</p>
+                </div>
+                <div className="bg-white dark:bg-darkSurface rounded-2xl p-5 border border-gray-100 dark:border-darkBorder shadow-sm text-center">
+                  <p className="text-3xl font-black text-secondary mb-1">24h</p>
+                  <p className="text-xs text-lightText dark:text-darkTextSecondary mt-3">Retorno com orçamento</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

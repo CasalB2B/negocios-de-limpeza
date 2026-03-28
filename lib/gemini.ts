@@ -31,6 +31,8 @@ SEQUÊNCIA:
 
 6. Precisa de limpeza interna? (geladeira, fogão, armários — tem custo adicional)
 
+6b. Se o imóvel for grande (mais de 3 quartos) ou passou por reforma, pergunte de forma natural: "Você consegue mandar uma foto ou dois do ambiente? Ajuda muito a gente a dar um orçamento mais preciso! 📸" — seja breve e opcional.
+
 7. O imóvel passou por reforma ou pintura recente?
 
 8. FINALIZAÇÃO — Diga que tem tudo que precisa e peça:
@@ -84,12 +86,16 @@ export const cleanAIResponse = (text: string): string => {
   return text.replace(/<<QUOTE_DATA>>[\s\S]*?<<END_QUOTE>>/, '').trim();
 };
 
-export const extractFromConversation = async (conversationText: string): Promise<Record<string, string>> => {
+export const extractFromConversation = async (
+  conversationText: string,
+  imageBase64?: string,
+  imageMimeType = 'image/jpeg'
+): Promise<Record<string, string>> => {
   if (!GEMINI_API_KEY || GEMINI_API_KEY.includes('PLACEHOLDER')) {
     throw new Error('GEMINI_API_KEY não configurada');
   }
 
-  const prompt = `Você é um assistente de vendas. Analise esta conversa e extraia os dados do cliente para um orçamento de limpeza.
+  const prompt = `Você é um assistente de vendas. Analise esta conversa (ou print/screenshot) e extraia os dados do cliente para um orçamento de limpeza.
 
 Retorne APENAS um JSON válido com os campos abaixo. Se um campo não estiver disponível, use string vazia "".
 
@@ -108,11 +114,16 @@ Retorne APENAS um JSON válido com os campos abaixo. Se um campo não estiver di
 CONVERSA:
 ${conversationText}`;
 
+  const parts: object[] = [{ text: prompt }];
+  if (imageBase64) {
+    parts.push({ inline_data: { mime_type: imageMimeType, data: imageBase64 } });
+  }
+
   const res = await fetch(`${API_URL}?key=${GEMINI_API_KEY}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      contents: [{ role: 'user', parts }],
       generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
     }),
   });

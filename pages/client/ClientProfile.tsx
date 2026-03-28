@@ -43,10 +43,15 @@ export const ClientProfile: React.FC = () => {
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files && e.target.files[0] && currentUser) {
-          const url = URL.createObjectURL(e.target.files[0]);
-          updateClient(currentUser.id, { photo: url } as any); // Type cast for dynamic prop
-      }
+    if (e.target.files && e.target.files[0] && currentUser) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result as string;
+        updateClient(currentUser.id, { photo: dataUrl });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   if (!currentUser) return null; 

@@ -79,6 +79,7 @@ export interface ClientUser {
   addresses: Address[];
   type: 'FIXO' | 'AVULSO' | 'POS_OBRA' | 'PRIMEIRA_LIMPEZA' | string;
   password?: string;
+  photo?: string;
   createdAt: number;
 }
 
@@ -116,6 +117,7 @@ export interface Quote {
   serviceOption: string;
   status: 'NEW' | 'CONTACTED' | 'CONVERTED' | 'LOST';
   chatSummary?: string;
+  clientPhotos?: string[];
   createdAt: number;
 }
 
@@ -601,7 +603,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (data.name) updates.name = data.name;
     if (data.email) updates.email = data.email;
     if (data.phone) updates.phone = data.phone;
-    
+    if (data.photo) updates.photo = data.photo;
+
     await supabase.from('app_users').update(updates).eq('id', id);
   };
 

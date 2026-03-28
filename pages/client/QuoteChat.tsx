@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Send, ArrowLeft, Bot, Loader, CheckCircle, Phone, Sparkles } from 'lucide-react';
+import { Send, ArrowLeft, Bot, Loader, CheckCircle, Phone, Sparkles, Camera, X } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 import { sendMessage, GeminiMessage, extractQuoteData, cleanAIResponse } from '../../lib/gemini';
 
@@ -36,6 +36,7 @@ export const QuoteChat: React.FC = () => {
   const { addQuote } = useData();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'model', text: INITIAL_AI_MESSAGE, timestamp: new Date() }
@@ -45,6 +46,7 @@ export const QuoteChat: React.FC = () => {
   const [isComplete, setIsComplete] = useState(false);
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [chatPhotos, setChatPhotos] = useState<string[]>([]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -52,9 +54,10 @@ export const QuoteChat: React.FC = () => {
 
   const handleSend = async () => {
     const trimmed = input.trim();
-    if (!trimmed || isLoading || isComplete) return;
+    if ((!trimmed && chatPhotos.length === 0) || isLoading || isComplete) return;
 
-    const userMessage: ChatMessage = { role: 'user', text: trimmed, timestamp: new Date() };
+    const photoNote = chatPhotos.length > 0 ? `\n[${chatPhotos.length} foto(s) enviada(s)]` : '';
+    const userMessage: ChatMessage = { role: 'user', text: trimmed + photoNote, timestamp: new Date() };
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     setInput('');
@@ -105,6 +108,7 @@ export const QuoteChat: React.FC = () => {
           renovation: quoteData.renovation || '',
           serviceOption: quoteData.serviceOption || '',
           chatSummary: summary,
+          clientPhotos: chatPhotos,
         });
         setQuoteId(saved.id);
         setIsComplete(true);
@@ -254,13 +258,53 @@ export const QuoteChat: React.FC = () => {
 
       {/* Input */}
       <div className="sticky bottom-0 bg-white border-t border-gray-200 shadow-lg pb-safe">
+        {/* Photo thumbnails preview */}
+        {chatPhotos.length > 0 && (
+          <div className="max-w-2xl mx-auto px-3 pt-2 flex gap-2 flex-wrap">
+            {chatPhotos.map((photo, i) => (
+              <div key={i} className="relative">
+                <img src={photo} alt={`Foto ${i+1}`} className="w-14 h-14 object-cover rounded-xl border border-purple-200" />
+                <button
+                  onClick={() => setChatPhotos(prev => prev.filter((_, idx) => idx !== i))}
+                  className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5"
+                ><X size={10} /></button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="max-w-2xl mx-auto px-3 py-3 flex items-end gap-2">
+          <button
+            onClick={() => photoInputRef.current?.click()}
+            disabled={isComplete}
+            className="w-12 h-12 min-w-[48px] border border-gray-200 bg-gray-50 hover:bg-purple-50 hover:border-purple-300 disabled:opacity-30 text-gray-500 hover:text-purple-600 rounded-full flex items-center justify-center transition-colors flex-shrink-0"
+            title="Enviar foto"
+          >
+            <Camera size={18} />
+          </button>
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={e => {
+              if (!e.target.files) return;
+              Array.from(e.target.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                  const dataUrl = ev.target?.result as string;
+                  setChatPhotos(prev => [...prev, dataUrl]);
+                };
+                reader.readAsDataURL(file);
+              });
+              e.target.value = '';
+            }}
+          />
           <textarea
             ref={inputRef}
             value={input}
             onChange={e => {
               setInput(e.target.value);
-              // Auto-resize
               e.target.style.height = 'auto';
               e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
             }}
@@ -273,7 +317,7 @@ export const QuoteChat: React.FC = () => {
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim() || isLoading || isComplete}
+            disabled={(!input.trim() && chatPhotos.length === 0) || isLoading || isComplete}
             className="w-12 h-12 min-w-[48px] bg-[#a163ff] hover:bg-[#8f4ee0] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-full flex items-center justify-center transition-colors flex-shrink-0 shadow-md shadow-purple-200 active:scale-95"
           >
             {isLoading ? <Loader size={18} className="animate-spin" /> : <Send size={18} />}

@@ -4,6 +4,7 @@ import { UserRole } from '../types';
 import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare } from 'lucide-react';
 import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
+import { useData } from './DataContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -14,6 +15,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { currentUser } = useData();
 
   const handleLogout = () => {
     navigate('/');
@@ -83,7 +85,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                
                <div className="relative group cursor-pointer">
                   <div className="w-10 h-10 rounded-full border border-gray-200 dark:border-darkBorder overflow-hidden">
-                    <img src="https://i.pravatar.cc/150?u=ju" alt="Perfil" className="w-full h-full object-cover" />
+                    <img src={currentUser?.photo || `https://i.pravatar.cc/150?u=${currentUser?.id || 'ju'}`} alt="Perfil" className="w-full h-full object-cover" />
                   </div>
                   {/* Dropdown simples de logout */}
                   <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-darkSurface rounded-xl shadow-xl border border-gray-100 dark:border-darkBorder opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right">
