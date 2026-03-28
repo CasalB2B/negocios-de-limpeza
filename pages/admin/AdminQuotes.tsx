@@ -3,7 +3,7 @@ import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { useData, Quote, ClientUser } from '../../components/DataContext';
 import {
-  MessageSquare, Phone, Mail, ChevronDown, ChevronUp,
+  MessageSquare, Phone, Mail, ChevronDown,
   CheckCircle, Clock, TrendingUp, X, Plus, FileText, UserPlus,
   Wand2, Loader2,
 } from 'lucide-react';
@@ -108,13 +108,17 @@ body{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;background:#fff}
       <div class="sc"><div class="sct"><div class="dot"></div>Varanda / Gourmet</div><p>Limpeza dos vidros, trilhos e canaletas, limpeza externa de arm&aacute;rios, e limpeza do ch&atilde;o.</p></div>
     </div>
   </div>
-  <div style="padding:0 48px 28px">
+  <div style="padding:0 48px 20px">
     <div class="inv">
       <div class="ilbl">Investimento</div>
       <div class="idesc">${e(professionals)} profissionais &middot; ${e(hours)} horas de servi&ccedil;o</div>
       <div class="price">R$ ${e(price)}</div>
       <div class="pmethods"><span class="pchip">Pix</span><span class="pchip">Cart&atilde;o (consultar taxa)</span><span class="pchip">Transfer&ecirc;ncia</span></div>
     </div>
+  </div>
+  <div style="width:100%;height:220px;overflow:hidden;margin-bottom:56px">
+    <img src="https://i0.wp.com/negociosdelimpeza.com.br/wp-content/uploads/2025/07/Imagem-da-bio.webp"
+      style="width:100%;height:100%;object-fit:cover;object-position:top" alt="Negócios de Limpeza" />
   </div>
   <div class="ftr"><span>Neg&oacute;cios de Limpeza</span><span>Proposta Comercial &middot; P&aacute;gina 1 de 2</span><span>Validade: 7 dias</span></div>
 </div>
@@ -149,6 +153,10 @@ body{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;background:#fff}
     </div>
   </div>
   <div class="cta"><h3>Transforme seu lar com a Neg&oacute;cios de Limpeza!</h3><p>Entre em contato e agende sua faxina com quem cuida de verdade.</p></div>
+  <div style="width:100%;height:220px;overflow:hidden;margin-bottom:56px">
+    <img src="https://i0.wp.com/negociosdelimpeza.com.br/wp-content/uploads/2025/07/Imagem-da-bio.webp"
+      style="width:100%;height:100%;object-fit:cover;object-position:center" alt="Negócios de Limpeza" />
+  </div>
   <div class="ftr"><span>Neg&oacute;cios de Limpeza</span><span>Proposta Comercial &middot; P&aacute;gina 2 de 2</span><span>Validade: 7 dias</span></div>
 </div>
 <button class="pbtn no-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
@@ -431,7 +439,6 @@ interface QuoteCardProps {
 }
 
 const QuoteCard: React.FC<QuoteCardProps> = ({ quote, onStatusChange, onCreateAccount }) => {
-  const [expanded, setExpanded] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [showPDF, setShowPDF] = useState(false);
   const status = STATUS_LABELS[quote.status];
@@ -480,7 +487,7 @@ const QuoteCard: React.FC<QuoteCardProps> = ({ quote, onStatusChange, onCreateAc
           </div>
 
           {/* Resumo do imóvel — sempre visível */}
-          <div className="grid grid-cols-2 gap-2 mb-4">
+          <div className="grid grid-cols-2 gap-2 mb-3">
             {quote.propertyType && (
               <div className="bg-gray-50 rounded-xl p-3">
                 <p className="text-[9px] text-gray-400 uppercase font-bold mb-0.5">Tipo de Imóvel</p>
@@ -501,6 +508,49 @@ const QuoteCard: React.FC<QuoteCardProps> = ({ quote, onStatusChange, onCreateAc
             )}
           </div>
 
+          {/* Detalhes da conversa — sempre visíveis */}
+          {(quote.priorities || quote.internalCleaning || quote.renovation || quote.chatSummary) && (
+            <div className="border border-purple-100 bg-purple-50/40 rounded-xl p-4 mb-3 space-y-2.5">
+              <p className="text-[9px] text-purple-500 uppercase font-bold tracking-wider">Resumo da conversa</p>
+              {quote.priorities && (
+                <div>
+                  <span className="text-[9px] text-gray-400 uppercase font-bold">Prioridades: </span>
+                  <span className="text-xs text-gray-700">{quote.priorities}</span>
+                </div>
+              )}
+              {quote.internalCleaning && (
+                <div>
+                  <span className="text-[9px] text-gray-400 uppercase font-bold">Limpeza interna: </span>
+                  <span className="text-xs text-gray-700">{quote.internalCleaning}</span>
+                </div>
+              )}
+              {quote.renovation && (
+                <div>
+                  <span className="text-[9px] text-gray-400 uppercase font-bold">Reforma/Pós-obra: </span>
+                  <span className="text-xs text-gray-700">{quote.renovation}</span>
+                </div>
+              )}
+              {quote.chatSummary && (
+                <div>
+                  <span className="text-[9px] text-gray-400 uppercase font-bold">Chat: </span>
+                  <span className="text-xs text-gray-600 italic">
+                    {quote.chatSummary.length > 180
+                      ? quote.chatSummary.slice(0, 180) + '…'
+                      : quote.chatSummary}
+                  </span>
+                  {quote.chatSummary.length > 180 && (
+                    <button
+                      onClick={() => setShowChat(true)}
+                      className="text-[10px] text-purple-600 font-bold hover:underline ml-1"
+                    >
+                      ver tudo
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Ações */}
           <div className="flex flex-wrap gap-2">
             <button
@@ -518,41 +568,15 @@ const QuoteCard: React.FC<QuoteCardProps> = ({ quote, onStatusChange, onCreateAc
           </div>
         </div>
 
-        {/* Expandir detalhes adicionais */}
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="w-full flex items-center justify-between px-5 py-3 bg-gray-50 border-t border-gray-100 text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors"
-        >
-          Ver detalhes completos
-          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </button>
-
-        {expanded && (
-          <div className="px-5 pb-4 pt-3 space-y-3 border-t border-gray-100">
-            {quote.priorities && (
-              <div>
-                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Prioridades</p>
-                <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">{quote.priorities}</p>
-              </div>
-            )}
-            {quote.internalCleaning && (
-              <div>
-                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Limpeza Interna</p>
-                <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">{quote.internalCleaning}</p>
-              </div>
-            )}
-            {quote.renovation && (
-              <div>
-                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Reforma / Pós-Obra</p>
-                <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">{quote.renovation}</p>
-              </div>
-            )}
-            {quote.chatSummary && (
-              <button onClick={() => setShowChat(true)} className="text-xs font-bold text-[#a163ff] hover:underline">
-                Ver histórico completo do chat →
-              </button>
-            )}
-          </div>
+        {/* Ver histórico completo */}
+        {quote.chatSummary && quote.chatSummary.length > 180 && (
+          <button
+            onClick={() => setShowChat(true)}
+            className="w-full flex items-center justify-between px-5 py-3 bg-gray-50 border-t border-gray-100 text-xs font-bold text-purple-600 hover:bg-purple-50 transition-colors"
+          >
+            Ver histórico completo do chat →
+            <ChevronDown size={14} />
+          </button>
         )}
 
         {/* Status */}
