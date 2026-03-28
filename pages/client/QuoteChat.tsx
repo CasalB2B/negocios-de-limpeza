@@ -54,8 +54,8 @@ export const QuoteChat: React.FC = () => {
   const [apiError, setApiError] = useState<string | null>(null);
   const [chatPhotos, setChatPhotos] = useState<string[]>([]);
   const [savedName, setSavedName] = useState(isDemo ? 'Maria' : '');
-  const [credentials, setCredentials] = useState<{ login: string; password: string; phone: string } | null>(
-    isDemo ? { login: 'Maria', password: '8888', phone: '(27) 99999-8888' } : null
+  const [credentials, setCredentials] = useState<{ login: string; password: string } | null>(
+    isDemo ? { login: 'maria@email.com', password: '8888' } : null
   );
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState<'login' | 'password' | null>(null);
@@ -147,9 +147,8 @@ export const QuoteChat: React.FC = () => {
           // Account may already exist — still show success
         }
 
-        const firstName = (quoteData.name || '').split(' ')[0];
-        setSavedName(firstName);
-        setCredentials({ login: firstName, password: loginPassword, phone: quoteData.whatsapp || '' });
+        setSavedName((quoteData.name || '').split(' ')[0]);
+        setCredentials({ login: loginEmail, password: loginPassword });
         setIsComplete(true);
       }
     } catch (err: any) {
@@ -222,10 +221,10 @@ export const QuoteChat: React.FC = () => {
                 {/* Login = phone number */}
                 <div className="bg-gray-50 rounded-xl p-3 flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Login — seu primeiro nome</p>
-                    <p className="font-bold text-gray-800 text-sm">{credentials.login}</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Login — seu e-mail</p>
+                    <p className="font-bold text-gray-800 text-sm break-all">{credentials.login}</p>
                   </div>
-                  <button onClick={() => handleCopy(credentials.phone || credentials.login, 'login')}
+                  <button onClick={() => handleCopy(credentials.login, 'login')}
                     className="ml-2 p-2 rounded-lg hover:bg-gray-200 transition-colors flex-shrink-0">
                     {copied === 'login' ? <CheckCircle size={16} className="text-green-500" /> : <Copy size={16} className="text-gray-400" />}
                   </button>

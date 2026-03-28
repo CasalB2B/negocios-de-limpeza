@@ -444,8 +444,8 @@ const CreateAccountModal: React.FC<CreateAccountModalProps> = ({ quote, onClose,
             <p className="text-xs text-gray-500 mb-4">O cliente poderá acessar a plataforma com estas credenciais:</p>
             <div className="bg-gray-50 rounded-xl p-4 space-y-3 mb-5">
               <div>
-                <span className="text-[9px] text-gray-400 uppercase font-bold block mb-0.5">Login — primeiro nome</span>
-                <p className="text-sm font-bold text-gray-800">{quote.name.split(' ')[0]}</p>
+                <span className="text-[9px] text-gray-400 uppercase font-bold block mb-0.5">Login — e-mail</span>
+                <p className="text-sm font-bold text-gray-800">{loginEmail}</p>
               </div>
               <div>
                 <span className="text-[9px] text-gray-400 uppercase font-bold block mb-0.5">Senha — últimos 4 dígitos do celular</span>

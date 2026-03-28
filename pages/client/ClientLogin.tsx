@@ -100,12 +100,12 @@ export const ClientLogin: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase">Seu nome</label>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase">E-mail</label>
               <input
-                type="text"
-                autoComplete="name"
+                type="email"
+                autoComplete="email"
                 className="w-full p-4 rounded-xl border border-gray-200 bg-white text-gray-900 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder-gray-300"
-                placeholder="Ex: Maria"
+                placeholder="seu@email.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
               />

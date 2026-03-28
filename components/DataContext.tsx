@@ -614,27 +614,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (currentUser?.id === id) logoutClient();
   };
 
-  const loginClient = async (nameOrEmail: string, password: string): Promise<boolean> => {
-    const inputLower = nameOrEmail.trim().toLowerCase();
-    // Match by first name (case-insensitive) OR email
-    const localUser = clients.find(c =>
-      (c.name.split(' ')[0].toLowerCase() === inputLower || c.email === nameOrEmail) &&
-      c.password === password
-    );
+  const loginClient = async (email: string, password: string): Promise<boolean> => {
+    const localUser = clients.find(c => c.email === email && c.password === password);
     if (localUser) {
         setCurrentUser(localUser);
         localStorage.setItem('auth_client', JSON.stringify(localUser));
         return true;
     }
-    // Try Supabase — fetch all clients and match by first name or email
-    const { data: users } = await supabase.from('app_users').select('*').eq('role', 'CLIENT');
-    const match = (users || []).find((u: any) =>
-      (u.name?.split(' ')[0].toLowerCase() === inputLower || u.email === nameOrEmail) &&
-      u.password === password
-    );
-    if (match) {
-        const { data: addrs } = await supabase.from('addresses').select('*').eq('user_id', match.id);
-        const clientObj = mapDbUserToClient(match, addrs || []);
+    const { data: user } = await supabase.from('app_users').select('*').eq('email', email).eq('role', 'CLIENT').single();
+    if (user && user.password === password) {
+        const { data: addrs } = await supabase.from('addresses').select('*').eq('user_id', user.id);
+        const clientObj = mapDbUserToClient(user, addrs || []);
         setCurrentUser(clientObj);
         localStorage.setItem('auth_client', JSON.stringify(clientObj));
         return true;
