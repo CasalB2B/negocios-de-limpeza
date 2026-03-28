@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Send, ArrowLeft, Bot, Loader, CheckCircle, Phone, Sparkles, Camera, X } from 'lucide-react';
+import { Send, ArrowLeft, Bot, Loader, CheckCircle, Phone, Sparkles, Camera, X, Home, Calendar, FileText, User, Copy, Eye, EyeOff } from 'lucide-react';
 import { useData } from '../../components/DataContext';
+import { UserRole } from '../../types';
 import { sendMessage, GeminiMessage, extractQuoteData, cleanAIResponse } from '../../lib/gemini';
 
 const INITIAL_AI_MESSAGE = `Olá! 👋 Bem-vindo à **Negócios de Limpeza**!
@@ -33,7 +34,7 @@ const formatText = (text: string): React.ReactNode => {
 
 export const QuoteChat: React.FC = () => {
   const navigate = useNavigate();
-  const { addQuote } = useData();
+  const { addQuote, registerClient } = useData();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -47,6 +48,10 @@ export const QuoteChat: React.FC = () => {
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [chatPhotos, setChatPhotos] = useState<string[]>([]);
+  const [savedName, setSavedName] = useState('');
+  const [credentials, setCredentials] = useState<{ login: string; password: string } | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [copied, setCopied] = useState<'login' | 'password' | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -111,6 +116,32 @@ export const QuoteChat: React.FC = () => {
           clientPhotos: chatPhotos,
         });
         setQuoteId(saved.id);
+
+        // Generate credentials and register client account automatically
+        const phoneDigits = (quoteData.whatsapp || '').replace(/\D/g, '');
+        const loginEmail = quoteData.email?.trim()
+          ? quoteData.email.trim()
+          : `${phoneDigits}@cliente.ndl`;
+        const loginPassword = phoneDigits || `ndl${Date.now()}`;
+
+        try {
+          await registerClient({
+            id: `user_${Date.now()}`,
+            name: quoteData.name || '',
+            email: loginEmail,
+            phone: quoteData.whatsapp || '',
+            password: loginPassword,
+            addresses: [],
+            address: '',
+            type: 'AVULSO',
+            createdAt: Date.now(),
+          });
+        } catch {
+          // Account may already exist — still show success
+        }
+
+        setSavedName((quoteData.name || '').split(' ')[0]);
+        setCredentials({ login: loginEmail, password: loginPassword });
         setIsComplete(true);
       }
     } catch (err: any) {
@@ -127,40 +158,122 @@ export const QuoteChat: React.FC = () => {
     }
   };
 
+  const handleCopy = (text: string, field: 'login' | 'password') => {
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopied(field);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
   if (isComplete) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#a163ff] to-[#6b21a8] flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center animate-in zoom-in-95">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle size={40} className="text-green-500" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">Orçamento enviado!</h2>
-          <p className="text-gray-500 mb-6 leading-relaxed">
-            Recebemos suas informações. Nossa equipe vai analisar e entrar em contato pelo <strong>WhatsApp em até 24 horas</strong> com seu orçamento personalizado. 🎉
-          </p>
-          <div className="bg-purple-50 rounded-2xl p-4 mb-6 flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#a163ff] rounded-full flex items-center justify-center flex-shrink-0">
-              <Phone size={18} className="text-white" />
+      <div className="min-h-screen bg-gradient-to-br from-[#a163ff] to-[#6b21a8] overflow-y-auto">
+        <div className="max-w-lg mx-auto px-4 py-10 space-y-4 animate-in fade-in slide-in-from-bottom-4">
+
+          {/* Welcome header */}
+          <div className="text-center pb-2">
+            <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle size={40} className="text-white" />
             </div>
-            <div className="text-left">
-              <p className="text-xs text-gray-500">Fale conosco agora</p>
-              <p className="font-bold text-gray-800">(27) 99980-8013</p>
-            </div>
+            <h1 className="text-3xl font-bold text-white">Bem-vindo(a){savedName ? `, ${savedName}` : ''}!</h1>
+            <p className="text-white/80 mt-1 text-sm">Seu orçamento foi enviado com sucesso ✨</p>
           </div>
-          <div className="flex flex-col gap-3">
+
+          {/* Orçamento card */}
+          <div className="bg-white rounded-2xl p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-[#a163ff] rounded-full flex items-center justify-center flex-shrink-0">
+                <Phone size={18} className="text-white" />
+              </div>
+              <div>
+                <p className="font-bold text-gray-800">Orçamento em andamento</p>
+                <p className="text-xs text-gray-500">Nossa equipe entra em contato em até 24h pelo WhatsApp</p>
+              </div>
+            </div>
             <button
               onClick={() => window.open('https://wa.me/5527999808013', '_blank')}
-              className="w-full py-3 px-6 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-colors"
+              className="w-full py-2.5 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-colors text-sm"
             >
               Falar no WhatsApp agora
             </button>
-            <button
-              onClick={() => navigate('/')}
-              className="w-full py-3 px-6 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors"
-            >
-              Voltar ao início
-            </button>
           </div>
+
+          {/* Credentials card */}
+          {credentials && (
+            <div className="bg-white rounded-2xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                  <User size={16} className="text-[#a163ff]" />
+                </div>
+                <div>
+                  <p className="font-bold text-gray-800 text-sm">Sua conta foi criada!</p>
+                  <p className="text-xs text-gray-500">Guarde seu login e senha para acessar o app</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="bg-gray-50 rounded-xl p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Login</p>
+                    <p className="font-bold text-gray-800 text-sm break-all">{credentials.login}</p>
+                  </div>
+                  <button onClick={() => handleCopy(credentials.login, 'login')}
+                    className="ml-2 p-2 rounded-lg hover:bg-gray-200 transition-colors flex-shrink-0">
+                    {copied === 'login' ? <CheckCircle size={16} className="text-green-500" /> : <Copy size={16} className="text-gray-400" />}
+                  </button>
+                </div>
+
+                <div className="bg-gray-50 rounded-xl p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Senha</p>
+                    <p className="font-bold text-gray-800 text-sm">{showPassword ? credentials.password : '••••••••'}</p>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                    <button onClick={() => setShowPassword(p => !p)}
+                      className="p-2 rounded-lg hover:bg-gray-200 transition-colors">
+                      {showPassword ? <EyeOff size={16} className="text-gray-400" /> : <Eye size={16} className="text-gray-400" />}
+                    </button>
+                    <button onClick={() => handleCopy(credentials.password, 'password')}
+                      className="p-2 rounded-lg hover:bg-gray-200 transition-colors">
+                      {copied === 'password' ? <CheckCircle size={16} className="text-green-500" /> : <Copy size={16} className="text-gray-400" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Mini tutorial */}
+          <div className="bg-white rounded-2xl p-5">
+            <p className="font-bold text-gray-800 mb-3 text-sm">O que você encontra no app:</p>
+            <div className="space-y-3">
+              {[
+                { icon: <Home size={18} className="text-[#a163ff]" />, title: 'Início', desc: 'Veja sua próxima limpeza agendada e avisos importantes' },
+                { icon: <Calendar size={18} className="text-[#a163ff]" />, title: 'Agendamentos', desc: 'Histórico completo dos seus serviços com data e horário' },
+                { icon: <FileText size={18} className="text-[#a163ff]" />, title: 'Pagamentos', desc: 'Acompanhe faturas e formas de pagamento disponíveis' },
+                { icon: <User size={18} className="text-[#a163ff]" />, title: 'Perfil', desc: 'Atualize seus dados, foto e endereços. Clique na foto para trocar!' },
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className="w-9 h-9 bg-purple-50 rounded-xl flex items-center justify-center flex-shrink-0">{item.icon}</div>
+                  <div>
+                    <p className="font-bold text-gray-800 text-sm">{item.title}</p>
+                    <p className="text-xs text-gray-500">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* CTA */}
+          <button
+            onClick={() => navigate('/client/dashboard')}
+            className="w-full py-4 bg-white text-[#a163ff] font-bold rounded-2xl text-lg shadow-xl hover:bg-purple-50 transition-colors"
+          >
+            Entrar na minha área →
+          </button>
+
+          <p className="text-center text-white/60 text-xs pb-4">
+            Você pode acessar novamente em app.negociosdelimpeza.com.br
+          </p>
         </div>
       </div>
     );
