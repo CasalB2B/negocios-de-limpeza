@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button';
-import { Check, ArrowLeft, ChevronRight, CheckCircle, Shirt, HardHat, Sparkles, Send, ChevronLeft as ChevronLeftIcon, User, Facebook, Loader } from 'lucide-react';
-import { useData } from '../../components/DataContext'; // Import useData
-import { Address } from '../../types';
+import { Check, ArrowLeft, ChevronRight, CheckCircle, Shirt, HardHat, Sparkles, Send, ChevronLeft as ChevronLeftIcon, User, Facebook, Loader, Briefcase } from 'lucide-react';
+import { useData } from '../../components/DataContext';
 
 export const ClientRequest: React.FC = () => {
   const navigate = useNavigate();
@@ -14,12 +13,6 @@ export const ClientRequest: React.FC = () => {
 
   // --- STATE ---
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
-  
-  // Address Detailed State
-  const [addrStreet, setAddrStreet] = useState('');
-  const [addrNumber, setAddrNumber] = useState('');
-  const [addrDistrict, setAddrDistrict] = useState('');
-  const [addrCity, setAddrCity] = useState('');
   
   // Dynamic Details States
   const [qtyUnit, setQtyUnit] = useState(1); // Hours, or SQM base
@@ -86,31 +79,17 @@ export const ClientRequest: React.FC = () => {
   };
 
   const handleSocialRegister = async (provider: string) => {
-      // Simulação de cadastro via Google/Facebook
       setIsSubmitting(true);
       const newClientId = `user_social_${Date.now()}`;
       const fakeName = provider === 'Google' ? 'Usuário Google' : 'Usuário Facebook';
-      
-      const newAddressObj: Address = {
-            id: Date.now(),
-            alias: 'Endereço do Pedido',
-            street: addrStreet,
-            number: addrNumber,
-            district: addrDistrict,
-            city: addrCity || 'Não informada',
-            state: 'UF',
-            cep: '',
-            type: 'HOUSE',
-            isMain: true
-      };
 
       const newClient = {
           id: newClientId,
           name: fakeName,
           email: `${provider.toLowerCase()}@exemplo.com`,
           phone: '',
-          address: `${addrStreet}, ${addrNumber} - ${addrDistrict}`,
-          addresses: [newAddressObj],
+          address: 'A confirmar',
+          addresses: [],
           type: 'AVULSO' as const,
           createdAt: Date.now()
       };
@@ -124,14 +103,14 @@ export const ClientRequest: React.FC = () => {
 
   const createService = async (clientId: string, clientName: string) => {
       if (!selectedDef) return;
-      
+
       let details = "";
       if (selectedDef.pricingModel === 'ROOMS') details = `${rooms} Quartos, ${bathrooms} Banheiros`;
       else if (selectedDef.pricingModel === 'HOURLY') details = `${qtyUnit} Horas`;
       else details = `${qtyUnit} m²`;
 
       const extraLabels = selectedExtras.map(eid => selectedDef.extras.find(e => e.id === eid)?.label).join(', ');
-      const fullAddressString = `${addrStreet}, ${addrNumber} - ${addrDistrict}`;
+      const fullAddressString = currentUser?.address || 'A confirmar';
 
       const newService = {
         id: Math.floor(Math.random() * 10000).toString(),
@@ -159,7 +138,6 @@ export const ClientRequest: React.FC = () => {
     try {
         let clientId = currentUser?.id;
         let clientName = currentUser?.name;
-        const fullAddressString = `${addrStreet}, ${addrNumber} - ${addrDistrict}`;
 
         if (!currentUser) {
             if (!regData.name || !regData.email || !regData.password) {
@@ -169,27 +147,14 @@ export const ClientRequest: React.FC = () => {
             }
 
             const newClientId = `user_${Date.now()}`;
-            
-            const newAddressObj: Address = {
-                id: Date.now(),
-                alias: 'Endereço do Pedido',
-                street: addrStreet,
-                number: addrNumber,
-                district: addrDistrict,
-                city: addrCity || 'Não informada',
-                state: 'UF',
-                cep: '',
-                type: 'HOUSE',
-                isMain: true
-            };
 
             const newClient = {
               id: newClientId,
               name: regData.name,
               email: regData.email,
               phone: regData.phone,
-              address: fullAddressString,
-              addresses: [newAddressObj],
+              address: 'A confirmar',
+              addresses: [],
               type: 'AVULSO' as const,
               password: regData.password,
               createdAt: Date.now()
@@ -210,12 +175,6 @@ export const ClientRequest: React.FC = () => {
   };
 
   const nextStep = () => {
-    if (step === 1) {
-        if (!addrStreet || !addrNumber || !addrDistrict) {
-            alert("Por favor, preencha o endereço completo (Rua, Número e Bairro).");
-            return;
-        }
-    }
     if (step < totalSteps) setStep(s => s + 1);
     else handleFinalize();
   };
@@ -228,6 +187,7 @@ export const ClientRequest: React.FC = () => {
       case 'sparkles': return <Sparkles size={24} />;
       case 'shirt': return <Shirt size={24} />;
       case 'hardhat': return <HardHat size={24} />;
+      case 'briefcase': return <Briefcase size={24} />;
       default: return <Sparkles size={24} />;
     }
   };
@@ -253,23 +213,6 @@ export const ClientRequest: React.FC = () => {
         </div>
       </div>
       
-      <div className="bg-white dark:bg-darkSurface p-6 rounded-2xl border border-gray-100 dark:border-darkBorder">
-        <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-4">Onde será o serviço?</label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-                <input type="text" placeholder="Rua / Avenida" value={addrStreet} onChange={(e) => setAddrStreet(e.target.value)} className="w-full p-4 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary" />
-            </div>
-            <div>
-                <input type="text" placeholder="Número" value={addrNumber} onChange={(e) => setAddrNumber(e.target.value)} className="w-full p-4 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary" />
-            </div>
-            <div>
-                <input type="text" placeholder="Bairro" value={addrDistrict} onChange={(e) => setAddrDistrict(e.target.value)} className="w-full p-4 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary" />
-            </div>
-            <div className="md:col-span-2">
-                <input type="text" placeholder="Cidade (Opcional)" value={addrCity} onChange={(e) => setAddrCity(e.target.value)} className="w-full p-4 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary" />
-            </div>
-        </div>
-      </div>
     </div>
   );
 
@@ -435,9 +378,9 @@ export const ClientRequest: React.FC = () => {
              </div>
              <div className="flex justify-between border-b border-gray-200 dark:border-darkBorder pb-2">
                 <span className="text-lightText">Endereço</span>
-                <span className="font-bold text-darkText dark:text-darkTextPrimary text-right max-w-[200px] truncate">{addrStreet}, {addrNumber}</span>
+                <span className="font-bold text-darkText dark:text-darkTextPrimary text-right max-w-[200px] truncate">{currentUser?.address || 'A confirmar'}</span>
              </div>
-             
+
              <div className="flex justify-between pt-4 border-t border-gray-200 dark:border-darkBorder items-center">
                 <span className="text-lg font-bold text-darkText dark:text-darkTextPrimary">Total Estimado</span>
                 <span className="text-3xl font-bold text-primary">R$ {totalPrice.toFixed(2)}</span>

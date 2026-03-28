@@ -187,11 +187,11 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 const mockServiceDefinitions: ServiceDefinition[] = [
   {
     id: 'srv_1',
-    name: 'Limpeza Residencial',
-    description: 'Limpeza completa de casas e apartamentos. Preço por porte do imóvel.',
+    name: 'Primeira Limpeza',
+    description: 'Limpeza profunda e completa. Foco nas suas prioridades. 1 ou 2 colaboradoras.',
     icon: 'sparkles',
     pricingModel: 'ROOMS',
-    basePrice: 320.00,    // Até 2 quartos e 2 banheiros (1 colaboradora)
+    basePrice: 320.00,    // 1 colaboradora — até 2 quartos/banheiros
     pricePerUnit: 0,
     pricePerBath: 0,
     extras: [
@@ -200,34 +200,47 @@ const mockServiceDefinitions: ServiceDefinition[] = [
       {id: 'ex_3', label: 'Limpeza de Janelas (todas)', price: 60},
     ],
     pricingTiers: [
-      // Imóvel grande: 3+ quartos OU 3+ banheiros → 2 colaboradoras = R$520
-      { id: 'tier_grande', name: 'Imóvel Grande (2 colaboradoras)', value: 3, price: 520 }
+      { id: 'tier_grande', name: '2 Colaboradoras (3+ quartos ou banheiros)', value: 3, price: 520 }
     ],
     active: true
   },
   {
     id: 'srv_2',
-    name: 'Limpeza Pós-Obra',
-    description: 'Limpeza profunda após reformas e construções. Cobrado por m².',
-    icon: 'hardhat',
-    pricingModel: 'SQM',
+    name: 'Passadoria',
+    description: 'Suas roupas passadas e prontas para usar. Cobrado por hora.',
+    icon: 'shirt',
+    pricingModel: 'HOURLY',
     basePrice: 0,
-    pricePerUnit: 25.00,  // R$25 por m²
-    extras: [
-      {id: 'ex_po_1', label: 'Remoção de Entulho Leve', price: 120},
-      {id: 'ex_po_2', label: 'Limpeza de Vidros (tinta)', price: 80},
-    ],
+    pricePerUnit: 18.50,
+    extras: [],
     active: true
   },
   {
     id: 'srv_3',
-    name: 'Diarista por Hora',
-    description: 'Colaboradora para tarefas específicas. Valor por hora.',
-    icon: 'shirt',
-    pricingModel: 'HOURLY',
+    name: 'Limpeza Comercial',
+    description: 'Limpeza de escritórios, clínicas e espaços comerciais. Cobrado por m².',
+    icon: 'briefcase',
+    pricingModel: 'SQM',
     basePrice: 0,
-    pricePerUnit: 18.50,  // R$18,50 por hora
-    extras: [],
+    pricePerUnit: 25.00,
+    extras: [
+      {id: 'ex_com_1', label: 'Limpeza de Vidros Externos', price: 80},
+      {id: 'ex_com_2', label: 'Sanitização Completa', price: 100},
+    ],
+    active: true
+  },
+  {
+    id: 'srv_4',
+    name: 'Pós-Obra',
+    description: 'Limpeza profunda após reformas, pinturas e construções. Cobrado por m².',
+    icon: 'hardhat',
+    pricingModel: 'SQM',
+    basePrice: 0,
+    pricePerUnit: 25.00,
+    extras: [
+      {id: 'ex_po_1', label: 'Remoção de Entulho Leve', price: 120},
+      {id: 'ex_po_2', label: 'Limpeza de Vidros (tinta)', price: 80},
+    ],
     active: true
   }
 ];

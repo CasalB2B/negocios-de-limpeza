@@ -5,7 +5,7 @@ import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { Badge } from '../../components/Badge';
 import { Modal } from '../../components/Modal'; 
-import { Plus, Edit, Trash2, X, Sparkles, Shirt, HardHat, Save, Upload, Clock } from 'lucide-react';
+import { Plus, Edit, Trash2, X, Sparkles, Shirt, HardHat, Save, Upload, Clock, Briefcase } from 'lucide-react';
 import { useData, ServiceDefinition, ServiceExtra, PricingTier } from '../../components/DataContext';
 
 export const AdminServices: React.FC = () => {
@@ -44,6 +44,7 @@ export const AdminServices: React.FC = () => {
       case 'sparkles': iconEl = <Sparkles size={24} />; break;
       case 'shirt': iconEl = <Shirt size={24} />; break;
       case 'hardhat': iconEl = <HardHat size={24} />; break;
+      case 'briefcase': iconEl = <Briefcase size={24} />; break;
       default: iconEl = <Sparkles size={24} />;
     }
     

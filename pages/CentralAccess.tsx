@@ -25,7 +25,7 @@ export const CentralAccess: React.FC = () => {
               <button onClick={() => navigate('/admin/login')} className="text-sm font-bold text-lightText dark:text-darkTextSecondary hover:text-primary transition-colors">Admin</button>
               <div className="h-4 w-px bg-gray-200 dark:bg-darkBorder"></div>
               <button onClick={() => navigate('/client/login')} className="text-sm font-bold text-darkText dark:text-darkTextPrimary hover:text-primary transition-colors">Já sou cliente (Login)</button>
-              <Button onClick={() => navigate('/client/new-request')} className="px-6 py-2 h-auto text-sm">Fazer Orçamento</Button>
+              <Button onClick={() => navigate('/client/quote-chat')} className="px-6 py-2 h-auto text-sm">Fazer Orçamento</Button>
             </div>
             <ThemeToggle />
           </div>
@@ -49,8 +49,8 @@ export const CentralAccess: React.FC = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4">
-              <button 
-                onClick={() => navigate('/client/new-request')}
+              <button
+                onClick={() => navigate('/client/quote-chat')}
                 className="bg-primary text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-xl shadow-primary/30 hover:bg-primaryHover hover:scale-105 transition-all flex items-center justify-center gap-2"
               >
                 Fazer Orçamento Grátis <ArrowRight size={20} />
@@ -74,10 +74,10 @@ export const CentralAccess: React.FC = () => {
           </div>
 
           <div className="relative">
-             <img 
-               src="https://images.unsplash.com/photo-1581539250439-c96689b516dd?q=80&w=1000&auto=format&fit=crop" 
-               alt="Sala Limpa" 
-               className="rounded-3xl shadow-2xl transform rotate-2 hover:rotate-0 transition-transform duration-500 opacity-90 hover:opacity-100"
+             <img
+               src="https://i0.wp.com/negociosdelimpeza.com.br/wp-content/uploads/2025/07/Imagem-da-bio.webp"
+               alt="Fundadoras da Negócios de Limpeza"
+               className="rounded-3xl shadow-2xl transform rotate-2 hover:rotate-0 transition-transform duration-500 opacity-90 hover:opacity-100 object-cover"
              />
              
              {/* Float Card */}
