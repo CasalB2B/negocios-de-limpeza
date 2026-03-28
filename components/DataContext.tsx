@@ -614,20 +614,38 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (currentUser?.id === id) logoutClient();
   };
 
-  const loginClient = async (email: string, password: string): Promise<boolean> => {
-    const localUser = clients.find(c => c.email === email && c.password === password);
+  const loginClient = async (emailOrPhone: string, password: string): Promise<boolean> => {
+    const phoneDigits = emailOrPhone.replace(/\D/g, '');
+    // Match by email OR by phone number (digits only)
+    const localUser = clients.find(c =>
+      (c.email === emailOrPhone || c.phone.replace(/\D/g, '') === phoneDigits) &&
+      c.password === password
+    );
     if (localUser) {
         setCurrentUser(localUser);
         localStorage.setItem('auth_client', JSON.stringify(localUser));
         return true;
     }
-    const { data: user } = await supabase.from('app_users').select('*').eq('email', email).eq('role', 'CLIENT').single();
-    if (user && user.password === password) {
-        const { data: addrs } = await supabase.from('addresses').select('*').eq('user_id', user.id);
-        const clientObj = mapDbUserToClient(user, addrs || []);
+    // Try Supabase by email
+    const { data: userByEmail } = await supabase.from('app_users').select('*').eq('email', emailOrPhone).eq('role', 'CLIENT').single();
+    if (userByEmail && userByEmail.password === password) {
+        const { data: addrs } = await supabase.from('addresses').select('*').eq('user_id', userByEmail.id);
+        const clientObj = mapDbUserToClient(userByEmail, addrs || []);
         setCurrentUser(clientObj);
         localStorage.setItem('auth_client', JSON.stringify(clientObj));
         return true;
+    }
+    // Try Supabase by phone
+    if (phoneDigits) {
+        const { data: users } = await supabase.from('app_users').select('*').eq('role', 'CLIENT');
+        const userByPhone = (users || []).find((u: any) => u.phone?.replace(/\D/g, '') === phoneDigits && u.password === password);
+        if (userByPhone) {
+            const { data: addrs } = await supabase.from('addresses').select('*').eq('user_id', userByPhone.id);
+            const clientObj = mapDbUserToClient(userByPhone, addrs || []);
+            setCurrentUser(clientObj);
+            localStorage.setItem('auth_client', JSON.stringify(clientObj));
+            return true;
+        }
     }
     return false;
   };

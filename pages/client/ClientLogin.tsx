@@ -12,8 +12,8 @@ export const ClientLogin: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   // Form State
-  const [email, setEmail] = useState('julia@email.com');
-  const [password, setPassword] = useState('123456');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   // Verifica se já está logado ao carregar a página
   useEffect(() => {
@@ -100,20 +100,20 @@ export const ClientLogin: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase">E-mail</label>
-              <input 
-                type="email" 
-                autoComplete="email" 
-                className="w-full p-4 rounded-xl border border-gray-200 bg-white text-gray-900 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder-gray-300" 
-                placeholder="seu@email.com" 
-                value={email} 
-                onChange={e => setEmail(e.target.value)} 
+              <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase">Número de celular</label>
+              <input
+                type="text"
+                autoComplete="tel"
+                className="w-full p-4 rounded-xl border border-gray-200 bg-white text-gray-900 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder-gray-300"
+                placeholder="(27) 99999-0000"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
               />
             </div>
 
             <div className="relative">
               <div className="flex justify-between mb-1.5">
-                 <label className="block text-xs font-bold text-gray-700 uppercase">Senha</label>
+                 <label className="block text-xs font-bold text-gray-700 uppercase">Senha — últimos 3 dígitos do celular</label>
                  <button type="button" className="text-xs font-bold text-primary hover:underline">Esqueci minha senha</button>
               </div>
               <input 

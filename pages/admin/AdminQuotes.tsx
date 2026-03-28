@@ -423,7 +423,7 @@ interface CreateAccountModalProps {
 const CreateAccountModal: React.FC<CreateAccountModalProps> = ({ quote, onClose, onConfirm, alreadyExists }) => {
   const phone = quote.whatsapp.replace(/\D/g, '');
   const loginEmail = quote.email || `${phone}@cliente.ndl`;
-  const password = phone;
+  const password = phone.slice(-3) || '000';
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
@@ -444,12 +444,12 @@ const CreateAccountModal: React.FC<CreateAccountModalProps> = ({ quote, onClose,
             <p className="text-xs text-gray-500 mb-4">O cliente poderá acessar a plataforma com estas credenciais:</p>
             <div className="bg-gray-50 rounded-xl p-4 space-y-3 mb-5">
               <div>
-                <span className="text-[9px] text-gray-400 uppercase font-bold block mb-0.5">Login (e-mail)</span>
-                <p className="text-sm font-bold text-gray-800">{loginEmail}</p>
+                <span className="text-[9px] text-gray-400 uppercase font-bold block mb-0.5">Login — número de celular</span>
+                <p className="text-sm font-bold text-gray-800">{quote.whatsapp}</p>
               </div>
               <div>
-                <span className="text-[9px] text-gray-400 uppercase font-bold block mb-0.5">Senha</span>
-                <p className="text-sm font-bold text-gray-800">{password}</p>
+                <span className="text-[9px] text-gray-400 uppercase font-bold block mb-0.5">Senha — últimos 3 dígitos do celular</span>
+                <p className="text-sm font-bold text-gray-800 tracking-widest">{password}</p>
               </div>
             </div>
             <div className="flex gap-3">
