@@ -21,9 +21,6 @@ export const CentralAccess: React.FC = () => {
           
           <div className="flex items-center gap-6">
             <div className="hidden md:flex items-center gap-6">
-              <button onClick={() => navigate('/collab/login')} className="text-sm font-bold text-lightText dark:text-darkTextSecondary hover:text-primary transition-colors">Área da Colaboradora</button>
-              <button onClick={() => navigate('/admin/login')} className="text-sm font-bold text-lightText dark:text-darkTextSecondary hover:text-primary transition-colors">Admin</button>
-              <div className="h-4 w-px bg-gray-200 dark:bg-darkBorder"></div>
               <button onClick={() => navigate('/client/login')} className="text-sm font-bold text-darkText dark:text-darkTextPrimary hover:text-primary transition-colors">Já sou cliente (Login)</button>
               <Button onClick={() => navigate('/client/quote-chat')} className="px-6 py-2 h-auto text-sm">Fazer Orçamento</Button>
             </div>
@@ -126,14 +123,6 @@ export const CentralAccess: React.FC = () => {
         </div>
       </section>
 
-      {/* Mobile Footer Links */}
-      <div className="md:hidden border-t border-gray-100 dark:border-darkBorder p-6 bg-gray-50 dark:bg-darkSurface space-y-4 text-center">
-         <p className="font-bold text-darkText dark:text-darkTextPrimary mb-2">Acesso Restrito</p>
-         <div className="flex justify-center gap-4">
-            <button onClick={() => navigate('/collab/login')} className="text-sm font-bold text-lightText dark:text-darkTextSecondary hover:text-primary">Colaboradora</button>
-            <button onClick={() => navigate('/admin/login')} className="text-sm font-bold text-lightText dark:text-darkTextSecondary hover:text-primary">Administrador</button>
-         </div>
-      </div>
     </div>
   );
 };
