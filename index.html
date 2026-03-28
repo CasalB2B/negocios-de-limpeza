@@ -2,7 +2,7 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Negócios de Limpeza</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -110,9 +110,29 @@
         background: #475569;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8; 
+        background: #94a3b8;
       }
-      
+
+      /* Safe area insets for notched phones (iPhone X+) */
+      .pb-safe {
+        padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+      }
+      .pt-safe {
+        padding-top: max(0px, env(safe-area-inset-top));
+      }
+
+      /* Prevent double-tap zoom on buttons */
+      button, a {
+        touch-action: manipulation;
+      }
+
+      /* Prevent iOS input zoom (font-size < 16px triggers zoom on iOS) */
+      @supports (-webkit-touch-callout: none) {
+        input, select, textarea {
+          font-size: 16px !important;
+        }
+      }
+
       /* Utility for hiding scrollbar but keeping functionality */
       .no-scrollbar::-webkit-scrollbar {
         display: none;

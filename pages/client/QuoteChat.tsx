@@ -311,8 +311,8 @@ export const QuoteChat: React.FC = () => {
             onKeyDown={handleKeyDown}
             placeholder="Digite sua resposta..."
             rows={1}
-            className="flex-1 resize-none border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-800 focus:border-[#a163ff] focus:ring-2 focus:ring-[#a163ff]/20 outline-none transition-all bg-gray-50"
-            style={{ minHeight: '48px', maxHeight: '120px' }}
+            className="flex-1 resize-none border border-gray-200 rounded-2xl px-4 py-3 text-[16px] md:text-sm text-gray-800 focus:border-[#a163ff] focus:ring-2 focus:ring-[#a163ff]/20 outline-none transition-all bg-gray-50"
+            style={{ minHeight: '48px', maxHeight: '120px', fontSize: '16px' }}
             disabled={isLoading || isComplete}
           />
           <button

@@ -30,8 +30,8 @@ export const CentralAccess: React.FC = () => {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-20 pb-32 overflow-hidden">
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-purple-50 dark:bg-purple-900/10 rounded-bl-[100px] -z-10 transition-colors" />
+      <section className="relative pt-16 pb-24 overflow-hidden">
+        <div className="hidden sm:block absolute top-0 right-0 w-1/2 h-full bg-purple-50 dark:bg-purple-900/10 rounded-bl-[100px] -z-10 transition-colors" />
         
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-8">
@@ -48,13 +48,13 @@ export const CentralAccess: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-4">
               <button
                 onClick={() => navigate('/client/quote-chat')}
-                className="bg-primary text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-xl shadow-primary/30 hover:bg-primaryHover hover:scale-105 transition-all flex items-center justify-center gap-2"
+                className="bg-primary text-white px-5 py-3.5 md:px-8 md:py-4 rounded-2xl font-bold text-base md:text-lg shadow-xl shadow-primary/30 hover:bg-primaryHover hover:scale-105 transition-all flex items-center justify-center gap-2"
               >
                 Fazer Orçamento Grátis <ArrowRight size={20} />
               </button>
               <button 
                 onClick={() => navigate('/client/login')}
-                className="bg-white dark:bg-darkSurface text-darkText dark:text-darkTextPrimary border-2 border-gray-100 dark:border-darkBorder px-8 py-4 rounded-2xl font-bold text-lg hover:border-primary dark:hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2"
+                className="bg-white dark:bg-darkSurface text-darkText dark:text-darkTextPrimary border-2 border-gray-100 dark:border-darkBorder px-5 py-3.5 md:px-8 md:py-4 rounded-2xl font-bold text-base md:text-lg hover:border-primary dark:hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2"
               >
                 <User size={20} /> Área do Cliente
               </button>
@@ -82,7 +82,7 @@ export const CentralAccess: React.FC = () => {
             />
 
             {/* Float Card — bottom left */}
-            <div className="absolute -bottom-4 -left-4 bg-white dark:bg-darkSurface p-4 rounded-2xl shadow-xl border border-gray-100 dark:border-darkBorder animate-bounce-slow transition-colors">
+            <div className="hidden sm:block absolute -bottom-4 -left-4 bg-white dark:bg-darkSurface p-4 rounded-2xl shadow-xl border border-gray-100 dark:border-darkBorder animate-bounce-slow transition-colors">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center text-green-600 dark:text-green-400 flex-shrink-0">
                   <ShieldCheck size={20} />
@@ -95,7 +95,7 @@ export const CentralAccess: React.FC = () => {
             </div>
 
             {/* Float Card — top right */}
-            <div className="absolute -top-4 -right-4 bg-white dark:bg-darkSurface px-4 py-3 rounded-2xl shadow-xl border border-gray-100 dark:border-darkBorder transition-colors">
+            <div className="hidden sm:block absolute -top-4 -right-4 bg-white dark:bg-darkSurface px-4 py-3 rounded-2xl shadow-xl border border-gray-100 dark:border-darkBorder transition-colors">
               <div className="flex items-center gap-2">
                 <div className="flex">
                   {[1,2,3,4,5].map(i => (

@@ -130,7 +130,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           )}
         </header>
 
-        <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 mb-20 md:mb-0">
+        <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 mb-24 md:mb-0">
           {children}
         </main>
 
@@ -147,7 +147,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
               }`}
             >
               {link.icon}
-              <span className="text-[10px] mt-1 font-bold">{link.label}</span>
+              <span className="text-[11px] mt-1 font-bold">{link.label}</span>
             </button>
           ))}
         </nav>

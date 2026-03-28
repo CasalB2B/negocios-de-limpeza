@@ -254,7 +254,8 @@ const WhatsAppModal: React.FC<WhatsAppModalProps> = ({ onClose, onSave }) => {
                 value={text}
                 onChange={e => setText(e.target.value)}
                 placeholder="Ou cole aqui o texto copiado da conversa do WhatsApp..."
-                className="w-full h-36 p-3 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300"
+                className="w-full h-36 p-3 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-300"
+              style={{ fontSize: '16px' }}
               />
               {error && <p className="text-red-500 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
               <button
@@ -271,7 +272,7 @@ const WhatsAppModal: React.FC<WhatsAppModalProps> = ({ onClose, onSave }) => {
               <p className="text-sm font-bold text-green-700 bg-green-50 px-4 py-2 rounded-lg">
                 Dados extraídos! Revise e corrija se necessário antes de salvar.
               </p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {([
                   { key: 'name', label: 'Nome' },
                   { key: 'whatsapp', label: 'WhatsApp' },
@@ -351,7 +352,7 @@ const PDFModal: React.FC<PDFModalProps> = ({ quote, onClose }) => {
         </div>
 
         <div className="p-5 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Tipo de Serviço</label>
               <input value={serviceType} onChange={e => setServiceType(e.target.value)}
@@ -370,7 +371,7 @@ const PDFModal: React.FC<PDFModalProps> = ({ quote, onClose }) => {
               className="w-full p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Profissionais</label>
               <select value={professionals} onChange={e => setProfessionals(e.target.value)}
