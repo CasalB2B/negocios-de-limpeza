@@ -642,7 +642,7 @@ const QuoteCard: React.FC<QuoteCardProps> = ({ quote, onStatusChange, onCreateAc
           <div className="flex flex-wrap gap-2 mb-4">
             {quote.whatsapp && (
               <a
-                href={`https://wa.me/55${quote.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá ${quote.name}! Recebemos seu orçamento. Podemos conversar?`)}`}
+                href={(() => { const d = quote.whatsapp.replace(/\D/g, ''); return `https://wa.me/${d.startsWith('55') ? d : '55' + d}?text=${encodeURIComponent(`Olá ${quote.name}! Recebemos seu orçamento. Podemos conversar?`)}`; })()}
                 target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-2 text-xs font-bold text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors"
               >

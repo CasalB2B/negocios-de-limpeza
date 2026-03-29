@@ -45,7 +45,8 @@ Após receber WhatsApp e e-mail, encerre com uma mensagem calorosa e inclua OBRI
 <<END_QUOTE>>`;
 
 export const sendMessage = async (
-  history: GeminiMessage[]
+  history: GeminiMessage[],
+  systemPrompt?: string
 ): Promise<string> => {
   if (!GEMINI_API_KEY || GEMINI_API_KEY.includes('PLACEHOLDER')) {
     throw new Error('GEMINI_API_KEY não configurada. Configure VITE_GEMINI_API_KEY no .env.local');
@@ -55,7 +56,7 @@ export const sendMessage = async (
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      system_instruction: { parts: [{ text: QUOTE_SYSTEM_PROMPT }] },
+      system_instruction: { parts: [{ text: systemPrompt || QUOTE_SYSTEM_PROMPT }] },
       contents: history,
       generationConfig: {
         temperature: 1.2,

@@ -6,6 +6,7 @@ import { getStatus, getQrCode, sendMessage, buildMessage, DEFAULT_TEMPLATES, Evo
 import { sendMessage as askNina, GeminiMessage, QUOTE_SYSTEM_PROMPT } from '../../lib/gemini';
 
 const STORAGE_KEY = 'ndl_whatsapp_templates';
+const PROMPT_STORAGE_KEY = 'ndl_nina_prompt';
 
 function loadTemplates() {
   try {
@@ -57,13 +58,27 @@ export const AdminWhatsApp: React.FC = () => {
   const [ninaHistory, setNinaHistory] = useState<GeminiMessage[]>([]);
   const [ninaInput, setNinaInput] = useState('');
   const [ninaLoading, setNinaLoading] = useState(false);
-  const [ninaPrompt, setNinaPrompt] = useState(QUOTE_SYSTEM_PROMPT);
+  const [ninaPrompt, setNinaPrompt] = useState<string>(() => {
+    try { return localStorage.getItem(PROMPT_STORAGE_KEY) || QUOTE_SYSTEM_PROMPT; } catch { return QUOTE_SYSTEM_PROMPT; }
+  });
   const [editingPrompt, setEditingPrompt] = useState(false);
+  const [promptSaved, setPromptSaved] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [ninaHistory, ninaLoading]);
+
+  const handleSavePrompt = () => {
+    try { localStorage.setItem(PROMPT_STORAGE_KEY, ninaPrompt); } catch { /* ignore */ }
+    setPromptSaved(true);
+    setTimeout(() => setPromptSaved(false), 2500);
+  };
+
+  const handleResetPrompt = () => {
+    setNinaPrompt(QUOTE_SYSTEM_PROMPT);
+    try { localStorage.removeItem(PROMPT_STORAGE_KEY); } catch { /* ignore */ }
+  };
 
   const handleNinaSend = async () => {
     if (!ninaInput.trim() || ninaLoading) return;
@@ -73,7 +88,7 @@ export const AdminWhatsApp: React.FC = () => {
     setNinaInput('');
     setNinaLoading(true);
     try {
-      const reply = await askNina(newHistory);
+      const reply = await askNina(newHistory, ninaPrompt);
       setNinaHistory([...newHistory, { role: 'model', parts: [{ text: reply }] }]);
     } catch {
       setNinaHistory([...newHistory, { role: 'model', parts: [{ text: '⚠️ Erro ao conectar com a Nina. Verifique a chave do Gemini.' }] }]);
@@ -263,15 +278,38 @@ export const AdminWhatsApp: React.FC = () => {
                 </button>
               </div>
               {editingPrompt && (
-                <textarea
-                  rows={10}
-                  value={ninaPrompt}
-                  onChange={e => setNinaPrompt(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-gray-200 dark:border-darkBorder bg-gray-50 dark:bg-darkBg text-xs font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              )}
-              {editingPrompt && (
-                <p className="text-xs text-gray-400 mt-1">⚠️ Editar aqui só afeta o simulador. Para aplicar no bot real, atualize o código.</p>
+                <>
+                  <textarea
+                    rows={12}
+                    value={ninaPrompt}
+                    onChange={e => setNinaPrompt(e.target.value)}
+                    className="w-full p-3 rounded-xl border border-gray-200 dark:border-darkBorder bg-gray-50 dark:bg-darkBg text-xs font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={handleSavePrompt}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition-colors ${promptSaved ? 'bg-green-100 text-green-700' : 'bg-primary text-white hover:opacity-90'}`}
+                    >
+                      {promptSaved ? '✅ Prompt salvo!' : '💾 Salvar prompt'}
+                    </button>
+                    <button
+                      onClick={() => navigator.clipboard?.writeText(ninaPrompt)}
+                      className="px-4 py-2 rounded-xl text-xs font-bold border border-gray-200 text-gray-600 hover:bg-gray-50"
+                    >
+                      Copiar
+                    </button>
+                    <button
+                      onClick={handleResetPrompt}
+                      className="px-3 py-2 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50"
+                      title="Restaurar prompt original"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                  <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mt-2">
+                    ⚠️ Salvar aqui atualiza o simulador imediatamente. Para aplicar no bot do WhatsApp, clique em <strong>Copiar</strong> e cole no campo <code>SYSTEM_PROMPT</code> da Edge Function no Supabase.
+                  </p>
+                </>
               )}
             </div>
 

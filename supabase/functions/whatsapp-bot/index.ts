@@ -15,34 +15,22 @@ Você está conversando com o cliente diretamente pelo WhatsApp.
 Seu papel é bater um papo descontraído para entender o que ele precisa e montar o orçamento.
 
 TOM E ESTILO:
-- Fale como uma pessoa real, não como um robô seguindo script
-- Seja calorosa, use o nome do cliente sempre que puder
-- Emojis com moderação — só quando fizer sentido
-- Respostas curtas e diretas. Sem textão
-- Se o cliente já adiantou uma informação, não repita a pergunta. Aproveite e avance
-- Reaja ao que o cliente diz antes de perguntar algo novo
+Fale como uma pessoa real, não como robô. Seja calorosa e use o nome do cliente sempre que puder. Emojis com moderação. Respostas curtas e diretas, sem textão. Se o cliente já adiantou uma informação, não repita a pergunta, avance. Reaja ao que ele diz antes de perguntar algo novo. NUNCA use listas com traços ou hífens. Escreva em parágrafos curtos e naturais, como numa conversa mesmo.
 
-INFORMAÇÕES QUE PRECISA COLETAR (em ordem natural):
-- Tipo de serviço (primeira limpeza, manutenção, pós-obra, passadoria...)
-- Tipo de imóvel (casa, apartamento, escritório...)
-- Tamanho: número de cômodos (quartos, banheiros, sala, cozinha, varanda...)
-- Características: tipo de piso, muitos móveis, vidros/janelas grandes
-- Prioridades / o que está mais incomodando
-- Limpeza interna de eletrodomésticos? (geladeira, fogão, armários — custo extra)
-- Passou por reforma ou pintura recente?
-- Endereço do imóvel: rua, número e bairro
+INFORMAÇÕES QUE PRECISA COLETAR (em ordem natural, conversando):
+Tipo de serviço (primeira limpeza, manutenção, pós-obra, passadoria). Tipo de imóvel (casa, apartamento, escritório). Número de cômodos (quartos, banheiros, sala, cozinha, varanda). Características: tipo de piso, muitos móveis, vidros grandes. Prioridades ou o que está mais incomodando. Limpeza interna de eletrodomésticos como geladeira, fogão, armários (custo extra). Se passou por reforma ou pintura recente. Endereço do imóvel: rua, número e bairro.
 
 PÓS-OBRA:
 Se o cliente mencionar pós-obra ou pós-reforma, explique que precisa de uma visita técnica gratuita.
-Diga: "Para pós-obra a gente precisa fazer uma visita técnica gratuita primeiro 🏗️ Me passa seu e-mail que nossa equipe entra em contato para agendar, sem compromisso 😊"
-Só colete nome, WhatsApp e e-mail.
+Diga algo como: "Para pós-obra a gente precisa fazer uma visita técnica gratuita primeiro 🏗️ Me passa seu e-mail que nossa equipe entra em contato para agendar, sem compromisso 😊"
+Colete apenas nome e e-mail.
 
 FINALIZAÇÃO:
-Quando tiver as informações principais, peça e-mail: "Perfeito! Me passa seu e-mail que nossa equipe te manda o orçamento em até 24h 😊"
+Quando tiver as informações principais, pergunte o endereço (rua, número e bairro) e depois peça o e-mail: "Perfeito! Me passa seu e-mail que nossa equipe te manda o orçamento em até 24h 😊"
 
 Após receber o e-mail, encerre com uma mensagem calorosa e inclua OBRIGATORIAMENTE:
 <<QUOTE_DATA>>
-{"name":"NOME","email":"EMAIL","whatsapp":"WHATSAPP","addressStreet":"RUA","addressNumber":"NUMERO","addressDistrict":"BAIRRO","addressCity":"Guarapari","addressState":"ES","addressCep":"","propertyType":"TIPO","rooms":"COMODOS","priorities":"PRIORIDADES","internalCleaning":"LIMPEZA_INTERNA","renovation":"REFORMA","serviceOption":"TIPO_SERVICO"}
+{"name":"NOME","email":"EMAIL","whatsapp":"WHATSAPP_DO_CLIENTE","addressStreet":"RUA","addressNumber":"NUMERO","addressDistrict":"BAIRRO","addressCity":"Guarapari","addressState":"ES","addressCep":"","propertyType":"TIPO","rooms":"COMODOS","priorities":"PRIORIDADES","internalCleaning":"LIMPEZA_INTERNA","renovation":"REFORMA","serviceOption":"TIPO_SERVICO"}
 <<END_QUOTE>>`;
 
 const supabase = createClient(
@@ -215,11 +203,11 @@ Responda com *1* ou *2* 😊`;
   if (cleanedText) await sendWhatsApp(phone, cleanedText);
 
   // --- If quote complete, save and reset session ---
-  if (quoteData && quoteData.name) {
+  if (quoteData && quoteData.name && quoteData.email) {
     const { data: savedQuote } = await supabase.from('quotes').insert({
       name: quoteData.name || '',
       email: quoteData.email || '',
-      whatsapp: quoteData.whatsapp || phone,
+      whatsapp: phone,
       cep: quoteData.addressCep || '',
       property_type: quoteData.propertyType || '',
       rooms: quoteData.rooms || '',
@@ -273,8 +261,17 @@ Responda com *1* ou *2* 😊`;
       }
     }
 
+    // Send login credentials via WhatsApp
+    if (quoteData.email) {
+      const password = phone.slice(-4) || '0000';
+      const firstName = (quoteData.name || '').split(' ')[0];
+      const appUrl = `https://negocios-de-limpeza.vercel.app/#/client/login?email=${encodeURIComponent(quoteData.email)}&senha=${password}`;
+      const loginMsg = `Oi ${firstName}! 🎉 Seu orçamento foi registrado com sucesso!\n\nVocê já pode acessar sua área do cliente no nosso app:\n👉 ${appUrl}\n\n📧 Login: ${quoteData.email}\n🔑 Senha: ${password}\n\nEm até 24h nossa equipe entra em contato com o orçamento. Qualquer dúvida é só chamar! 😊`;
+      await sendWhatsApp(phone, loginMsg);
+    }
+
     // Reset session after quote saved
-    await supabase.from('whatsapp_sessions').update({ history: [] }).eq('phone', phone);
+    await supabase.from('whatsapp_sessions').update({ history: [], meta: {} }).eq('phone', phone);
   }
 
   return new Response(JSON.stringify({ ok: true }), {

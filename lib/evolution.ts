@@ -45,7 +45,8 @@ export async function getQrCode(): Promise<string | null> {
 
 export async function sendMessage(phone: string, text: string): Promise<boolean> {
   try {
-    const number = '55' + phone.replace(/\D/g, '');
+    const cleaned = phone.replace(/\D/g, '');
+    const number = cleaned.startsWith('55') ? cleaned : '55' + cleaned;
     const res = await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...BASE_HEADERS },
@@ -63,7 +64,8 @@ export function buildMessage(template: string, vars: Record<string, string>): st
 
 export async function sendDocument(phone: string, base64: string, fileName: string, caption?: string): Promise<boolean> {
   try {
-    const number = '55' + phone.replace(/\D/g, '');
+    const cleaned = phone.replace(/\D/g, '');
+    const number = cleaned.startsWith('55') ? cleaned : '55' + cleaned;
     const res = await fetch(`${EVOLUTION_URL}/message/sendMedia/${INSTANCE}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...BASE_HEADERS },
