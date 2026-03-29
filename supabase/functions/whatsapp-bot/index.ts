@@ -38,6 +38,24 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
+// Cache do prompt para evitar query a cada mensagem (expira a cada 5 minutos)
+let cachedPrompt: string | null = null;
+let cacheTime = 0;
+
+async function getSystemPrompt(): Promise<string> {
+  const now = Date.now();
+  if (cachedPrompt && now - cacheTime < 5 * 60 * 1000) return cachedPrompt;
+  try {
+    const { data } = await supabase.from('platform_settings').select('bot_prompt').eq('id', 1).single();
+    if (data?.bot_prompt) {
+      cachedPrompt = data.bot_prompt;
+      cacheTime = now;
+      return cachedPrompt;
+    }
+  } catch { /* usa o padrão */ }
+  return SYSTEM_PROMPT;
+}
+
 // --- Helpers ---
 function extractPhone(remoteJid: string): string {
   return remoteJid.replace('@s.whatsapp.net', '').replace('@g.us', '');
@@ -69,14 +87,14 @@ async function sendWhatsApp(phone: string, text: string): Promise<void> {
   });
 }
 
-async function callGemini(history: { role: string; parts: { text: string }[] }[]): Promise<string> {
+async function callGemini(history: { role: string; parts: { text: string }[] }[], systemPrompt: string): Promise<string> {
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        system_instruction: { parts: [{ text: systemPrompt }] },
         contents: history,
         generationConfig: { temperature: 1.2, maxOutputTokens: 512 },
       }),
@@ -186,7 +204,8 @@ Responda com *1* ou *2* 😊`;
   history.push({ role: 'user', parts: [{ text }] });
 
   // --- Call Gemini ---
-  const rawResponse = await callGemini(history);
+  const activePrompt = await getSystemPrompt();
+  const rawResponse = await callGemini(history, activePrompt);
   const cleanedText = cleanResponse(rawResponse);
   const quoteData = extractQuoteData(rawResponse);
 

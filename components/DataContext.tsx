@@ -49,6 +49,7 @@ export interface PlatformSettings {
   };
   hourlyRate: number; // Valor base de cobrança ao cliente (referência)
   minDisplacement: number;
+  botPrompt?: string; // Prompt customizado da Nina (bot WhatsApp)
 }
 
 export interface Service {
@@ -377,7 +378,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setPlatformSettings({
                 hourlyRate: settingsData.hourly_rate,
                 minDisplacement: settingsData.min_displacement,
-                payouts: settingsData.payouts // Supabase retorna JSONB como objeto JS automaticamente
+                payouts: settingsData.payouts,
+                botPrompt: settingsData.bot_prompt || undefined,
             });
         }
 
@@ -792,10 +794,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updatePlatformSettings = async (s: PlatformSettings) => {
       setPlatformSettings(s);
       const { error } = await supabase.from('platform_settings').upsert({
-          id: 1, // Sempre ID 1 para configs globais
+          id: 1,
           hourly_rate: s.hourlyRate,
           min_displacement: s.minDisplacement,
-          payouts: s.payouts // Supabase converte objeto para JSONB
+          payouts: s.payouts,
+          bot_prompt: s.botPrompt ?? null,
       });
       if (error) console.error("Erro ao salvar configurações:", error);
   };

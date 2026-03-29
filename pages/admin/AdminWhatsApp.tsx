@@ -4,6 +4,7 @@ import { UserRole } from '../../types';
 import { MessageCircle, Wifi, Send, Save, RefreshCw, CheckCircle, XCircle, Smartphone, Bell, FileText, ThumbsUp, Bot, Trash2, Loader2 } from 'lucide-react';
 import { getStatus, getQrCode, sendMessage, buildMessage, DEFAULT_TEMPLATES, EvolutionStatus } from '../../lib/evolution';
 import { sendMessage as askNina, GeminiMessage, QUOTE_SYSTEM_PROMPT } from '../../lib/gemini';
+import { useData } from '../../components/DataContext';
 
 const STORAGE_KEY = 'ndl_whatsapp_templates';
 const PROMPT_STORAGE_KEY = 'ndl_nina_prompt';
@@ -43,6 +44,7 @@ const PLACEHOLDERS: Record<string, { key: string; desc: string }[]> = {
 };
 
 export const AdminWhatsApp: React.FC = () => {
+  const { platformSettings, updatePlatformSettings } = useData();
   const [tab, setTab] = useState('status');
   const [status, setStatus] = useState<EvolutionStatus>({ connected: false, profileName: null, profilePic: null });
   const [qrCode, setQrCode] = useState<string | null>(null);
@@ -58,26 +60,29 @@ export const AdminWhatsApp: React.FC = () => {
   const [ninaHistory, setNinaHistory] = useState<GeminiMessage[]>([]);
   const [ninaInput, setNinaInput] = useState('');
   const [ninaLoading, setNinaLoading] = useState(false);
-  const [ninaPrompt, setNinaPrompt] = useState<string>(() => {
-    try { return localStorage.getItem(PROMPT_STORAGE_KEY) || QUOTE_SYSTEM_PROMPT; } catch { return QUOTE_SYSTEM_PROMPT; }
-  });
+  const [ninaPrompt, setNinaPrompt] = useState<string>(QUOTE_SYSTEM_PROMPT);
   const [editingPrompt, setEditingPrompt] = useState(false);
   const [promptSaved, setPromptSaved] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Sync prompt from Supabase when settings load
+  useEffect(() => {
+    if (platformSettings.botPrompt) setNinaPrompt(platformSettings.botPrompt);
+  }, [platformSettings.botPrompt]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [ninaHistory, ninaLoading]);
 
-  const handleSavePrompt = () => {
-    try { localStorage.setItem(PROMPT_STORAGE_KEY, ninaPrompt); } catch { /* ignore */ }
+  const handleSavePrompt = async () => {
+    await updatePlatformSettings({ ...platformSettings, botPrompt: ninaPrompt });
     setPromptSaved(true);
     setTimeout(() => setPromptSaved(false), 2500);
   };
 
-  const handleResetPrompt = () => {
+  const handleResetPrompt = async () => {
     setNinaPrompt(QUOTE_SYSTEM_PROMPT);
-    try { localStorage.removeItem(PROMPT_STORAGE_KEY); } catch { /* ignore */ }
+    await updatePlatformSettings({ ...platformSettings, botPrompt: QUOTE_SYSTEM_PROMPT });
   };
 
   const handleNinaSend = async () => {
@@ -306,8 +311,8 @@ export const AdminWhatsApp: React.FC = () => {
                       Reset
                     </button>
                   </div>
-                  <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mt-2">
-                    ⚠️ Salvar aqui atualiza o simulador imediatamente. Para aplicar no bot do WhatsApp, clique em <strong>Copiar</strong> e cole no campo <code>SYSTEM_PROMPT</code> da Edge Function no Supabase.
+                  <p className="text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2 mt-2">
+                    ✅ Salvar aqui atualiza o simulador <strong>e o bot do WhatsApp</strong> automaticamente — o bot lê o prompt do banco em tempo real.
                   </p>
                 </>
               )}
