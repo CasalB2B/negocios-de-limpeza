@@ -58,13 +58,19 @@ async function getSystemPrompt(): Promise<string> {
 
 // --- Helpers ---
 function extractPhone(remoteJid: string): string {
+  // For @lid JIDs (WhatsApp multi-device), keep the full JID — Evolution API can route using it
+  if (remoteJid.includes('@lid')) return remoteJid;
   return remoteJid.replace('@s.whatsapp.net', '').replace('@g.us', '');
 }
 
 function extractText(message: any): string | null {
+  if (!message) return null;
   return message?.conversation
     || message?.extendedTextMessage?.text
     || message?.imageMessage?.caption
+    || message?.videoMessage?.caption
+    || message?.buttonsResponseMessage?.selectedDisplayText
+    || message?.listResponseMessage?.title
     || null;
 }
 
@@ -79,12 +85,17 @@ function cleanResponse(text: string): string {
 }
 
 async function sendWhatsApp(phone: string, text: string): Promise<void> {
-  const number = phone.startsWith('55') ? phone : `55${phone}`;
-  await fetch(`${EVOLUTION_URL}/message/sendText/${EVOLUTION_INSTANCE}`, {
+  // If phone is a full JID (contains @), use it directly; otherwise format as BR number
+  const number = phone.includes('@') ? phone : (phone.startsWith('55') ? phone : `55${phone}`);
+  const res = await fetch(`${EVOLUTION_URL}/message/sendText/${EVOLUTION_INSTANCE}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_KEY },
     body: JSON.stringify({ number, textMessage: { text }, delay: 500 }),
   });
+  if (!res.ok) {
+    const err = await res.text().catch(() => '');
+    console.error('[BOT] sendWhatsApp failed:', res.status, err.substring(0, 200));
+  }
 }
 
 async function callGemini(history: { role: string; parts: { text: string }[] }[], systemPrompt: string): Promise<string> {
@@ -111,19 +122,39 @@ Deno.serve(async (req) => {
   let body: any;
   try { body = await req.json(); } catch { return new Response('Bad request', { status: 400 }); }
 
+  // DEBUG: log raw event and body structure
+  console.log('[DEBUG] raw event:', body?.event);
+  console.log('[DEBUG] body keys:', Object.keys(body || {}));
+  console.log('[DEBUG] data.key:', JSON.stringify(body?.data?.key));
+  console.log('[DEBUG] data.message keys:', JSON.stringify(Object.keys(body?.data?.message || {})));
+
   // Only process incoming text messages (ignore status updates, group messages, etc.)
   const event = (body?.event || '').toLowerCase().replace(/_/g, '.');
-  if (event !== 'messages.upsert') return new Response('ignored', { status: 200 });
+  console.log('[DEBUG] normalized event:', event);
+  if (event !== 'messages.upsert') {
+    console.log('[DEBUG] ignored — event mismatch');
+    return new Response('ignored', { status: 200 });
+  }
 
   const data = body?.data;
-  if (!data || data.key?.fromMe) return new Response('ignored', { status: 200 });
+  if (!data || data.key?.fromMe) {
+    console.log('[DEBUG] ignored — no data or fromMe');
+    return new Response('ignored', { status: 200 });
+  }
 
   const remoteJid: string = data.key?.remoteJid || '';
-  if (remoteJid.includes('@g.us')) return new Response('ignored', { status: 200 }); // skip groups
+  if (remoteJid.includes('@g.us')) {
+    console.log('[DEBUG] ignored — group message');
+    return new Response('ignored', { status: 200 });
+  }
 
   const phone = extractPhone(remoteJid);
   const text = extractText(data.message);
-  if (!text || text.trim() === '') return new Response('ignored', { status: 200 });
+  console.log('[DEBUG] phone:', phone, '| text:', text);
+  if (!text || text.trim() === '') {
+    console.log('[DEBUG] ignored — no text');
+    return new Response('ignored', { status: 200 });
+  }
 
   const normalizedText = text.trim().toLowerCase();
 
@@ -280,17 +311,13 @@ Responda com *1* ou *2* 😊`;
       }
     }
 
-    // Send login credentials via WhatsApp
-    if (quoteData.email) {
-      const password = phone.slice(-4) || '0000';
-      const firstName = (quoteData.name || '').split(' ')[0];
-      const appUrl = `https://negocios-de-limpeza.vercel.app/#/client/login?email=${encodeURIComponent(quoteData.email)}&senha=${password}`;
-      const loginMsg = `Oi ${firstName}! 🎉 Seu orçamento foi registrado com sucesso!\n\nVocê já pode acessar sua área do cliente no nosso app:\n👉 ${appUrl}\n\n📧 Login: ${quoteData.email}\n🔑 Senha: ${password}\n\nEm até 24h nossa equipe entra em contato com o orçamento. Qualquer dúvida é só chamar! 😊`;
-      await sendWhatsApp(phone, loginMsg);
-    }
+    // Send closing message — human will follow up with the actual quote
+    const firstName = (quoteData.name || '').split(' ')[0];
+    const closingMsg = `${firstName}, recebi tudo! Nossa equipe já vai analisar e te manda o orçamento em breve. Qualquer dúvida pode chamar aqui mesmo!`;
+    await sendWhatsApp(phone, closingMsg);
 
-    // Reset session after quote saved
-    await supabase.from('whatsapp_sessions').update({ history: [], meta: {} }).eq('phone', phone);
+    // Hand off to human — keep session as 'human' so bot doesn't respond anymore
+    await supabase.from('whatsapp_sessions').update({ history: [], meta: { step: 'human' } }).eq('phone', phone);
   }
 
   return new Response(JSON.stringify({ ok: true }), {

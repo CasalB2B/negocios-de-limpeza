@@ -11,7 +11,7 @@ export const CentralAccess: React.FC = () => {
 
   const goToQuoteOrDashboard = () => {
     if (currentUser) navigate('/client/dashboard');
-    else goToQuoteOrDashboard();
+    else navigate('/client/quote-chat');
   };
 
   return (

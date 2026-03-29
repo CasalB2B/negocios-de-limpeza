@@ -94,7 +94,16 @@ export const AdminWhatsApp: React.FC = () => {
     setNinaLoading(true);
     try {
       const reply = await askNina(newHistory, ninaPrompt);
-      setNinaHistory([...newHistory, { role: 'model', parts: [{ text: reply }] }]);
+      const finalHistory = [...newHistory, { role: 'model', parts: [{ text: reply }] }];
+      // Check if quote was finalized
+      const quoteMatch = reply.match(/<<QUOTE_DATA>>([\s\S]*?)<<END_QUOTE>>/);
+      if (quoteMatch) {
+        // Add a system confirmation card into the chat
+        const confirmCard = `__QUOTE_FINALIZED__${quoteMatch[1].trim()}`;
+        setNinaHistory([...finalHistory, { role: 'system' as any, parts: [{ text: confirmCard }] }]);
+      } else {
+        setNinaHistory(finalHistory);
+      }
     } catch {
       setNinaHistory([...newHistory, { role: 'model', parts: [{ text: '⚠️ Erro ao conectar com a Nina. Verifique a chave do Gemini.' }] }]);
     } finally {
@@ -339,13 +348,38 @@ export const AdminWhatsApp: React.FC = () => {
                 {ninaHistory.length === 0 && (
                   <p className="text-center text-[#8696a0] text-sm mt-8">Mande uma mensagem para simular a conversa com a Nina</p>
                 )}
-                {ninaHistory.map((msg, i) => (
-                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap shadow ${msg.role === 'user' ? 'bg-[#005c4b] text-white rounded-br-sm' : 'bg-[#202c33] text-[#e9edef] rounded-bl-sm'}`}>
-                      {msg.parts[0].text.replace(/<<QUOTE_DATA>>[\s\S]*?<<END_QUOTE>>/, '').trim()}
+                {ninaHistory.map((msg, i) => {
+                  // System card: quote finalized
+                  if ((msg.role as string) === 'system' && msg.parts[0].text.startsWith('__QUOTE_FINALIZED__')) {
+                    let q: Record<string, string> = {};
+                    try { q = JSON.parse(msg.parts[0].text.replace('__QUOTE_FINALIZED__', '')); } catch { /* ignore */ }
+                    return (
+                      <div key={i} className="flex justify-center my-2">
+                        <div className="bg-[#1a3a2a] border border-green-700 rounded-xl px-4 py-3 text-sm w-full max-w-[90%]">
+                          <p className="text-green-400 font-semibold mb-2 flex items-center gap-1"><CheckCircle size={14} /> Orçamento finalizado!</p>
+                          <div className="text-[#c9d1d9] space-y-0.5 text-xs">
+                            {q.name && <p><span className="text-[#8696a0]">Nome:</span> {q.name}</p>}
+                            {q.email && <p><span className="text-[#8696a0]">Email:</span> {q.email}</p>}
+                            {q.whatsapp && <p><span className="text-[#8696a0]">WhatsApp:</span> {q.whatsapp}</p>}
+                            {q.propertyType && <p><span className="text-[#8696a0]">Imóvel:</span> {q.propertyType}</p>}
+                            {q.serviceOption && <p><span className="text-[#8696a0]">Serviço:</span> {q.serviceOption}</p>}
+                            {q.rooms && <p><span className="text-[#8696a0]">Cômodos:</span> {q.rooms}</p>}
+                            {q.priorities && <p><span className="text-[#8696a0]">Prioridades:</span> {q.priorities}</p>}
+                            {(q.addressStreet || q.addressDistrict) && <p><span className="text-[#8696a0]">Endereço:</span> {[q.addressStreet, q.addressNumber, q.addressDistrict].filter(Boolean).join(', ')}</p>}
+                          </div>
+                          <p className="text-[#8696a0] text-xs mt-2">Orçamento salvo — equipe humana assume a partir daqui.</p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap shadow ${msg.role === 'user' ? 'bg-[#005c4b] text-white rounded-br-sm' : 'bg-[#202c33] text-[#e9edef] rounded-bl-sm'}`}>
+                        {msg.parts[0].text.replace(/<<QUOTE_DATA>>[\s\S]*?<<END_QUOTE>>/, '').trim()}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {ninaLoading && (
                   <div className="flex justify-start">
                     <div className="bg-[#202c33] rounded-xl px-4 py-2 flex items-center gap-2">
