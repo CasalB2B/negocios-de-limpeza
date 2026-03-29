@@ -8,7 +8,7 @@ const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || '';
 const EVOLUTION_URL = Deno.env.get('EVOLUTION_URL') || '';
 const EVOLUTION_KEY = Deno.env.get('EVOLUTION_KEY') || '';
 const EVOLUTION_INSTANCE = Deno.env.get('EVOLUTION_INSTANCE') || '';
-const GEMINI_MODEL = 'gemini-2.0-flash';
+const GEMINI_MODEL = 'gemini-2.5-flash';
 
 const SYSTEM_PROMPT = `Você é a Nina, assistente da Negócios de Limpeza — empresa de limpeza profissional em Guarapari, ES.
 Você está conversando com o cliente diretamente pelo WhatsApp.
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
   // -------------------------------------------------------
   // FLUXO DE BOAS-VINDAS (primeira mensagem da sessão)
   // -------------------------------------------------------
-  if (history.length === 0) {
+  if (history.length === 0 && !sessionMeta.step) {
     const welcome = `Olá! 👋 Bem-vindo à *Negócios de Limpeza* — Guarapari/ES! 🧹✨
 
 Como posso te ajudar hoje?
