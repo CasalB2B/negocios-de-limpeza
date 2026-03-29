@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { return new Response('Bad request', { status: 400 }); }
 
   // Only process incoming text messages (ignore status updates, group messages, etc.)
-  const event = body?.event;
+  const event = (body?.event || '').toLowerCase().replace(/_/g, '.');
   if (event !== 'messages.upsert') return new Response('ignored', { status: 200 });
 
   const data = body?.data;
