@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
 import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle } from 'lucide-react';
@@ -16,6 +16,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { currentUser } = useData();
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Reset scroll to top on every route change
+  useEffect(() => {
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+  }, [location.pathname]);
 
   const handleLogout = () => {
     navigate('/');
@@ -255,7 +261,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
+        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
           {children}
         </main>
 

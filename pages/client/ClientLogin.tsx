@@ -27,7 +27,7 @@ export const ClientLogin: React.FC = () => {
     setIsLoading(true);
     try {
         const success = await loginClient(email, password);
-        if (success) {
+        if (success !== null) {
             navigate('/client/dashboard');
         } else {
             alert("E-mail ou senha incorretos. Verifique seus dados ou cadastre-se.");

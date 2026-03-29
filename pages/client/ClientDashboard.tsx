@@ -1,15 +1,36 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
-import { Card } from '../../components/Card'; 
+import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
-import { Clock, MapPin, FileText, CheckCircle, Sparkles, Calendar as CalendarIcon } from 'lucide-react';
+import { Clock, MapPin, FileText, CheckCircle, Sparkles, Calendar as CalendarIcon, Home, CreditCard, User, X } from 'lucide-react';
 import { useData } from '../../components/DataContext'; // Import context
+
+const TUTORIAL_STEPS = [
+  { icon: <Home size={28} className="text-[#a163ff]" />, title: 'Início', desc: 'Veja sua próxima limpeza agendada e qualquer pendência importante.' },
+  { icon: <CalendarIcon size={28} className="text-[#a163ff]" />, title: 'Agendamentos', desc: 'Consulte o histórico completo dos seus serviços com data e horário.' },
+  { icon: <CreditCard size={28} className="text-[#a163ff]" />, title: 'Pagamentos', desc: 'Acompanhe faturas, recibos e formas de pagamento disponíveis.' },
+  { icon: <User size={28} className="text-[#a163ff]" />, title: 'Perfil & Endereços', desc: 'Atualize seus dados, foto de perfil e cadastre seus endereços de atendimento.' },
+];
 
 export const ClientDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser, services } = useData(); // Get current user
+
+  const tutorialKey = `ndl_tutorial_seen_${currentUser?.id || 'guest'}`;
+  const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem(tutorialKey));
+  const [tutorialStep, setTutorialStep] = useState(0);
+
+  const closeTutorial = () => {
+    localStorage.setItem(tutorialKey, 'true');
+    setShowTutorial(false);
+  };
+
+  const nextStep = () => {
+    if (tutorialStep < TUTORIAL_STEPS.length - 1) setTutorialStep(s => s + 1);
+    else closeTutorial();
+  };
 
   // Find next confirmed appointment for this user
   const myServices = services.filter(s => s.clientId === currentUser?.id && s.status === 'CONFIRMED');
@@ -17,6 +38,45 @@ export const ClientDashboard: React.FC = () => {
 
   return (
     <Layout role={UserRole.CLIENT}>
+      {/* First-time tutorial overlay */}
+      {showTutorial && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end md:items-center justify-center p-4">
+          <div className="bg-white dark:bg-darkSurface rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#a163ff] to-[#6b21a8] p-6 relative">
+              <button onClick={closeTutorial} className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+              <p className="text-white/70 text-xs font-bold uppercase tracking-wider mb-1">Bem-vindo(a), {currentUser?.name.split(' ')[0]}! 👋</p>
+              <h2 className="text-white text-xl font-bold leading-tight">Conheça sua área do cliente</h2>
+              {/* Step dots */}
+              <div className="flex gap-1.5 mt-3">
+                {TUTORIAL_STEPS.map((_, i) => (
+                  <div key={i} className={`h-1.5 rounded-full transition-all ${i === tutorialStep ? 'w-6 bg-white' : 'w-1.5 bg-white/40'}`} />
+                ))}
+              </div>
+            </div>
+            {/* Step content */}
+            <div className="p-6">
+              <div className="flex gap-4 items-start">
+                <div className="w-14 h-14 bg-purple-50 dark:bg-primary/10 rounded-2xl flex items-center justify-center flex-shrink-0">
+                  {TUTORIAL_STEPS[tutorialStep].icon}
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-darkText dark:text-darkTextPrimary">{TUTORIAL_STEPS[tutorialStep].title}</h3>
+                  <p className="text-sm text-lightText dark:text-darkTextSecondary mt-1 leading-relaxed">{TUTORIAL_STEPS[tutorialStep].desc}</p>
+                </div>
+              </div>
+              <button
+                onClick={nextStep}
+                className="mt-6 w-full py-3.5 bg-[#a163ff] hover:bg-[#8f4ee0] text-white font-bold rounded-2xl transition-colors"
+              >
+                {tutorialStep < TUTORIAL_STEPS.length - 1 ? 'Próximo →' : 'Entendi, vamos lá! 🚀'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="max-w-5xl mx-auto">
         <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>

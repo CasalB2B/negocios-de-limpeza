@@ -5,10 +5,10 @@ import { useData, Quote, ClientUser } from '../../components/DataContext';
 import {
   MessageSquare, Phone, Mail, ChevronDown,
   CheckCircle, Clock, TrendingUp, X, Plus, FileText, UserPlus,
-  Wand2, Loader2, ImagePlus, Camera, Send,
+  Wand2, Loader2, ImagePlus, Camera, Send, Trash2,
 } from 'lucide-react';
 import { extractFromConversation } from '../../lib/gemini';
-import { sendMessage as sendWhatsApp, buildMessage } from '../../lib/evolution';
+import { sendMessage as sendWhatsApp, buildMessage, DEFAULT_TEMPLATES } from '../../lib/evolution';
 
 // --- STATUS ---
 const STATUS_LABELS: Record<Quote['status'], { label: string; color: string; bg: string }> = {
@@ -174,40 +174,44 @@ interface WhatsAppModalProps {
 
 const WhatsAppModal: React.FC<WhatsAppModalProps> = ({ onClose, onSave }) => {
   const [text, setText] = useState('');
-  const [imageBase64, setImageBase64] = useState('');
-  const [imageMimeType, setImageMimeType] = useState('image/jpeg');
-  const [imagePreview, setImagePreview] = useState('');
+  const [images, setImages] = useState<{ base64: string; mimeType: string; preview: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [extracted, setExtracted] = useState<Record<string, string> | null>(null);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageFile = (file: File) => {
+  const addImageFile = (file: File) => {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const dataUrl = ev.target?.result as string;
-      setImagePreview(dataUrl);
-      setImageBase64(dataUrl.split(',')[1]);
-      setImageMimeType(file.type || 'image/jpeg');
+      setImages(prev => [...prev, {
+        preview: dataUrl,
+        base64: dataUrl.split(',')[1],
+        mimeType: file.type || 'image/jpeg',
+      }]);
     };
     reader.readAsDataURL(file);
+  };
+
+  const removeImage = (idx: number) => {
+    setImages(prev => prev.filter((_, i) => i !== idx));
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
     for (const item of e.clipboardData.items) {
       if (item.type.startsWith('image/')) {
         const file = item.getAsFile();
-        if (file) { handleImageFile(file); break; }
+        if (file) addImageFile(file);
       }
     }
   };
 
   const handleExtract = async () => {
-    if (!text.trim() && !imageBase64) return;
+    if (!text.trim() && images.length === 0) return;
     setLoading(true);
     setError('');
     try {
-      const data = await extractFromConversation(text, imageBase64 || undefined, imageMimeType);
+      const data = await extractFromConversation(text, images.length > 0 ? images : undefined);
       setExtracted(data);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao processar');
@@ -222,7 +226,7 @@ const WhatsAppModal: React.FC<WhatsAppModalProps> = ({ onClose, onSave }) => {
         <div className="flex items-center justify-between p-5 border-b">
           <div>
             <h3 className="font-bold text-gray-900">Entrada Manual via WhatsApp</h3>
-            <p className="text-xs text-gray-500 mt-0.5">Cole o texto ou um print da conversa — a IA extrai os dados automaticamente</p>
+            <p className="text-xs text-gray-500 mt-0.5">Cole o texto ou prints da conversa — a IA extrai os dados automaticamente</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100"><X size={18} /></button>
         </div>
@@ -230,26 +234,36 @@ const WhatsAppModal: React.FC<WhatsAppModalProps> = ({ onClose, onSave }) => {
         <div className="overflow-y-auto p-5 space-y-4" onPaste={handlePaste}>
           {!extracted ? (
             <>
-              {imagePreview ? (
-                <div className="relative rounded-xl overflow-hidden border border-purple-200">
-                  <img src={imagePreview} alt="Print da conversa" className="w-full max-h-64 object-contain bg-gray-50" />
-                  <button
-                    onClick={() => { setImagePreview(''); setImageBase64(''); }}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                  ><X size={14} /></button>
-                  <p className="text-xs text-center text-purple-600 font-medium py-1.5 bg-purple-50">Print carregado ✓</p>
-                </div>
-              ) : (
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-purple-200 rounded-xl p-4 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50/40 transition-colors"
-                >
-                  <Camera size={28} className="mx-auto mb-1.5 text-purple-400" />
-                  <p className="text-sm font-bold text-purple-600">Cole (Ctrl+V) ou clique para enviar um print</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Print de tela do WhatsApp, PNG, JPG</p>
+              {/* Image gallery */}
+              {images.length > 0 && (
+                <div className="grid grid-cols-3 gap-2">
+                  {images.map((img, idx) => (
+                    <div key={idx} className="relative rounded-xl overflow-hidden border border-purple-200 group">
+                      <img src={img.preview} alt={`Print ${idx + 1}`} className="w-full h-24 object-cover bg-gray-50" />
+                      <button
+                        onClick={() => removeImage(idx)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 opacity-80 group-hover:opacity-100"
+                      ><X size={12} /></button>
+                    </div>
+                  ))}
                 </div>
               )}
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
+
+              {/* Upload zone — always visible */}
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-purple-200 rounded-xl p-4 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50/40 transition-colors"
+              >
+                <Camera size={24} className="mx-auto mb-1 text-purple-400" />
+                <p className="text-sm font-bold text-purple-600">
+                  {images.length === 0 ? 'Cole (Ctrl+V) ou clique para adicionar prints' : 'Adicionar mais prints'}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">PNG, JPG — pode adicionar várias fotos</p>
+              </div>
+              <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => {
+                if (e.target.files) Array.from(e.target.files).forEach(f => addImageFile(f));
+                e.target.value = '';
+              }} />
 
               <textarea
                 value={text}
@@ -261,11 +275,11 @@ const WhatsAppModal: React.FC<WhatsAppModalProps> = ({ onClose, onSave }) => {
               {error && <p className="text-red-500 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
               <button
                 onClick={handleExtract}
-                disabled={loading || (!text.trim() && !imageBase64)}
+                disabled={loading || (!text.trim() && images.length === 0)}
                 className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 transition-colors disabled:opacity-50"
               >
                 {loading ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
-                {loading ? 'Processando com IA...' : 'Extrair dados com IA'}
+                {loading ? 'Processando com IA...' : `Extrair dados com IA${images.length > 1 ? ` (${images.length} fotos)` : ''}`}
               </button>
             </>
           ) : (
@@ -328,6 +342,43 @@ const WhatsAppModal: React.FC<WhatsAppModalProps> = ({ onClose, onSave }) => {
   );
 };
 
+// --- AUTO-PRICE CALCULATION ---
+function calcAutoPrice(quote: Quote): { price: string; professionals: string; hours: string; breakdown: string[] } {
+  const rooms = (quote.rooms || '').toLowerCase();
+  const internal = (quote.internalCleaning || '').toLowerCase();
+  const serviceOpt = (quote.serviceOption || '').toLowerCase();
+
+  // Count quartos and banheiros
+  const quartosMatch = rooms.match(/(\d+)\s*quarto/);
+  const banheirosMatch = rooms.match(/(\d+)\s*banheiro/);
+  const quartos = quartosMatch ? parseInt(quartosMatch[1]) : 0;
+  const banheiros = banheirosMatch ? parseInt(banheirosMatch[1]) : 0;
+
+  const hasInternalCleaning = internal && internal !== 'não' && internal !== 'nao' && internal.length > 2;
+  const needsTwo = quartos >= 3 || banheiros >= 3 || hasInternalCleaning;
+
+  let base = needsTwo ? 520 : 320;
+  const profs = needsTwo ? '2' : '1';
+  const breakdown: string[] = [];
+
+  breakdown.push(`Base (${profs} profissional${profs === '2' ? 'is' : ''}, 8h): R$ ${base},00`);
+
+  // Extras from internalCleaning
+  if (hasInternalCleaning) {
+    if (internal.includes('geladeira')) { base += 50; breakdown.push('Limpeza de Geladeira: +R$ 50,00'); }
+    if (internal.includes('forno') || internal.includes('fogão')) { base += 40; breakdown.push('Limpeza de Forno/Fogão: +R$ 40,00'); }
+    if (internal.includes('armário') || internal.includes('armario')) { base += 60; breakdown.push('Limpeza de Armários: +R$ 60,00'); }
+  }
+
+  // Post-obra or primeira limpeza context adjustments
+  if (serviceOpt.includes('pós-obra') || serviceOpt.includes('pos-obra')) {
+    base += 100;
+    breakdown.push('Adicional Pós-obra: +R$ 100,00');
+  }
+
+  return { price: base.toString().replace('.', ','), professionals: profs, hours: '8', breakdown };
+}
+
 // --- PDF MODAL ---
 interface PDFModalProps {
   quote: Quote;
@@ -335,11 +386,43 @@ interface PDFModalProps {
 }
 
 const PDFModal: React.FC<PDFModalProps> = ({ quote, onClose }) => {
-  const [price, setPrice] = useState('');
-  const [professionals, setProfessionals] = useState('2');
-  const [hours, setHours] = useState('8');
+  const auto = calcAutoPrice(quote);
+  const [price, setPrice] = useState(auto.price);
+  const [professionals, setProfessionals] = useState(auto.professionals);
+  const [hours, setHours] = useState(auto.hours);
   const [neighborhood, setNeighborhood] = useState('');
   const [serviceType, setServiceType] = useState(quote.serviceOption || 'Faxina Residencial');
+  const [waSending, setWaSending] = useState(false);
+  const [waStatus, setWaStatus] = useState<'idle' | 'sent' | 'error'>('idle');
+
+  const handleOpenAndSend = async () => {
+    if (!price.trim()) return;
+    // Open PDF in new window
+    generateProposalWindow(quote, price, professionals, hours, neighborhood, serviceType);
+
+    // Send WhatsApp message with proposal details
+    if (quote.whatsapp) {
+      setWaSending(true);
+      try {
+        const storedTemplates = localStorage.getItem('ndl_whatsapp_templates');
+        const templates = storedTemplates ? JSON.parse(storedTemplates) : null;
+        const template = templates?.proposal || DEFAULT_TEMPLATES.proposal;
+        const msg = buildMessage(template, {
+          Nome: (quote.name || '').split(' ')[0],
+          Servico: serviceType,
+          Endereco: neighborhood || quote.propertyType || 'Guarapari',
+          Valor: price,
+          Data: 'a combinar',
+        });
+        const ok = await sendWhatsApp(quote.whatsapp, msg);
+        setWaStatus(ok ? 'sent' : 'error');
+      } catch {
+        setWaStatus('error');
+      } finally {
+        setWaSending(false);
+      }
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
@@ -392,21 +475,35 @@ const PDFModal: React.FC<PDFModalProps> = ({ quote, onClose }) => {
             </div>
           </div>
 
-          {quote.rooms && (
-            <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-600">
-              <span className="font-bold text-gray-500 uppercase text-[9px]">Cômodos do cliente: </span>
-              {quote.rooms}
-            </div>
-          )}
+          {/* Auto-calculation breakdown */}
+          <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 space-y-1">
+            <p className="text-[9px] font-bold text-purple-500 uppercase tracking-wider mb-1.5">Cálculo automático — revise antes de enviar</p>
+            {auto.breakdown.map((line, i) => (
+              <p key={i} className="text-xs text-gray-700">{line}</p>
+            ))}
+            {quote.rooms && (
+              <p className="text-[10px] text-gray-400 mt-1 pt-1 border-t border-purple-100">Cômodos: {quote.rooms}</p>
+            )}
+          </div>
 
           <button
-            onClick={() => generateProposalWindow(quote, price || '—', professionals, hours, neighborhood, serviceType)}
-            disabled={!price.trim()}
+            onClick={handleOpenAndSend}
+            disabled={!price.trim() || waSending}
             className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-pink-500 text-white py-3 rounded-xl font-bold hover:opacity-90 transition-opacity disabled:opacity-40"
           >
-            <FileText size={16} /> Abrir Proposta (PDF)
+            {waSending
+              ? <><Loader2 size={16} className="animate-spin" /> Enviando...</>
+              : waStatus === 'sent'
+              ? <><CheckCircle size={16} /> Proposta aberta + WhatsApp enviado!</>
+              : <><FileText size={16} /> Abrir PDF + Enviar WhatsApp</>}
           </button>
-          <p className="text-[10px] text-gray-400 text-center">Uma nova aba abrirá com a proposta. Use Ctrl+P para salvar como PDF.</p>
+
+          {waStatus === 'error' && (
+            <p className="text-[11px] text-red-500 text-center">PDF aberto, mas falha ao enviar WhatsApp. Verifique a conexão.</p>
+          )}
+          {waStatus === 'idle' && (
+            <p className="text-[10px] text-gray-400 text-center">Abre o PDF em nova aba e envia os detalhes ao cliente via WhatsApp.</p>
+          )}
         </div>
       </div>
     </div>
@@ -484,9 +581,10 @@ interface QuoteCardProps {
   quote: Quote;
   onStatusChange: (id: string, s: Quote['status']) => void;
   onCreateAccount: (quote: Quote) => void;
+  onDelete: (id: string) => void;
 }
 
-const QuoteCard: React.FC<QuoteCardProps> = ({ quote, onStatusChange, onCreateAccount }) => {
+const QuoteCard: React.FC<QuoteCardProps> = ({ quote, onStatusChange, onCreateAccount, onDelete }) => {
   const [showChat, setShowChat] = useState(false);
   const [showPDF, setShowPDF] = useState(false);
   const [sendingWpp, setSendingWpp] = useState(false);
@@ -679,6 +777,20 @@ const QuoteCard: React.FC<QuoteCardProps> = ({ quote, onStatusChange, onCreateAc
           {wppResult === 'ok' && (
             <p className="text-[10px] text-green-600 mt-1">✅ Mensagem enviada e status atualizado para "Contatado"</p>
           )}
+
+          {/* Apagar orçamento */}
+          <div className="mt-3 flex justify-end">
+            <button
+              onClick={() => {
+                if (window.confirm(`Tem certeza que deseja apagar o orçamento de ${quote.name}? Esta ação não pode ser desfeita.`)) {
+                  onDelete(quote.id);
+                }
+              }}
+              className="flex items-center gap-1.5 text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1.5 rounded-lg transition-colors"
+            >
+              <Trash2 size={12} /> Apagar orçamento
+            </button>
+          </div>
         </div>
 
         {/* Ver histórico completo */}
@@ -732,7 +844,7 @@ const QuoteCard: React.FC<QuoteCardProps> = ({ quote, onStatusChange, onCreateAc
 
 // --- MAIN PAGE ---
 export const AdminQuotes: React.FC = () => {
-  const { quotes, addQuote, updateQuoteStatus, clients, registerClient } = useData();
+  const { quotes, addQuote, updateQuoteStatus, deleteQuote, clients, registerClient } = useData();
   const [filter, setFilter] = useState<Quote['status'] | 'ALL'>('ALL');
   const [showWhatsApp, setShowWhatsApp] = useState(false);
   const [createAccountTarget, setCreateAccountTarget] = useState<Quote | null>(null);
@@ -844,6 +956,7 @@ export const AdminQuotes: React.FC = () => {
                 quote={q}
                 onStatusChange={updateQuoteStatus}
                 onCreateAccount={q => setCreateAccountTarget(q)}
+                onDelete={deleteQuote}
               />
             ))}
           </div>

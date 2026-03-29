@@ -153,10 +153,10 @@ interface DataContextType {
   updateServiceDefinition: (def: ServiceDefinition) => Promise<void>;
   deleteServiceDefinition: (id: string) => Promise<void>;
 
-  registerClient: (client: ClientUser) => Promise<void>;
+  registerClient: (client: ClientUser) => Promise<ClientUser>;
   updateClient: (id: string, data: Partial<ClientUser>) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
-  loginClient: (email: string, password: string) => Promise<boolean>;
+  loginClient: (email: string, password: string) => Promise<ClientUser | null>;
   logoutClient: () => void;
   
   addClientAddress: (clientId: string, address: Address) => Promise<void>;
@@ -180,6 +180,7 @@ interface DataContextType {
   quotes: Quote[];
   addQuote: (quote: Omit<Quote, 'id' | 'createdAt' | 'status'>) => Promise<Quote>;
   updateQuoteStatus: (id: string, status: Quote['status']) => Promise<void>;
+  deleteQuote: (id: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -247,19 +248,9 @@ const mockServiceDefinitions: ServiceDefinition[] = [
   }
 ];
 
-const mockClients: ClientUser[] = [
-    { id: 'cli_1', name: 'Julia Roberts', email: 'julia@email.com', phone: '(27) 99999-1111', address: 'Av. Beira Mar, 100 - Praia do Morro', type: 'FIXO', addresses: [], password: '123456', createdAt: Date.now() },
-    { id: 'cli_2', name: 'Carlos Andrade', email: 'carlos@email.com', phone: '(27) 99999-2222', address: 'Rua das Flores, 50 - Centro', type: 'AVULSO', addresses: [], password: '123456', createdAt: Date.now() },
-];
-
-const mockCollaborators: CollaboratorUser[] = [
-    { id: 'col_1', name: 'Ana Souza', email: 'ana@email.com', password: '123', phone: '(27) 98888-1111', status: 'AVAILABLE', level: 'JUNIOR' },
-    { id: 'col_2', name: 'Beatriz Lima', email: 'bia@email.com', password: '123', phone: '(27) 98888-2222', status: 'ON_SERVICE', level: 'SENIOR' },
-];
-
-const mockServices: Service[] = [
-    { id: 'srv_req_1', clientId: 'cli_1', clientName: 'Julia Roberts', type: 'Limpeza Residencial', date: '25/05/2026', time: '08:00', address: 'Av. Beira Mar, 100', status: 'COMPLETED', price: 200, duration: 4, paymentStatus: 'FULL_PAID', collaboratorId: 'col_1', collaboratorName: 'Ana Souza', createdAt: Date.now() - 10000000 },
-];
+const mockClients: ClientUser[] = [];
+const mockCollaborators: CollaboratorUser[] = [];
+const mockServices: Service[] = [];
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [loading, setLoading] = useState(true);
@@ -320,6 +311,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isMain: false
     })) : [],
     type: u.type || 'AVULSO',
+    photo: u.photo || undefined,
+    password: u.password || undefined,
     createdAt: u.created_at ? new Date(u.created_at).getTime() : Date.now()
   });
 
@@ -408,7 +401,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (srvs) setServices(srvs.map(mapDbServiceToApp));
 
         const { data: trxs } = await supabase.from('transactions').select('*');
-        if (trxs) setTransactions(trxs as any);
+        if (trxs) setTransactions(trxs.map((t: any) => ({
+            id: t.id,
+            type: t.type,
+            serviceType: t.service_type || '',
+            entity: t.entity || '',
+            date: t.date || '',
+            amount: t.amount || 0,
+            status: t.status || 'PENDING',
+            method: t.method || '',
+            receipt: t.receipt || null,
+        })));
 
         const { data: qts } = await supabase.from('quotes').select('*').order('created_at', { ascending: false });
         if (qts) setQuotes(qts.map((q: any) => ({
@@ -435,9 +438,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCollaborators(mockCollaborators);
         setServices(mockServices);
         setServiceDefinitions(mockServiceDefinitions);
-        setNotifications([
-            { id: '1', type: 'NEW_REQUEST', title: 'Novo Pedido', desc: 'Carlos Andrade solicitou Pós-Obra.', time: 'Há 1 hora', read: false }
-        ]);
+        setNotifications([]);
     } finally {
         setLoading(false);
     }
@@ -555,40 +556,40 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // --- ACTIONS: CLIENTS ---
-  const registerClient = async (client: ClientUser) => {
-    setClients(prev => [...prev, client]);
-    setCurrentUser(client);
-    localStorage.setItem('auth_client', JSON.stringify(client));
-
+  const registerClient = async (client: ClientUser): Promise<ClientUser> => {
     const { data: userData, error } = await supabase.from('app_users').insert({
         name: client.name,
         email: client.email,
         phone: client.phone,
         address: client.address,
         role: 'CLIENT',
-        password: client.password
+        password: client.password,
+        type: 'AVULSO',
     }).select().single();
 
     if (!error && userData) {
-        if (client.addresses && client.addresses.length > 0) {
-            const addressesToInsert = client.addresses.map(a => ({
-                user_id: userData.id,
-                title: a.alias,
-                street: a.street,
-                number: a.number,
-                complement: a.complement,
-                neighborhood: a.district,
-                city: a.city,
-                state: a.state,
-                zip: a.cep
-            }));
-            await supabase.from('addresses').insert(addressesToInsert);
-        }
-        const finalClient = mapDbUserToClient(userData, client.addresses);
-        setClients(prev => prev.map(c => c.id === client.id ? finalClient : c));
+        const finalClient = mapDbUserToClient(userData, []);
+        setClients(prev => [...prev, finalClient]);
         setCurrentUser(finalClient);
         localStorage.setItem('auth_client', JSON.stringify(finalClient));
+        return finalClient;
     }
+
+    // If insert failed (duplicate email), find and return existing user
+    const { data: existing } = await supabase.from('app_users')
+        .select('*').eq('email', client.email).single();
+    if (existing) {
+        const existingClient = mapDbUserToClient(existing, []);
+        setCurrentUser(existingClient);
+        localStorage.setItem('auth_client', JSON.stringify(existingClient));
+        return existingClient;
+    }
+
+    // Fallback: save locally only
+    setClients(prev => [...prev, client]);
+    setCurrentUser(client);
+    localStorage.setItem('auth_client', JSON.stringify(client));
+    return client;
   };
 
   const updateClient = async (id: string, data: Partial<ClientUser>) => {
@@ -614,12 +615,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (currentUser?.id === id) logoutClient();
   };
 
-  const loginClient = async (email: string, password: string): Promise<boolean> => {
+  const loginClient = async (email: string, password: string): Promise<ClientUser | null> => {
     const localUser = clients.find(c => c.email === email && c.password === password);
     if (localUser) {
         setCurrentUser(localUser);
         localStorage.setItem('auth_client', JSON.stringify(localUser));
-        return true;
+        return localUser;
     }
     const { data: user } = await supabase.from('app_users').select('*').eq('email', email).eq('role', 'CLIENT').single();
     if (user && user.password === password) {
@@ -627,9 +628,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const clientObj = mapDbUserToClient(user, addrs || []);
         setCurrentUser(clientObj);
         localStorage.setItem('auth_client', JSON.stringify(clientObj));
-        return true;
+        return clientObj;
     }
-    return false;
+    return null;
   };
 
   const logoutClient = () => {
@@ -847,6 +848,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await supabase.from('quotes').update({ status }).eq('id', id);
   };
 
+  const deleteQuote = async (id: string) => {
+      setQuotes(prev => prev.filter(q => q.id !== id));
+      await supabase.from('quotes').delete().eq('id', id);
+  };
+
   return (
     <DataContext.Provider value={{ 
       services, clients, collaborators, notifications, serviceDefinitions, transactions, platformSettings,
@@ -857,7 +863,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addClientAddress, updateClientAddress, deleteClientAddress,
       registerCollaborator, updateCollaborator, deleteCollaborator, loginCollaborator, logoutCollaborator,
       loginAdmin, logoutAdmin, markAllNotificationsRead, updatePlatformSettings, markTransactionPaid, deleteTransaction,
-      quotes, addQuote, updateQuoteStatus
+      quotes, addQuote, updateQuoteStatus, deleteQuote
     }}>
       {children}
     </DataContext.Provider>

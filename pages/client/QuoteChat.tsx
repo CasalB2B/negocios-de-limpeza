@@ -36,7 +36,7 @@ const formatText = (text: string): React.ReactNode => {
 
 export const QuoteChat: React.FC = () => {
   const navigate = useNavigate();
-  const { addQuote, registerClient } = useData();
+  const { addQuote, registerClient, loginClient, addClientAddress, currentUser } = useData();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -61,6 +61,11 @@ export const QuoteChat: React.FC = () => {
   );
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState<'login' | 'password' | null>(null);
+
+  // Se já está logado, vai direto pro dashboard
+  useEffect(() => {
+    if (currentUser) navigate('/client/dashboard');
+  }, [currentUser, navigate]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -138,8 +143,9 @@ export const QuoteChat: React.FC = () => {
           : `${phoneDigits}@cliente.ndl`;
         const loginPassword = phoneDigits.slice(-4) || '0000';
 
+        let realClientId: string | null = null;
         try {
-          await registerClient({
+          const registeredClient = await registerClient({
             id: `user_${Date.now()}`,
             name: quoteData.name || '',
             email: loginEmail,
@@ -150,8 +156,31 @@ export const QuoteChat: React.FC = () => {
             type: 'AVULSO',
             createdAt: Date.now(),
           });
+          realClientId = registeredClient.id;
         } catch {
-          // Account may already exist — still show success
+          // Account may already exist — try login to get real ID
+          const loggedIn = await loginClient(loginEmail, loginPassword);
+          realClientId = loggedIn?.id || null;
+        }
+
+        // Save address using real DB client ID
+        if (realClientId && (quoteData.addressStreet || quoteData.addressDistrict)) {
+          try {
+            await addClientAddress(realClientId, {
+              id: `addr_${Date.now()}`,
+              alias: 'Principal',
+              street: quoteData.addressStreet || '',
+              number: quoteData.addressNumber || 's/n',
+              district: quoteData.addressDistrict || '',
+              city: quoteData.addressCity || 'Guarapari',
+              state: quoteData.addressState || 'ES',
+              cep: quoteData.addressCep || '',
+              type: quoteData.propertyType?.toLowerCase().includes('apart') ? 'APARTMENT' : 'HOUSE',
+              isMain: true,
+            });
+          } catch {
+            // silent fail
+          }
         }
 
         setSavedName((quoteData.name || '').split(' ')[0]);

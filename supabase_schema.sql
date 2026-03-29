@@ -191,3 +191,21 @@ CREATE TABLE IF NOT EXISTS public.quotes (
 );
 ALTER TABLE public.quotes DISABLE ROW LEVEL SECURITY;
 GRANT ALL ON public.quotes TO anon, authenticated;
+
+
+-- ============================================================
+-- Tabela de sessões do bot WhatsApp
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.whatsapp_sessions (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    phone       TEXT UNIQUE NOT NULL,
+    history     JSONB DEFAULT '[]',
+    meta        JSONB DEFAULT '{}',
+    created_at  TIMESTAMPTZ DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.whatsapp_sessions DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.whatsapp_sessions TO anon, authenticated;
+
+-- Coluna source na tabela quotes (identifica se veio do chat web ou WhatsApp)
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'web';

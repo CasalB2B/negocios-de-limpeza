@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
-import { Settings, Shield, Bell, CreditCard, Building, Save, ToggleLeft, ToggleRight, DollarSign, Lock, Smartphone, List, Users, UserPlus, X, CheckSquare, Square, Trash2 } from 'lucide-react';
+import { Settings, Shield, Bell, CreditCard, Building, Save, ToggleLeft, ToggleRight, DollarSign, Lock, List, Users, UserPlus, X, CheckSquare, Square, Trash2, Camera } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 
 export const AdminSettings: React.FC = () => {
   const { platformSettings, updatePlatformSettings } = useData(); // Use Global Settings
   const [activeTab, setActiveTab] = useState('general');
-  const [notifications, setNotifications] = useState({ email: true, sms: false, whatsapp: true });
+  const [notifications, setNotifications] = useState({ email: true, whatsapp: true });
+  const [adminPhoto, setAdminPhoto] = useState<string>('https://i.pravatar.cc/150?u=admin');
+  const adminPhotoRef = useRef<HTMLInputElement>(null);
   const [showUserModal, setShowUserModal] = useState(false);
   
   // Local state for settings form
@@ -99,23 +101,56 @@ export const AdminSettings: React.FC = () => {
       case 'general':
         return (
           <div className="space-y-8 animate-in fade-in duration-300">
+             {/* Admin Profile Photo */}
              <div>
-                <h3 className="text-xl font-bold text-darkText mb-4">Informações da Empresa</h3>
+                <h3 className="text-xl font-bold text-darkText dark:text-darkTextPrimary mb-4">Perfil do Administrador</h3>
+                <div className="flex items-center gap-6">
+                   <div className="relative group cursor-pointer" onClick={() => adminPhotoRef.current?.click()}>
+                      <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-lg">
+                         <img src={adminPhoto} alt="Admin" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                         <Camera className="text-white" size={20} />
+                      </div>
+                      <input
+                         type="file"
+                         ref={adminPhotoRef}
+                         className="hidden"
+                         accept="image/*"
+                         onChange={e => {
+                            if (e.target.files?.[0]) {
+                               const reader = new FileReader();
+                               reader.onload = ev => setAdminPhoto(ev.target?.result as string);
+                               reader.readAsDataURL(e.target.files[0]);
+                            }
+                         }}
+                      />
+                   </div>
+                   <div>
+                      <p className="font-bold text-darkText dark:text-darkTextPrimary">Ricardo Silva</p>
+                      <p className="text-sm text-lightText dark:text-darkTextSecondary">Super Admin</p>
+                      <button onClick={() => adminPhotoRef.current?.click()} className="text-xs text-primary font-bold mt-1 hover:underline">Alterar foto</button>
+                   </div>
+                </div>
+             </div>
+
+             <div className="border-t border-gray-100 dark:border-darkBorder pt-6">
+                <h3 className="text-xl font-bold text-darkText dark:text-darkTextPrimary mb-4">Informações da Empresa</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                    <Input label="Nome da Plataforma" defaultValue="Negócios de Limpeza" />
                    <Input label="E-mail de Suporte" defaultValue="suporte@negociosdelimpeza.com.br" />
-                   <Input label="Telefone de Contato" defaultValue="(11) 99999-0000" />
+                   <Input label="Telefone de Contato" defaultValue="(27) 99980-8013" />
                    <Input label="CNPJ" defaultValue="00.000.000/0001-99" />
                 </div>
              </div>
              <div>
-                <h3 className="text-xl font-bold text-darkText mb-4">Endereço Comercial</h3>
+                <h3 className="text-xl font-bold text-darkText dark:text-darkTextPrimary mb-4">Endereço Comercial</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                   <Input label="CEP" defaultValue="01311-200" containerClassName="md:col-span-1" />
-                   <Input label="Endereço" defaultValue="Av. Paulista, 1000" containerClassName="md:col-span-2" />
+                   <Input label="CEP" defaultValue="29200-000" containerClassName="md:col-span-1" />
+                   <Input label="Endereço" defaultValue="Guarapari, ES" containerClassName="md:col-span-2" />
                 </div>
              </div>
-             <div className="flex justify-end pt-4 border-t border-gray-100">
+             <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-darkBorder">
                 <Button icon={<Save size={18}/>}>Salvar Alterações</Button>
              </div>
           </div>
@@ -248,34 +283,24 @@ export const AdminSettings: React.FC = () => {
            <div className="space-y-6 animate-in fade-in duration-300">
               <h3 className="text-xl font-bold text-darkText mb-4">Preferências de Notificação</h3>
               
-              <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
+              <div className="bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder rounded-xl divide-y divide-gray-100 dark:divide-darkBorder">
                  <div className="p-4 flex items-center justify-between">
                     <div>
-                       <p className="font-bold text-darkText">E-mail</p>
-                       <p className="text-sm text-lightText">Receber novos pedidos e alertas por e-mail.</p>
+                       <p className="font-bold text-darkText dark:text-darkTextPrimary">E-mail</p>
+                       <p className="text-sm text-lightText dark:text-darkTextSecondary">Receber novos orçamentos e alertas por e-mail.</p>
                     </div>
                     <button onClick={() => setNotifications({...notifications, email: !notifications.email})} className={`transition-colors ${notifications.email ? 'text-primary' : 'text-gray-300'}`}>
                        {notifications.email ? <ToggleRight size={40} fill="currentColor" className="text-primary/20" /> : <ToggleLeft size={40} />}
                     </button>
                  </div>
-                 
-                 <div className="p-4 flex items-center justify-between">
-                    <div>
-                       <p className="font-bold text-darkText">WhatsApp (Bot)</p>
-                       <p className="text-sm text-lightText">Alertas urgentes via WhatsApp Business API.</p>
-                    </div>
-                    <button onClick={() => setNotifications({...notifications, whatsapp: !notifications.whatsapp})} className={`transition-colors ${notifications.whatsapp ? 'text-primary' : 'text-gray-300'}`}>
-                       {notifications.whatsapp ? <ToggleRight size={40} fill="currentColor" className="text-primary/20" /> : <ToggleLeft size={40} />}
-                    </button>
-                 </div>
 
                  <div className="p-4 flex items-center justify-between">
                     <div>
-                       <p className="font-bold text-darkText">SMS</p>
-                       <p className="text-sm text-lightText">Backup para quando não houver internet.</p>
+                       <p className="font-bold text-darkText dark:text-darkTextPrimary">WhatsApp</p>
+                       <p className="text-sm text-lightText dark:text-darkTextSecondary">Notificações de novos orçamentos via WhatsApp.</p>
                     </div>
-                    <button onClick={() => setNotifications({...notifications, sms: !notifications.sms})} className={`transition-colors ${notifications.sms ? 'text-primary' : 'text-gray-300'}`}>
-                       {notifications.sms ? <ToggleRight size={40} fill="currentColor" className="text-primary/20" /> : <ToggleLeft size={40} />}
+                    <button onClick={() => setNotifications({...notifications, whatsapp: !notifications.whatsapp})} className={`transition-colors ${notifications.whatsapp ? 'text-primary' : 'text-gray-300'}`}>
+                       {notifications.whatsapp ? <ToggleRight size={40} fill="currentColor" className="text-primary/20" /> : <ToggleLeft size={40} />}
                     </button>
                  </div>
               </div>

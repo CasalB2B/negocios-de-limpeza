@@ -3,9 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { CheckCircle, ArrowRight, User, Briefcase, ShieldCheck, Star, Clock, Shield, MessageCircle, FileText, Sparkles, Package } from 'lucide-react';
+import { useData } from '../components/DataContext';
 
 export const CentralAccess: React.FC = () => {
   const navigate = useNavigate();
+  const { currentUser } = useData();
+
+  const goToQuoteOrDashboard = () => {
+    if (currentUser) navigate('/client/dashboard');
+    else goToQuoteOrDashboard();
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-darkBg font-sans transition-colors duration-300">
@@ -22,7 +29,7 @@ export const CentralAccess: React.FC = () => {
           <div className="flex items-center gap-6">
             <div className="hidden md:flex items-center gap-6">
               <button onClick={() => navigate('/client/login')} className="text-sm font-bold text-darkText dark:text-darkTextPrimary hover:text-primary transition-colors">Já sou cliente (Login)</button>
-              <Button onClick={() => navigate('/client/quote-chat')} className="px-6 py-2 h-auto text-sm">Fazer Orçamento</Button>
+              <Button onClick={() => goToQuoteOrDashboard()} className="px-6 py-2 h-auto text-sm">Fazer Orçamento</Button>
             </div>
             <ThemeToggle />
           </div>
@@ -47,7 +54,7 @@ export const CentralAccess: React.FC = () => {
             
             <div className="flex flex-col sm:flex-row gap-4">
               <button
-                onClick={() => navigate('/client/quote-chat')}
+                onClick={() => goToQuoteOrDashboard()}
                 className="bg-primary text-white px-5 py-3.5 md:px-8 md:py-4 rounded-2xl font-bold text-base md:text-lg shadow-xl shadow-primary/30 hover:bg-primaryHover hover:scale-105 transition-all flex items-center justify-center gap-2"
               >
                 Fazer Orçamento Grátis <ArrowRight size={20} />

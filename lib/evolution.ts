@@ -61,6 +61,28 @@ export function buildMessage(template: string, vars: Record<string, string>): st
   return template.replace(/\[(\w+)\]/g, (_, key) => vars[key] ?? `[${key}]`);
 }
 
+export async function sendDocument(phone: string, base64: string, fileName: string, caption?: string): Promise<boolean> {
+  try {
+    const number = '55' + phone.replace(/\D/g, '');
+    const res = await fetch(`${EVOLUTION_URL}/message/sendMedia/${INSTANCE}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...BASE_HEADERS },
+      body: JSON.stringify({
+        number,
+        mediatype: 'document',
+        mimetype: 'application/pdf',
+        media: base64,
+        fileName,
+        caption: caption || '',
+        delay: 1000,
+      }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export const DEFAULT_TEMPLATES = {
   welcome: `Olá, [Nome]! 👋 Aqui é a *Negócios de Limpeza*.
 
