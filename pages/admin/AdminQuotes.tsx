@@ -8,7 +8,8 @@ import {
   Wand2, Loader2, ImagePlus, Camera, Send, Trash2,
 } from 'lucide-react';
 import { extractFromConversation } from '../../lib/gemini';
-import { sendMessage as sendWhatsApp, buildMessage, DEFAULT_TEMPLATES } from '../../lib/evolution';
+import { sendMessage as sendWhatsApp, sendDocument, buildMessage, DEFAULT_TEMPLATES } from '../../lib/evolution';
+import jsPDF from 'jspdf';
 
 // --- STATUS ---
 const STATUS_LABELS: Record<Quote['status'], { label: string; color: string; bg: string }> = {
@@ -379,6 +380,121 @@ function calcAutoPrice(quote: Quote): { price: string; professionals: string; ho
   return { price: base.toString().replace('.', ','), professionals: profs, hours: '8', breakdown };
 }
 
+// --- PDF GENERATION (jsPDF) ---
+function generatePDFBase64(
+  quote: Quote,
+  price: string,
+  professionals: string,
+  hours: string,
+  neighborhood: string,
+  serviceType: string,
+): string {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210;
+  const margin = 20;
+  let y = 0;
+
+  // Header background
+  doc.setFillColor(161, 99, 255);
+  doc.rect(0, 0, W, 48, 'F');
+
+  // Company name
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('NEGÓCIOS DE LIMPEZA — GUARAPARI/ES', margin, 14);
+
+  // Title
+  doc.setFontSize(22);
+  doc.text('Proposta Comercial', margin, 26);
+
+  // Subtitle
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(serviceType || 'Faxina Residencial', margin, 35);
+
+  // Client info bar
+  doc.setFontSize(9);
+  doc.text(`Cliente: ${quote.name}`, margin, 43);
+  doc.text(`Contato: ${quote.whatsapp}`, 90, 43);
+  doc.text(`Bairro: ${neighborhood || 'Guarapari'}`, 150, 43);
+
+  y = 58;
+
+  // Section: About
+  doc.setTextColor(161, 99, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text('SOBRE O SERVIÇO', margin, y);
+  y += 5;
+  doc.setTextColor(60, 60, 80);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  const aboutText = 'Cada lar tem suas necessidades únicas. Nossa equipe cuida das suas prioridades com capricho e dedicação.';
+  const aboutLines = doc.splitTextToSize(aboutText, W - margin * 2);
+  doc.text(aboutLines, margin, y);
+  y += aboutLines.length * 5 + 4;
+
+  if (quote.priorities) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Prioridades: ', margin, y);
+    doc.setFont('helvetica', 'normal');
+    const priLines = doc.splitTextToSize(quote.priorities, W - margin * 2 - 28);
+    doc.text(priLines, margin + 28, y);
+    y += Math.max(priLines.length, 1) * 5 + 3;
+  }
+
+  y += 4;
+
+  // Section: Scope
+  doc.setTextColor(161, 99, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text('O QUE ESTÁ INCLUÍDO', margin, y);
+  y += 5;
+  doc.setTextColor(60, 60, 80);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  const scopeItems = [
+    'Limpeza completa de todos os cômodos',
+    'Materiais e equipamentos profissionais inclusos',
+    'Equipe treinada e uniformizada',
+    'Seguro contra danos incluso',
+  ];
+  if (quote.rooms) scopeItems.unshift(`Cômodos: ${quote.rooms}`);
+  scopeItems.forEach(item => {
+    doc.text(`• ${item}`, margin + 3, y);
+    y += 6;
+  });
+
+  y += 4;
+
+  // Price box
+  doc.setFillColor(161, 99, 255);
+  doc.roundedRect(margin, y, W - margin * 2, 36, 4, 4, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('INVESTIMENTO', margin + 6, y + 9);
+  doc.setFontSize(28);
+  doc.text(`R$ ${price}`, margin + 6, y + 24);
+  doc.setFontSize(10);
+  doc.text(`${professionals} profissional${professionals === '2' ? 'is' : ''}  •  ${hours} horas`, margin + 6, y + 32);
+  doc.text('Pix / Cartão / Dinheiro', W - margin - 50, y + 24);
+  y += 44;
+
+  // Footer
+  doc.setFillColor(26, 26, 46);
+  doc.rect(0, 280, W, 17, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Negócios de Limpeza — Guarapari, ES', margin, 290);
+  doc.text('Proposta válida por 7 dias', W - margin - 36, 290);
+
+  return doc.output('datauristring').split(',')[1];
+}
+
 // --- PDF MODAL ---
 interface PDFModalProps {
   quote: Quote;
@@ -397,13 +513,22 @@ const PDFModal: React.FC<PDFModalProps> = ({ quote, onClose }) => {
 
   const handleOpenAndSend = async () => {
     if (!price.trim()) return;
-    // Open PDF in new window
+    // Open HTML preview in new window
     generateProposalWindow(quote, price, professionals, hours, neighborhood, serviceType);
 
-    // Send WhatsApp message with proposal details
     if (quote.whatsapp) {
       setWaSending(true);
       try {
+        // 1. Send PDF as document
+        const pdfBase64 = generatePDFBase64(quote, price, professionals, hours, neighborhood, serviceType);
+        await sendDocument(
+          quote.whatsapp,
+          pdfBase64,
+          `Proposta_${quote.name.replace(/\s+/g, '_')}.pdf`,
+          `Proposta de serviço — ${serviceType}`,
+        );
+
+        // 2. Send text message
         const storedTemplates = localStorage.getItem('ndl_whatsapp_templates');
         const templates = storedTemplates ? JSON.parse(storedTemplates) : null;
         const template = templates?.proposal || DEFAULT_TEMPLATES.proposal;
