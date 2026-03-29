@@ -169,11 +169,12 @@ Responda com *1* ou *2* 😊`;
     }
 
     if (chose1) {
-      // Start Nina quote flow
+      // Start Nina quote flow — include intro in history so Gemini knows she already presented herself
       const intro = `Oi! Eu sou a *Nina*, assistente virtual da Negócios de Limpeza! 🌟\n\nVou te ajudar a gerar um orçamento gratuito rapidinho. Para começar... qual é o seu *nome*? 😊`;
       await sendWhatsApp(phone, intro);
+      const initHistory = [{ role: 'model', parts: [{ text: intro }] }];
       await supabase.from('whatsapp_sessions').upsert(
-        { phone, history: [], meta: { step: 'quote' }, updated_at: new Date().toISOString() },
+        { phone, history: initHistory, meta: { step: 'quote' }, updated_at: new Date().toISOString() },
         { onConflict: 'phone' }
       );
       return new Response(JSON.stringify({ ok: true }), { status: 200 });

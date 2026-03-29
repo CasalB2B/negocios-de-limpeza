@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
-import { MessageCircle, Wifi, WifiOff, Send, Save, RefreshCw, CheckCircle, XCircle, Smartphone, Bell, FileText, ThumbsUp } from 'lucide-react';
+import { MessageCircle, Wifi, Send, Save, RefreshCw, CheckCircle, XCircle, Smartphone, Bell, FileText, ThumbsUp, Bot, Trash2, Loader2 } from 'lucide-react';
 import { getStatus, getQrCode, sendMessage, buildMessage, DEFAULT_TEMPLATES, EvolutionStatus } from '../../lib/evolution';
+import { sendMessage as askNina, GeminiMessage, QUOTE_SYSTEM_PROMPT } from '../../lib/gemini';
 
 const STORAGE_KEY = 'ndl_whatsapp_templates';
 
@@ -17,6 +18,7 @@ function loadTemplates() {
 
 const TABS = [
   { id: 'status', label: 'Conexão', icon: <Wifi size={16} /> },
+  { id: 'nina', label: 'Treinar Nina', icon: <Bot size={16} /> },
   { id: 'welcome', label: 'Boas-vindas', icon: <Bell size={16} /> },
   { id: 'proposal', label: 'Proposta', icon: <FileText size={16} /> },
   { id: 'confirmation', label: 'Confirmação', icon: <ThumbsUp size={16} /> },
@@ -50,6 +52,35 @@ export const AdminWhatsApp: React.FC = () => {
   const [testPhone, setTestPhone] = useState('');
   const [testResult, setTestResult] = useState<'ok' | 'err' | null>(null);
   const [sending, setSending] = useState(false);
+
+  // Nina trainer
+  const [ninaHistory, setNinaHistory] = useState<GeminiMessage[]>([]);
+  const [ninaInput, setNinaInput] = useState('');
+  const [ninaLoading, setNinaLoading] = useState(false);
+  const [ninaPrompt, setNinaPrompt] = useState(QUOTE_SYSTEM_PROMPT);
+  const [editingPrompt, setEditingPrompt] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [ninaHistory, ninaLoading]);
+
+  const handleNinaSend = async () => {
+    if (!ninaInput.trim() || ninaLoading) return;
+    const userMsg: GeminiMessage = { role: 'user', parts: [{ text: ninaInput.trim() }] };
+    const newHistory = [...ninaHistory, userMsg];
+    setNinaHistory(newHistory);
+    setNinaInput('');
+    setNinaLoading(true);
+    try {
+      const reply = await askNina(newHistory);
+      setNinaHistory([...newHistory, { role: 'model', parts: [{ text: reply }] }]);
+    } catch {
+      setNinaHistory([...newHistory, { role: 'model', parts: [{ text: '⚠️ Erro ao conectar com a Nina. Verifique a chave do Gemini.' }] }]);
+    } finally {
+      setNinaLoading(false);
+    }
+  };
 
   const fetchStatus = async () => {
     setLoadingStatus(true);
@@ -217,6 +248,90 @@ export const AdminWhatsApp: React.FC = () => {
                 {testResult === 'err' && <p className="text-xs text-red-500 mt-2 font-bold">❌ Falha ao enviar. Verifique a conexão.</p>}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Tab: Treinar Nina */}
+        {tab === 'nina' && (
+          <div className="space-y-4">
+            {/* Prompt editor toggle */}
+            <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-bold text-gray-700 dark:text-darkTextPrimary">Prompt da Nina</p>
+                <button onClick={() => setEditingPrompt(e => !e)} className="text-xs text-primary font-bold hover:underline">
+                  {editingPrompt ? 'Fechar' : 'Editar prompt'}
+                </button>
+              </div>
+              {editingPrompt && (
+                <textarea
+                  rows={10}
+                  value={ninaPrompt}
+                  onChange={e => setNinaPrompt(e.target.value)}
+                  className="w-full p-3 rounded-xl border border-gray-200 dark:border-darkBorder bg-gray-50 dark:bg-darkBg text-xs font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              )}
+              {editingPrompt && (
+                <p className="text-xs text-gray-400 mt-1">⚠️ Editar aqui só afeta o simulador. Para aplicar no bot real, atualize o código.</p>
+              )}
+            </div>
+
+            {/* Chat simulador */}
+            <div className="bg-[#0b141a] rounded-2xl overflow-hidden border border-gray-800" style={{ backgroundImage: "url('https://web.whatsapp.com/img/bg-chat-tile-dark_a4be512e7195b6b733d9110b408f075d.png')", backgroundSize: '400px' }}>
+              {/* Header */}
+              <div className="bg-[#202c33] px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm">N</div>
+                  <div>
+                    <p className="text-white text-sm font-bold">Nina — Simulador</p>
+                    <p className="text-[#8696a0] text-xs">online</p>
+                  </div>
+                </div>
+                <button onClick={() => setNinaHistory([])} className="text-[#8696a0] hover:text-white p-1" title="Limpar conversa">
+                  <Trash2 size={16} />
+                </button>
+              </div>
+
+              {/* Messages */}
+              <div className="h-96 overflow-y-auto p-4 space-y-2 flex flex-col">
+                {ninaHistory.length === 0 && (
+                  <p className="text-center text-[#8696a0] text-sm mt-8">Mande uma mensagem para simular a conversa com a Nina</p>
+                )}
+                {ninaHistory.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap shadow ${msg.role === 'user' ? 'bg-[#005c4b] text-white rounded-br-sm' : 'bg-[#202c33] text-[#e9edef] rounded-bl-sm'}`}>
+                      {msg.parts[0].text.replace(/<<QUOTE_DATA>>[\s\S]*?<<END_QUOTE>>/, '').trim()}
+                    </div>
+                  </div>
+                ))}
+                {ninaLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-[#202c33] rounded-xl px-4 py-2 flex items-center gap-2">
+                      <Loader2 size={14} className="animate-spin text-[#8696a0]" />
+                      <span className="text-[#8696a0] text-xs">digitando...</span>
+                    </div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Input */}
+              <div className="bg-[#202c33] px-3 py-2 flex items-center gap-2">
+                <input
+                  value={ninaInput}
+                  onChange={e => setNinaInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleNinaSend()}
+                  placeholder="Digite uma mensagem..."
+                  className="flex-1 bg-[#2a3942] text-white placeholder-[#8696a0] rounded-xl px-4 py-2 text-sm outline-none"
+                />
+                <button
+                  onClick={handleNinaSend}
+                  disabled={ninaLoading || !ninaInput.trim()}
+                  className="w-9 h-9 bg-[#00a884] rounded-full flex items-center justify-center hover:bg-[#00c49a] transition-colors disabled:opacity-40"
+                >
+                  <Send size={16} className="text-white" />
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
