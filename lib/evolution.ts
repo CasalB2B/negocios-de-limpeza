@@ -86,24 +86,22 @@ export async function sendDocument(phone: string, base64: string, fileName: stri
 }
 
 export const DEFAULT_TEMPLATES = {
-  welcome: `Olá, [Nome]! 👋 Aqui é a *Negócios de Limpeza*.
+  welcome: `Olá, [Nome]! Aqui é a *Negócios de Limpeza*.
 
-Recebemos seu pedido de orçamento para *[Servico]* e já estamos analisando tudo com carinho! 🧹✨
+Recebemos seu pedido de orçamento para *[Servico]* e já estamos analisando. Em breve nossa equipe entra em contato com sua proposta personalizada.`,
 
-Em breve nossa equipe entra em contato com sua proposta personalizada.`,
+  proposal: `Olá, [Nome]! Sua proposta está pronta.
 
-  proposal: `Olá, [Nome]! Sua proposta está pronta! 🎉
+*Serviço:* [Servico]
+*Endereço:* [Endereco]
+*Valor:* R$ [Valor]
+*Disponibilidade:* [Data]
 
-🏠 *Serviço:* [Servico]
-📍 *Endereço:* [Endereco]
-💰 *Valor:* R$ [Valor]
-📅 *Disponibilidade:* [Data]
+Podemos confirmar o agendamento? É só responder aqui!`,
 
-Podemos confirmar o agendamento? É só responder aqui! 😊`,
+  confirmation: `Perfeito, [Nome]!
 
-  confirmation: `Perfeito, [Nome]! ✅
+Serviço confirmado. Nossa equipe estará no local na data combinada.
 
-Serviço confirmado! Nossa equipe estará no local na data combinada.
-
-Qualquer dúvida é só chamar. Obrigada pela confiança! 🙏`,
+Qualquer dúvida é só chamar. Obrigada pela confiança!`,
 };
