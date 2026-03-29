@@ -8,7 +8,7 @@ const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || '';
 const EVOLUTION_URL = Deno.env.get('EVOLUTION_URL') || '';
 const EVOLUTION_KEY = Deno.env.get('EVOLUTION_KEY') || '';
 const EVOLUTION_INSTANCE = Deno.env.get('EVOLUTION_INSTANCE') || '';
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = 'gemini-2.0-flash';
 
 const SYSTEM_PROMPT = `Você é a Nina, assistente da Negócios de Limpeza — empresa de limpeza profissional em Guarapari, ES.
 Você está conversando com o cliente diretamente pelo WhatsApp.
@@ -96,7 +96,7 @@ async function callGemini(history: { role: string; parts: { text: string }[] }[]
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents: history,
-        generationConfig: { temperature: 1.2, maxOutputTokens: 512 },
+        generationConfig: { temperature: 1.0, maxOutputTokens: 400 },
       }),
     }
   );
