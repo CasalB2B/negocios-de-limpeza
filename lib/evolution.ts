@@ -46,7 +46,11 @@ export async function getStatus(): Promise<EvolutionStatus> {
 export async function getQrCode(): Promise<string | null> {
   try {
     const result = await callProxy('connect');
-    return (result.data as Record<string, string>)?.base64 ?? null;
+    const data = result.data as Record<string, unknown>;
+    // Evolution API v1 returns base64 at root; v2+ returns inside qrcode object
+    return (data?.base64 as string)
+      ?? ((data?.qrcode as Record<string, string>)?.base64)
+      ?? null;
   } catch {
     return null;
   }
