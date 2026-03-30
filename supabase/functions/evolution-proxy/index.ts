@@ -22,13 +22,17 @@ Deno.serve(async (req) => {
 
     if (action === 'sendText') {
       url = `${EVOLUTION_URL}/message/sendText/${EVOLUTION_INSTANCE}`;
-      const cleaned = (payload.number || '').replace(/\D/g, '');
-      const number = cleaned.startsWith('55') ? cleaned : '55' + cleaned;
+      const raw = (payload.number || '') as string;
+      const number = raw.includes('@lid')
+        ? raw
+        : (raw.replace(/\D/g, '').startsWith('55') ? raw.replace(/\D/g, '') : '55' + raw.replace(/\D/g, ''));
       body = { number, textMessage: { text: payload.text }, delay: 1000 };
     } else if (action === 'sendMedia') {
       url = `${EVOLUTION_URL}/message/sendMedia/${EVOLUTION_INSTANCE}`;
-      const cleaned = (payload.number || '').replace(/\D/g, '');
-      const number = cleaned.startsWith('55') ? cleaned : '55' + cleaned;
+      const raw = (payload.number || '') as string;
+      const number = raw.includes('@lid')
+        ? raw
+        : (raw.replace(/\D/g, '').startsWith('55') ? raw.replace(/\D/g, '') : '55' + raw.replace(/\D/g, ''));
       body = {
         number,
         mediatype: 'document',
@@ -46,10 +50,24 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     } else if (action === 'connect') {
-      url = `${EVOLUTION_URL}/instance/connect/${EVOLUTION_INSTANCE}`;
-      const res = await fetch(url, { headers: { apikey: EVOLUTION_KEY } });
-      const data = await res.json();
-      return new Response(JSON.stringify(data), {
+      // Try to connect; if instance doesn't exist, create it first then retry
+      const tryConnect = async () => {
+        const r = await fetch(`${EVOLUTION_URL}/instance/connect/${EVOLUTION_INSTANCE}`, { headers: { apikey: EVOLUTION_KEY } });
+        return { res: r, data: await r.json() };
+      };
+      let { res, data } = await tryConnect();
+      if (res.status === 404 || data?.status === 404) {
+        // Instance missing — recreate it
+        await fetch(`${EVOLUTION_URL}/instance/create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_KEY },
+          body: JSON.stringify({ instanceName: EVOLUTION_INSTANCE, qrcode: true, integration: 'WHATSAPP-BAILEYS' }),
+        });
+        // Small delay then retry connect
+        await new Promise(r => setTimeout(r, 1500));
+        ({ res, data } = await tryConnect());
+      }
+      return new Response(JSON.stringify({ ok: res.ok, data }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     } else {
