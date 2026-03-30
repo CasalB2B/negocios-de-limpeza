@@ -10,7 +10,7 @@ export const CentralAccess: React.FC = () => {
   const { currentUser } = useData();
 
   const openWhatsAppQuote = () => {
-    window.open('https://wa.me/5527999526102?text=Ol%C3%A1!%20Gostaria%20de%20fazer%20um%20or%C3%A7amento%20gratuito.', '_blank');
+    navigate('/client/quote-chat');
   };
 
   return (
@@ -196,22 +196,30 @@ export const CentralAccess: React.FC = () => {
                 ))}
               </div>
             </div>
-            <div className="flex flex-col gap-4">
-              <div className="bg-white dark:bg-darkSurface rounded-3xl p-8 border border-gray-100 dark:border-darkBorder shadow-sm text-center">
-                <p className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary mb-2">600+</p>
-                <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">Clientes atendidos em Guarapari</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white dark:bg-darkSurface rounded-2xl p-5 border border-gray-100 dark:border-darkBorder shadow-sm text-center">
-                  <p className="text-3xl font-black text-primary mb-1">5.0</p>
-                  <div className="flex justify-center mb-1">
-                    {[1,2,3,4,5].map(i => <Star key={i} size={12} className="text-yellow-400" fill="currentColor" />)}
-                  </div>
-                  <p className="text-xs text-lightText dark:text-darkTextSecondary">Avaliação média</p>
+            <div className="relative rounded-3xl overflow-hidden h-96 shadow-2xl">
+              <img
+                src="/img/foto-home.jpg"
+                alt="Equipe Negócios de Limpeza"
+                className="w-full h-full object-cover object-top"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-5 flex justify-around">
+                <div className="text-center">
+                  <p className="text-3xl font-black text-white">600+</p>
+                  <p className="text-xs text-white/80 font-semibold">Clientes</p>
                 </div>
-                <div className="bg-white dark:bg-darkSurface rounded-2xl p-5 border border-gray-100 dark:border-darkBorder shadow-sm text-center">
-                  <p className="text-3xl font-black text-secondary mb-1">24h</p>
-                  <p className="text-xs text-lightText dark:text-darkTextSecondary mt-3">Retorno com orçamento</p>
+                <div className="w-px bg-white/30" />
+                <div className="text-center">
+                  <p className="text-3xl font-black text-white">5.0</p>
+                  <div className="flex justify-center gap-0.5 mb-0.5">
+                    {[1,2,3,4,5].map(i => <Star key={i} size={10} className="text-yellow-400" fill="currentColor" />)}
+                  </div>
+                  <p className="text-xs text-white/80 font-semibold">Avaliação</p>
+                </div>
+                <div className="w-px bg-white/30" />
+                <div className="text-center">
+                  <p className="text-3xl font-black text-white">24h</p>
+                  <p className="text-xs text-white/80 font-semibold">Retorno</p>
                 </div>
               </div>
             </div>

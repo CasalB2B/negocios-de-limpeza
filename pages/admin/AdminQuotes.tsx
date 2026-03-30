@@ -40,15 +40,15 @@ function generateProposalWindow(
 body{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;background:#fff}
 @page{size:A4;margin:0}
 @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none!important}.pb{page-break-before:always}}
-.page{width:210mm;min-height:297mm;position:relative;padding-bottom:60px;overflow:visible}
-.hdr{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:36px 48px 28px;color:#fff}
+.page{width:210mm;height:297mm;position:relative;overflow:hidden}
+.hdr{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:28px 48px 22px;color:#fff}
 .badge{display:inline-block;background:rgba(255,255,255,.25);font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:14px}
 .hdr h1{font-size:42px;font-weight:900;margin-bottom:6px}
 .hdr .sub{font-size:13px;opacity:.85;margin-bottom:28px}
 .cbar{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid rgba(255,255,255,.3);padding-top:20px;gap:12px}
 .cf label{font-size:9px;text-transform:uppercase;letter-spacing:1px;opacity:.7;display:block;margin-bottom:3px}
 .cf span{font-size:15px;font-weight:800}
-.sec{padding:22px 48px}
+.sec{padding:16px 48px}
 .stitle{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#a163ff;margin-bottom:12px}
 .abox{border-left:4px solid #a163ff;padding:14px 18px;background:#f9f5ff;border-radius:0 8px 8px 0;font-size:13px;line-height:1.6;color:#4a4a6a}
 .abox strong{color:#1a1a2e}
@@ -119,7 +119,7 @@ body{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;background:#fff}
       <div class="pmethods"><span class="pchip">Pix</span><span class="pchip">Cart&atilde;o (consultar taxa)</span><span class="pchip">Transfer&ecirc;ncia</span></div>
     </div>
   </div>
-  <div style="width:100%;height:200px;overflow:hidden;margin:0 0 0 0">
+  <div style="position:absolute;bottom:55px;left:0;right:0;height:155px;overflow:hidden">
     <img src="${origin}/img/foto-pdf-p1.jpg"
       style="width:100%;height:100%;object-fit:cover;object-position:center 30%" alt="Negócios de Limpeza" />
   </div>
