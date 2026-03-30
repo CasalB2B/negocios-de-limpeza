@@ -57,11 +57,22 @@ Deno.serve(async (req) => {
       };
       let { res, data } = await tryConnect();
       if (res.status === 404 || data?.status === 404) {
-        // Instance missing — recreate it
+        // Instance missing — recreate it with webhook configured
+        const WEBHOOK_URL = Deno.env.get('WEBHOOK_URL') || '';
         await fetch(`${EVOLUTION_URL}/instance/create`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_KEY },
-          body: JSON.stringify({ instanceName: EVOLUTION_INSTANCE, qrcode: true, integration: 'WHATSAPP-BAILEYS' }),
+          body: JSON.stringify({
+            instanceName: EVOLUTION_INSTANCE,
+            qrcode: true,
+            integration: 'WHATSAPP-BAILEYS',
+            webhook: {
+              url: WEBHOOK_URL,
+              byEvents: false,
+              base64: false,
+              events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
+            },
+          }),
         });
         // Small delay then retry connect
         await new Promise(r => setTimeout(r, 1500));
