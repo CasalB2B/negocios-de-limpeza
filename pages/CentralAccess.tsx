@@ -84,7 +84,7 @@ export const CentralAccess: React.FC = () => {
               src="/img/foto-home.jpg"
               alt="Fundadoras da Negócios de Limpeza"
               className="w-full max-w-lg rounded-[40px] object-cover object-top"
-              style={{ mixBlendMode: 'multiply' }}
+              style={{}}
             />
 
             {/* Float Card — bottom left */}
@@ -148,7 +148,7 @@ export const CentralAccess: React.FC = () => {
               </div>
               <p className="text-xs font-bold text-pink-500 uppercase tracking-wider mb-2">Passo 3</p>
               <h3 className="text-lg font-bold text-darkText dark:text-darkTextPrimary mb-2">Aprovação e pagamento</h3>
-              <p className="text-sm text-lightText dark:text-darkTextSecondary">Aprovou? Confirmamos a data e horário. Pagamento fácil via <strong>Pix</strong> ou <strong>cartão</strong> — sem complicação.</p>
+              <p className="text-sm text-lightText dark:text-darkTextSecondary">Aprovou? Confirmamos a data e horário. Pagamento fácil via <strong>Pix</strong> ou <strong>cartão</strong>, sem complicação.</p>
             </div>
 
             <div className="bg-background dark:bg-darkSurface p-7 rounded-3xl text-center group hover:bg-white dark:hover:bg-slate-800 hover:shadow-xl transition-all border border-transparent hover:border-gray-100 dark:hover:border-darkBorder">
@@ -157,7 +157,7 @@ export const CentralAccess: React.FC = () => {
               </div>
               <p className="text-xs font-bold text-green-500 uppercase tracking-wider mb-2">Passo 4</p>
               <h3 className="text-lg font-bold text-darkText dark:text-darkTextPrimary mb-2">Profissionais na sua porta</h3>
-              <p className="text-sm text-lightText dark:text-darkTextSecondary">Nossa equipe chega equipada com todos os materiais. Faxina completa, não superficial — cada cantinho tratado com capricho.</p>
+              <p className="text-sm text-lightText dark:text-darkTextSecondary">Nossa equipe chega equipada com todos os materiais. Faxina completa, não superficial. Cada cantinho tratado com capricho.</p>
             </div>
           </div>
         </div>
@@ -176,7 +176,7 @@ export const CentralAccess: React.FC = () => {
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Uma faxina de verdade.</span>
               </h2>
               <p className="text-lightText dark:text-darkTextSecondary leading-relaxed mb-6">
-                Não fazemos limpeza superficial. Nossa equipe é treinada para uma faxina profunda e completa — do chão ao teto, de dentro dos armários ao box do banheiro.
+                Não fazemos limpeza superficial. Nossa equipe é treinada para uma faxina profunda e completa, do chão ao teto, de dentro dos armários ao box do banheiro.
               </p>
               <div className="space-y-4">
                 {[
