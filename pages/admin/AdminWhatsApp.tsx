@@ -94,7 +94,7 @@ export const AdminWhatsApp: React.FC = () => {
     setNinaLoading(true);
     try {
       const reply = await askNina(newHistory, ninaPrompt);
-      const finalHistory = [...newHistory, { role: 'model', parts: [{ text: reply }] }];
+      const finalHistory: GeminiMessage[] = [...newHistory, { role: 'model' as const, parts: [{ text: reply }] }];
       // Check if quote was finalized
       const quoteMatch = reply.match(/<<QUOTE_DATA>>([\s\S]*?)<<END_QUOTE>>/);
       if (quoteMatch) {
