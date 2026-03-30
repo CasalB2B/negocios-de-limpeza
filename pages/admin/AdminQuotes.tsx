@@ -40,7 +40,7 @@ function generateProposalWindow(
 body{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;background:#fff}
 @page{size:A4;margin:0}
 @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none!important}.pb{page-break-before:always}}
-.page{width:210mm;min-height:297mm;position:relative;padding-bottom:56px;overflow:hidden}
+.page{width:210mm;min-height:297mm;position:relative;padding-bottom:60px;overflow:visible}
 .hdr{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:36px 48px 28px;color:#fff}
 .badge{display:inline-block;background:rgba(255,255,255,.25);font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:14px}
 .hdr h1{font-size:42px;font-weight:900;margin-bottom:6px}
@@ -119,9 +119,9 @@ body{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;background:#fff}
       <div class="pmethods"><span class="pchip">Pix</span><span class="pchip">Cart&atilde;o (consultar taxa)</span><span class="pchip">Transfer&ecirc;ncia</span></div>
     </div>
   </div>
-  <div style="width:100%;height:220px;overflow:hidden;margin-bottom:56px">
+  <div style="width:100%;height:200px;overflow:hidden;margin:0 0 0 0">
     <img src="${origin}/img/foto-pdf-p1.jpg"
-      style="width:100%;height:100%;object-fit:cover;object-position:top" alt="Negócios de Limpeza" />
+      style="width:100%;height:100%;object-fit:cover;object-position:center 30%" alt="Negócios de Limpeza" />
   </div>
   <div class="ftr"><span>Neg&oacute;cios de Limpeza</span><span>Proposta Comercial &middot; P&aacute;gina 1 de 2</span><span>Validade: 7 dias</span></div>
 </div>
@@ -156,9 +156,9 @@ body{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;background:#fff}
     </div>
   </div>
   <div class="cta"><h3>Transforme seu lar com a Neg&oacute;cios de Limpeza!</h3><p>Entre em contato e agende sua faxina com quem cuida de verdade.</p></div>
-  <div style="width:100%;height:220px;overflow:hidden;margin-bottom:56px">
+  <div style="width:100%;height:200px;overflow:hidden;margin:0 0 0 0">
     <img src="${origin}/img/foto-pdf-p2.jpg"
-      style="width:100%;height:100%;object-fit:cover;object-position:center" alt="Negócios de Limpeza" />
+      style="width:100%;height:100%;object-fit:cover;object-position:center 40%" alt="Negócios de Limpeza" />
   </div>
   <div class="ftr"><span>Neg&oacute;cios de Limpeza</span><span>Proposta Comercial &middot; P&aacute;gina 2 de 2</span><span>Validade: 7 dias</span></div>
 </div>
@@ -391,106 +391,181 @@ function generatePDFBase64(
 ): string {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const W = 210;
-  const margin = 20;
+  const H = 297;
+  const m = 18;
   let y = 0;
 
-  // Header background
+  // ── HEADER gradient strip ──
   doc.setFillColor(161, 99, 255);
-  doc.rect(0, 0, W, 48, 'F');
+  doc.rect(0, 0, W, 52, 'F');
+  doc.setFillColor(255, 60, 160);
+  doc.rect(W / 2, 0, W / 2, 52, 'F');
+  // blend with diagonal triangle
+  doc.setFillColor(200, 80, 215);
+  doc.triangle(W * 0.3, 0, W * 0.7, 0, W * 0.5, 52, 'F');
 
-  // Company name
+  // Badge pill
+  doc.setFillColor(255, 255, 255, 0.25);
+  doc.roundedRect(m, 7, 44, 6, 3, 3, 'F');
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(10);
+  doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
-  doc.text('NEGÓCIOS DE LIMPEZA — GUARAPARI/ES', margin, 14);
+  doc.text('PROPOSTA COMERCIAL', m + 4, 11.5);
 
   // Title
-  doc.setFontSize(22);
-  doc.text('Proposta Comercial', margin, 26);
+  doc.setFontSize(20);
+  doc.text(serviceType || 'Faxina Residencial', m, 26);
 
   // Subtitle
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(serviceType || 'Faxina Residencial', margin, 35);
-
-  // Client info bar
   doc.setFontSize(9);
-  doc.text(`Cliente: ${quote.name}`, margin, 43);
-  doc.text(`Contato: ${quote.whatsapp}`, 90, 43);
-  doc.text(`Bairro: ${neighborhood || 'Guarapari'}`, 150, 43);
-
-  y = 58;
-
-  // Section: About
-  doc.setTextColor(161, 99, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.text('SOBRE O SERVIÇO', margin, y);
-  y += 5;
-  doc.setTextColor(60, 60, 80);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  const aboutText = 'Cada lar tem suas necessidades únicas. Nossa equipe cuida das suas prioridades com capricho e dedicação.';
-  const aboutLines = doc.splitTextToSize(aboutText, W - margin * 2);
-  doc.text(aboutLines, margin, y);
-  y += aboutLines.length * 5 + 4;
+  doc.text('Negócios de Limpeza  ·  Guarapari, ES  ·  Cuidado e dedicação em cada detalhe', m, 34);
 
-  if (quote.priorities) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('Prioridades: ', margin, y);
-    doc.setFont('helvetica', 'normal');
-    const priLines = doc.splitTextToSize(quote.priorities, W - margin * 2 - 28);
-    doc.text(priLines, margin + 28, y);
-    y += Math.max(priLines.length, 1) * 5 + 3;
-  }
-
-  y += 4;
-
-  // Section: Scope
-  doc.setTextColor(161, 99, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.text('O QUE ESTÁ INCLUÍDO', margin, y);
-  y += 5;
-  doc.setTextColor(60, 60, 80);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  const scopeItems = [
-    'Limpeza completa de todos os cômodos',
-    'Materiais e equipamentos profissionais inclusos',
-    'Equipe treinada e uniformizada',
-    'Seguro contra danos incluso',
+  // Info bar inside header
+  const infoCols = [
+    { label: 'CLIENTE', value: quote.name },
+    { label: 'BAIRRO', value: neighborhood || 'Guarapari' },
+    { label: 'CONTATO', value: quote.whatsapp },
+    { label: 'VALIDADE', value: '7 dias' },
   ];
-  if (quote.rooms) scopeItems.unshift(`Cômodos: ${quote.rooms}`);
-  scopeItems.forEach(item => {
-    doc.text(`• ${item}`, margin + 3, y);
-    y += 6;
+  const colW = (W - m * 2) / infoCols.length;
+  infoCols.forEach((col, i) => {
+    const x = m + i * colW;
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(255, 255, 255, 0.75);
+    doc.text(col.label, x, 43);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    const val = doc.splitTextToSize(col.value || '—', colW - 4);
+    doc.text(val[0], x, 49);
   });
 
-  y += 4;
+  y = 62;
 
-  // Price box
+  // ── ABOUT SERVICE ──
+  doc.setTextColor(161, 99, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('SOBRE O SERVIÇO', m, y);
+  // decorative line
+  doc.setDrawColor(161, 99, 255);
+  doc.setLineWidth(0.5);
+  doc.line(m, y + 1.5, m + 40, y + 1.5);
+  y += 6;
+
+  doc.setFillColor(249, 245, 255);
+  const aboutText = quote.priorities
+    ? `Cada lar tem suas necessidades únicas. Nossas prioridades para este atendimento: ${quote.priorities}`
+    : 'Cada lar tem suas necessidades únicas. Nossa equipe cuida das suas prioridades com capricho e dedicação.';
+  const aboutLines = doc.splitTextToSize(aboutText, W - m * 2 - 8);
+  const boxH = aboutLines.length * 5 + 10;
+  doc.roundedRect(m, y, W - m * 2, boxH, 3, 3, 'F');
+  doc.setDrawColor(220, 200, 255);
+  doc.setLineWidth(0.3);
+  doc.rect(m, y, 3, boxH, 'F');
   doc.setFillColor(161, 99, 255);
-  doc.roundedRect(margin, y, W - margin * 2, 36, 4, 4, 'F');
+  doc.rect(m, y, 3, boxH, 'F');
+  doc.setTextColor(60, 60, 80);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.text(aboutLines, m + 7, y + 6);
+  y += boxH + 7;
+
+  // ── INCLUDED ITEMS (2 columns) ──
+  doc.setTextColor(161, 99, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('O QUE ESTÁ INCLUÍDO', m, y);
+  doc.setDrawColor(161, 99, 255);
+  doc.setLineWidth(0.5);
+  doc.line(m, y + 1.5, m + 46, y + 1.5);
+  y += 6;
+
+  const scopeItems = [
+    ['Cozinha', 'Armários, fogão, geladeira, pisos e paredes'],
+    ['Banheiros', 'Vasos, boxe, espelhos, pisos e revestimentos'],
+    ['Quartos', 'Móveis, janelas, espelhos e arrumação da cama'],
+    ['Sala', 'Pisos, poltronas, janelas e superfícies'],
+    ['Área de serviço', 'Pisos, superfícies e vidros'],
+    ['Varanda', 'Vidros, trilhos e limpeza do chão'],
+  ];
+  if (quote.rooms) {
+    doc.setTextColor(100, 60, 180);
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Cômodos contemplados: ${quote.rooms}`, m, y);
+    y += 6;
+  }
+
+  const colW2 = (W - m * 2 - 6) / 2;
+  scopeItems.forEach((item, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const cx = m + col * (colW2 + 6);
+    const cy = y + row * 18;
+    doc.setFillColor(249, 245, 255);
+    doc.roundedRect(cx, cy, colW2, 15, 2, 2, 'F');
+    doc.setFillColor(161, 99, 255);
+    doc.circle(cx + 5, cy + 5, 2, 'F');
+    doc.setTextColor(26, 26, 46);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text(item[0], cx + 10, cy + 6);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 130);
+    doc.setFontSize(7.5);
+    const descLines = doc.splitTextToSize(item[1], colW2 - 12);
+    doc.text(descLines[0], cx + 10, cy + 11);
+  });
+  y += Math.ceil(scopeItems.length / 2) * 18 + 6;
+
+  // ── INVESTMENT BOX ──
+  doc.setFillColor(161, 99, 255);
+  doc.roundedRect(m, y, W - m * 2, 42, 4, 4, 'F');
+  // right half pink tint
+  doc.setFillColor(255, 60, 160);
+  doc.roundedRect(W / 2, y, W / 2 - m, 42, 4, 4, 'F');
+  // fix left corners overlap
+  doc.setFillColor(161, 99, 255);
+  doc.rect(W / 2, y, 8, 42, 'F');
+
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('INVESTIMENTO', margin + 6, y + 9);
-  doc.setFontSize(28);
-  doc.text(`R$ ${price}`, margin + 6, y + 24);
-  doc.setFontSize(10);
-  doc.text(`${professionals} profissional${professionals === '2' ? 'is' : ''}  •  ${hours} horas`, margin + 6, y + 32);
-  doc.text('Pix / Cartão / Dinheiro', W - margin - 50, y + 24);
-  y += 44;
-
-  // Footer
-  doc.setFillColor(26, 26, 46);
-  doc.rect(0, 280, W, 17, 'F');
-  doc.setTextColor(255, 255, 255);
   doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255, 0.8);
+  doc.text('INVESTIMENTO', m + 5, y + 10);
+  doc.setFontSize(26);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`R$ ${price}`, m + 5, y + 26);
+  doc.setFontSize(9);
+  doc.text(`${professionals} profissional${professionals === '2' ? 'is' : ''}  ·  ${hours} horas`, m + 5, y + 36);
+
+  // Payment methods on right
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255, 0.85);
+  doc.text('Formas de pagamento:', W / 2 + 8, y + 10);
+  ['✓ Pix (à vista)', '✓ Cartão de crédito', '✓ Transferência bancária'].forEach((pm, i) => {
+    doc.setFontSize(8.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(pm, W / 2 + 8, y + 18 + i * 8);
+  });
+  y += 50;
+
+  // ── CONTACT ROW ──
+  doc.setFillColor(26, 26, 46);
+  doc.rect(0, H - 22, W, 22, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.text('Negócios de Limpeza', m, H - 13);
   doc.setFont('helvetica', 'normal');
-  doc.text('Negócios de Limpeza — Guarapari, ES', margin, 290);
-  doc.text('Proposta válida por 7 dias', W - margin - 36, 290);
+  doc.setFontSize(8);
+  doc.setTextColor(200, 180, 255);
+  doc.text('📞 27 99980-8013   📷 @negociosdelimpeza   🌐 negociosdelimpeza.com.br', m, H - 7);
+  doc.setTextColor(150, 130, 200);
+  doc.text('Proposta válida por 7 dias', W - m - 38, H - 10);
 
   return doc.output('datauristring').split(',')[1];
 }
