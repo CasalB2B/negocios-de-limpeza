@@ -249,7 +249,7 @@ export const QuoteChat: React.FC = () => {
               </div>
             </div>
             <button
-              onClick={() => window.open('https://wa.me/5527999808013', '_blank')}
+              onClick={() => window.open('https://wa.me/5527999526102', '_blank')}
               className="w-full py-2.5 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-colors text-sm"
             >
               Falar no WhatsApp agora

@@ -9,9 +9,8 @@ export const CentralAccess: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser } = useData();
 
-  const goToQuoteOrDashboard = () => {
-    if (currentUser) navigate('/client/dashboard');
-    else navigate('/client/quote-chat');
+  const openWhatsAppQuote = () => {
+    window.open('https://wa.me/5527999526102?text=Ol%C3%A1!%20Gostaria%20de%20fazer%20um%20or%C3%A7amento%20gratuito.', '_blank');
   };
 
   return (
@@ -28,8 +27,8 @@ export const CentralAccess: React.FC = () => {
           
           <div className="flex items-center gap-6">
             <div className="hidden md:flex items-center gap-6">
-              <button onClick={() => navigate('/client/login')} className="text-sm font-bold text-darkText dark:text-darkTextPrimary hover:text-primary transition-colors">Já sou cliente (Login)</button>
-              <Button onClick={() => goToQuoteOrDashboard()} className="px-6 py-2 h-auto text-sm">Fazer Orçamento</Button>
+              <button onClick={() => navigate(currentUser ? '/client/dashboard' : '/client/login')} className="text-sm font-bold text-darkText dark:text-darkTextPrimary hover:text-primary transition-colors">{currentUser ? `Olá, ${currentUser.name?.split(' ')[0]} →` : 'Já sou cliente (Login)'}</button>
+              <Button onClick={() => openWhatsAppQuote()} className="px-6 py-2 h-auto text-sm">Fazer Orçamento</Button>
             </div>
             <ThemeToggle />
           </div>
@@ -54,16 +53,16 @@ export const CentralAccess: React.FC = () => {
             
             <div className="flex flex-col sm:flex-row gap-4">
               <button
-                onClick={() => goToQuoteOrDashboard()}
+                onClick={() => openWhatsAppQuote()}
                 className="bg-primary text-white px-5 py-3.5 md:px-8 md:py-4 rounded-2xl font-bold text-base md:text-lg shadow-xl shadow-primary/30 hover:bg-primaryHover hover:scale-105 transition-all flex items-center justify-center gap-2"
               >
                 Fazer Orçamento Grátis <ArrowRight size={20} />
               </button>
-              <button 
-                onClick={() => navigate('/client/login')}
+              <button
+                onClick={() => navigate(currentUser ? '/client/dashboard' : '/client/login')}
                 className="bg-white dark:bg-darkSurface text-darkText dark:text-darkTextPrimary border-2 border-gray-100 dark:border-darkBorder px-5 py-3.5 md:px-8 md:py-4 rounded-2xl font-bold text-base md:text-lg hover:border-primary dark:hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2"
               >
-                <User size={20} /> Área do Cliente
+                <User size={20} /> {currentUser ? 'Minha Área' : 'Área do Cliente'}
               </button>
             </div>
 
