@@ -1,7 +1,6 @@
 [build]
-dockerfilePath = "Dockerfile"
+builder = "DOCKERFILE"
+dockerfilePath = "evolution-api/Dockerfile"
 
 [deploy]
 restartPolicyType = "always"
-healthcheckPath = "/"
-healthcheckTimeout = 60
