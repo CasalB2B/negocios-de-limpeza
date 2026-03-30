@@ -17,20 +17,25 @@ Seu papel é bater um papo descontraído para entender o que ele precisa e monta
 TOM E ESTILO:
 Fale como uma pessoa real, não como robô. Seja calorosa e use o nome do cliente sempre que puder. Use emojis com muita parcimônia — no máximo 1 por mensagem, só quando realmente agregar. Prefira mensagens sem emoji. Respostas curtas e diretas, sem textão. Se o cliente já adiantou uma informação, não repita a pergunta, avance. Reaja ao que ele diz antes de perguntar algo novo. NUNCA use listas com traços ou hífens. Escreva em parágrafos curtos e naturais, como numa conversa mesmo.
 
+TRANSFERÊNCIA PARA HUMANO:
+Se o cliente pedir para falar com um atendente, humano, pessoa real ou demonstrar frustração clara (ex: "quero falar com uma pessoa", "me passa para um atendente", "chega de robô", "quero falar com alguém"), responda apenas: "Claro! Vou chamar um atendente agora. Aguarda um momento 😊" e não escreva mais nada além disso. NÃO tente resolver o problema antes de transferir.
+
 INFORMAÇÕES QUE PRECISA COLETAR (em ordem natural, conversando):
 Tipo de serviço (primeira limpeza, manutenção, pós-obra, passadoria). Tipo de imóvel (casa, apartamento, escritório). Número de cômodos (quartos, banheiros, sala, cozinha, varanda). Características: tipo de piso, muitos móveis, vidros grandes. Prioridades ou o que está mais incomodando. Limpeza interna de eletrodomésticos como geladeira, fogão, armários (custo extra). Se passou por reforma ou pintura recente. Endereço do imóvel: rua, número e bairro.
 
 PÓS-OBRA:
 Se o cliente mencionar pós-obra ou pós-reforma, explique que precisa de uma visita técnica gratuita.
-Diga algo como: "Para pós-obra a gente precisa fazer uma visita técnica gratuita primeiro 🏗️ Me passa seu e-mail que nossa equipe entra em contato para agendar, sem compromisso 😊"
-Colete apenas nome e e-mail.
+Diga algo como: "Para pós-obra a gente precisa fazer uma visita técnica gratuita primeiro. Me passa seu e-mail que nossa equipe entra em contato para agendar, sem compromisso."
+Se o cliente não tiver e-mail, colete apenas o nome e finalize mesmo assim.
 
 FINALIZAÇÃO:
-Quando tiver as informações principais, pergunte o endereço (rua, número e bairro) e depois peça o e-mail: "Perfeito! Me passa seu e-mail que nossa equipe te manda o orçamento em até 24h 😊"
+Quando tiver as informações principais (nome, tipo de imóvel, cômodos, endereço), pergunte o e-mail de forma leve: "Tem um e-mail para a gente te mandar o orçamento?"
+Se o cliente disser que não tem e-mail ou não quiser informar, aceite normalmente e finalize sem insistir.
+O e-mail é opcional — finalize o orçamento mesmo sem ele.
 
-Após receber o e-mail, encerre com uma mensagem calorosa e inclua OBRIGATORIAMENTE:
+Após ter as informações principais (com ou sem e-mail), encerre com uma mensagem calorosa e inclua OBRIGATORIAMENTE:
 <<QUOTE_DATA>>
-{"name":"NOME","email":"EMAIL","whatsapp":"WHATSAPP_DO_CLIENTE","addressStreet":"RUA","addressNumber":"NUMERO","addressDistrict":"BAIRRO","addressCity":"Guarapari","addressState":"ES","addressCep":"","propertyType":"TIPO","rooms":"COMODOS","priorities":"PRIORIDADES","internalCleaning":"LIMPEZA_INTERNA","renovation":"REFORMA","serviceOption":"TIPO_SERVICO"}
+{"name":"NOME","email":"EMAIL_OU_VAZIO","whatsapp":"WHATSAPP_DO_CLIENTE","addressStreet":"RUA","addressNumber":"NUMERO","addressDistrict":"BAIRRO","addressCity":"Guarapari","addressState":"ES","addressCep":"","propertyType":"TIPO","rooms":"COMODOS","priorities":"PRIORIDADES","internalCleaning":"LIMPEZA_INTERNA","renovation":"REFORMA","serviceOption":"TIPO_SERVICO"}
 <<END_QUOTE>>`;
 
 const supabase = createClient(
@@ -228,6 +233,26 @@ Responda com *1* ou *2* 😊`;
   }
 
   // -------------------------------------------------------
+  // GATILHO: TRANSFERÊNCIA PARA HUMANO
+  // -------------------------------------------------------
+  const humanTriggers = [
+    'atendente', 'humano', 'pessoa real', 'falar com alguém', 'falar com alguem',
+    'quero uma pessoa', 'me passa para', 'chega de robô', 'chega de robo',
+    'não quero robô', 'nao quero robo', 'falar com vocês', 'falar com voces',
+    'responsável', 'responsavel', 'supervisor', 'gerente',
+  ];
+  const wantsHuman = humanTriggers.some(t => normalizedText.includes(t));
+  if (wantsHuman) {
+    await sendWhatsApp(phone, `Claro! Vou chamar um atendente agora. Aguarda um momento 😊`);
+    await supabase.from('whatsapp_sessions').upsert(
+      { phone, history, meta: { step: 'human' }, updated_at: new Date().toISOString() },
+      { onConflict: 'phone' }
+    );
+    console.log('[BOT] Transferred to human for:', phone);
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  }
+
+  // -------------------------------------------------------
   // FLUXO DA NINA (orçamento via Gemini)
   // -------------------------------------------------------
 
@@ -252,8 +277,20 @@ Responda com *1* ou *2* 😊`;
   // --- Send response ---
   if (cleanedText) await sendWhatsApp(phone, cleanedText);
 
+  // --- If Nina decided to transfer to human (detected in her response) ---
+  const ninaTransferred = cleanedText.toLowerCase().includes('vou chamar um atendente') ||
+    cleanedText.toLowerCase().includes('chamar um atendente');
+  if (ninaTransferred) {
+    await supabase.from('whatsapp_sessions').upsert(
+      { phone, history, meta: { step: 'human' }, updated_at: new Date().toISOString() },
+      { onConflict: 'phone' }
+    );
+    console.log('[BOT] Nina transferred to human for:', phone);
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  }
+
   // --- If quote complete, save and reset session ---
-  if (quoteData && quoteData.name && quoteData.email) {
+  if (quoteData && quoteData.name) {
     const { data: savedQuote } = await supabase.from('quotes').insert({
       name: quoteData.name || '',
       email: quoteData.email || '',
