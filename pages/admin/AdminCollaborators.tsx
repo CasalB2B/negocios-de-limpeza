@@ -115,7 +115,7 @@ export const AdminCollaborators: React.FC = () => {
               <h1 className="text-3xl font-display font-bold text-darkText dark:text-darkTextPrimary">Colaboradoras</h1>
               <p className="text-lightText dark:text-darkTextSecondary mt-1">Gerencie e acompanhe o status da sua equipe em tempo real.</p>
            </div>
-           <Button icon={<UserPlus size={18} />} onClick={() => { setShowAddModal(true); setCollabData({ name: '', email: '', phone: '', password: '', photoUrl: '', level: 'JUNIOR' }); }}>Adicionar Colaboradora</Button>
+           <Button icon={<UserPlus size={18} />} onClick={() => { setShowAddModal(true); setCollabData({ name: '', email: '', phone: '', password: generatePassword(), photo: '', level: 'JUNIOR' }); }}>Adicionar Colaboradora</Button>
         </div>
 
         {/* Filters */}
