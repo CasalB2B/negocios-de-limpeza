@@ -449,11 +449,32 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     fetchData();
 
-    // Realtime subscriptions — keeps data fresh across all open tabs/portals
+    // Request browser notification permission once
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    const sendBrowserNotif = (title: string, body: string, icon = '/favicon.ico') => {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body, icon });
+      }
+    };
+
+    // Realtime subscriptions — keeps data fresh and fires browser notifications
     const servicesChannel = supabase
       .channel('realtime-services')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'quotes' }, () => fetchData())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'quotes' }, (payload) => {
+        const name = (payload.new as any)?.name || 'Cliente';
+        sendBrowserNotif('📋 Novo Orçamento!', `${name} solicitou orçamento via chat.`);
+        fetchData();
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'services' }, (payload) => {
+        const clientName = (payload.new as any)?.client_name || 'Cliente';
+        const type = (payload.new as any)?.type || 'Serviço';
+        sendBrowserNotif('🧹 Nova Solicitação!', `${clientName} pediu: ${type}`);
+        fetchData();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'services' }, () => fetchData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_users' }, () => fetchData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchData())
       .subscribe();
