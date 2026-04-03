@@ -29,14 +29,17 @@ export interface EvolutionStatus {
 export async function getStatus(): Promise<EvolutionStatus> {
   try {
     const result = await callProxy('fetchInstances');
-    const data: unknown = result.data;
-    const instance = Array.isArray(data) ? (data as Record<string, unknown>[])[0] : (data as Record<string, unknown>)?.instance;
-    const inst = (instance as Record<string, Record<string, unknown>>)?.instance;
-    const status = inst?.status ?? (instance as Record<string, unknown>)?.connectionStatus ?? '';
+    // Proxy may return raw array or wrapped {ok, data}
+    const data: unknown = Array.isArray(result) ? result : result.data;
+    const instances = Array.isArray(data) ? (data as Record<string, unknown>[]) : [];
+    // Find ndl-whatsapp instance specifically, fall back to first
+    const wrapper = instances.find((i: any) => i?.instance?.instanceName === 'ndl-whatsapp') ?? instances[0];
+    const inst = (wrapper as any)?.instance;
+    const status: string = inst?.status ?? '';
     return {
       connected: status === 'open',
       profileName: (inst?.profileName as string) ?? null,
-      profilePic: (inst?.profilePicUrl as string) ?? null,
+      profilePic: (inst?.profilePictureUrl as string) ?? null,
     };
   } catch {
     return { connected: false, profileName: null, profilePic: null };
