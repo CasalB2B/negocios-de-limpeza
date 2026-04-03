@@ -18,11 +18,13 @@ export const AdminCollaborators: React.FC = () => {
   const editPhotoInputRef = useRef<HTMLInputElement>(null);
 
   // Add/Edit State
+  const generatePassword = () => Math.random().toString(36).slice(2, 8).toUpperCase() + Math.floor(10 + Math.random() * 90);
+
   const [collabData, setCollabData] = useState({
       name: '',
       email: '',
       phone: '',
-      password: '',
+      password: generatePassword(),
       photo: '',
       level: 'JUNIOR' as 'JUNIOR' | 'SENIOR' | 'MASTER'
   });
@@ -81,7 +83,7 @@ export const AdminCollaborators: React.FC = () => {
             level: collabData.level
         });
         setShowAddModal(false);
-        setCollabData({ name: '', email: '', phone: '', password: '', photo: '', level: 'JUNIOR' });
+        setCollabData({ name: '', email: '', phone: '', password: generatePassword(), photo: '', level: 'JUNIOR' });
      } else {
          alert("Nome, Email e Senha são obrigatórios.");
      }
@@ -286,7 +288,13 @@ export const AdminCollaborators: React.FC = () => {
                     </select>
                 </div>
 
-                <Input label="Definir Senha de Acesso" icon={<Lock size={16}/>} type="text" placeholder="Senha segura" value={collabData.password} onChange={e => setCollabData({...collabData, password: e.target.value})}/>
+                <div>
+                  <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-2">Senha de Acesso</label>
+                  <div className="flex gap-2">
+                    <Input containerClassName="flex-1" icon={<Lock size={16}/>} type="text" value={collabData.password} onChange={e => setCollabData({...collabData, password: e.target.value})}/>
+                    <button type="button" onClick={() => setCollabData(p => ({...p, password: generatePassword()}))} className="px-3 py-2 bg-gray-100 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl text-xs font-bold text-lightText hover:text-primary transition-colors whitespace-nowrap">🔄 Gerar</button>
+                  </div>
+                </div>
                 <div>
                   <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-2">Foto (Opcional)</label>
                   <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handlePhotoSelect(e.target.files[0], false)} />

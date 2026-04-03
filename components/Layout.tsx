@@ -224,9 +224,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           <div className="flex justify-between items-center mb-4 px-2">
              <ThemeToggle />
           </div>
-          <div className="flex items-center gap-3 mb-4 px-2">
+          <div className="flex items-center gap-3 mb-4 px-2 cursor-pointer" onClick={() => navigate('/admin/settings')}>
              <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-darkBorder flex items-center justify-center overflow-hidden">
-                <img src="https://i.pravatar.cc/150?u=admin" alt="Admin" className="w-full h-full object-cover"/>
+                <img src={localStorage.getItem('admin_photo') || 'https://i.pravatar.cc/150?u=admin'} alt="Admin" className="w-full h-full object-cover"/>
              </div>
              <div>
                 <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">Ricardo Silva</p>
