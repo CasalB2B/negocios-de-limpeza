@@ -2,7 +2,7 @@
 // Recebe webhook da Evolution API, processa com Gemini e responde no WhatsApp
 // Quando o orçamento é finalizado, salva na tabela `quotes`
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || '';
 const EVOLUTION_URL = Deno.env.get('EVOLUTION_URL') || '';
