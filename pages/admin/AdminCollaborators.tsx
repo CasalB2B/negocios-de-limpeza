@@ -1,26 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { Badge } from '../../components/Badge';
-import { Modal } from '../../components/Modal'; 
-import { Search, UserPlus, X, Mail, Phone, Edit, Trash2, Lock, Camera, Star } from 'lucide-react';
+import { Modal } from '../../components/Modal';
+import { Search, UserPlus, Edit, Trash2, Lock, Camera, Star, DollarSign } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 
 export const AdminCollaborators: React.FC = () => {
-  const { collaborators, registerCollaborator, updateCollaborator, deleteCollaborator } = useData(); 
+  const { collaborators, transactions, registerCollaborator, updateCollaborator, deleteCollaborator } = useData();
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewCollab, setViewCollab] = useState<any | null>(null);
+  const [showPayments, setShowPayments] = useState<any | null>(null);
   const [filterText, setFilterText] = useState('');
-  
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const editPhotoInputRef = useRef<HTMLInputElement>(null);
+
   // Add/Edit State
-  const [collabData, setCollabData] = useState({ 
-      name: '', 
-      email: '', 
-      phone: '', 
-      password: '', 
-      photoUrl: '',
+  const [collabData, setCollabData] = useState({
+      name: '',
+      email: '',
+      phone: '',
+      password: '',
+      photo: '',
       level: 'JUNIOR' as 'JUNIOR' | 'SENIOR' | 'MASTER'
   });
 
@@ -55,6 +58,16 @@ export const AdminCollaborators: React.FC = () => {
     }
   };
 
+  const handlePhotoSelect = (file: File, isEdit: boolean) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      if (isEdit) setViewCollab((prev: any) => ({ ...prev, photo: dataUrl }));
+      else setCollabData(prev => ({ ...prev, photo: dataUrl }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleRegister = () => {
      if (collabData.name && collabData.email && collabData.password) {
         registerCollaborator({
@@ -63,12 +76,12 @@ export const AdminCollaborators: React.FC = () => {
             email: collabData.email,
             phone: collabData.phone,
             password: collabData.password,
-            photo: collabData.photoUrl || `https://i.pravatar.cc/150?u=${collabData.email}`,
+            photo: collabData.photo || undefined,
             status: 'AVAILABLE',
             level: collabData.level
         });
         setShowAddModal(false);
-        setCollabData({ name: '', email: '', phone: '', password: '', photoUrl: '', level: 'JUNIOR' });
+        setCollabData({ name: '', email: '', phone: '', password: '', photo: '', level: 'JUNIOR' });
      } else {
          alert("Nome, Email e Senha são obrigatórios.");
      }
@@ -76,8 +89,12 @@ export const AdminCollaborators: React.FC = () => {
 
   const handleUpdate = () => {
       if (viewCollab) {
-          updateCollaborator(viewCollab.id, { 
-              level: viewCollab.level 
+          updateCollaborator(viewCollab.id, {
+              name: viewCollab.name,
+              email: viewCollab.email,
+              phone: viewCollab.phone,
+              level: viewCollab.level,
+              photo: viewCollab.photo,
           });
           setViewCollab(null);
       }
@@ -149,13 +166,20 @@ export const AdminCollaborators: React.FC = () => {
                        </td>
                        <td className="p-5 text-right">
                           <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                             <button 
+                             <button
+                                onClick={() => setShowPayments(collab)}
+                                className="p-2 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg text-lightText hover:text-green-600 transition-colors"
+                                title="Ver pagamentos"
+                             >
+                                <DollarSign size={18} />
+                             </button>
+                             <button
                                 onClick={() => { setViewCollab(collab); }}
                                 className="p-2 hover:bg-gray-100 dark:hover:bg-darkBorder rounded-lg text-lightText hover:text-primary transition-colors"
                              >
                                 <Edit size={18} />
                              </button>
-                             <button 
+                             <button
                                 onClick={(e) => handleDelete(e, collab.id)}
                                 className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-lightText hover:text-red-500 transition-colors"
                              >
@@ -187,8 +211,12 @@ export const AdminCollaborators: React.FC = () => {
                 <div className="space-y-6">
                     {/* Header Profile */}
                     <div className="flex flex-col md:flex-row items-center gap-6 mb-8">
-                       <div className="relative group">
+                       <div className="relative group cursor-pointer" onClick={() => editPhotoInputRef.current?.click()}>
                           <img src={viewCollab.photo || `https://i.pravatar.cc/150?u=${viewCollab.id}`} alt={viewCollab.name} className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md" />
+                          <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Camera className="text-white" size={20} />
+                          </div>
+                          <input ref={editPhotoInputRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handlePhotoSelect(e.target.files[0], true)} />
                        </div>
                        <div className="text-center md:text-left flex-1">
                           <div className="flex flex-col md:flex-row items-center gap-3 mb-1">
@@ -259,10 +287,64 @@ export const AdminCollaborators: React.FC = () => {
                 </div>
 
                 <Input label="Definir Senha de Acesso" icon={<Lock size={16}/>} type="text" placeholder="Senha segura" value={collabData.password} onChange={e => setCollabData({...collabData, password: e.target.value})}/>
-                <Input label="URL da Foto (Opcional)" icon={<Camera size={16}/>} placeholder="https://..." value={collabData.photoUrl} onChange={e => setCollabData({...collabData, photoUrl: e.target.value})}/>
+                <div>
+                  <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-2">Foto (Opcional)</label>
+                  <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handlePhotoSelect(e.target.files[0], false)} />
+                  <div className="flex items-center gap-4">
+                    {collabData.photo && <img src={collabData.photo} alt="preview" className="w-14 h-14 rounded-full object-cover border-2 border-primary" />}
+                    <button type="button" onClick={() => photoInputRef.current?.click()} className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 dark:border-darkBorder rounded-xl text-sm font-bold text-darkText dark:text-darkTextPrimary hover:bg-gray-50 dark:hover:bg-darkBorder transition-colors">
+                      <Camera size={16} /> {collabData.photo ? 'Trocar foto' : 'Selecionar foto'}
+                    </button>
+                  </div>
+                </div>
             </div>
         </Modal>
       </div>
+
+      {/* Modal: Pagamentos da Colaboradora */}
+      <Modal
+        isOpen={!!showPayments}
+        onClose={() => setShowPayments(null)}
+        title={`Pagamentos — ${showPayments?.name}`}
+      >
+        {showPayments && (() => {
+          const collabTxs = transactions.filter(t => t.entity === showPayments.name);
+          const total = collabTxs.filter(t => t.status === 'PAID').reduce((s, t) => s + t.amount, 0);
+          const pending = collabTxs.filter(t => t.status === 'PENDING').reduce((s, t) => s + t.amount, 0);
+          return (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 text-center">
+                  <p className="text-xs text-green-600 font-bold mb-1">Total Pago</p>
+                  <p className="text-xl font-bold text-green-700">R$ {total.toFixed(2)}</p>
+                </div>
+                <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-4 text-center">
+                  <p className="text-xs text-orange-600 font-bold mb-1">Pendente</p>
+                  <p className="text-xl font-bold text-orange-700">R$ {pending.toFixed(2)}</p>
+                </div>
+              </div>
+              {collabTxs.length === 0 ? (
+                <p className="text-center text-sm text-lightText dark:text-darkTextSecondary py-6">Nenhum pagamento registrado.</p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {collabTxs.map(t => (
+                    <div key={t.id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-darkBg rounded-xl">
+                      <div>
+                        <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">{t.serviceType}</p>
+                        <p className="text-xs text-lightText dark:text-darkTextSecondary">{t.date}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">R$ {t.amount.toFixed(2)}</p>
+                        <span className={`text-xs font-bold ${t.status === 'PAID' ? 'text-green-600' : 'text-orange-500'}`}>{t.status === 'PAID' ? 'Pago' : 'Pendente'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </Modal>
     </Layout>
   );
 };

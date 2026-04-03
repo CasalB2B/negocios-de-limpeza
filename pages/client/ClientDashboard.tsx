@@ -4,7 +4,7 @@ import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
-import { Clock, MapPin, FileText, CheckCircle, Sparkles, Calendar as CalendarIcon, Home, CreditCard, User, X } from 'lucide-react';
+import { Clock, MapPin, FileText, CheckCircle, Sparkles, Calendar as CalendarIcon, Home, CreditCard, User, X, AlertCircle } from 'lucide-react';
 import { useData } from '../../components/DataContext'; // Import context
 
 const TUTORIAL_STEPS = [
@@ -32,9 +32,10 @@ export const ClientDashboard: React.FC = () => {
     else closeTutorial();
   };
 
-  // Find next confirmed appointment for this user
-  const myServices = services.filter(s => s.clientId === currentUser?.id && s.status === 'CONFIRMED');
+  // Find next scheduled/confirmed appointment for this user
+  const myServices = services.filter(s => s.clientId === currentUser?.id && (s.status === 'SCHEDULED' || s.status === 'CONFIRMED' || s.status === 'IN_PROGRESS'));
   const nextAppt = myServices.length > 0 ? myServices[0] : null;
+  const pendingServices = services.filter(s => s.clientId === currentUser?.id && s.status === 'PENDING');
 
   return (
     <Layout role={UserRole.CLIENT}>
@@ -158,6 +159,21 @@ export const ClientDashboard: React.FC = () => {
         
         {/* Pending Action Cards */}
         <div className="space-y-4 mb-12">
+          {/* Card de Orçamento em Análise */}
+          {pendingServices.map(s => (
+             <Card key={s.id} className="!p-5 border-l-4 border-l-blue-400 flex flex-col md:flex-row items-center justify-between hover:shadow-md transition-all gap-4">
+               <div className="flex items-center gap-5 w-full">
+                 <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-500 flex items-center justify-center flex-shrink-0">
+                   <Clock size={20} />
+                 </div>
+                 <div>
+                   <h4 className="font-bold text-darkText dark:text-darkTextPrimary text-lg">Orçamento em Análise</h4>
+                   <p className="text-sm text-lightText dark:text-darkTextSecondary">{s.type} — Nossa equipe está preparando sua proposta.</p>
+                 </div>
+               </div>
+             </Card>
+          ))}
+
           {/* Card de Orçamento Disponível */}
           {services.filter(s => s.clientId === currentUser?.id && s.status === 'BUDGET_READY').map(s => (
              <Card key={s.id} className="!p-5 border-l-4 border-l-secondary flex flex-col md:flex-row items-center justify-between hover:shadow-md transition-all gap-4">

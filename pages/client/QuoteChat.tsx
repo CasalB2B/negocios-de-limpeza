@@ -163,18 +163,18 @@ export const QuoteChat: React.FC = () => {
           realClientId = loggedIn?.id || null;
         }
 
-        // Save address using real DB client ID
-        if (realClientId && (quoteData.addressStreet || quoteData.addressDistrict)) {
+        // Save address using real DB client ID (save even with just CEP)
+        if (realClientId && (quoteData.addressStreet || quoteData.addressDistrict || quoteData.cep)) {
           try {
             await addClientAddress(realClientId, {
               id: `addr_${Date.now()}`,
               alias: 'Principal',
-              street: quoteData.addressStreet || '',
+              street: quoteData.addressStreet || quoteData.cep || '',
               number: quoteData.addressNumber || 's/n',
               district: quoteData.addressDistrict || '',
-              city: quoteData.addressCity || 'Guarapari',
+              city: quoteData.addressCity || '',
               state: quoteData.addressState || 'ES',
-              cep: quoteData.addressCep || '',
+              cep: quoteData.addressCep || quoteData.cep || '',
               type: quoteData.propertyType?.toLowerCase().includes('apart') ? 'APARTMENT' : 'HOUSE',
               isMain: true,
             });

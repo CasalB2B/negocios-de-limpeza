@@ -7,7 +7,7 @@ import { useData } from '../../components/DataContext';
 export const CollaboratorLogin: React.FC = () => {
   const navigate = useNavigate();
   const { loginCollaborator, currentCollaborator } = useData();
-  const [loginData, setLoginData] = useState({ email: 'ana@email.com', password: '123' }); // Pre-filled
+  const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
 
   // Verifica se já está logado ao carregar a página
@@ -25,7 +25,7 @@ export const CollaboratorLogin: React.FC = () => {
         if (success) {
             navigate('/collab/agenda');
         } else {
-            alert('Credenciais incorretas. Tente "ana@email.com" / "123"');
+            alert('E-mail ou senha incorretos. Verifique suas credenciais.');
         }
     } finally {
         setIsLoading(false);

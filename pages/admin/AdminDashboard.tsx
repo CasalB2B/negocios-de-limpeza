@@ -8,7 +8,7 @@ import { useData } from '../../components/DataContext'; // Import UseData
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { notifications, markAllNotificationsRead, services } = useData(); // Use Data
+  const { notifications, markAllNotificationsRead, services, transactions, quotes } = useData();
   const [showNotifications, setShowNotifications] = useState(false);
 
   // Get current date formatted
@@ -52,9 +52,10 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // Contadores Reais
-  const pendingRequests = services.filter(s => s.status === 'PENDING').length;
+  const pendingRequests = quotes.filter(q => q.status === 'NEW').length + services.filter(s => s.status === 'PENDING').length;
   const activeServices = services.filter(s => s.status === 'SCHEDULED' || s.status === 'IN_PROGRESS').length;
   const budgetReady = services.filter(s => s.status === 'BUDGET_READY').length;
+  const pendingPaymentsTotal = transactions.filter(t => t.type === 'EXPENSE' && t.status === 'PENDING').reduce((sum, t) => sum + t.amount, 0);
 
   return (
     <Layout role={UserRole.ADMIN}>
@@ -114,8 +115,8 @@ export const AdminDashboard: React.FC = () => {
                  )}
               </div>
 
-              <button className="w-10 h-10 bg-gray-200 dark:bg-darkBorder rounded-xl overflow-hidden border-2 border-white dark:border-darkBg shadow-sm">
-                 <img src="https://i.pravatar.cc/150?u=admin" alt="Admin" className="w-full h-full object-cover" />
+              <button className="w-10 h-10 bg-gray-200 dark:bg-darkBorder rounded-xl overflow-hidden border-2 border-white dark:border-darkBg shadow-sm" onClick={() => navigate('/admin/settings')}>
+                 <img src={localStorage.getItem('admin_photo') || 'https://i.pravatar.cc/150?u=admin'} alt="Admin" className="w-full h-full object-cover" />
               </button>
            </div>
         </header>
@@ -125,7 +126,7 @@ export const AdminDashboard: React.FC = () => {
           {/* Card 1 */}
           <Card className="flex flex-col justify-between h-36 md:h-40 group hover:shadow-md cursor-pointer" onClick={() => navigate('/admin/requests')}>
             <div className="flex justify-between items-start">
-               <p className="text-lightText dark:text-darkTextSecondary text-sm font-medium">Solicitações<br/>pendentes</p>
+               <p className="text-lightText dark:text-darkTextSecondary text-sm font-medium">Orçamentos<br/>pendentes</p>
                <div className="p-2 bg-purple-50 dark:bg-primary/20 text-primary rounded-lg group-hover:bg-primary group-hover:text-white transition-colors">
                   <FileText size={20} />
                </div>
@@ -170,20 +171,28 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </Card>
 
-          {/* Card 4 (Static for Demo) */}
-          <Card className="flex flex-col justify-between h-36 md:h-40 group hover:shadow-md">
+          {/* Card 4 — Pagamentos pendentes (real) */}
+          <Card className="flex flex-col justify-between h-36 md:h-40 group hover:shadow-md cursor-pointer" onClick={() => navigate('/admin/payments')}>
             <div className="flex justify-between items-start">
-               <p className="text-lightText dark:text-darkTextSecondary text-sm font-medium">Pagamentos<br/>pendentes</p>
+               <p className="text-lightText dark:text-darkTextSecondary text-sm font-medium">Repasses<br/>pendentes</p>
                <div className="w-8 h-8 bg-orange-50 dark:bg-orange-900/20 text-orange-500 dark:text-orange-400 rounded-lg flex items-center justify-center text-xs font-bold group-hover:bg-orange-500 group-hover:text-white transition-colors">$</div>
             </div>
             <div className="flex items-end justify-between">
                <div>
                  <p className="text-sm font-bold text-lightText dark:text-darkTextSecondary">R$</p>
-                 <p className="text-2xl md:text-3xl font-bold text-darkText dark:text-darkTextPrimary">1.250</p>
+                 <p className="text-2xl md:text-3xl font-bold text-darkText dark:text-darkTextPrimary">
+                   {pendingPaymentsTotal > 0 ? pendingPaymentsTotal.toLocaleString('pt-BR', { minimumFractionDigits: 0 }) : '0'}
+                 </p>
                </div>
-               <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1">
-                  <TrendingDown size={12} /> -1%
-               </span>
+               {pendingPaymentsTotal > 0 ? (
+                 <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1">
+                   <TrendingDown size={12} /> Pendente
+                 </span>
+               ) : (
+                 <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1">
+                   Em dia
+                 </span>
+               )}
             </div>
           </Card>
         </div>

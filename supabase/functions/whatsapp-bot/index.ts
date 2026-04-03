@@ -89,13 +89,24 @@ function cleanResponse(text: string): string {
   return text.replace(/<<QUOTE_DATA>>[\s\S]*?<<END_QUOTE>>/, '').trim();
 }
 
+async function sendTyping(phone: string, durationMs = 6000): Promise<void> {
+  const number = phone.includes('@') ? phone : (phone.startsWith('55') ? phone : `55${phone}`);
+  try {
+    await fetch(`${EVOLUTION_URL}/chat/sendPresence/${EVOLUTION_INSTANCE}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_KEY },
+      body: JSON.stringify({ number, presence: 'composing', delay: durationMs }),
+    });
+  } catch { /* ignore — typing indicator is best-effort */ }
+}
+
 async function sendWhatsApp(phone: string, text: string): Promise<void> {
   // If phone is a full JID (contains @), use it directly; otherwise format as BR number
   const number = phone.includes('@') ? phone : (phone.startsWith('55') ? phone : `55${phone}`);
   const res = await fetch(`${EVOLUTION_URL}/message/sendText/${EVOLUTION_INSTANCE}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_KEY },
-    body: JSON.stringify({ number, textMessage: { text }, delay: 500 }),
+    body: JSON.stringify({ number, textMessage: { text }, delay: 3000 }),
   });
   if (!res.ok) {
     const err = await res.text().catch(() => '');
@@ -258,6 +269,9 @@ Responda com *1* ou *2* 😊`;
 
   // Add user message to history
   history.push({ role: 'user', parts: [{ text }] });
+
+  // Show typing indicator while Gemini processes (fire and forget)
+  sendTyping(phone, 7000);
 
   // --- Call Gemini ---
   const activePrompt = await getSystemPrompt();

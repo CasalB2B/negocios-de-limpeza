@@ -3,17 +3,15 @@ import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
-import { Settings, Shield, Bell, CreditCard, Building, Save, ToggleLeft, ToggleRight, DollarSign, Lock, List, Users, UserPlus, X, CheckSquare, Square, Trash2, Camera } from 'lucide-react';
+import { Settings, Shield, Bell, CreditCard, Building, Save, ToggleLeft, ToggleRight, DollarSign, Users, Camera } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 
 export const AdminSettings: React.FC = () => {
   const { platformSettings, updatePlatformSettings } = useData(); // Use Global Settings
   const [activeTab, setActiveTab] = useState('general');
   const [notifications, setNotifications] = useState({ email: true, whatsapp: true });
-  const [adminPhoto, setAdminPhoto] = useState<string>('https://i.pravatar.cc/150?u=admin');
+  const [adminPhoto, setAdminPhoto] = useState<string>(() => localStorage.getItem('admin_photo') || 'https://i.pravatar.cc/150?u=admin');
   const adminPhotoRef = useRef<HTMLInputElement>(null);
-  const [showUserModal, setShowUserModal] = useState(false);
-  
   // Local state for settings form
   const [localSettings, setLocalSettings] = useState({ ...platformSettings });
 
@@ -21,61 +19,6 @@ export const AdminSettings: React.FC = () => {
       setLocalSettings(platformSettings);
   }, [platformSettings]);
 
-  // Estado para Edição/Criação de Usuário
-  const [editingUser, setEditingUser] = useState<any | null>(null);
-  const [userFormData, setUserFormData] = useState({ name: '', email: '', role: 'Suporte', permissions: [] as string[], password: '', confirmPassword: '' });
-
-  // Mock Users Data
-  const [users, setUsers] = useState([
-     { id: 1, name: 'Ricardo Silva', email: 'ricardo@admin.com', role: 'Super Admin', status: 'Ativo', permissions: ['all'] },
-     { id: 2, name: 'Juliana Costa', email: 'juliana@suporte.com', role: 'Suporte', status: 'Ativo', permissions: ['clients', 'requests'] },
-     { id: 3, name: 'Marcos Oliveira', email: 'marcos@financeiro.com', role: 'Financeiro', status: 'Ativo', permissions: ['payments'] },
-  ]);
-
-  const togglePermission = (perm: string) => {
-     if (userFormData.permissions.includes(perm)) {
-        setUserFormData({ ...userFormData, permissions: userFormData.permissions.filter(p => p !== perm) });
-     } else {
-        setUserFormData({ ...userFormData, permissions: [...userFormData.permissions, perm] });
-     }
-  };
-
-  const handleOpenNewUser = () => {
-     setEditingUser(null);
-     setUserFormData({ name: '', email: '', role: 'Suporte', permissions: ['dashboard'], password: '', confirmPassword: '' });
-     setShowUserModal(true);
-  };
-
-  const handleOpenEditUser = (user: any) => {
-     setEditingUser(user);
-     setUserFormData({ 
-        name: user.name, 
-        email: user.email, 
-        role: user.role, 
-        permissions: user.permissions,
-        password: '', 
-        confirmPassword: '' 
-     });
-     setShowUserModal(true);
-  };
-
-  const handleSaveUser = () => {
-     if (editingUser) {
-        // Mock Update
-        setUsers(users.map(u => u.id === editingUser.id ? { ...u, ...userFormData, permissions: userFormData.permissions } : u));
-     } else {
-        // Mock Create
-        setUsers([...users, { id: users.length + 1, status: 'Ativo', ...userFormData }]);
-     }
-     setShowUserModal(false);
-  };
-
-  const handleDeleteUser = () => {
-     if (editingUser) {
-        setUsers(users.filter(u => u.id !== editingUser.id));
-        setShowUserModal(false);
-     }
-  };
 
   const handleSavePlatformSettings = () => {
       updatePlatformSettings(localSettings);
@@ -120,7 +63,11 @@ export const AdminSettings: React.FC = () => {
                          onChange={e => {
                             if (e.target.files?.[0]) {
                                const reader = new FileReader();
-                               reader.onload = ev => setAdminPhoto(ev.target?.result as string);
+                               reader.onload = ev => {
+                                 const dataUrl = ev.target?.result as string;
+                                 setAdminPhoto(dataUrl);
+                                 localStorage.setItem('admin_photo', dataUrl);
+                               };
                                reader.readAsDataURL(e.target.files[0]);
                             }
                          }}
@@ -309,59 +256,39 @@ export const AdminSettings: React.FC = () => {
       case 'users':
          return (
             <div className="space-y-8 animate-in fade-in duration-300">
-               <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-bold text-darkText flex items-center gap-2"><Users size={20}/> Gestão de Usuários</h3>
-                  <Button size="sm" icon={<UserPlus size={16}/>} onClick={handleOpenNewUser}>Novo Usuário</Button>
+               <div className="mb-2">
+                  <h3 className="text-xl font-bold text-darkText dark:text-darkTextPrimary flex items-center gap-2"><Users size={20}/> Visualizar como Usuário</h3>
+                  <p className="text-sm text-lightText dark:text-darkTextSecondary mt-1">Acesse os portais de cliente e colaboradora para testar o fluxo completo.</p>
                </div>
 
-               <div className="border border-gray-200 rounded-xl overflow-hidden">
-                  <table className="w-full text-left">
-                     <thead className="bg-gray-50 text-xs font-bold text-lightText uppercase tracking-wider">
-                        <tr>
-                           <th className="p-4">Nome</th>
-                           <th className="p-4">Função</th>
-                           <th className="p-4">Permissões</th>
-                           <th className="p-4 text-right">Ações</th>
-                        </tr>
-                     </thead>
-                     <tbody className="divide-y divide-gray-100">
-                        {users.map(u => (
-                           <tr key={u.id} className="hover:bg-gray-50/50">
-                              <td className="p-4">
-                                 <p className="font-bold text-darkText text-sm">{u.name}</p>
-                                 <p className="text-xs text-lightText">{u.email}</p>
-                              </td>
-                              <td className="p-4">
-                                 <span className="bg-primary/10 text-primary px-2 py-1 rounded text-xs font-bold">{u.role}</span>
-                              </td>
-                              <td className="p-4 text-sm text-lightText">
-                                 {u.permissions.includes('all') ? 'Acesso Total' : u.permissions.length + ' módulos'}
-                              </td>
-                              <td className="p-4 text-right">
-                                 <button 
-                                    onClick={() => handleOpenEditUser(u)}
-                                    className="text-primary text-sm font-bold hover:underline"
-                                 >
-                                    Editar
-                                 </button>
-                              </td>
-                           </tr>
-                        ))}
-                     </tbody>
-                  </table>
-               </div>
-
-               {/* Access Logs Summary */}
-               <div className="mt-8">
-                  <h4 className="text-sm font-bold text-darkText mb-3 flex items-center gap-2"><List size={16}/> Logs de Acesso Recente</h4>
-                  <div className="bg-gray-50 rounded-xl p-4 text-xs text-lightText space-y-2 border border-gray-200">
-                     <div className="flex justify-between">
-                        <span>Ricardo Silva (Super Admin)</span>
-                        <span>Hoje, 09:12 - Login via Web</span>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <a href="#/client/dashboard" target="_blank" rel="noopener noreferrer"
+                     className="flex items-center gap-4 p-5 bg-purple-50 dark:bg-primary/10 border border-purple-200 dark:border-primary/30 rounded-2xl hover:shadow-md transition-all group">
+                     <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-white text-xl">👤</div>
+                     <div>
+                        <p className="font-bold text-darkText dark:text-darkTextPrimary group-hover:text-primary transition-colors">Portal do Cliente</p>
+                        <p className="text-xs text-lightText dark:text-darkTextSecondary">Ver tela como cliente logado</p>
                      </div>
-                     <div className="flex justify-between">
-                        <span>Juliana Costa (Suporte)</span>
-                        <span>Hoje, 08:30 - Alteração em Cliente #442</span>
+                  </a>
+                  <a href="#/collab/agenda" target="_blank" rel="noopener noreferrer"
+                     className="flex items-center gap-4 p-5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-2xl hover:shadow-md transition-all group">
+                     <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white text-xl">🧹</div>
+                     <div>
+                        <p className="font-bold text-darkText dark:text-darkTextPrimary group-hover:text-blue-600 transition-colors">Portal da Colaboradora</p>
+                        <p className="text-xs text-lightText dark:text-darkTextSecondary">Ver tela como colaboradora logada</p>
+                     </div>
+                  </a>
+               </div>
+
+               <div className="border-t border-gray-100 dark:border-darkBorder pt-6">
+                  <h4 className="text-sm font-bold text-darkText dark:text-darkTextPrimary mb-3 flex items-center gap-2"><Shield size={16}/> Acesso Admin</h4>
+                  <div className="bg-gray-50 dark:bg-darkBg rounded-xl p-4 border border-gray-200 dark:border-darkBorder">
+                     <div className="flex items-center justify-between">
+                        <div>
+                           <p className="font-bold text-darkText dark:text-darkTextPrimary text-sm">Ricardo Silva</p>
+                           <p className="text-xs text-lightText dark:text-darkTextSecondary">Super Admin • Login: admin / admin</p>
+                        </div>
+                        <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold px-2 py-1 rounded">Ativo</span>
                      </div>
                   </div>
                </div>
@@ -415,92 +342,6 @@ export const AdminSettings: React.FC = () => {
             </div>
          </div>
 
-         {/* Modal: Novo/Editar Usuário */}
-         {showUserModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-               <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-gray-100 animate-in fade-in zoom-in duration-200">
-                  <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white rounded-t-3xl">
-                     <h2 className="text-xl font-bold text-darkText">{editingUser ? 'Editar Usuário' : 'Criar Usuário Administrativo'}</h2>
-                     <button onClick={() => setShowUserModal(false)} className="p-2 hover:bg-gray-100 rounded-full text-lightText hover:text-darkText transition-colors">
-                        <X size={20} />
-                     </button>
-                  </div>
-                  <div className="p-6 space-y-4 bg-white">
-                     <Input 
-                        label="Nome Completo" 
-                        placeholder="Ex: João da Silva" 
-                        value={userFormData.name} 
-                        onChange={(e) => setUserFormData({...userFormData, name: e.target.value})} 
-                     />
-                     <Input 
-                        label="E-mail Corporativo" 
-                        placeholder="joao@empresa.com" 
-                        value={userFormData.email}
-                        onChange={(e) => setUserFormData({...userFormData, email: e.target.value})}
-                     />
-                     <div className="grid grid-cols-2 gap-4">
-                        <Input 
-                           label="Senha" 
-                           type="password" 
-                           placeholder={editingUser ? "(Não alterar)" : "••••••••"} 
-                           value={userFormData.password}
-                           onChange={(e) => setUserFormData({...userFormData, password: e.target.value})}
-                        />
-                        <Input 
-                           label="Confirmar Senha" 
-                           type="password" 
-                           placeholder={editingUser ? "(Não alterar)" : "••••••••"}
-                           value={userFormData.confirmPassword}
-                           onChange={(e) => setUserFormData({...userFormData, confirmPassword: e.target.value})}
-                        />
-                     </div>
-
-                     <div>
-                        <label className="block text-sm font-bold text-darkText mb-2">Função / Cargo</label>
-                        <select 
-                           className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-primary text-darkText"
-                           value={userFormData.role}
-                           onChange={(e) => setUserFormData({...userFormData, role: e.target.value})}
-                        >
-                           <option value="Suporte">Suporte</option>
-                           <option value="Financeiro">Financeiro</option>
-                           <option value="Super Admin">Super Admin</option>
-                           <option value="Gerente">Gerente Operacional</option>
-                        </select>
-                     </div>
-
-                     <div>
-                        <label className="block text-sm font-bold text-darkText mb-2">Permissões de Acesso</label>
-                        <div className="grid grid-cols-2 gap-3">
-                           {['Financeiro', 'Clientes', 'Colaboradores', 'Configurações', 'Relatórios', 'Suporte'].map(perm => (
-                              <label key={perm} className="flex items-center gap-2 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 select-none">
-                                 <input 
-                                    type="checkbox" 
-                                    checked={userFormData.permissions.includes(perm.toLowerCase()) || userFormData.permissions.includes('all')}
-                                    onChange={() => togglePermission(perm.toLowerCase())}
-                                    className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary" 
-                                 />
-                                 <span className="text-sm font-medium text-darkText">{perm}</span>
-                              </label>
-                           ))}
-                        </div>
-                     </div>
-                  </div>
-                  <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-3xl">
-                     {editingUser && (
-                        <button 
-                           onClick={handleDeleteUser} 
-                           className="mr-auto px-4 py-3 text-red-500 font-bold hover:bg-red-50 rounded-xl transition-colors flex items-center gap-2"
-                        >
-                           <Trash2 size={18} /> Excluir Acesso
-                        </button>
-                     )}
-                     <button onClick={() => setShowUserModal(false)} className="px-6 py-3 font-bold text-lightText hover:text-darkText hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
-                     <Button onClick={handleSaveUser}>{editingUser ? 'Salvar Alterações' : 'Criar Usuário'}</Button>
-                  </div>
-               </div>
-            </div>
-         )}
       </div>
     </Layout>
   );
