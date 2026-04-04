@@ -267,8 +267,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           senior: { hours4: 80, hours6: 120, hours8: 160 },
           master: { hours4: 100, hours6: 150, hours8: 200 },
       },
-      hourlyRate: 60, 
-      minDisplacement: 20 
+      hourlyRate: 60,
+      minDisplacement: 20,
+      contactPhone: '',
   });
 
   const [clients, setClients] = useState<ClientUser[]>([]);
