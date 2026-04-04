@@ -25,6 +25,11 @@ export const AdminSettings: React.FC = () => {
       alert("Configurações financeiras atualizadas com sucesso!");
   };
 
+  const handleSaveGeneralSettings = () => {
+      updatePlatformSettings(localSettings);
+      alert("Informações da empresa salvas com sucesso!");
+  };
+
   // Helper para atualizar matriz de valores
   const updatePayout = (level: 'junior' | 'senior' | 'master', hours: 'hours4' | 'hours6' | 'hours8', value: number) => {
       setLocalSettings(prev => ({
@@ -86,7 +91,12 @@ export const AdminSettings: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                    <Input label="Nome da Plataforma" defaultValue="Negócios de Limpeza" />
                    <Input label="E-mail de Suporte" defaultValue="suporte@negociosdelimpeza.com.br" />
-                   <Input label="Telefone de Contato" defaultValue="(27) 99980-8013" />
+                   <Input
+                     label="Telefone de Contato (notificações WhatsApp)"
+                     value={localSettings.contactPhone ?? ''}
+                     onChange={e => setLocalSettings({ ...localSettings, contactPhone: e.target.value })}
+                     placeholder="(27) 99980-8013"
+                   />
                    <Input label="CNPJ" defaultValue="00.000.000/0001-99" />
                 </div>
              </div>
@@ -98,7 +108,7 @@ export const AdminSettings: React.FC = () => {
                 </div>
              </div>
              <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-darkBorder">
-                <Button icon={<Save size={18}/>}>Salvar Alterações</Button>
+                <Button onClick={handleSaveGeneralSettings} icon={<Save size={18}/>}>Salvar Alterações</Button>
              </div>
           </div>
         );

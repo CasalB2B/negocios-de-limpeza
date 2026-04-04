@@ -50,6 +50,7 @@ export interface PlatformSettings {
   hourlyRate: number; // Valor base de cobrança ao cliente (referência)
   minDisplacement: number;
   botPrompt?: string; // Prompt customizado da Nina (bot WhatsApp)
+  contactPhone?: string; // Telefone da empresa para notificações WhatsApp
 }
 
 export interface Service {
@@ -380,6 +381,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 minDisplacement: settingsData.min_displacement,
                 payouts: settingsData.payouts,
                 botPrompt: settingsData.bot_prompt || undefined,
+                contactPhone: settingsData.contact_phone || undefined,
             });
         }
 
@@ -834,6 +836,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           min_displacement: s.minDisplacement,
           payouts: s.payouts,
           bot_prompt: s.botPrompt ?? null,
+          contact_phone: s.contactPhone ?? null,
       });
       if (error) console.error("Erro ao salvar configurações:", error);
   };

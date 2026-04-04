@@ -8,7 +8,16 @@ const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || '';
 const EVOLUTION_URL = Deno.env.get('EVOLUTION_URL') || '';
 const EVOLUTION_KEY = Deno.env.get('EVOLUTION_KEY') || '';
 const EVOLUTION_INSTANCE = Deno.env.get('EVOLUTION_INSTANCE') || '';
-const ADMIN_PHONE = Deno.env.get('ADMIN_PHONE') || '5527999808013';
+const ADMIN_PHONE_FALLBACK = Deno.env.get('ADMIN_PHONE') || '5527999808013';
+
+async function getAdminPhone(): Promise<string> {
+  try {
+    const { data } = await supabase.from('platform_settings').select('contact_phone').eq('id', 1).single();
+    const phone = (data?.contact_phone as string | null)?.replace(/\D/g, '');
+    if (phone && phone.length >= 10) return phone.startsWith('55') ? phone : `55${phone}`;
+  } catch { /* fallback */ }
+  return ADMIN_PHONE_FALLBACK;
+}
 const GEMINI_MODEL = 'gemini-2.5-flash';
 
 const SYSTEM_PROMPT = `Você é a Nina, assistente da Negócios de Limpeza — empresa de limpeza profissional em Guarapari, ES.
@@ -219,7 +228,8 @@ Responda com *1* ou *2* 😊`;
       // Reset session so next message starts fresh
       await supabase.from('whatsapp_sessions').update({ history: [], meta: { step: 'human' } }).eq('phone', phone);
       // Notify admin that an existing client wants human attention
-      await sendWhatsApp(ADMIN_PHONE,
+      const adminPhoneHuman = await getAdminPhone();
+      await sendWhatsApp(adminPhoneHuman,
         `👋 *Cliente quer atendimento humano!*\n\n📱 ${phone}\n\nAcesse o WhatsApp e responda diretamente.`
       ).catch(() => {});
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -372,6 +382,7 @@ Responda com *1* ou *2* 😊`;
     await sendWhatsApp(phone, closingMsg);
 
     // Notify admin of new quote via WhatsApp
+    const adminPhone = await getAdminPhone();
     const adminMsg = [
       `📋 *Novo orçamento recebido!*`,
       ``,
@@ -384,7 +395,7 @@ Responda com *1* ou *2* 😊`;
       ``,
       `Acesse o painel para gerar e enviar a proposta!`,
     ].filter(l => l !== null && l !== undefined).join('\n');
-    await sendWhatsApp(ADMIN_PHONE, adminMsg).catch(() => {});
+    await sendWhatsApp(adminPhone, adminMsg).catch(() => {});
 
     // Hand off to human — keep session as 'human' so bot doesn't respond anymore
     await supabase.from('whatsapp_sessions').update({ history: [], meta: { step: 'human' } }).eq('phone', phone);
