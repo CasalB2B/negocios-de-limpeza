@@ -119,9 +119,9 @@ body{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;background:#fff}
       <div class="pmethods"><span class="pchip">Pix</span><span class="pchip">Cart&atilde;o (consultar taxa)</span><span class="pchip">Transfer&ecirc;ncia</span></div>
     </div>
   </div>
-  <div style="position:absolute;bottom:55px;left:0;right:0;height:155px;overflow:hidden">
+  <div style="position:absolute;bottom:55px;left:0;right:0;height:185px;overflow:hidden">
     <img src="${origin}/img/foto-pdf-p1.jpg"
-      style="width:100%;height:100%;object-fit:cover;object-position:center 30%" alt="Negócios de Limpeza" />
+      style="width:100%;height:100%;object-fit:cover;object-position:center 8%" alt="Negócios de Limpeza" />
   </div>
   <div class="ftr"><span>Neg&oacute;cios de Limpeza</span><span>Proposta Comercial &middot; P&aacute;gina 1 de 2</span><span>Validade: 7 dias</span></div>
 </div>
@@ -156,9 +156,9 @@ body{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;background:#fff}
     </div>
   </div>
   <div class="cta"><h3>Transforme seu lar com a Neg&oacute;cios de Limpeza!</h3><p>Entre em contato e agende sua faxina com quem cuida de verdade.</p></div>
-  <div style="width:100%;height:200px;overflow:hidden;margin:0 0 0 0">
+  <div style="width:100%;height:280px;overflow:hidden">
     <img src="${origin}/img/foto-pdf-p2.jpg"
-      style="width:100%;height:100%;object-fit:cover;object-position:center 40%" alt="Negócios de Limpeza" />
+      style="width:100%;height:100%;object-fit:cover;object-position:center 25%" alt="Negócios de Limpeza" />
   </div>
   <div class="ftr"><span>Neg&oacute;cios de Limpeza</span><span>Proposta Comercial &middot; P&aacute;gina 2 de 2</span><span>Validade: 7 dias</span></div>
 </div>
@@ -380,20 +380,182 @@ function calcAutoPrice(quote: Quote): { price: string; professionals: string; ho
   return { price: base.toString().replace('.', ','), professionals: profs, hours: '8', breakdown };
 }
 
-// --- PDF GENERATION (jsPDF) ---
-function generatePDFBase64(
+// --- PDF GENERATION (html2canvas → jsPDF, matches HTML preview exactly) ---
+async function generatePDFBase64(
   quote: Quote,
   price: string,
   professionals: string,
   hours: string,
   neighborhood: string,
   serviceType: string,
-): string {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const W = 210;
-  const H = 297;
-  const m = 18;
-  let y = 0;
+): Promise<string> {
+  const { default: html2canvas } = await import('html2canvas');
+  const origin = window.location.origin;
+  const e = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;background:#fff;overflow:visible';
+  wrapper.innerHTML = `<style>
+*{margin:0;padding:0;box-sizing:border-box}
+div{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e}
+.page{width:794px;height:1123px;position:relative;overflow:hidden;background:#fff}
+.hdr{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:28px 48px 22px;color:#fff}
+.badge{display:inline-block;background:rgba(255,255,255,.25);font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:14px}
+.hdr h1{font-size:42px;font-weight:900;margin-bottom:6px;color:#fff}
+.hdr .sub{font-size:13px;opacity:.85;margin-bottom:28px;color:#fff}
+.cbar{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid rgba(255,255,255,.3);padding-top:20px;gap:12px}
+.cf label{font-size:9px;text-transform:uppercase;letter-spacing:1px;opacity:.7;display:block;margin-bottom:3px;color:#fff}
+.cf span{font-size:15px;font-weight:800;color:#fff}
+.sec{padding:16px 48px}
+.stitle{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#a163ff;margin-bottom:12px}
+.abox{border-left:4px solid #a163ff;padding:14px 18px;background:#f9f5ff;border-radius:0 8px 8px 0;font-size:13px;line-height:1.6;color:#4a4a6a}
+.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.sc{border:1px solid #e8e0f5;border-radius:10px;padding:14px}
+.sct{display:flex;align-items:center;gap:7px;font-weight:700;font-size:12px;margin-bottom:7px}
+.dot{width:7px;height:7px;border-radius:50%;background:#a163ff;flex-shrink:0}
+.sc p{font-size:10px;line-height:1.5;color:#6b6b8a}
+.inv{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);margin:0 48px;border-radius:14px;padding:28px;color:#fff}
+.ilbl{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.8;margin-bottom:3px;color:#fff}
+.idesc{font-size:16px;font-weight:600;margin-bottom:14px;opacity:.9;color:#fff}
+.price{font-size:48px;font-weight:900;margin-bottom:20px;color:#fff}
+.pmethods{display:flex;gap:8px;flex-wrap:wrap}
+.pchip{background:rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600;color:#fff}
+.ftr{background:#1a1a2e;color:#fff;padding:14px 48px;display:flex;justify-content:space-between;align-items:center;font-size:10px;position:absolute;bottom:0;left:0;right:0}
+.hdr2{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:36px 48px;color:#fff}
+.hdr2 h1{font-size:32px;font-weight:900;margin-bottom:6px;color:#fff}
+.hdr2 .sub{font-size:13px;opacity:.85;color:#fff}
+.dgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.dc{border:1px solid #e8e0f5;border-radius:14px;padding:22px;text-align:center}
+.dnum{width:38px;height:38px;background:linear-gradient(135deg,#a163ff,#ff3ca0);border-radius:50%;color:#fff;font-weight:900;font-size:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
+.dc strong{font-size:13px;display:block;margin-bottom:6px}
+.dc p{font-size:11px;color:#6b6b8a;line-height:1.5}
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cbox{border:1px solid #e8e0f5;border-radius:12px;padding:18px}
+.cbox h4{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#a163ff;margin-bottom:10px}
+.crow{display:flex;align-items:center;gap:9px;margin-bottom:8px;font-size:12px}
+.cico{width:30px;height:30px;background:#f9f5ff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.csub{font-size:10px;color:#888;display:block}
+.cta{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);margin:0 48px 28px;border-radius:14px;padding:26px;text-align:center;color:#fff}
+.cta h3{font-size:20px;font-weight:800;margin-bottom:6px;color:#fff}
+.cta p{opacity:.9;font-size:13px;color:#fff}
+</style>
+<div class="page">
+  <div class="hdr">
+    <div class="badge">Proposta Comercial</div>
+    <h1>${e(serviceType || 'Faxina Residencial')}</h1>
+    <div class="sub">Negócios de Limpeza · Cuidado, capricho e dedicação em cada detalhe</div>
+    <div class="cbar">
+      <div class="cf"><label>Cliente</label><span>${e(quote.name)}</span></div>
+      <div class="cf"><label>Bairro</label><span>${e(neighborhood || 'Guarapari')}</span></div>
+      <div class="cf"><label>Contato</label><span>${e(quote.whatsapp)}</span></div>
+      <div class="cf"><label>Validade</label><span>7 dias</span></div>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="stitle">Sobre o Serviço</div>
+    <div class="abox">Cada lar tem suas necessidades únicas, e nosso foco é atender as suas prioridades!
+    Durante o atendimento, ouvimos suas demandas e garantimos que elas sejam realizadas com
+    <strong>cuidado, capricho e dedicação.</strong>${quote.priorities ? `<br><br><strong>Prioridades:</strong> ${e(quote.priorities)}` : ''}</div>
+  </div>
+  <div class="sec" style="padding-top:0">
+    <div class="stitle">O que está incluso</div>
+    <div class="sgrid">
+      <div class="sc"><div class="sct"><div class="dot"></div>Cozinha</div><p>Limpeza interna de armários, fogão e de geladeira, limpeza dos pisos e revestimento de paredes, limpeza de portas.</p></div>
+      <div class="sc"><div class="sct"><div class="dot"></div>Banheiros</div><p>Limpeza da pia, dos pisos e revestimento de paredes, dos vasos sanitários e banheira, do boxe, espelho e vidros, portas, basculantes.</p></div>
+      <div class="sc"><div class="sct"><div class="dot"></div>Sala</div><p>Limpeza dos pisos, poltronas e tapetes, limpeza da superfície externa dos móveis, limpeza de portas, janelas e vidros.</p></div>
+      <div class="sc"><div class="sct"><div class="dot"></div>Quartos</div><p>Limpeza externa dos móveis, limpeza do chão, das janelas, de espelhos, portas, vidros e arrumação da cama.</p></div>
+      <div class="sc"><div class="sct"><div class="dot"></div>Área de Serviço</div><p>Superfície e parte externa dos móveis, lavagem e esfregação do chão e limpeza de vidros.</p></div>
+      <div class="sc"><div class="sct"><div class="dot"></div>Varanda / Gourmet</div><p>Limpeza dos vidros, trilhos e canaletas, limpeza externa de armários, e limpeza do chão.</p></div>
+    </div>
+  </div>
+  <div style="padding:0 48px 20px">
+    <div class="inv">
+      <div class="ilbl">Investimento</div>
+      <div class="idesc">${e(professionals)} profissionais · ${e(hours)} horas de serviço</div>
+      <div class="price">R$ ${e(price)}</div>
+      <div class="pmethods"><span class="pchip">Pix</span><span class="pchip">Cartão (consultar taxa)</span><span class="pchip">Transferência</span></div>
+    </div>
+  </div>
+  <div style="position:absolute;bottom:55px;left:0;right:0;height:185px;overflow:hidden">
+    <img src="${origin}/img/foto-pdf-p1.jpg"
+      style="width:100%;height:100%;object-fit:cover;object-position:center 8%" alt="Negócios de Limpeza" crossorigin="anonymous" />
+  </div>
+  <div class="ftr"><span>Negócios de Limpeza</span><span>Proposta Comercial · Página 1 de 2</span><span>Validade: 7 dias</span></div>
+</div>
+<div class="page">
+  <div class="hdr2">
+    <div class="badge">Por que nos escolher</div>
+    <h1>Sua casa limpa, do jeito que você merece!</h1>
+    <div class="sub">Cuidado, capricho e dedicação em cada detalhe</div>
+  </div>
+  <div class="sec">
+    <div class="stitle">Nossos Diferenciais</div>
+    <div class="dgrid">
+      <div class="dc"><div class="dnum">1</div><strong>Atendimento Personalizado</strong><p>Ouvimos suas prioridades e adaptamos o serviço às suas necessidades.</p></div>
+      <div class="dc"><div class="dnum">2</div><strong>Profissionais Treinados</strong><p>Equipe capacitada, uniformizada e comprometida com a excelência.</p></div>
+      <div class="dc"><div class="dnum">3</div><strong>Resultado Garantido</strong><p>Capricho em cada canto, do chão ao teto, com atenção aos detalhes.</p></div>
+    </div>
+  </div>
+  <div class="sec" style="padding-top:0">
+    <div class="stitle">Fale Conosco</div>
+    <div class="cgrid">
+      <div class="cbox"><h4>Mais Informações</h4>
+        <div class="crow"><div class="cico">📞</div><div><strong>WhatsApp</strong><span class="csub">27 99980 8013</span></div></div>
+        <div class="crow"><div class="cico">📷</div><div><strong>Instagram</strong><span class="csub">@negociosdelimpeza</span></div></div>
+        <div class="crow"><div class="cico">🌐</div><div><strong>Site</strong><span class="csub">negociosdelimpeza.com.br</span></div></div>
+      </div>
+      <div class="cbox"><h4>Formas de Pagamento</h4>
+        <div class="crow"><div class="cico">💳</div><div><strong>Cartão de Crédito</strong><span class="csub">Consultar taxa</span></div></div>
+        <div class="crow"><div class="cico">💸</div><div><strong>Pix</strong><span class="csub">Pagamento à vista</span></div></div>
+        <div class="crow"><div class="cico">🏦</div><div><strong>Transferência Bancária</strong><span class="csub">TED / DOC disponível</span></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="cta"><h3>Transforme seu lar com a Negócios de Limpeza!</h3><p>Entre em contato e agende sua faxina com quem cuida de verdade.</p></div>
+  <div style="width:100%;height:280px;overflow:hidden">
+    <img src="${origin}/img/foto-pdf-p2.jpg"
+      style="width:100%;height:100%;object-fit:cover;object-position:center 25%" alt="Negócios de Limpeza" crossorigin="anonymous" />
+  </div>
+  <div class="ftr"><span>Negócios de Limpeza</span><span>Proposta Comercial · Página 2 de 2</span><span>Validade: 7 dias</span></div>
+</div>`;
+
+  document.body.appendChild(wrapper);
+  try {
+    // Wait for all images to finish loading
+    await Promise.all(
+      Array.from(wrapper.querySelectorAll<HTMLImageElement>('img')).map(
+        img => img.complete
+          ? Promise.resolve()
+          : new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); }),
+      ),
+    );
+
+    const pages = wrapper.querySelectorAll<HTMLElement>('.page');
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+    for (let i = 0; i < pages.length; i++) {
+      if (i > 0) doc.addPage();
+      const canvas = await html2canvas(pages[i], {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        width: 794,
+        height: 1123,
+        windowWidth: 794,
+      });
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      doc.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+    }
+
+    return doc.output('datauristring').split(',')[1];
+  } finally {
+    document.body.removeChild(wrapper);
+  }
+}
+
+// --- DELETE MARKER START ---
+/*
 
   // ── HEADER gradient strip ──
   doc.setFillColor(161, 99, 255);
@@ -564,12 +726,7 @@ function generatePDFBase64(
   doc.setFontSize(8);
   doc.setTextColor(200, 180, 255);
   doc.text('📞 27 99980-8013   📷 @negociosdelimpeza   🌐 negociosdelimpeza.com.br', m, H - 7);
-  doc.setTextColor(150, 130, 200);
-  doc.text('Proposta válida por 7 dias', W - m - 38, H - 10);
-
-  return doc.output('datauristring').split(',')[1];
-}
-
+*/
 // --- PDF MODAL ---
 interface PDFModalProps {
   quote: Quote;
@@ -595,7 +752,7 @@ const PDFModal: React.FC<PDFModalProps> = ({ quote, onClose }) => {
       setWaSending(true);
       try {
         // 1. Send PDF as document
-        const pdfBase64 = generatePDFBase64(quote, price, professionals, hours, neighborhood, serviceType);
+        const pdfBase64 = await generatePDFBase64(quote, price, professionals, hours, neighborhood, serviceType);
         await sendDocument(
           quote.whatsapp,
           pdfBase64,
