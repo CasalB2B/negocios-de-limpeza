@@ -33,13 +33,16 @@ Deno.serve(async (req) => {
       const number = raw.includes('@lid')
         ? raw
         : (raw.replace(/\D/g, '').startsWith('55') ? raw.replace(/\D/g, '') : '55' + raw.replace(/\D/g, ''));
+      // Evolution API v1 requires mediaMessage wrapper
       body = {
         number,
-        mediatype: 'document',
-        mimetype: 'application/pdf',
-        media: payload.base64,
-        fileName: payload.fileName,
-        caption: payload.caption || '',
+        mediaMessage: {
+          mediatype: 'document',
+          mimetype: 'application/pdf',
+          media: payload.base64,
+          fileName: payload.fileName,
+          caption: payload.caption || '',
+        },
         delay: 1000,
       };
     } else if (action === 'fetchInstances') {
