@@ -394,50 +394,50 @@ async function generatePDFBase64(
   const e = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   const wrapper = document.createElement('div');
-  wrapper.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;background:#fff;overflow:visible';
+  wrapper.className = 'ndl-pdf-root';
+  wrapper.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;overflow:visible;font-family:Arial,Helvetica,sans-serif';
   wrapper.innerHTML = `<style>
-*{margin:0;padding:0;box-sizing:border-box}
-div{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e}
-.page{width:794px;height:1123px;position:relative;overflow:hidden;background:#fff}
-.hdr{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:28px 48px 22px;color:#fff}
-.badge{display:inline-block;background:rgba(255,255,255,.25);font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:14px}
-.hdr h1{font-size:42px;font-weight:900;margin-bottom:6px;color:#fff}
-.hdr .sub{font-size:13px;opacity:.85;margin-bottom:28px;color:#fff}
-.cbar{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid rgba(255,255,255,.3);padding-top:20px;gap:12px}
-.cf label{font-size:9px;text-transform:uppercase;letter-spacing:1px;opacity:.7;display:block;margin-bottom:3px;color:#fff}
-.cf span{font-size:15px;font-weight:800;color:#fff}
-.sec{padding:16px 48px}
-.stitle{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#a163ff;margin-bottom:12px}
-.abox{border-left:4px solid #a163ff;padding:14px 18px;background:#f9f5ff;border-radius:0 8px 8px 0;font-size:13px;line-height:1.6;color:#4a4a6a}
-.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.sc{border:1px solid #e8e0f5;border-radius:10px;padding:14px}
-.sct{display:flex;align-items:center;gap:7px;font-weight:700;font-size:12px;margin-bottom:7px}
-.dot{width:7px;height:7px;border-radius:50%;background:#a163ff;flex-shrink:0}
-.sc p{font-size:10px;line-height:1.5;color:#6b6b8a}
-.inv{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);margin:0 48px;border-radius:14px;padding:28px;color:#fff}
-.ilbl{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.8;margin-bottom:3px;color:#fff}
-.idesc{font-size:16px;font-weight:600;margin-bottom:14px;opacity:.9;color:#fff}
-.price{font-size:48px;font-weight:900;margin-bottom:20px;color:#fff}
-.pmethods{display:flex;gap:8px;flex-wrap:wrap}
-.pchip{background:rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600;color:#fff}
-.ftr{background:#1a1a2e;color:#fff;padding:14px 48px;display:flex;justify-content:space-between;align-items:center;font-size:10px;position:absolute;bottom:0;left:0;right:0}
-.hdr2{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:36px 48px;color:#fff}
-.hdr2 h1{font-size:32px;font-weight:900;margin-bottom:6px;color:#fff}
-.hdr2 .sub{font-size:13px;opacity:.85;color:#fff}
-.dgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.dc{border:1px solid #e8e0f5;border-radius:14px;padding:22px;text-align:center}
-.dnum{width:38px;height:38px;background:linear-gradient(135deg,#a163ff,#ff3ca0);border-radius:50%;color:#fff;font-weight:900;font-size:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
-.dc strong{font-size:13px;display:block;margin-bottom:6px}
-.dc p{font-size:11px;color:#6b6b8a;line-height:1.5}
-.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.cbox{border:1px solid #e8e0f5;border-radius:12px;padding:18px}
-.cbox h4{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#a163ff;margin-bottom:10px}
-.crow{display:flex;align-items:center;gap:9px;margin-bottom:8px;font-size:12px}
-.cico{width:30px;height:30px;background:#f9f5ff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
-.csub{font-size:10px;color:#888;display:block}
-.cta{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);margin:0 48px 28px;border-radius:14px;padding:26px;text-align:center;color:#fff}
-.cta h3{font-size:20px;font-weight:800;margin-bottom:6px;color:#fff}
-.cta p{opacity:.9;font-size:13px;color:#fff}
+.ndl-pdf-root,.ndl-pdf-root *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
+.ndl-pdf-root .page{width:794px;height:1123px;position:relative;overflow:hidden;background:#fff;color:#1a1a2e}
+.ndl-pdf-root .hdr{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:28px 48px 22px;color:#fff}
+.ndl-pdf-root .badge{display:inline-block;background:rgba(255,255,255,.25);font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:14px;color:#fff}
+.ndl-pdf-root .hdr h1{font-size:42px;font-weight:900;margin-bottom:6px;color:#fff}
+.ndl-pdf-root .hdr .sub{font-size:13px;opacity:.85;margin-bottom:28px;color:#fff}
+.ndl-pdf-root .cbar{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid rgba(255,255,255,.3);padding-top:20px;gap:12px}
+.ndl-pdf-root .cf label{font-size:9px;text-transform:uppercase;letter-spacing:1px;opacity:.7;display:block;margin-bottom:3px;color:#fff}
+.ndl-pdf-root .cf span{font-size:15px;font-weight:800;color:#fff}
+.ndl-pdf-root .sec{padding:16px 48px}
+.ndl-pdf-root .stitle{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#a163ff;margin-bottom:12px}
+.ndl-pdf-root .abox{border-left:4px solid #a163ff;padding:14px 18px;background:#f9f5ff;border-radius:0 8px 8px 0;font-size:13px;line-height:1.6;color:#4a4a6a}
+.ndl-pdf-root .sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.ndl-pdf-root .sc{border:1px solid #e8e0f5;border-radius:10px;padding:14px}
+.ndl-pdf-root .sct{display:flex;align-items:center;gap:7px;font-weight:700;font-size:12px;margin-bottom:7px}
+.ndl-pdf-root .dot{width:7px;height:7px;border-radius:50%;background:#a163ff;flex-shrink:0;display:inline-block}
+.ndl-pdf-root .sc p{font-size:10px;line-height:1.5;color:#6b6b8a}
+.ndl-pdf-root .inv{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);margin:0 48px;border-radius:14px;padding:28px;color:#fff}
+.ndl-pdf-root .ilbl{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.8;margin-bottom:3px;color:#fff}
+.ndl-pdf-root .idesc{font-size:16px;font-weight:600;margin-bottom:14px;opacity:.9;color:#fff}
+.ndl-pdf-root .price{font-size:48px;font-weight:900;margin-bottom:20px;color:#fff}
+.ndl-pdf-root .pmethods{display:flex;gap:8px;flex-wrap:wrap}
+.ndl-pdf-root .pchip{background:rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600;color:#fff}
+.ndl-pdf-root .ftr{background:#1a1a2e;color:#fff;padding:14px 48px;display:flex;justify-content:space-between;align-items:center;font-size:10px;position:absolute;bottom:0;left:0;right:0}
+.ndl-pdf-root .hdr2{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:36px 48px;color:#fff}
+.ndl-pdf-root .hdr2 h1{font-size:32px;font-weight:900;margin-bottom:6px;color:#fff}
+.ndl-pdf-root .hdr2 .sub{font-size:13px;opacity:.85;color:#fff}
+.ndl-pdf-root .dgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.ndl-pdf-root .dc{border:1px solid #e8e0f5;border-radius:14px;padding:22px;text-align:center}
+.ndl-pdf-root .dnum{width:38px;height:38px;background:linear-gradient(135deg,#a163ff,#ff3ca0);border-radius:50%;color:#fff;font-weight:900;font-size:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
+.ndl-pdf-root .dc strong{font-size:13px;display:block;margin-bottom:6px;color:#1a1a2e}
+.ndl-pdf-root .dc p{font-size:11px;color:#6b6b8a;line-height:1.5}
+.ndl-pdf-root .cgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.ndl-pdf-root .cbox{border:1px solid #e8e0f5;border-radius:12px;padding:18px}
+.ndl-pdf-root .cbox h4{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#a163ff;margin-bottom:10px}
+.ndl-pdf-root .crow{display:flex;align-items:center;gap:9px;margin-bottom:8px;font-size:12px;color:#1a1a2e}
+.ndl-pdf-root .cico{width:30px;height:30px;background:#f9f5ff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.ndl-pdf-root .csub{font-size:10px;color:#888;display:block}
+.ndl-pdf-root .cta{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);margin:0 48px 28px;border-radius:14px;padding:26px;text-align:center;color:#fff}
+.ndl-pdf-root .cta h3{font-size:20px;font-weight:800;margin-bottom:6px;color:#fff}
+.ndl-pdf-root .cta p{opacity:.9;font-size:13px;color:#fff}
 </style>
 <div class="page">
   <div class="hdr">
@@ -530,7 +530,7 @@ div{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e}
       ),
     );
 
-    const pages = wrapper.querySelectorAll<HTMLElement>('.page');
+    const pages = wrapper.querySelectorAll<HTMLElement>('.ndl-pdf-root .page');
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
     for (let i = 0; i < pages.length; i++) {
@@ -543,6 +543,7 @@ div{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e}
         width: 794,
         height: 1123,
         windowWidth: 794,
+        backgroundColor: '#ffffff',
       });
       const imgData = canvas.toDataURL('image/jpeg', 0.92);
       doc.addImage(imgData, 'JPEG', 0, 0, 210, 297);
