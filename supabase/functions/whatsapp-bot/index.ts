@@ -124,6 +124,76 @@ async function sendWhatsApp(phone: string, text: string): Promise<void> {
   }
 }
 
+// Busca etiquetas do contato na Evolution API
+// Se o contato tiver qualquer etiqueta = já é cliente = vai direto pro atendente
+async function getContactLabels(remoteJid: string): Promise<string[]> {
+  try {
+    const jid = remoteJid.includes('@') ? remoteJid : `${remoteJid}@s.whatsapp.net`;
+    const res = await fetch(`${EVOLUTION_URL}/chat/findChats/${EVOLUTION_INSTANCE}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_KEY },
+      body: JSON.stringify({ where: { remoteJid: jid } }),
+    });
+    if (!res.ok) return [];
+    const result = await res.json();
+    const chats = Array.isArray(result) ? result : (result?.chats || []);
+    const chat = chats.find((c: any) =>
+      c.remoteJid === jid ||
+      c.remoteJid === remoteJid ||
+      (c.remoteJid || '').replace('@s.whatsapp.net', '') === remoteJid.replace('@s.whatsapp.net', '')
+    );
+    const labels = chat?.labels || [];
+    console.log('[BOT] labels for', remoteJid, ':', JSON.stringify(labels));
+    return labels;
+  } catch (e) {
+    console.error('[BOT] getContactLabels error:', e);
+    return [];
+  }
+}
+
+// Busca sessão de forma resiliente — evita falha do .single() quando há duplicatas
+async function getSession(phone: string): Promise<{ history: any[]; meta: Record<string, any> }> {
+  const { data, error } = await supabase
+    .from('whatsapp_sessions')
+    .select('*')
+    .eq('phone', phone)
+    .order('updated_at', { ascending: false })
+    .limit(1);
+
+  if (error || !data || data.length === 0) {
+    console.log('[BOT] no session found for', phone, '| error:', error?.message);
+    return { history: [], meta: {} };
+  }
+
+  // Se houver duplicatas, limpa as antigas silenciosamente
+  if (data.length > 1) {
+    console.warn('[BOT] duplicate sessions for', phone, '— cleaning up');
+    const idsToDelete = data.slice(1).map((r: any) => r.id);
+    await supabase.from('whatsapp_sessions').delete().in('id', idsToDelete);
+  }
+
+  return {
+    history: data[0].history || [],
+    meta: data[0].meta || {},
+  };
+}
+
+// Salva sessão de forma resiliente (upsert sempre)
+async function saveSession(phone: string, history: any[], meta: Record<string, any>): Promise<void> {
+  const { error } = await supabase.from('whatsapp_sessions').upsert(
+    { phone, history, meta, updated_at: new Date().toISOString() },
+    { onConflict: 'phone' }
+  );
+  if (error) {
+    // Se upsert falhar (ex: sem constraint UNIQUE), tenta insert seguido de update
+    console.warn('[BOT] upsert failed, fallback insert/update:', error.message);
+    const { error: insertErr } = await supabase.from('whatsapp_sessions').insert({ phone, history, meta, updated_at: new Date().toISOString() });
+    if (insertErr) {
+      await supabase.from('whatsapp_sessions').update({ history, meta, updated_at: new Date().toISOString() }).eq('phone', phone);
+    }
+  }
+}
+
 async function callGemini(history: { role: string; parts: { text: string }[] }[], systemPrompt: string): Promise<string> {
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
@@ -184,20 +254,32 @@ Deno.serve(async (req) => {
 
   const normalizedText = text.trim().toLowerCase();
 
-  // --- Get or create session ---
-  const { data: session } = await supabase
-    .from('whatsapp_sessions')
-    .select('*')
-    .eq('phone', phone)
-    .single();
-
-  const history: { role: string; parts: { text: string }[] }[] = session?.history || [];
-  const sessionMeta: Record<string, any> = session?.meta || {};
+  // --- Get session (resiliente) ---
+  const { history, meta: sessionMeta } = await getSession(phone);
+  console.log('[DEBUG] session step:', sessionMeta.step, '| history length:', history.length);
 
   // -------------------------------------------------------
   // FLUXO DE BOAS-VINDAS (primeira mensagem da sessão)
   // -------------------------------------------------------
   if (history.length === 0 && !sessionMeta.step) {
+    // Verifica se o contato tem etiquetas no WhatsApp (= já é cliente)
+    const labels = await getContactLabels(remoteJid);
+    const isTaggedClient = labels.length > 0;
+
+    if (isTaggedClient) {
+      // Contato tem etiqueta — pula o menu e chama atendente direto
+      console.log('[BOT] tagged client detected, routing to human. Labels:', JSON.stringify(labels));
+      const labelNames = labels.map((l: any) => (typeof l === 'string' ? l : l?.name || l?.id || '?')).join(', ');
+      await sendWhatsApp(phone, `Olá! 😊 Que bom te ver por aqui!\n\nJá chamei um de nossos atendentes para te ajudar. Aguarda um momento! 🙏`);
+      await saveSession(phone, [], { step: 'human', labels: labelNames });
+      const adminPhone = await getAdminPhone();
+      await sendWhatsApp(adminPhone,
+        `👋 *Cliente com etiqueta entrou em contato!*\n\n📱 ${phone}\n🏷️ Etiquetas: ${labelNames}\n\nAcesse o WhatsApp e responda diretamente.`
+      ).catch(() => {});
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+
+    // Sem etiqueta — fluxo normal de boas-vindas
     const welcome = `Olá! 👋 Bem-vindo à *Negócios de Limpeza* — Guarapari/ES! 🧹✨
 
 Como posso te ajudar hoje?
@@ -208,10 +290,7 @@ Como posso te ajudar hoje?
 Responda com *1* ou *2* 😊`;
 
     await sendWhatsApp(phone, welcome);
-    await supabase.from('whatsapp_sessions').upsert(
-      { phone, history: [], meta: { step: 'welcome' }, updated_at: new Date().toISOString() },
-      { onConflict: 'phone' }
-    );
+    await saveSession(phone, [], { step: 'welcome' });
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   }
 
@@ -225,8 +304,7 @@ Responda com *1* ou *2* 😊`;
     if (chose2) {
       // Cliente existente — avisa que um humano vai atender
       await sendWhatsApp(phone, `Perfeito! 😊 Vou chamar um de nossos atendentes agora.\n\nAguarda um instante que já te ajudamos! 🙏`);
-      // Reset session so next message starts fresh
-      await supabase.from('whatsapp_sessions').update({ history: [], meta: { step: 'human' } }).eq('phone', phone);
+      await saveSession(phone, [], { step: 'human' });
       // Notify admin that an existing client wants human attention
       const adminPhoneHuman = await getAdminPhone();
       await sendWhatsApp(adminPhoneHuman,
@@ -240,10 +318,7 @@ Responda com *1* ou *2* 😊`;
       const intro = `Oi! Eu sou a *Nina*, assistente virtual da Negócios de Limpeza! 🌟\n\nVou te ajudar a gerar um orçamento gratuito rapidinho. Para começar... qual é o seu *nome*? 😊`;
       await sendWhatsApp(phone, intro);
       const initHistory = [{ role: 'model', parts: [{ text: intro }] }];
-      await supabase.from('whatsapp_sessions').upsert(
-        { phone, history: initHistory, meta: { step: 'quote' }, updated_at: new Date().toISOString() },
-        { onConflict: 'phone' }
-      );
+      await saveSession(phone, initHistory, { step: 'quote' });
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     }
 
@@ -252,9 +327,20 @@ Responda com *1* ou *2* 😊`;
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   }
 
-  // If human step — ignore (human will take over)
+  // -------------------------------------------------------
+  // STEP: HUMAN — atendente humano assume, bot não responde mais
+  // Mas se cliente mandar mensagem, lembra que está sendo atendido
+  // -------------------------------------------------------
   if (sessionMeta.step === 'human') {
-    return new Response('ignored', { status: 200 });
+    // Responde apenas 1 vez para não deixar o cliente sem resposta
+    // Verifica se já enviou esta mensagem de espera recentemente
+    const waitReplied = sessionMeta.waitReplied || false;
+    if (!waitReplied) {
+      await sendWhatsApp(phone, `Olá! Já avisei nossa equipe e em breve um atendente vai te responder aqui mesmo. 🙏`);
+      await saveSession(phone, history, { ...sessionMeta, waitReplied: true });
+    }
+    // Após a primeira confirmação, silêncio total (humano assume)
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
   }
 
   // -------------------------------------------------------
@@ -269,10 +355,7 @@ Responda com *1* ou *2* 😊`;
   const wantsHuman = humanTriggers.some(t => normalizedText.includes(t));
   if (wantsHuman) {
     await sendWhatsApp(phone, `Claro! Vou chamar um atendente agora. Aguarda um momento 😊`);
-    await supabase.from('whatsapp_sessions').upsert(
-      { phone, history, meta: { step: 'human' }, updated_at: new Date().toISOString() },
-      { onConflict: 'phone' }
-    );
+    await saveSession(phone, history, { step: 'human' });
     console.log('[BOT] Transferred to human for:', phone);
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   }
@@ -296,11 +379,8 @@ Responda com *1* ou *2* 😊`;
   // Add model response to history
   history.push({ role: 'model', parts: [{ text: rawResponse }] });
 
-  // --- Upsert session ---
-  await supabase.from('whatsapp_sessions').upsert(
-    { phone, history, meta: { step: 'quote' }, updated_at: new Date().toISOString() },
-    { onConflict: 'phone' }
-  );
+  // --- Save session ---
+  await saveSession(phone, history, { step: 'quote' });
 
   // --- Send response ---
   if (cleanedText) await sendWhatsApp(phone, cleanedText);
@@ -309,10 +389,7 @@ Responda com *1* ou *2* 😊`;
   const ninaTransferred = cleanedText.toLowerCase().includes('vou chamar um atendente') ||
     cleanedText.toLowerCase().includes('chamar um atendente');
   if (ninaTransferred) {
-    await supabase.from('whatsapp_sessions').upsert(
-      { phone, history, meta: { step: 'human' }, updated_at: new Date().toISOString() },
-      { onConflict: 'phone' }
-    );
+    await saveSession(phone, history, { step: 'human' });
     console.log('[BOT] Nina transferred to human for:', phone);
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   }
@@ -398,7 +475,7 @@ Responda com *1* ou *2* 😊`;
     await sendWhatsApp(adminPhone, adminMsg).catch(() => {});
 
     // Hand off to human — keep session as 'human' so bot doesn't respond anymore
-    await supabase.from('whatsapp_sessions').update({ history: [], meta: { step: 'human' } }).eq('phone', phone);
+    await saveSession(phone, [], { step: 'human' });
   }
 
   return new Response(JSON.stringify({ ok: true }), {
