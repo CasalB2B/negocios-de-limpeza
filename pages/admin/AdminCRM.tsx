@@ -40,34 +40,181 @@ function persistCustomTemplates(all: CampaignTemplate[]) {
   try { localStorage.setItem('crm_campaign_tpls_v2', JSON.stringify(custom)); } catch { /* ok */ }
 }
 
-// Phone preview component
-const PhonePreview: React.FC<{ message: string; contactName?: string }> = ({ message, contactName = 'Cliente' }) => (
-  <div className="flex justify-center">
-    <div className="w-56 bg-gray-900 rounded-[32px] p-2.5 shadow-2xl">
-      <div className="bg-[#0b141a] rounded-[24px] overflow-hidden">
-        <div className="bg-[#202c33] px-3 py-2.5 flex items-center gap-2 border-b border-black/20">
-          <div className="w-7 h-7 rounded-full bg-primary/80 flex items-center justify-center text-white text-[10px] font-black flex-shrink-0">N</div>
-          <div>
-            <p className="text-white text-[11px] font-bold leading-tight">Negócios de Limpeza</p>
-            <p className="text-[#8696a0] text-[9px]">online</p>
-          </div>
-        </div>
-        <div className="p-3 min-h-[160px] bg-[#0b141a]">
-          {message ? (
-            <div className="max-w-[90%]">
-              <div className="bg-[#202c33] rounded-xl rounded-tl-none px-3 py-2 text-[11px] text-[#e9edef] leading-relaxed whitespace-pre-wrap shadow-sm">
-                {message}
-              </div>
-              <p className="text-[#8696a0] text-[9px] mt-1 ml-1">Agora ✓✓</p>
+// ─── Realistic Phone Mockup ──────────────────────────────────────────────────
+const PhonePreview: React.FC<{ message: string; contactName?: string }> = ({ message, contactName = 'Carlos' }) => {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <div className="flex justify-center select-none">
+      {/* Outer phone shell */}
+      <div className="relative" style={{ width: 220 }}>
+        {/* Side buttons */}
+        <div className="absolute -left-[3px] top-16 w-[3px] h-6 bg-gray-700 rounded-l-sm" />
+        <div className="absolute -left-[3px] top-28 w-[3px] h-10 bg-gray-700 rounded-l-sm" />
+        <div className="absolute -left-[3px] top-40 w-[3px] h-10 bg-gray-700 rounded-l-sm" />
+        <div className="absolute -right-[3px] top-24 w-[3px] h-14 bg-gray-700 rounded-r-sm" />
+
+        {/* Phone body */}
+        <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-[36px] p-[3px] shadow-[0_30px_60px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.08)]">
+          {/* Inner bezel */}
+          <div className="bg-black rounded-[34px] overflow-hidden" style={{ height: 440 }}>
+
+            {/* Dynamic Island */}
+            <div className="flex justify-center pt-2 pb-1">
+              <div className="w-24 h-[14px] bg-black rounded-full border border-gray-800" style={{ boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.9)' }} />
             </div>
-          ) : (
-            <p className="text-[#8696a0] text-[10px] text-center mt-8">Selecione um template para visualizar</p>
-          )}
+
+            {/* Screen content */}
+            <div className="flex flex-col h-full bg-[#0b141a]" style={{ height: 418 }}>
+
+              {/* Status bar */}
+              <div className="flex items-center justify-between px-4 py-0.5 bg-[#1f2c34]">
+                <span className="text-white text-[9px] font-bold">{timeStr}</span>
+                <div className="flex items-center gap-1">
+                  {/* Signal bars */}
+                  <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+                    <rect x="0" y="6" width="2" height="3" rx="0.5" fill="white"/>
+                    <rect x="3" y="4" width="2" height="5" rx="0.5" fill="white"/>
+                    <rect x="6" y="2" width="2" height="7" rx="0.5" fill="white"/>
+                    <rect x="9" y="0" width="2" height="9" rx="0.5" fill="white" opacity="0.3"/>
+                  </svg>
+                  {/* WiFi */}
+                  <svg width="11" height="9" viewBox="0 0 11 9" fill="white">
+                    <path d="M5.5 7.5a1 1 0 100-2 1 1 0 000 2z"/>
+                    <path d="M2.5 5a4.5 4.5 0 016 0" stroke="white" strokeWidth="1.2" fill="none" opacity="0.6"/>
+                    <path d="M0.5 3a7.5 7.5 0 0110 0" stroke="white" strokeWidth="1.2" fill="none" opacity="0.3"/>
+                  </svg>
+                  {/* Battery */}
+                  <div className="flex items-center gap-[1px]">
+                    <div className="w-5 h-3 rounded-[2px] border border-white/60 p-[1.5px] flex items-center">
+                      <div className="h-full bg-white rounded-[1px]" style={{ width: '75%' }} />
+                    </div>
+                    <div className="w-[2px] h-1.5 bg-white/50 rounded-r-[1px]" />
+                  </div>
+                </div>
+              </div>
+
+              {/* WhatsApp header */}
+              <div className="bg-[#1f2c34] px-2 py-2 flex items-center gap-2 border-b border-black/30">
+                {/* Back arrow */}
+                <svg width="8" height="13" viewBox="0 0 8 13" fill="none" className="flex-shrink-0">
+                  <path d="M7 1L1 6.5L7 12" stroke="#25D366" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                {/* Avatar */}
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-[11px] font-black flex-shrink-0 border-2 border-[#2a3942]">
+                  NL
+                </div>
+                {/* Name + status */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-[11px] font-bold leading-tight truncate">Negócios de Limpeza</p>
+                  <p className="text-[#25D366] text-[9px] font-medium">online</p>
+                </div>
+                {/* Action icons */}
+                <div className="flex items-center gap-2.5 flex-shrink-0">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8696a0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8 19.79 19.79 0 01.01 1.18 2 2 0 012 .01h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.18 6.18l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
+                  </svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8696a0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
+                  </svg>
+                </div>
+              </div>
+
+              {/* Chat area with WA wallpaper pattern */}
+              <div
+                className="flex-1 overflow-hidden px-2 py-3 relative"
+                style={{
+                  backgroundColor: '#0b141a',
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+                }}
+              >
+                {/* Date chip */}
+                <div className="flex justify-center mb-3">
+                  <div className="bg-[#182229] px-3 py-0.5 rounded-full">
+                    <span className="text-[#8696a0] text-[8px] font-medium">HOJE</span>
+                  </div>
+                </div>
+
+                {/* Encryption notice */}
+                <div className="flex justify-center mb-3">
+                  <div className="bg-[#182229]/80 px-2 py-1 rounded-lg max-w-[85%]">
+                    <p className="text-[#8696a0] text-[7.5px] text-center leading-tight">
+                      🔒 As mensagens são protegidas com a criptografia de ponta a ponta
+                    </p>
+                  </div>
+                </div>
+
+                {message ? (
+                  /* Outgoing message bubble (green, right-aligned) */
+                  <div className="flex justify-end">
+                    <div className="max-w-[82%] relative">
+                      {/* Bubble tail */}
+                      <div
+                        className="absolute -right-1.5 top-0 w-3 h-3 overflow-hidden"
+                        style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))' }}
+                      >
+                        <svg viewBox="0 0 10 10" className="w-full h-full">
+                          <path d="M0 0 Q10 0 10 10 L0 0Z" fill="#005c4b"/>
+                        </svg>
+                      </div>
+                      <div
+                        className="px-2.5 pt-2 pb-1 rounded-xl rounded-tr-none"
+                        style={{ backgroundColor: '#005c4b', boxShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
+                      >
+                        <p className="text-[#e9edef] text-[10px] leading-relaxed whitespace-pre-wrap break-words">
+                          {message}
+                        </p>
+                        {/* Time + double check */}
+                        <div className="flex items-center justify-end gap-1 mt-0.5">
+                          <span className="text-[#8696a0] text-[8px]">{timeStr}</span>
+                          {/* Blue double checkmark */}
+                          <svg width="14" height="8" viewBox="0 0 16 9" fill="none">
+                            <path d="M1 4.5L4.5 8L10 1" stroke="#53bdeb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M6 4.5L9.5 8L15 1" stroke="#53bdeb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-16">
+                    <p className="text-[#8696a0] text-[9px] text-center">Selecione um template<br/>para visualizar</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Input bar */}
+              <div className="bg-[#1f2c34] px-2 py-1.5 flex items-center gap-1.5">
+                <div className="flex-1 bg-[#2a3942] rounded-full px-3 py-1.5 flex items-center gap-2">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8696a0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+                  </svg>
+                  <span className="text-[#8696a0] text-[9px] flex-1">Mensagem</span>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8696a0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+                  </svg>
+                </div>
+                {/* Mic / send button */}
+                <div className="w-8 h-8 rounded-full bg-[#00a884] flex items-center justify-center flex-shrink-0 shadow-md">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+                  </svg>
+                </div>
+              </div>
+
+              {/* Home indicator */}
+              <div className="bg-[#1f2c34] flex justify-center py-1">
+                <div className="w-16 h-1 bg-white/20 rounded-full" />
+              </div>
+
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ─── Columns ────────────────────────────────────────────────────────────────
 const COLUMNS = [
@@ -175,7 +322,7 @@ export const AdminCRM: React.FC = () => {
   const [showNewTplForm, setShowNewTplForm] = useState(false);
   const [campaignSelected, setCampaignSelected] = useState<Set<string>>(new Set());
   const [campaignSending, setCampaignSending] = useState(false);
-  interface CampaignLogEntry { leadId: string; name: string; phone: string; status: 'sending' | 'sent' | 'failed' | 'no_phone'; waUrl?: string; }
+  interface CampaignLogEntry { leadId: string; name: string; phone: string; status: 'sending' | 'sent' | 'failed' | 'no_phone'; waUrl?: string; errorMsg?: string; }
   const [campaignLog, setCampaignLog] = useState<CampaignLogEntry[]>([]);
   const [campaignDone, setCampaignDone] = useState(false);
   const [campaignStatusFilter, setCampaignStatusFilter] = useState<'all'|'NEW'|'CONTACTED'|'PROPOSAL'|'NEGOTIATING'|'CONVERTED'|'LOST'>('all');
@@ -537,13 +684,27 @@ export const AdminCRM: React.FC = () => {
       const phone = lead.whatsapp.replace(/\D/g,'');
       const waUrl = `https://wa.me/${phone.startsWith('55') ? phone : '55'+phone}?text=${encodeURIComponent(finalMsg)}`;
       let status: 'sent' | 'failed' = 'failed';
+      let errorMsg: string | undefined;
       try {
         const { data, error } = await supabase.functions.invoke('evolution-proxy', {
           body: { action: 'sendText', payload: { number: lead.whatsapp, text: finalMsg } }
         });
-        if (!error && data?.ok !== false) { status = 'sent'; }
-      } catch { /* fallback */ }
-      setCampaignLog(prev => prev.map(l => l.leadId === lead.id ? { ...l, status, waUrl: status === 'failed' ? waUrl : undefined } : l));
+        console.log(`[Campaign] Lead ${lead.name} → phone: ${lead.whatsapp}`, { data, error });
+        if (error) {
+          errorMsg = error.message || 'Erro na função';
+        } else if (data?.ok === false) {
+          // Extract the actual Evolution API error
+          const apiErr = data?.data;
+          errorMsg = apiErr?.message || apiErr?.error || `HTTP ${data?.status}`;
+        } else {
+          status = 'sent';
+        }
+      } catch (e: any) {
+        errorMsg = e?.message || 'Exceção desconhecida';
+        console.error('[Campaign] Exception:', e);
+      }
+      if (errorMsg) console.warn(`[Campaign] Falha para ${lead.name}:`, errorMsg);
+      setCampaignLog(prev => prev.map(l => l.leadId === lead.id ? { ...l, status, waUrl: status === 'failed' ? waUrl : undefined, errorMsg } : l));
       await new Promise(res => setTimeout(res, 600));
     }
     setCampaignSending(false);
@@ -897,14 +1058,22 @@ export const AdminCRM: React.FC = () => {
           <div className="space-y-4">
 
             {/* Phone preview */}
-            <div className="bg-white rounded-xl border border-gray-100 p-5">
-              <p className="text-xs font-bold text-darkText uppercase tracking-wider mb-4 flex items-center gap-2">
-                <Smartphone size={13} /> Preview — como o cliente recebe
-              </p>
-              <PhonePreview
-                message={(campaignTemplates.find(t => t.id === activeTplId)?.text || '').replace(/\[nome\]/gi, 'Carlos')}
-                contactName="Carlos"
-              />
+            <div className="rounded-xl border border-gray-100 overflow-hidden">
+              <div className="bg-white px-4 pt-4 pb-2 flex items-center justify-between">
+                <p className="text-xs font-bold text-darkText uppercase tracking-wider flex items-center gap-2">
+                  <Smartphone size={13} className="text-primary" /> Preview — como o cliente recebe
+                </p>
+                <span className="text-[10px] text-lightText bg-gray-100 px-2 py-0.5 rounded-full">WhatsApp</span>
+              </div>
+              <div className="bg-gradient-to-b from-[#1a1a2e] to-[#16213e] py-8 px-4 flex items-center justify-center">
+                <PhonePreview
+                  message={(campaignTemplates.find(t => t.id === activeTplId)?.text || '').replace(/\[nome\]/gi, 'Carlos')}
+                  contactName="Carlos"
+                />
+              </div>
+              <div className="bg-gray-50 px-4 py-2 border-t border-gray-100">
+                <p className="text-[10px] text-lightText text-center">A mensagem acima é exatamente como chegará no WhatsApp do cliente</p>
+              </div>
             </div>
 
             {/* Campaign sender */}
@@ -951,13 +1120,18 @@ export const AdminCRM: React.FC = () => {
                           <p className="text-[10px] text-lightText">{lead.whatsapp}</p>
                         </div>
                         {log && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                            log.status === 'sent' ? 'bg-green-100 text-green-700' :
-                            log.status === 'sending' ? 'bg-blue-100 text-blue-700' :
-                            log.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'
-                          }`}>
-                            {log.status === 'sent' ? '✓ Enviado' : log.status === 'sending' ? '...' : log.status === 'failed' ? '✗ Falha' : 'Sem tel.'}
-                          </span>
+                          <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              log.status === 'sent' ? 'bg-green-100 text-green-700' :
+                              log.status === 'sending' ? 'bg-blue-100 text-blue-700' :
+                              log.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'
+                            }`}>
+                              {log.status === 'sent' ? '✓ Enviado' : log.status === 'sending' ? '⏳ Enviando...' : log.status === 'failed' ? '✗ Falha' : 'Sem tel.'}
+                            </span>
+                            {log.status === 'failed' && log.errorMsg && (
+                              <span className="text-[9px] text-red-400 max-w-[120px] truncate" title={log.errorMsg}>{log.errorMsg}</span>
+                            )}
+                          </div>
                         )}
                         {log?.status === 'failed' && log.waUrl && (
                           <a href={log.waUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
