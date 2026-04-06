@@ -13,10 +13,12 @@ import jsPDF from 'jspdf';
 
 // --- STATUS ---
 const STATUS_LABELS: Record<Quote['status'], { label: string; color: string; bg: string }> = {
-  NEW: { label: 'Novo', color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
-  CONTACTED: { label: 'Contatado', color: 'text-yellow-700', bg: 'bg-yellow-50 border-yellow-200' },
-  CONVERTED: { label: 'Convertido', color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
-  LOST: { label: 'Perdido', color: 'text-red-700', bg: 'bg-red-50 border-red-200' },
+  NEW:         { label: 'Novo',             color: 'text-blue-700',   bg: 'bg-blue-50 border-blue-200' },
+  CONTACTED:   { label: 'Contatado',        color: 'text-yellow-700', bg: 'bg-yellow-50 border-yellow-200' },
+  PROPOSAL:    { label: 'Proposta Enviada', color: 'text-orange-700', bg: 'bg-orange-50 border-orange-200' },
+  NEGOTIATING: { label: 'Negociando',       color: 'text-purple-700', bg: 'bg-purple-50 border-purple-200' },
+  CONVERTED:   { label: 'Convertido',       color: 'text-green-700',  bg: 'bg-green-50 border-green-200' },
+  LOST:        { label: 'Perdido',          color: 'text-red-700',    bg: 'bg-red-50 border-red-200' },
 };
 
 // --- PDF GENERATION ---

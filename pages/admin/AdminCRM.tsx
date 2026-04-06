@@ -32,9 +32,9 @@ interface WaMsg { role: 'user' | 'model'; text: string; }
 
 function parseSessionHistory(history: any[]): WaMsg[] {
   return (history || []).map((m: any) => ({
-    role: m.role === 'user' ? 'user' : 'model',
-    text: m.parts?.[0]?.text || '',
-  })).filter((m: WaMsg) => m.text);
+    role: (m.role === 'user' ? 'user' : 'model') as 'user' | 'model',
+    text: (m.parts?.[0]?.text || '') as string,
+  })).filter((m: any) => m.text as string);
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
