@@ -8,7 +8,8 @@ import {
   Calendar, DollarSign, X, Send, Edit3, Trash2, User,
   StickyNote, ExternalLink, Copy, Check, Settings, Hash,
   ChevronDown, MoreVertical, Clock, Home, Briefcase, RefreshCw,
-  Zap
+  Zap, LayoutList, Kanban, Upload, Download, Filter, ChevronUp,
+  AlertCircle, CheckCircle2
 } from 'lucide-react';
 
 // ─── Templates de mensagem ───────────────────────────────────────────────────
@@ -65,9 +66,24 @@ function relativeTime(ts: number) {
 export const AdminCRM: React.FC = () => {
   const { quotes, updateQuote, deleteQuote, addQuote, crmTags, addCrmTag, deleteCrmTag } = useData();
 
+  // ── view mode ──
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+
   // ── filters ──
   const [search, setSearch] = useState('');
   const [filterTag, setFilterTag] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'createdAt' | 'name' | 'estimatedValue'>('createdAt');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  // ── CSV import ──
+  const [showImport, setShowImport] = useState(false);
+  const [csvPreview, setCsvPreview] = useState<any[]>([]);
+  const [csvMapping, setCsvMapping] = useState<Record<string, string>>({});
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ ok: number; skip: number } | null>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   // ── drag & drop ──
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -131,12 +147,19 @@ export const AdminCRM: React.FC = () => {
     finally { setChatLoading(false); }
   };
 
-  // ─── Filtered quotes ────────────────────────────────────────────────────
+  // ─── Filtered + sorted quotes ───────────────────────────────────────────
   const filtered = quotes.filter(q => {
     const matchSearch = !search || q.name.toLowerCase().includes(search.toLowerCase()) ||
       q.whatsapp.includes(search) || (q.email || '').toLowerCase().includes(search.toLowerCase());
     const matchTag = !filterTag || (q.tags || []).includes(filterTag);
-    return matchSearch && matchTag;
+    const matchStatus = !filterStatus || q.status === filterStatus;
+    return matchSearch && matchTag && matchStatus;
+  }).sort((a, b) => {
+    let va: any = a[sortBy] ?? 0;
+    let vb: any = b[sortBy] ?? 0;
+    if (sortBy === 'name') { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+    if (sortDir === 'asc') return va > vb ? 1 : -1;
+    return va < vb ? 1 : -1;
   });
 
   const byColumn = (colId: ColId) => filtered.filter(q => q.status === colId);
@@ -147,6 +170,108 @@ export const AdminCRM: React.FC = () => {
   const convRate = total > 0 ? Math.round((converted / total) * 100) : 0;
   const withValue = quotes.filter(q => q.estimatedValue);
   const avgTicket = withValue.length > 0 ? Math.round(withValue.reduce((a, q) => a + (q.estimatedValue || 0), 0) / withValue.length) : 0;
+
+  // ─── Export CSV ──────────────────────────────────────────────────────────
+  const handleExport = () => {
+    const rows = [
+      ['Nome', 'WhatsApp', 'Email', 'Status', 'Tipo Imóvel', 'Serviço', 'Bairro', 'Valor Estimado', 'Etiquetas', 'Data'],
+      ...filtered.map(q => [
+        q.name, q.whatsapp, q.email, q.status, q.propertyType, q.serviceOption,
+        q.addressDistrict || '', q.estimatedValue || '', (q.tags || []).join(';'),
+        new Date(q.createdAt).toLocaleDateString('pt-BR')
+      ])
+    ];
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `leads_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // ─── Parse CSV file ──────────────────────────────────────────────────────
+  const handleCsvFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) return;
+      const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim());
+      setCsvHeaders(headers);
+      // Auto-map common column names
+      const autoMap: Record<string, string> = {};
+      const maps: Record<string, string[]> = {
+        name: ['nome', 'name', 'cliente', 'contact name'],
+        whatsapp: ['whatsapp', 'telefone', 'celular', 'phone', 'tel', 'fone'],
+        email: ['email', 'e-mail', 'mail'],
+        propertyType: ['tipo', 'imovel', 'imóvel', 'type'],
+        addressDistrict: ['bairro', 'neighborhood', 'district'],
+        serviceOption: ['serviço', 'servico', 'service'],
+        estimatedValue: ['valor', 'value', 'price', 'preço'],
+      };
+      headers.forEach(h => {
+        const hl = h.toLowerCase();
+        for (const [field, aliases] of Object.entries(maps)) {
+          if (aliases.some(a => hl.includes(a))) { autoMap[h] = field; break; }
+        }
+      });
+      setCsvMapping(autoMap);
+      const preview = lines.slice(1, 6).map(line => {
+        const vals = line.split(',').map(v => v.replace(/^"|"$/g, '').trim());
+        return Object.fromEntries(headers.map((h, i) => [h, vals[i] || '']));
+      });
+      setCsvPreview(preview);
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
+
+  // ─── Import CSV rows ─────────────────────────────────────────────────────
+  const handleImport = async () => {
+    const file = csvInputRef.current?.files?.[0]; if (!file) return;
+    setImporting(true);
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim());
+      let ok = 0, skip = 0;
+      const batchSize = 50;
+      const rows = lines.slice(1).map(line => {
+        const vals = line.split(',').map(v => v.replace(/^"|"$/g, '').trim());
+        const row = Object.fromEntries(headers.map((h, i) => [h, vals[i] || '']));
+        const get = (field: string) => {
+          const col = Object.entries(csvMapping).find(([, v]) => v === field)?.[0];
+          return col ? (row[col] || '') : '';
+        };
+        const name = get('name');
+        if (!name) { skip++; return null; }
+        ok++;
+        return {
+          name, email: get('email'), whatsapp: get('whatsapp'),
+          cep: '', propertyType: get('propertyType'), rooms: '',
+          priorities: '', internalCleaning: '', renovation: '',
+          serviceOption: get('serviceOption'),
+          addressDistrict: get('addressDistrict'),
+          estimatedValue: get('estimatedValue') ? parseFloat(get('estimatedValue')) : undefined,
+          tags: [], source: 'csv'
+        };
+      }).filter(Boolean);
+
+      // Insert in batches
+      for (let i = 0; i < rows.length; i += batchSize) {
+        const batch = rows.slice(i, i + batchSize);
+        await Promise.all(batch.map((r: any) => addQuote(r as any)));
+      }
+      setImportResult({ ok, skip });
+      setImporting(false);
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
+
+  const toggleSort = (col: typeof sortBy) => {
+    if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortBy(col); setSortDir('desc'); }
+  };
 
   // ─── Drag & Drop ────────────────────────────────────────────────────────
   const onDragStart = (e: React.DragEvent, id: string) => {
@@ -265,7 +390,26 @@ export const AdminCRM: React.FC = () => {
           <h1 className="text-2xl font-bold text-darkText">CRM</h1>
           <p className="text-sm text-lightText">Gerencie seus leads e conversões</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-end">
+          {/* View toggle */}
+          <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+            <button onClick={() => setViewMode('kanban')}
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors ${viewMode === 'kanban' ? 'bg-primary text-white' : 'bg-white text-lightText hover:bg-gray-50'}`}>
+              <Kanban size={15} /> Kanban
+            </button>
+            <button onClick={() => setViewMode('list')}
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-lightText hover:bg-gray-50'}`}>
+              <LayoutList size={15} /> Lista
+            </button>
+          </div>
+          <button onClick={handleExport} title="Exportar CSV"
+            className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-lightText">
+            <Download size={15} /> Exportar
+          </button>
+          <button onClick={() => { setShowImport(true); setImportResult(null); setCsvPreview([]); }}
+            className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-lightText">
+            <Upload size={15} /> Importar CSV
+          </button>
           <button onClick={() => setShowTagMgr(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-lightText">
             <Tag size={15} /> Etiquetas
@@ -294,22 +438,123 @@ export const AdminCRM: React.FC = () => {
         ))}
       </div>
 
-      {/* ── Search + filter ── */}
-      <div className="flex gap-3 mb-5">
-        <div className="relative flex-1">
+      {/* ── Search + filters ── */}
+      <div className="flex gap-3 mb-5 flex-wrap">
+        <div className="relative flex-1 min-w-48">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-lightText" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nome, telefone ou e-mail..."
             className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-primary bg-white" />
         </div>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+          className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none bg-white text-darkText">
+          <option value="">Todos os estágios</option>
+          {COLUMNS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+        </select>
         <select value={filterTag} onChange={e => setFilterTag(e.target.value)}
           className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none bg-white text-darkText">
           <option value="">Todas as etiquetas</option>
           {crmTags.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
         </select>
+        {(search || filterStatus || filterTag) && (
+          <button onClick={() => { setSearch(''); setFilterStatus(''); setFilterTag(''); }}
+            className="flex items-center gap-1 px-3 py-2 text-xs text-red-500 border border-red-200 rounded-lg hover:bg-red-50">
+            <X size={13} /> Limpar filtros
+          </button>
+        )}
+        <p className="flex items-center text-xs text-lightText self-center">{filtered.length} leads</p>
       </div>
 
+      {/* ══════════════════════════════════════════════════════
+          LIST VIEW
+      ══════════════════════════════════════════════════════ */}
+      {viewMode === 'list' && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-6">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50">
+                {[
+                  { label: 'Nome', col: 'name' as const },
+                  { label: 'WhatsApp', col: null },
+                  { label: 'Serviço / Imóvel', col: null },
+                  { label: 'Etiquetas', col: null },
+                  { label: 'Estágio', col: null },
+                  { label: 'Valor', col: 'estimatedValue' as const },
+                  { label: 'Data', col: 'createdAt' as const },
+                ].map(h => (
+                  <th key={h.label} className="text-left px-4 py-3 text-xs font-bold text-lightText">
+                    {h.col ? (
+                      <button onClick={() => toggleSort(h.col!)} className="flex items-center gap-1 hover:text-darkText">
+                        {h.label}
+                        {sortBy === h.col ? (sortDir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : <ChevronDown size={12} className="opacity-30" />}
+                      </button>
+                    ) : h.label}
+                  </th>
+                ))}
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr><td colSpan={8} className="text-center py-12 text-lightText text-sm">Nenhum lead encontrado</td></tr>
+              )}
+              {filtered.map(lead => {
+                const colDef = COLUMNS.find(c => c.id === lead.status);
+                const tagObjs = crmTags.filter(t => (lead.tags || []).includes(t.name));
+                return (
+                  <tr key={lead.id} onClick={() => setSelected(lead)}
+                    className={`border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors ${selected?.id === lead.id ? 'bg-primary/5' : ''}`}>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
+                          {lead.name[0]?.toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-darkText">{lead.name}</p>
+                          <p className="text-xs text-lightText">{lead.email || '—'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-darkText">
+                      {lead.whatsapp ? (
+                        <a href={`https://wa.me/${lead.whatsapp.replace(/\D/g,'')}`} target="_blank" rel="noreferrer"
+                          onClick={e => e.stopPropagation()} className="text-green-600 hover:underline flex items-center gap-1">
+                          <Phone size={12} /> {lead.whatsapp}
+                        </a>
+                      ) : '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-darkText">{lead.serviceOption || '—'}</p>
+                      <p className="text-xs text-lightText">{lead.propertyType} {lead.addressDistrict ? `· ${lead.addressDistrict}` : ''}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {tagObjs.map(tag => (
+                          <span key={tag.id} className="text-xs px-2 py-0.5 rounded-full text-white"
+                            style={{ backgroundColor: tag.color }}>{tag.name}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${colDef?.pill}`}>{colDef?.label}</span>
+                    </td>
+                    <td className="px-4 py-3 font-medium text-darkText">
+                      {lead.estimatedValue ? `R$ ${lead.estimatedValue}` : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-lightText text-xs">{formatDate(lead.createdAt)}</td>
+                    <td className="px-4 py-3">
+                      <button onClick={e => { e.stopPropagation(); if (confirm('Excluir lead?')) deleteQuote(lead.id); }}
+                        className="text-gray-300 hover:text-red-400 p-1"><Trash2 size={14} /></button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {/* ── Kanban Board ── */}
-      <div className="flex gap-4 overflow-x-auto pb-6" style={{ minHeight: '60vh' }}>
+      {viewMode === 'kanban' && <div className="flex gap-4 overflow-x-auto pb-6" style={{ minHeight: '60vh' }}>
         {COLUMNS.map(col => {
           const cards = byColumn(col.id as ColId);
           const isDragTarget = dragOver === col.id;
@@ -349,7 +594,111 @@ export const AdminCRM: React.FC = () => {
             </div>
           );
         })}
-      </div>
+      </div>}
+
+      {/* ═══════ CSV Import Modal ═══════ */}
+      {showImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowImport(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-bold text-darkText text-lg">Importar Leads via CSV</h3>
+              <button onClick={() => setShowImport(false)}><X size={18} className="text-lightText" /></button>
+            </div>
+
+            {!importResult ? <>
+              {/* Instructions */}
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5 text-sm text-blue-700">
+                <p className="font-bold mb-1">Como funciona:</p>
+                <ol className="list-decimal list-inside space-y-1 text-xs">
+                  <li>Exporte seu Google Forms como CSV (Planilhas Google → Arquivo → Download → CSV)</li>
+                  <li>Selecione o arquivo abaixo</li>
+                  <li>Confirme o mapeamento das colunas</li>
+                  <li>Clique em Importar</li>
+                </ol>
+              </div>
+
+              {/* File input */}
+              <div onClick={() => csvInputRef.current?.click()}
+                className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors mb-5">
+                <Upload size={32} className="mx-auto mb-2 text-lightText" />
+                <p className="text-sm font-medium text-darkText">Clique para selecionar o arquivo CSV</p>
+                <p className="text-xs text-lightText mt-1">Suporta CSV exportado do Google Forms, Excel ou qualquer planilha</p>
+                <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleCsvFile} />
+              </div>
+
+              {/* Column mapping */}
+              {csvHeaders.length > 0 && (
+                <div className="mb-5">
+                  <h4 className="font-bold text-sm text-darkText mb-3">Mapeamento de colunas</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {csvHeaders.map(h => (
+                      <div key={h} className="flex items-center gap-2 bg-gray-50 rounded-lg p-2">
+                        <span className="text-xs text-lightText flex-1 truncate" title={h}>{h}</span>
+                        <span className="text-gray-300 text-xs">→</span>
+                        <select value={csvMapping[h] || ''}
+                          onChange={e => setCsvMapping(prev => ({ ...prev, [h]: e.target.value }))}
+                          className="text-xs border border-gray-200 rounded px-1.5 py-1 outline-none bg-white">
+                          <option value="">Ignorar</option>
+                          <option value="name">Nome *</option>
+                          <option value="whatsapp">WhatsApp</option>
+                          <option value="email">E-mail</option>
+                          <option value="propertyType">Tipo de Imóvel</option>
+                          <option value="addressDistrict">Bairro</option>
+                          <option value="serviceOption">Serviço</option>
+                          <option value="estimatedValue">Valor Estimado</option>
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Preview */}
+                  {csvPreview.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-xs font-bold text-lightText mb-2">Prévia (primeiras 5 linhas)</p>
+                      <div className="overflow-x-auto">
+                        <table className="text-xs w-full border border-gray-100 rounded-lg overflow-hidden">
+                          <thead><tr className="bg-gray-50">
+                            {csvHeaders.map(h => <th key={h} className="px-2 py-1.5 text-left text-lightText font-medium">{h}</th>)}
+                          </tr></thead>
+                          <tbody>{csvPreview.map((row, i) => (
+                            <tr key={i} className="border-t border-gray-100">
+                              {csvHeaders.map(h => <td key={h} className="px-2 py-1.5 text-darkText truncate max-w-24">{row[h]}</td>)}
+                            </tr>
+                          ))}</tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button onClick={handleImport}
+                disabled={importing || csvHeaders.length === 0 || !Object.values(csvMapping).includes('name')}
+                className="w-full bg-primary text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50">
+                {importing ? <><RefreshCw size={16} className="animate-spin" /> Importando...</> : <><Upload size={16} /> Importar Leads</>}
+              </button>
+              {csvHeaders.length > 0 && !Object.values(csvMapping).includes('name') && (
+                <p className="text-xs text-red-500 text-center mt-2">⚠️ Mapeie pelo menos a coluna "Nome" para continuar</p>
+              )}
+            </> : (
+              /* Import result */
+              <div className="text-center py-8">
+                <CheckCircle2 size={48} className="mx-auto mb-4 text-green-500" />
+                <h4 className="font-bold text-xl text-darkText mb-2">Importação concluída!</h4>
+                <p className="text-lightText mb-6">
+                  <span className="text-green-600 font-bold">{importResult.ok} leads</span> importados com sucesso
+                  {importResult.skip > 0 && <> · <span className="text-gray-400">{importResult.skip} ignorados (sem nome)</span></>}
+                </p>
+                <button onClick={() => setShowImport(false)}
+                  className="bg-primary text-white font-medium px-6 py-2.5 rounded-xl">
+                  Ver leads no CRM
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ═══════ Lead Drawer ═══════ */}
       {selected && (
