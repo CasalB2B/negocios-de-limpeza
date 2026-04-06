@@ -8,14 +8,14 @@ import { useData } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
 
 export const AdminSettings: React.FC = () => {
-  const { platformSettings, updatePlatformSettings } = useData(); // Use Global Settings
+  const { platformSettings, updatePlatformSettings } = useData();
   const [activeTab, setActiveTab] = useState('general');
   const [notifications, setNotifications] = useState({ email: true, whatsapp: true });
   const [adminPhoto, setAdminPhoto] = useState<string>(() => localStorage.getItem('admin_photo') || '');
+  const [adminName, setAdminName] = useState<string>(() => localStorage.getItem('admin_name') || 'Administrador');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const adminPhotoRef = useRef<HTMLInputElement>(null);
-  // Local state for settings form
-  const [localSettings, setLocalSettings] = useState({ ...platformSettings });
+  const [localSettings, setLocalSettings] = useState({ ...platformSettings, companyName: (platformSettings as any).companyName || 'Negócios de Limpeza', supportEmail: (platformSettings as any).supportEmail || 'suporte@negociosdelimpeza.com.br' });
 
   useEffect(() => {
       setLocalSettings(platformSettings);
@@ -28,7 +28,8 @@ export const AdminSettings: React.FC = () => {
   };
 
   const handleSaveGeneralSettings = () => {
-      updatePlatformSettings(localSettings);
+      updatePlatformSettings(localSettings as any);
+      localStorage.setItem('admin_name', adminName);
       alert("Informações da empresa salvas com sucesso!");
   };
 
@@ -99,8 +100,13 @@ export const AdminSettings: React.FC = () => {
                          }}
                       />
                    </div>
-                   <div>
-                      <p className="font-bold text-darkText dark:text-darkTextPrimary">Ricardo Silva</p>
+                   <div className="flex-1">
+                      <input
+                        className="font-bold text-darkText dark:text-darkTextPrimary bg-transparent border-b border-gray-200 dark:border-darkBorder focus:border-primary outline-none w-full mb-1 text-sm"
+                        value={adminName}
+                        onChange={e => setAdminName(e.target.value)}
+                        placeholder="Seu nome"
+                      />
                       <p className="text-sm text-lightText dark:text-darkTextSecondary">Super Admin</p>
                       <button onClick={() => adminPhotoRef.current?.click()} className="text-xs text-primary font-bold mt-1 hover:underline">Alterar foto</button>
                    </div>
@@ -110,8 +116,18 @@ export const AdminSettings: React.FC = () => {
              <div className="border-t border-gray-100 dark:border-darkBorder pt-6">
                 <h3 className="text-xl font-bold text-darkText dark:text-darkTextPrimary mb-4">Informações da Empresa</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <Input label="Nome da Plataforma" defaultValue="Negócios de Limpeza" />
-                   <Input label="E-mail de Suporte" defaultValue="suporte@negociosdelimpeza.com.br" />
+                   <Input
+                     label="Nome da Empresa"
+                     value={(localSettings as any).companyName || ''}
+                     onChange={e => setLocalSettings({ ...localSettings, companyName: e.target.value } as any)}
+                     placeholder="Ex: Negócios de Limpeza"
+                   />
+                   <Input
+                     label="E-mail de Suporte"
+                     value={(localSettings as any).supportEmail || ''}
+                     onChange={e => setLocalSettings({ ...localSettings, supportEmail: e.target.value } as any)}
+                     placeholder="suporte@suaempresa.com.br"
+                   />
                    <Input
                      label="Telefone de Contato (notificações WhatsApp)"
                      value={localSettings.contactPhone ?? ''}
