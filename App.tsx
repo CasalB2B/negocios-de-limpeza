@@ -38,11 +38,14 @@ import { AdminQuotes } from './pages/admin/AdminQuotes';
 import { AdminWhatsApp } from './pages/admin/AdminWhatsApp';
 import { AdminCRM } from './pages/admin/AdminCRM';
 import { QuoteChat } from './pages/client/QuoteChat';
+import { PWAManager } from './components/PWAManager';
 
 const App: React.FC = () => {
   return (
     <ThemeProvider>
       <DataProvider>
+        {/* PWA: install prompt + notification permission banner */}
+        <PWAManager />
         <HashRouter>
           <Routes>
             {/* Public Routes */}

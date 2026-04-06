@@ -496,9 +496,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       Notification.requestPermission();
     }
 
-    const sendBrowserNotif = (title: string, body: string, icon = '/favicon.ico') => {
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(title, { body, icon });
+    const sendBrowserNotif = (title: string, body: string, url = '/admin/crm') => {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      // Use Service Worker when available (works in background too)
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'SHOW_NOTIFICATION', title, body, url, tag: 'nl-realtime'
+        });
+      } else {
+        new Notification(title, { body, icon: '/icons/icon.svg' });
       }
     };
 

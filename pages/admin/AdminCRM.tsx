@@ -650,6 +650,25 @@ export const AdminCRM: React.FC = () => {
         body: { action: 'sendText', payload: { number: selected.whatsapp, text: finalMsg } }
       });
       if (!error && data?.ok !== false) {
+        // Persist message to whatsapp_sessions so it survives page reload
+        try {
+          const phone = selected.whatsapp.replace(/\D/g, '');
+          const cleanPhone = phone.startsWith('55') ? phone : '55' + phone;
+          const newMsgEntry = { role: 'model', parts: [{ text: finalMsg }] };
+          // Fetch existing session history
+          const { data: sessionData } = await supabase
+            .from('whatsapp_sessions')
+            .select('history')
+            .eq('phone', cleanPhone)
+            .limit(1);
+          const existingHistory = sessionData?.[0]?.history || [];
+          const updatedHistory = [...existingHistory, newMsgEntry];
+          await supabase.from('whatsapp_sessions').upsert(
+            { phone: cleanPhone, history: updatedHistory, updated_at: new Date().toISOString() },
+            { onConflict: 'phone' }
+          );
+        } catch { /* silently ignore persistence errors */ }
+
         setChatMessages(prev => [...prev, { role: 'model' as const, text: finalMsg }]);
         setSendingMsg(false);
         return;

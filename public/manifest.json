@@ -1,0 +1,44 @@
+{
+  "name": "Negócios de Limpeza",
+  "short_name": "NL Limpeza",
+  "description": "Plataforma completa de gestão de serviços de limpeza em Guarapari",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#a163ff",
+  "orientation": "any",
+  "lang": "pt-BR",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Admin CRM",
+      "short_name": "CRM",
+      "description": "Abrir painel administrativo",
+      "url": "/admin/crm",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Fazer Orçamento",
+      "short_name": "Orçamento",
+      "description": "Solicitar orçamento de limpeza",
+      "url": "/client/quote-chat",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+    }
+  ]
+}
