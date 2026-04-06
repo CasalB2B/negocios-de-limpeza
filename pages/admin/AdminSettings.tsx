@@ -3,14 +3,16 @@ import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
-import { Settings, Shield, Bell, CreditCard, Building, Save, ToggleLeft, ToggleRight, DollarSign, Users, Camera } from 'lucide-react';
+import { Settings, Shield, Bell, CreditCard, Building, Save, ToggleLeft, ToggleRight, DollarSign, Users, Camera, Loader } from 'lucide-react';
 import { useData } from '../../components/DataContext';
+import { supabase } from '../../lib/supabase';
 
 export const AdminSettings: React.FC = () => {
   const { platformSettings, updatePlatformSettings } = useData(); // Use Global Settings
   const [activeTab, setActiveTab] = useState('general');
   const [notifications, setNotifications] = useState({ email: true, whatsapp: true });
-  const [adminPhoto, setAdminPhoto] = useState<string>(() => localStorage.getItem('admin_photo') || 'https://i.pravatar.cc/150?u=admin');
+  const [adminPhoto, setAdminPhoto] = useState<string>(() => localStorage.getItem('admin_photo') || '');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const adminPhotoRef = useRef<HTMLInputElement>(null);
   // Local state for settings form
   const [localSettings, setLocalSettings] = useState({ ...platformSettings });
@@ -53,27 +55,46 @@ export const AdminSettings: React.FC = () => {
              <div>
                 <h3 className="text-xl font-bold text-darkText dark:text-darkTextPrimary mb-4">Perfil do Administrador</h3>
                 <div className="flex items-center gap-6">
-                   <div className="relative group cursor-pointer" onClick={() => adminPhotoRef.current?.click()}>
-                      <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-lg">
-                         <img src={adminPhoto} alt="Admin" className="w-full h-full object-cover" />
+                   <div className="relative group cursor-pointer" onClick={() => !uploadingPhoto && adminPhotoRef.current?.click()}>
+                      <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-lg bg-gray-100 flex items-center justify-center">
+                         {adminPhoto
+                           ? <img src={adminPhoto} alt="Admin" className="w-full h-full object-cover" />
+                           : <span className="text-3xl">👤</span>}
                       </div>
                       <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                         <Camera className="text-white" size={20} />
+                         {uploadingPhoto ? <Loader className="text-white animate-spin" size={20} /> : <Camera className="text-white" size={20} />}
                       </div>
                       <input
                          type="file"
                          ref={adminPhotoRef}
                          className="hidden"
                          accept="image/*"
-                         onChange={e => {
-                            if (e.target.files?.[0]) {
-                               const reader = new FileReader();
-                               reader.onload = ev => {
-                                 const dataUrl = ev.target?.result as string;
-                                 setAdminPhoto(dataUrl);
-                                 localStorage.setItem('admin_photo', dataUrl);
-                               };
-                               reader.readAsDataURL(e.target.files[0]);
+                         onChange={async e => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            // Preview imediato
+                            const preview = URL.createObjectURL(file);
+                            setAdminPhoto(preview);
+                            setUploadingPhoto(true);
+                            try {
+                              const path = `admin/profile_${Date.now()}.${file.name.split('.').pop() || 'jpg'}`;
+                              const { error } = await supabase.storage.from('admin-assets').upload(path, file, { upsert: true });
+                              if (!error) {
+                                const { data } = supabase.storage.from('admin-assets').getPublicUrl(path);
+                                setAdminPhoto(data.publicUrl);
+                                localStorage.setItem('admin_photo', data.publicUrl);
+                              } else {
+                                // fallback: guarda dataURL localmente
+                                const reader = new FileReader();
+                                reader.onload = ev => {
+                                  const dataUrl = ev.target?.result as string;
+                                  setAdminPhoto(dataUrl);
+                                  localStorage.setItem('admin_photo', dataUrl);
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            } finally {
+                              setUploadingPhoto(false);
                             }
                          }}
                       />
@@ -295,8 +316,8 @@ export const AdminSettings: React.FC = () => {
                   <div className="bg-gray-50 dark:bg-darkBg rounded-xl p-4 border border-gray-200 dark:border-darkBorder">
                      <div className="flex items-center justify-between">
                         <div>
-                           <p className="font-bold text-darkText dark:text-darkTextPrimary text-sm">Ricardo Silva</p>
-                           <p className="text-xs text-lightText dark:text-darkTextSecondary">Super Admin • Login: admin / admin</p>
+                           <p className="font-bold text-darkText dark:text-darkTextPrimary text-sm">Administrador</p>
+                           <p className="text-xs text-lightText dark:text-darkTextSecondary">Super Admin • Acesso via e-mail cadastrado</p>
                         </div>
                         <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold px-2 py-1 rounded">Ativo</span>
                      </div>

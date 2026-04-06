@@ -540,11 +540,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updates: any = { status };
     if (additionalData?.price) updates.price = additionalData.price;
     if (additionalData?.notes) updates.notes = additionalData.notes;
-    if (additionalData?.paymentStatus) updates.paymentStatus = additionalData.paymentStatus;
+    if (additionalData?.paymentStatus) updates.payment_status = additionalData.paymentStatus;
     if (additionalData?.collaboratorId) {
         updates.collaborator_id = additionalData.collaboratorId;
         updates.collaborator_name = additionalData.collaboratorName;
     }
+    if (additionalData?.photos) updates.photos = additionalData.photos;
+    if ((additionalData as any)?.checkin_lat) updates.checkin_lat = (additionalData as any).checkin_lat;
+    if ((additionalData as any)?.checkin_lng) updates.checkin_lng = (additionalData as any).checkin_lng;
+    if ((additionalData as any)?.checkin_time) updates.checkin_time = (additionalData as any).checkin_time;
+    if ((additionalData as any)?.checkout_notes) updates.checkout_notes = (additionalData as any).checkout_notes;
 
     await supabase.from('services').update(updates).eq('id', id);
   };
@@ -806,14 +811,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // --- ADMIN ---
   const loginAdmin = async (user: string, pass: string): Promise<boolean> => {
-    if (user === 'admin' && pass === 'admin') {
-        setAdminLoggedIn(true);
-        localStorage.setItem('auth_admin', 'true');
-        return true;
-    }
-    // Check DB for Admin user (for scalability)
-    const { data: dbUser } = await supabase.from('app_users').select('*').eq('email', user).eq('role', 'ADMIN').single();
-    if (dbUser && dbUser.password === pass) {
+    // Valida contra o banco — sem bypass hardcoded
+    const { data: dbUser, error } = await supabase
+      .from('app_users')
+      .select('*')
+      .eq('email', user.trim().toLowerCase())
+      .eq('role', 'ADMIN')
+      .single();
+    if (!error && dbUser && dbUser.password === pass) {
         setAdminLoggedIn(true);
         localStorage.setItem('auth_admin', 'true');
         return true;
