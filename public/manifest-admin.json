@@ -1,0 +1,42 @@
+{
+  "name": "NL Admin",
+  "short_name": "NL Admin",
+  "description": "Painel administrativo — Negócios de Limpeza",
+  "start_url": "/#/admin/login",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#a163ff",
+  "orientation": "any",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "CRM",
+      "url": "/#/admin/crm",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Dashboard",
+      "url": "/#/admin/dashboard",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Calendário",
+      "url": "/#/admin/calendar",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Financeiro",
+      "url": "/#/admin/payments",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+    }
+  ]
+}

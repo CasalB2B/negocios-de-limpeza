@@ -40,11 +40,29 @@ import { AdminCRM } from './pages/admin/AdminCRM';
 import { QuoteChat } from './pages/client/QuoteChat';
 import { PWAManager } from './components/PWAManager';
 
+// ── Troca o manifest dinamicamente conforme a rota ────────────────────────────
+function ManifestSwitcher() {
+  React.useEffect(() => {
+    const update = () => {
+      const isAdmin = window.location.hash.startsWith('#/admin');
+      const manifest = isAdmin ? '/manifest-admin.json' : '/manifest.json';
+      let tag = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+      if (!tag) { tag = document.createElement('link'); tag.rel = 'manifest'; document.head.appendChild(tag); }
+      if (tag.href !== manifest) tag.setAttribute('href', manifest);
+    };
+    update();
+    window.addEventListener('hashchange', update);
+    return () => window.removeEventListener('hashchange', update);
+  }, []);
+  return null;
+}
+
 const App: React.FC = () => {
   return (
     <ThemeProvider>
       <DataProvider>
-        {/* PWA: install prompt + notification permission banner */}
+        {/* PWA: manifest dinâmico + install prompt + notifications */}
+        <ManifestSwitcher />
         <PWAManager />
         <HashRouter>
           <Routes>
