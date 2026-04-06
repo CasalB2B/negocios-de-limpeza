@@ -68,8 +68,8 @@ export const CentralAccess: React.FC = () => {
 
             <div className="flex items-center gap-4 text-sm text-lightText dark:text-darkTextSecondary pt-4">
               <div className="flex -space-x-2">
-                {[1,2,3,4].map(i => (
-                  <img key={i} className="w-8 h-8 rounded-full border-2 border-white dark:border-darkBg" src={`https://i.pravatar.cc/100?img=${i+10}`} alt="User" />
+                {[1, 5, 9, 16].map(i => (
+                  <img key={i} className="w-8 h-8 rounded-full border-2 border-white dark:border-darkBg" src={`https://i.pravatar.cc/100?img=${i}`} alt="Cliente" />
                 ))}
               </div>
               <p>Mais de <strong>600 clientes</strong> satisfeitos</p>
@@ -198,9 +198,9 @@ export const CentralAccess: React.FC = () => {
             </div>
             <div className="relative rounded-3xl overflow-hidden shadow-2xl" style={{ height: '480px' }}>
               <img
-                src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=900&q=85"
-                alt="Profissional de limpeza Negócios de Limpeza"
-                className="w-full h-full object-cover object-center"
+                src="/img/foto-pdf-p1.jpg"
+                alt="Equipe Negócios de Limpeza"
+                className="w-full h-full object-cover object-top"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-5 flex justify-around">
