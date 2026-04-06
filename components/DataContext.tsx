@@ -503,7 +503,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .channel('realtime-services')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'quotes' }, (payload) => {
         const name = (payload.new as any)?.name || 'Cliente';
-        sendBrowserNotif('📋 Novo Orçamento!', `${name} solicitou orçamento via chat.`);
+        sendBrowserNotif('📋 Novo Lead!', `${name} chegou pelo WhatsApp.`);
         fetchData();
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'services' }, (payload) => {
@@ -511,6 +511,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const type = (payload.new as any)?.type || 'Serviço';
         sendBrowserNotif('🧹 Nova Solicitação!', `${clientName} pediu: ${type}`);
         fetchData();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'whatsapp_sessions' }, (payload) => {
+        // Dispara evento customizado para o CRM ouvir em tempo real
+        const phone = (payload.new as any)?.phone || '';
+        const history = (payload.new as any)?.history || [];
+        const lastMsg = history[history.length - 1];
+        if (lastMsg?.role === 'user') {
+          sendBrowserNotif('💬 Nova mensagem WhatsApp!', `Resposta de ${phone}`);
+          window.dispatchEvent(new CustomEvent('whatsapp-session-updated', {
+            detail: { phone, history }
+          }));
+        }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'services' }, () => fetchData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_users' }, () => fetchData())

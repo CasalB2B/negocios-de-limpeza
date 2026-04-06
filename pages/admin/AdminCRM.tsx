@@ -120,17 +120,43 @@ export const AdminCRM: React.FC = () => {
   // ── templates ──
   const [showTemplates, setShowTemplates] = useState(false);
 
+  // ── unread messages per phone ──
+  const [unreadPhones, setUnreadPhones] = useState<Set<string>>(new Set());
+
   // ─── Load chat when lead selected ──────────────────────────────────────
   useEffect(() => {
     if (!selected) return;
     setEditData({ ...selected });
     setActiveTab('info');
-    if (selected.whatsapp) loadChat(selected.whatsapp);
+    const phone = selected.whatsapp?.replace(/\D/g, '');
+    if (phone) {
+      loadChat(phone);
+      // mark as read
+      setUnreadPhones(prev => { const n = new Set(prev); n.delete(phone); return n; });
+    }
   }, [selected?.id]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
+
+  // ─── Realtime: listen for new WhatsApp messages ─────────────────────────
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { phone, history } = (e as CustomEvent).detail;
+      const clean = phone.replace(/\D/g, '');
+      // If this phone is currently open → update chat live
+      const selectedPhone = selected?.whatsapp?.replace(/\D/g, '');
+      if (selectedPhone && clean === selectedPhone) {
+        setChatMessages(parseSessionHistory(history));
+      } else {
+        // Mark as unread badge on card
+        setUnreadPhones(prev => new Set(prev).add(clean));
+      }
+    };
+    window.addEventListener('whatsapp-session-updated', handler);
+    return () => window.removeEventListener('whatsapp-session-updated', handler);
+  }, [selected?.whatsapp]);
 
   const loadChat = async (phone: string) => {
     setChatLoading(true);
@@ -502,11 +528,14 @@ export const AdminCRM: React.FC = () => {
                 const tagObjs = crmTags.filter(t => (lead.tags || []).includes(t.name));
                 return (
                   <tr key={lead.id} onClick={() => setSelected(lead)}
-                    className={`border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors ${selected?.id === lead.id ? 'bg-primary/5' : ''}`}>
+                    className={`border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors ${selected?.id === lead.id ? 'bg-primary/5' : unreadPhones.has(lead.whatsapp?.replace(/\D/g,'') || '') ? 'bg-green-50' : ''}`}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0 relative">
                           {lead.name[0]?.toUpperCase()}
+                          {unreadPhones.has(lead.whatsapp?.replace(/\D/g,'') || '') && (
+                            <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border border-white"/>
+                          )}
                         </div>
                         <div>
                           <p className="font-semibold text-darkText">{lead.name}</p>
@@ -584,6 +613,7 @@ export const AdminCRM: React.FC = () => {
                 {cards.map(lead => (
                   <LeadCard key={lead.id} lead={lead} crmTags={crmTags}
                     isDragging={draggingId === lead.id}
+                    hasUnread={unreadPhones.has(lead.whatsapp?.replace(/\D/g,'') || '')}
                     onDragStart={e => onDragStart(e, lead.id)}
                     onDragEnd={onDragEnd}
                     onClick={() => setSelected(lead)}
@@ -751,12 +781,27 @@ export const AdminCRM: React.FC = () => {
 
             {/* Tabs */}
             <div className="flex border-b border-gray-100">
-              {(['info', 'chat', 'notes'] as const).map(tab => (
-                <button key={tab} onClick={() => setActiveTab(tab)}
-                  className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === tab ? 'text-primary border-b-2 border-primary' : 'text-lightText hover:text-darkText'}`}>
-                  {tab === 'info' ? '📋 Dados' : tab === 'chat' ? '💬 Conversa' : '📝 Notas'}
-                </button>
-              ))}
+              {(['info', 'chat', 'notes'] as const).map(tab => {
+                const hasUnreadChat = tab === 'chat' && selected?.whatsapp && unreadPhones.has(selected.whatsapp.replace(/\D/g,''));
+                return (
+                  <button key={tab} onClick={() => {
+                    setActiveTab(tab);
+                    if (tab === 'chat' && selected?.whatsapp) {
+                      const phone = selected.whatsapp.replace(/\D/g,'');
+                      setUnreadPhones(prev => { const n = new Set(prev); n.delete(phone); return n; });
+                      loadChat(phone);
+                    }
+                  }}
+                    className={`flex-1 py-3 text-sm font-medium transition-colors relative ${activeTab === tab ? 'text-primary border-b-2 border-primary' : 'text-lightText hover:text-darkText'}`}>
+                    {tab === 'info' ? '📋 Dados' : tab === 'notes' ? '📝 Notas' : (
+                      <span className="flex items-center justify-center gap-1.5">
+                        💬 Conversa
+                        {hasUnreadChat && <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"/>}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Tab content */}
@@ -1073,18 +1118,25 @@ interface LeadCardProps {
   crmTags: CrmTag[];
   isDragging: boolean;
   isSelected: boolean;
+  hasUnread?: boolean;
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: () => void;
   onClick: () => void;
 }
 
-const LeadCard: React.FC<LeadCardProps> = ({ lead, crmTags, isDragging, isSelected, onDragStart, onDragEnd, onClick }) => {
+const LeadCard: React.FC<LeadCardProps> = ({ lead, crmTags, isDragging, isSelected, hasUnread, onDragStart, onDragEnd, onClick }) => {
   const tagObjs = crmTags.filter(t => (lead.tags || []).includes(t.name));
   return (
     <div draggable onDragStart={onDragStart} onDragEnd={onDragEnd} onClick={onClick}
-      className={`bg-white rounded-xl border-2 p-3.5 cursor-grab active:cursor-grabbing select-none transition-all ${
-        isDragging ? 'opacity-40 scale-95' : isSelected ? 'border-primary shadow-md' : 'border-gray-100 hover:border-gray-200 hover:shadow-sm'
+      className={`bg-white rounded-xl border-2 p-3.5 cursor-grab active:cursor-grabbing select-none transition-all relative ${
+        isDragging ? 'opacity-40 scale-95' : isSelected ? 'border-primary shadow-md' : hasUnread ? 'border-green-400 shadow-sm' : 'border-gray-100 hover:border-gray-200 hover:shadow-sm'
       }`}>
+      {hasUnread && (
+        <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+          <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping absolute"/>
+          <span className="w-1.5 h-1.5 bg-white rounded-full"/>
+        </span>
+      )}
 
       <div className="flex items-start justify-between gap-2 mb-2">
         <p className="font-semibold text-sm text-darkText truncate">{lead.name}</p>
