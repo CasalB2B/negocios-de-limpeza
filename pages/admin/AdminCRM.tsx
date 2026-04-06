@@ -40,136 +40,159 @@ function persistCustomTemplates(all: CampaignTemplate[]) {
   try { localStorage.setItem('crm_campaign_tpls_v2', JSON.stringify(custom)); } catch { /* ok */ }
 }
 
+// ─── Media types for campaigns ───────────────────────────────────────────────
+type CampaignMediaType = 'text' | 'image' | 'audio' | 'video';
+
 // ─── Realistic Phone Mockup ──────────────────────────────────────────────────
-const PhonePreview: React.FC<{ message: string; contactName?: string }> = ({ message, contactName = 'Carlos' }) => {
+const PhonePreview: React.FC<{
+  message: string;
+  contactName?: string;
+  mediaType?: CampaignMediaType;
+  mediaUrl?: string;
+}> = ({ message, contactName = 'Carlos', mediaType = 'text', mediaUrl }) => {
   const now = new Date();
   const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   return (
     <div className="flex justify-center select-none">
-      {/* Outer phone shell */}
-      <div className="relative" style={{ width: 220 }}>
+      <div className="relative" style={{ width: 280 }}>
         {/* Side buttons */}
-        <div className="absolute -left-[3px] top-16 w-[3px] h-6 bg-gray-700 rounded-l-sm" />
-        <div className="absolute -left-[3px] top-28 w-[3px] h-10 bg-gray-700 rounded-l-sm" />
-        <div className="absolute -left-[3px] top-40 w-[3px] h-10 bg-gray-700 rounded-l-sm" />
-        <div className="absolute -right-[3px] top-24 w-[3px] h-14 bg-gray-700 rounded-r-sm" />
+        <div className="absolute -left-[3px] top-20 w-[3px] h-7 bg-gray-300 rounded-l-sm" />
+        <div className="absolute -left-[3px] top-32 w-[3px] h-12 bg-gray-300 rounded-l-sm" />
+        <div className="absolute -left-[3px] top-48 w-[3px] h-12 bg-gray-300 rounded-l-sm" />
+        <div className="absolute -right-[3px] top-28 w-[3px] h-16 bg-gray-300 rounded-r-sm" />
 
-        {/* Phone body */}
-        <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-[36px] p-[3px] shadow-[0_30px_60px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.08)]">
+        {/* Phone frame – light silver iPhone style */}
+        <div
+          className="rounded-[44px] p-[3px]"
+          style={{
+            background: 'linear-gradient(145deg, #e8e8e8, #d0d0d0)',
+            boxShadow: '0 25px 50px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.8), 0 0 0 1px rgba(0,0,0,0.06)',
+          }}
+        >
           {/* Inner bezel */}
-          <div className="bg-black rounded-[34px] overflow-hidden" style={{ height: 440 }}>
-
+          <div className="bg-black rounded-[41px] overflow-hidden" style={{ height: 530 }}>
             {/* Dynamic Island */}
-            <div className="flex justify-center pt-2 pb-1">
-              <div className="w-24 h-[14px] bg-black rounded-full border border-gray-800" style={{ boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.9)' }} />
+            <div className="bg-black flex justify-center pt-3 pb-1">
+              <div
+                className="w-28 h-[15px] bg-black rounded-full"
+                style={{ boxShadow: 'inset 0 1px 4px rgba(255,255,255,0.05), 0 0 0 1px rgba(255,255,255,0.04)' }}
+              />
             </div>
 
-            {/* Screen content */}
-            <div className="flex flex-col h-full bg-[#0b141a]" style={{ height: 418 }}>
-
+            {/* Screen */}
+            <div className="flex flex-col bg-[#0b141a]" style={{ height: 508 }}>
               {/* Status bar */}
-              <div className="flex items-center justify-between px-4 py-0.5 bg-[#1f2c34]">
-                <span className="text-white text-[9px] font-bold">{timeStr}</span>
-                <div className="flex items-center gap-1">
-                  {/* Signal bars */}
-                  <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
-                    <rect x="0" y="6" width="2" height="3" rx="0.5" fill="white"/>
-                    <rect x="3" y="4" width="2" height="5" rx="0.5" fill="white"/>
-                    <rect x="6" y="2" width="2" height="7" rx="0.5" fill="white"/>
-                    <rect x="9" y="0" width="2" height="9" rx="0.5" fill="white" opacity="0.3"/>
+              <div className="flex items-center justify-between px-5 py-1 bg-[#0b141a]">
+                <span className="text-white text-[10px] font-bold tracking-tight">{timeStr}</span>
+                <div className="flex items-center gap-1.5">
+                  <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+                    <rect x="0" y="7" width="2.5" height="3" rx="0.5" fill="white"/>
+                    <rect x="3.5" y="4.5" width="2.5" height="5.5" rx="0.5" fill="white"/>
+                    <rect x="7" y="2" width="2.5" height="8" rx="0.5" fill="white"/>
+                    <rect x="10.5" y="0" width="2.5" height="10" rx="0.5" fill="white" opacity="0.3"/>
                   </svg>
-                  {/* WiFi */}
-                  <svg width="11" height="9" viewBox="0 0 11 9" fill="white">
-                    <path d="M5.5 7.5a1 1 0 100-2 1 1 0 000 2z"/>
-                    <path d="M2.5 5a4.5 4.5 0 016 0" stroke="white" strokeWidth="1.2" fill="none" opacity="0.6"/>
-                    <path d="M0.5 3a7.5 7.5 0 0110 0" stroke="white" strokeWidth="1.2" fill="none" opacity="0.3"/>
+                  <svg width="13" height="10" viewBox="0 0 13 10" fill="white">
+                    <path d="M6.5 8.5a1.1 1.1 0 100-2.2 1.1 1.1 0 000 2.2z"/>
+                    <path d="M3 5.5a5 5 0 017 0" stroke="white" strokeWidth="1.3" fill="none" opacity="0.6"/>
+                    <path d="M0.5 3a9 9 0 0112 0" stroke="white" strokeWidth="1.3" fill="none" opacity="0.3"/>
                   </svg>
-                  {/* Battery */}
-                  <div className="flex items-center gap-[1px]">
-                    <div className="w-5 h-3 rounded-[2px] border border-white/60 p-[1.5px] flex items-center">
-                      <div className="h-full bg-white rounded-[1px]" style={{ width: '75%' }} />
+                  <div className="flex items-center gap-[1.5px]">
+                    <div className="w-6 h-[13px] rounded-[3px] border border-white/50 p-[2px] flex items-center">
+                      <div className="h-full bg-white rounded-[1px]" style={{ width: '78%' }} />
                     </div>
-                    <div className="w-[2px] h-1.5 bg-white/50 rounded-r-[1px]" />
+                    <div className="w-[2px] h-2 bg-white/40 rounded-r-sm" />
                   </div>
                 </div>
               </div>
 
-              {/* WhatsApp header */}
-              <div className="bg-[#1f2c34] px-2 py-2 flex items-center gap-2 border-b border-black/30">
-                {/* Back arrow */}
-                <svg width="8" height="13" viewBox="0 0 8 13" fill="none" className="flex-shrink-0">
-                  <path d="M7 1L1 6.5L7 12" stroke="#25D366" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              {/* WA Header */}
+              <div className="bg-[#1f2c34] px-3 py-2.5 flex items-center gap-2.5 border-b border-black/20 flex-shrink-0">
+                <svg width="9" height="15" viewBox="0 0 9 15" fill="none" className="flex-shrink-0">
+                  <path d="M8 1L1.5 7.5L8 14" stroke="#25D366" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                {/* Avatar */}
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-[11px] font-black flex-shrink-0 border-2 border-[#2a3942]">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center text-white text-[11px] font-black flex-shrink-0 border-2 border-[#2a3942]">
                   NL
                 </div>
-                {/* Name + status */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-[11px] font-bold leading-tight truncate">Negócios de Limpeza</p>
-                  <p className="text-[#25D366] text-[9px] font-medium">online</p>
+                  <p className="text-white text-[12px] font-bold leading-tight">Negócios de Limpeza</p>
+                  <p className="text-[#25D366] text-[10px]">online</p>
                 </div>
-                {/* Action icons */}
-                <div className="flex items-center gap-2.5 flex-shrink-0">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8696a0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <div className="flex gap-3 flex-shrink-0">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8696a0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8 19.79 19.79 0 01.01 1.18 2 2 0 012 .01h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.18 6.18l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
                   </svg>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8696a0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8696a0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
                   </svg>
                 </div>
               </div>
 
-              {/* Chat area with WA wallpaper pattern */}
+              {/* Chat background */}
               <div
-                className="flex-1 overflow-hidden px-2 py-3 relative"
+                className="flex-1 overflow-hidden px-3 py-3 flex flex-col justify-start"
                 style={{
                   backgroundColor: '#0b141a',
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.015'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/svg%3E")`,
                 }}
               >
-                {/* Date chip */}
+                {/* Date + encryption */}
+                <div className="flex justify-center mb-2">
+                  <span className="bg-[#182229] text-[#8696a0] text-[9px] px-3 py-0.5 rounded-full font-medium">HOJE</span>
+                </div>
                 <div className="flex justify-center mb-3">
-                  <div className="bg-[#182229] px-3 py-0.5 rounded-full">
-                    <span className="text-[#8696a0] text-[8px] font-medium">HOJE</span>
+                  <div className="bg-[#182229]/80 px-2.5 py-1 rounded-lg max-w-[90%]">
+                    <p className="text-[#8696a0] text-[8.5px] text-center leading-tight">🔒 As mensagens são protegidas com a criptografia de ponta a ponta</p>
                   </div>
                 </div>
 
-                {/* Encryption notice */}
-                <div className="flex justify-center mb-3">
-                  <div className="bg-[#182229]/80 px-2 py-1 rounded-lg max-w-[85%]">
-                    <p className="text-[#8696a0] text-[7.5px] text-center leading-tight">
-                      🔒 As mensagens são protegidas com a criptografia de ponta a ponta
-                    </p>
-                  </div>
-                </div>
-
-                {message ? (
-                  /* Outgoing message bubble (green, right-aligned) */
+                {/* Message bubble */}
+                {(message || mediaUrl) ? (
                   <div className="flex justify-end">
-                    <div className="max-w-[82%] relative">
+                    <div className="max-w-[85%] relative">
                       {/* Bubble tail */}
-                      <div
-                        className="absolute -right-1.5 top-0 w-3 h-3 overflow-hidden"
-                        style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))' }}
-                      >
+                      <div className="absolute -right-1.5 top-0 w-3 h-3 overflow-hidden" style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))' }}>
                         <svg viewBox="0 0 10 10" className="w-full h-full">
                           <path d="M0 0 Q10 0 10 10 L0 0Z" fill="#005c4b"/>
                         </svg>
                       </div>
-                      <div
-                        className="px-2.5 pt-2 pb-1 rounded-xl rounded-tr-none"
-                        style={{ backgroundColor: '#005c4b', boxShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
-                      >
-                        <p className="text-[#e9edef] text-[10px] leading-relaxed whitespace-pre-wrap break-words">
-                          {message}
-                        </p>
-                        {/* Time + double check */}
-                        <div className="flex items-center justify-end gap-1 mt-0.5">
-                          <span className="text-[#8696a0] text-[8px]">{timeStr}</span>
-                          {/* Blue double checkmark */}
-                          <svg width="14" height="8" viewBox="0 0 16 9" fill="none">
+                      <div className="rounded-xl rounded-tr-none overflow-hidden" style={{ backgroundColor: '#005c4b', boxShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
+                        {/* Media preview in bubble */}
+                        {mediaType === 'image' && mediaUrl && (
+                          <img src={mediaUrl} alt="preview" className="w-full max-h-32 object-cover" onError={e => (e.currentTarget.style.display='none')} />
+                        )}
+                        {mediaType === 'video' && (
+                          <div className="bg-black/40 w-full h-20 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+                            </div>
+                          </div>
+                        )}
+                        {mediaType === 'audio' && (
+                          <div className="px-3 py-2.5 flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                              <svg width="12" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2" stroke="white" strokeWidth="2" fill="none"/></svg>
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-0.5 mb-1">
+                                {[3,5,4,6,3,7,5,4,6,3,5,4,6,3,5].map((h,i) => (
+                                  <div key={i} className="bg-white/50 rounded-full" style={{ width: 2, height: h*2 }} />
+                                ))}
+                              </div>
+                              <p className="text-[#8696a0] text-[8px]">0:12</p>
+                            </div>
+                          </div>
+                        )}
+                        {/* Text */}
+                        {message && (
+                          <div className="px-2.5 pt-2 pb-1">
+                            <p className="text-[#e9edef] text-[11px] leading-relaxed whitespace-pre-wrap break-words">{message}</p>
+                          </div>
+                        )}
+                        {/* Timestamp */}
+                        <div className="flex items-center justify-end gap-1 px-2 pb-1.5 mt-0.5">
+                          <span className="text-[#8696a0] text-[9px]">{timeStr}</span>
+                          <svg width="15" height="9" viewBox="0 0 16 9" fill="none">
                             <path d="M1 4.5L4.5 8L10 1" stroke="#53bdeb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                             <path d="M6 4.5L9.5 8L15 1" stroke="#53bdeb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
@@ -178,36 +201,34 @@ const PhonePreview: React.FC<{ message: string; contactName?: string }> = ({ mes
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center h-16">
-                    <p className="text-[#8696a0] text-[9px] text-center">Selecione um template<br/>para visualizar</p>
+                  <div className="flex-1 flex items-center justify-center">
+                    <p className="text-[#8696a0] text-[10px] text-center">Selecione um template<br/>para visualizar</p>
                   </div>
                 )}
               </div>
 
               {/* Input bar */}
-              <div className="bg-[#1f2c34] px-2 py-1.5 flex items-center gap-1.5">
-                <div className="flex-1 bg-[#2a3942] rounded-full px-3 py-1.5 flex items-center gap-2">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8696a0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div className="bg-[#1f2c34] px-3 py-2 flex items-center gap-2 flex-shrink-0">
+                <div className="flex-1 bg-[#2a3942] rounded-full px-3 py-2 flex items-center gap-2">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8696a0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
                   </svg>
-                  <span className="text-[#8696a0] text-[9px] flex-1">Mensagem</span>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8696a0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <span className="text-[#8696a0] text-[10px] flex-1">Mensagem</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8696a0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
                   </svg>
                 </div>
-                {/* Mic / send button */}
-                <div className="w-8 h-8 rounded-full bg-[#00a884] flex items-center justify-center flex-shrink-0 shadow-md">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <div className="w-9 h-9 rounded-full bg-[#00a884] flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
                   </svg>
                 </div>
               </div>
 
-              {/* Home indicator */}
-              <div className="bg-[#1f2c34] flex justify-center py-1">
-                <div className="w-16 h-1 bg-white/20 rounded-full" />
+              {/* Home bar */}
+              <div className="bg-[#1f2c34] flex justify-center pb-2 pt-1 flex-shrink-0">
+                <div className="w-20 h-1 bg-white/20 rounded-full" />
               </div>
-
             </div>
           </div>
         </div>
@@ -326,6 +347,12 @@ export const AdminCRM: React.FC = () => {
   const [campaignLog, setCampaignLog] = useState<CampaignLogEntry[]>([]);
   const [campaignDone, setCampaignDone] = useState(false);
   const [campaignStatusFilter, setCampaignStatusFilter] = useState<'all'|'NEW'|'CONTACTED'|'PROPOSAL'|'NEGOTIATING'|'CONVERTED'|'LOST'>('all');
+  const [campaignMediaType, setCampaignMediaType] = useState<CampaignMediaType>('text');
+  const [campaignMediaUrl, setCampaignMediaUrl] = useState('');
+  const [campaignMediaCaption, setCampaignMediaCaption] = useState('');
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [scheduledCampaignDate, setScheduledCampaignDate] = useState('');
+  const [scheduledCampaignTime, setScheduledCampaignTime] = useState('08:00');
 
   // ── agendamento rápido ──
   const [schedDate, setSchedDate] = useState('');
@@ -667,8 +694,32 @@ export const AdminCRM: React.FC = () => {
   const handleSendCampaign = async () => {
     const tpl = campaignTemplates.find(t => t.id === activeTplId);
     if (!tpl || campaignSelected.size === 0) return;
+
+    // If schedule is enabled, save to localStorage and set a timeout
+    if (scheduleEnabled && scheduledCampaignDate && scheduledCampaignTime) {
+      const scheduledFor = new Date(`${scheduledCampaignDate}T${scheduledCampaignTime}`).getTime();
+      const delay = scheduledFor - Date.now();
+      if (delay > 0) {
+        const scheduledData = {
+          tplId: activeTplId,
+          leadIds: Array.from(campaignSelected),
+          mediaType: campaignMediaType,
+          mediaUrl: campaignMediaUrl,
+          scheduledFor,
+        };
+        try { localStorage.setItem('crm_scheduled_campaign', JSON.stringify(scheduledData)); } catch {}
+        setTimeout(() => {
+          setScheduleEnabled(false);
+          handleSendCampaign();
+        }, delay);
+        setScheduleEnabled(false);
+        setScheduledCampaignDate('');
+        alert(`✅ Campanha agendada para ${scheduledCampaignDate} às ${scheduledCampaignTime}. Mantenha o painel aberto.`);
+        return;
+      }
+    }
+
     const leads = Array.from(campaignSelected).map(id => quotes.find(q => q.id === id)).filter(Boolean) as typeof quotes;
-    // Init log
     const initLog = leads.map(l => ({
       leadId: l.id, name: l.name, phone: l.whatsapp || '',
       status: l.whatsapp ? 'sending' : 'no_phone' as 'no_phone',
@@ -686,21 +737,32 @@ export const AdminCRM: React.FC = () => {
       let status: 'sent' | 'failed' = 'failed';
       let errorMsg: string | undefined;
       try {
-        const { data, error } = await supabase.functions.invoke('evolution-proxy', {
-          body: { action: 'sendText', payload: { number: lead.whatsapp, text: finalMsg } }
-        });
+        let invokeBody: any;
+        if (campaignMediaType !== 'text' && campaignMediaUrl) {
+          invokeBody = {
+            action: 'sendMedia',
+            payload: {
+              number: lead.whatsapp,
+              mediaType: campaignMediaType,
+              mediaUrl: campaignMediaUrl,
+              caption: finalMsg,
+            }
+          };
+        } else {
+          invokeBody = { action: 'sendText', payload: { number: lead.whatsapp, text: finalMsg } };
+        }
+        const { data, error } = await supabase.functions.invoke('evolution-proxy', { body: invokeBody });
         console.log(`[Campaign] Lead ${lead.name} → phone: ${lead.whatsapp}`, { data, error });
         if (error) {
           errorMsg = error.message || 'Erro na função';
         } else if (data?.ok === false) {
-          // Extract the actual Evolution API error
           const apiErr = data?.data;
           errorMsg = apiErr?.message || apiErr?.error || `HTTP ${data?.status}`;
         } else {
           status = 'sent';
         }
       } catch (e: any) {
-        errorMsg = e?.message || 'Exceção desconhecida';
+        errorMsg = e?.message || 'Exceção';
         console.error('[Campaign] Exception:', e);
       }
       if (errorMsg) console.warn(`[Campaign] Falha para ${lead.name}:`, errorMsg);
@@ -1058,31 +1120,74 @@ export const AdminCRM: React.FC = () => {
           <div className="space-y-4">
 
             {/* Phone preview */}
-            <div className="rounded-xl border border-gray-100 overflow-hidden">
-              <div className="bg-white px-4 pt-4 pb-2 flex items-center justify-between">
-                <p className="text-xs font-bold text-darkText uppercase tracking-wider flex items-center gap-2">
-                  <Smartphone size={13} className="text-primary" /> Preview — como o cliente recebe
+            <div className="rounded-2xl border border-gray-100 overflow-hidden bg-white">
+              <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-gray-50">
+                <p className="text-sm font-bold text-darkText flex items-center gap-2">
+                  <Smartphone size={14} className="text-primary" /> Preview
                 </p>
-                <span className="text-[10px] text-lightText bg-gray-100 px-2 py-0.5 rounded-full">WhatsApp</span>
+                <span className="text-[11px] text-green-600 font-semibold bg-green-50 px-2.5 py-1 rounded-full flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" /> WhatsApp
+                </span>
               </div>
-              <div className="bg-gradient-to-b from-[#1a1a2e] to-[#16213e] py-8 px-4 flex items-center justify-center">
+              <div
+                className="py-10 px-6 flex items-center justify-center"
+                style={{ background: 'radial-gradient(ellipse at center, #f0f0f0 0%, #e8e8e8 100%)' }}
+              >
                 <PhonePreview
                   message={(campaignTemplates.find(t => t.id === activeTplId)?.text || '').replace(/\[nome\]/gi, 'Carlos')}
                   contactName="Carlos"
+                  mediaType={campaignMediaType}
+                  mediaUrl={campaignMediaUrl}
                 />
               </div>
-              <div className="bg-gray-50 px-4 py-2 border-t border-gray-100">
-                <p className="text-[10px] text-lightText text-center">A mensagem acima é exatamente como chegará no WhatsApp do cliente</p>
+              <div className="px-5 py-2.5 border-t border-gray-50">
+                <p className="text-[11px] text-lightText text-center">Exatamente como o cliente vai receber no WhatsApp</p>
               </div>
             </div>
 
             {/* Campaign sender */}
-            <div className="bg-white rounded-xl border border-gray-100 p-5">
-              <h3 className="font-bold text-darkText mb-4 flex items-center gap-2"><Send size={15} className="text-green-500" /> Disparar Campanha</h3>
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-5">
+              <h3 className="font-bold text-darkText text-base flex items-center gap-2"><Send size={15} className="text-green-500" /> Disparar Campanha</h3>
+
+              {/* Media type selector */}
+              <div>
+                <p className="text-xs font-bold text-lightText uppercase tracking-wider mb-2">Tipo de mensagem</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {([
+                    { type: 'text' as CampaignMediaType, icon: '💬', label: 'Texto' },
+                    { type: 'image' as CampaignMediaType, icon: '🖼️', label: 'Foto' },
+                    { type: 'audio' as CampaignMediaType, icon: '🎵', label: 'Áudio' },
+                    { type: 'video' as CampaignMediaType, icon: '🎥', label: 'Vídeo' },
+                  ]).map(m => (
+                    <button key={m.type} onClick={() => setCampaignMediaType(m.type)}
+                      className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border-2 text-xs font-medium transition-all ${campaignMediaType === m.type ? 'border-primary bg-primary/5 text-primary' : 'border-gray-100 text-lightText hover:border-gray-200'}`}>
+                      <span className="text-lg">{m.icon}</span>
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Media URL input for non-text types */}
+              {campaignMediaType !== 'text' && (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-lightText uppercase tracking-wider block">
+                    URL do {campaignMediaType === 'image' ? 'arquivo de imagem' : campaignMediaType === 'audio' ? 'arquivo de áudio' : 'arquivo de vídeo'}
+                  </label>
+                  <input
+                    type="url"
+                    value={campaignMediaUrl}
+                    onChange={e => setCampaignMediaUrl(e.target.value)}
+                    placeholder={`https://... (link direto para o ${campaignMediaType === 'image' ? 'JPG/PNG' : campaignMediaType === 'audio' ? 'MP3/OGG' : 'MP4'})`}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-primary"
+                  />
+                  <p className="text-xs text-lightText">O texto do template será enviado como legenda</p>
+                </div>
+              )}
 
               {/* Filter by stage */}
-              <div className="mb-3">
-                <p className="text-xs font-bold text-lightText mb-2">Filtrar destinatários por estágio:</p>
+              <div>
+                <p className="text-xs font-bold text-lightText uppercase tracking-wider mb-2">Destinatários por estágio</p>
                 <div className="flex flex-wrap gap-1.5">
                   {([['all', 'Todos'] as const, ...COLUMNS.map(c => [c.id, c.label] as const)]).map(([val, label]) => (
                     <button key={val} onClick={() => {
@@ -1090,7 +1195,7 @@ export const AdminCRM: React.FC = () => {
                       const recipients = quotes.filter(q => q.whatsapp && (val === 'all' || q.status === val));
                       setCampaignSelected(new Set(recipients.map(q => q.id)));
                     }}
-                      className={`text-xs px-2.5 py-1 rounded-full border transition-all ${campaignStatusFilter === val ? 'bg-primary text-white border-primary' : 'bg-white border-gray-200 text-lightText hover:border-gray-300'}`}>
+                      className={`text-xs px-3 py-1.5 rounded-full border transition-all ${campaignStatusFilter === val ? 'bg-primary text-white border-primary' : 'bg-white border-gray-200 text-lightText hover:border-gray-300'}`}>
                       {label}
                     </button>
                   ))}
@@ -1098,26 +1203,26 @@ export const AdminCRM: React.FC = () => {
               </div>
 
               {/* Recipient list */}
-              <div className="border border-gray-100 rounded-xl overflow-hidden mb-3">
-                <div className="bg-gray-50 px-3 py-2 flex items-center justify-between text-xs">
-                  <span className="font-bold text-darkText">{campaignSelected.size} selecionados</span>
-                  <div className="flex gap-3">
-                    <button onClick={() => setCampaignSelected(new Set(campaignRecipients.map(q => q.id)))} className="text-primary hover:underline">Todos</button>
+              <div className="border border-gray-100 rounded-xl overflow-hidden">
+                <div className="bg-gray-50 px-4 py-2.5 flex items-center justify-between">
+                  <span className="text-xs font-bold text-darkText">{campaignSelected.size} selecionados</span>
+                  <div className="flex gap-3 text-xs">
+                    <button onClick={() => setCampaignSelected(new Set(campaignRecipients.map(q => q.id)))} className="text-primary hover:underline font-medium">Todos</button>
                     <button onClick={() => setCampaignSelected(new Set())} className="text-lightText hover:underline">Limpar</button>
                   </div>
                 </div>
-                <div className="max-h-40 overflow-y-auto divide-y divide-gray-50">
-                  {campaignRecipients.length === 0 && <p className="text-center py-6 text-xs text-lightText">Nenhum lead com WhatsApp neste filtro</p>}
+                <div className="max-h-48 overflow-y-auto divide-y divide-gray-50">
+                  {campaignRecipients.length === 0 && <p className="text-center py-8 text-sm text-lightText">Nenhum lead com WhatsApp neste filtro</p>}
                   {campaignRecipients.map(lead => {
                     const log = campaignLog.find(l => l.leadId === lead.id);
                     return (
-                      <label key={lead.id} className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50 ${campaignSelected.has(lead.id) ? 'bg-primary/5' : ''}`}>
+                      <label key={lead.id} className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50 transition-colors ${campaignSelected.has(lead.id) ? 'bg-primary/5' : ''}`}>
                         <input type="checkbox" checked={campaignSelected.has(lead.id)}
                           onChange={e => setCampaignSelected(prev => { const n = new Set(prev); e.target.checked ? n.add(lead.id) : n.delete(lead.id); return n; })}
                           className="accent-primary flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-darkText truncate">{lead.name}</p>
-                          <p className="text-[10px] text-lightText">{lead.whatsapp}</p>
+                          <p className="text-sm font-medium text-darkText truncate">{lead.name}</p>
+                          <p className="text-xs text-lightText">{lead.whatsapp}</p>
                         </div>
                         {log && (
                           <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
@@ -1126,16 +1231,16 @@ export const AdminCRM: React.FC = () => {
                               log.status === 'sending' ? 'bg-blue-100 text-blue-700' :
                               log.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'
                             }`}>
-                              {log.status === 'sent' ? '✓ Enviado' : log.status === 'sending' ? '⏳ Enviando...' : log.status === 'failed' ? '✗ Falha' : 'Sem tel.'}
+                              {log.status === 'sent' ? '✓ Enviado' : log.status === 'sending' ? '⏳' : log.status === 'failed' ? '✗ Falha' : 'Sem tel.'}
                             </span>
                             {log.status === 'failed' && log.errorMsg && (
-                              <span className="text-[9px] text-red-400 max-w-[120px] truncate" title={log.errorMsg}>{log.errorMsg}</span>
+                              <span className="text-[9px] text-red-400 max-w-[100px] truncate" title={log.errorMsg}>{log.errorMsg}</span>
                             )}
                           </div>
                         )}
                         {log?.status === 'failed' && log.waUrl && (
                           <a href={log.waUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
-                            className="flex-shrink-0 text-[10px] font-bold bg-green-600 text-white px-2 py-0.5 rounded-full hover:bg-green-700" title="Abrir WhatsApp Web">
+                            className="flex-shrink-0 text-[10px] font-bold bg-green-600 text-white px-2 py-1 rounded-full hover:bg-green-700">
                             Abrir WA
                           </a>
                         )}
@@ -1145,24 +1250,61 @@ export const AdminCRM: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-2 text-xs text-yellow-700 mb-3">
-                ⚠️ Máximo 50 envios/dia para evitar bloqueio. Use templates personalizados.
+              {/* Schedule toggle */}
+              <div className="border border-gray-100 rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setScheduleEnabled(p => !p)}
+                  className={`w-full flex items-center justify-between px-4 py-3 transition-colors ${scheduleEnabled ? 'bg-primary/5' : 'hover:bg-gray-50'}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <CalendarPlus size={15} className={scheduleEnabled ? 'text-primary' : 'text-lightText'} />
+                    <span className={`text-sm font-medium ${scheduleEnabled ? 'text-primary' : 'text-darkText'}`}>Agendar envio para depois</span>
+                  </div>
+                  <div className={`w-9 h-5 rounded-full transition-all flex items-center px-0.5 ${scheduleEnabled ? 'bg-primary' : 'bg-gray-200'}`}>
+                    <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${scheduleEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </div>
+                </button>
+                {scheduleEnabled && (
+                  <div className="px-4 pb-4 pt-2 border-t border-gray-100 grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-lightText font-medium block mb-1.5">Data</label>
+                      <input type="date" value={scheduledCampaignDate} onChange={e => setScheduledCampaignDate(e.target.value)}
+                        min={new Date().toISOString().slice(0,10)}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-lightText font-medium block mb-1.5">Horário</label>
+                      <input type="time" value={scheduledCampaignTime} onChange={e => setScheduledCampaignTime(e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary" />
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                        ⏰ Mantenha o painel aberto no horário agendado para o envio automático
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5 text-xs text-amber-700">
+                ⚠️ Máximo 50 envios/dia para evitar bloqueio
               </div>
 
               {campaignDone && (
-                <div className="bg-green-50 border border-green-200 rounded-xl px-3 py-2 text-xs text-green-700 mb-3 flex items-center gap-2">
-                  <CheckCircle size={14} />
-                  Campanha concluída — {campaignLog.filter(l => l.status === 'sent').length} enviados, {campaignLog.filter(l => l.status === 'failed').length} falhas
-                  (leads com falha têm botão "Abrir WA" para envio manual)
+                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-700 flex items-center gap-2">
+                  <CheckCircle size={16} />
+                  <span>Campanha concluída — <strong>{campaignLog.filter(l => l.status === 'sent').length} enviados</strong>, {campaignLog.filter(l => l.status === 'failed').length} falhas</span>
                 </div>
               )}
 
               <button onClick={handleSendCampaign}
-                disabled={campaignSending || campaignSelected.size === 0}
-                className="w-full bg-green-600 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-green-700 transition-colors">
+                disabled={campaignSending || campaignSelected.size === 0 || (scheduleEnabled && (!scheduledCampaignDate || !scheduledCampaignTime))}
+                className="w-full bg-green-600 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-green-700 transition-colors text-sm">
                 {campaignSending
-                  ? <><RefreshCw size={16} className="animate-spin" /> Enviando {campaignLog.filter(l => l.status !== 'sending').length}/{campaignLog.length}...</>
-                  : <><Send size={16} /> Enviar para {campaignSelected.size} lead{campaignSelected.size !== 1 ? 's' : ''}</>}
+                  ? <><RefreshCw size={15} className="animate-spin" /> Enviando {campaignLog.filter(l => l.status !== 'sending').length}/{campaignLog.length}...</>
+                  : scheduleEnabled
+                    ? <><CalendarPlus size={15} /> Agendar para {scheduledCampaignDate} às {scheduledCampaignTime}</>
+                    : <><Send size={15} /> Enviar para {campaignSelected.size} lead{campaignSelected.size !== 1 ? 's' : ''}</>}
               </button>
             </div>
           </div>
