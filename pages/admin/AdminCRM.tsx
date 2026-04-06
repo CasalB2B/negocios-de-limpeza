@@ -120,6 +120,16 @@ export const AdminCRM: React.FC = () => {
   // ── templates ──
   const [showTemplates, setShowTemplates] = useState(false);
 
+  // ── campanhas em massa ──
+  const [showCampaign, setShowCampaign] = useState(false);
+  const [campaignTemplate, setCampaignTemplate] = useState(MESSAGE_TEMPLATES[0].id);
+  const [campaignSelected, setCampaignSelected] = useState<Set<string>>(new Set());
+  const [campaignSending, setCampaignSending] = useState(false);
+  const [campaignResult, setCampaignResult] = useState<{ sent: number; failed: number } | null>(null);
+
+  // ── duplicate warning ──
+  const [duplicateWarning, setDuplicateWarning] = useState('');
+
   // ── unread messages per phone ──
   const [unreadPhones, setUnreadPhones] = useState<Set<string>>(new Set());
 
@@ -389,6 +399,17 @@ export const AdminCRM: React.FC = () => {
   // ─── Add lead manually ───────────────────────────────────────────────────
   const handleAddLead = async () => {
     if (!newLead.name.trim()) return;
+    // Duplicate check
+    const cleanPhone = newLead.whatsapp.replace(/\D/g, '');
+    const dup = quotes.find(q =>
+      (cleanPhone && q.whatsapp?.replace(/\D/g,'') === cleanPhone) ||
+      (newLead.email && q.email?.toLowerCase() === newLead.email.toLowerCase())
+    );
+    if (dup) {
+      setDuplicateWarning(`⚠️ Já existe um lead com este ${cleanPhone && dup.whatsapp?.replace(/\D/g,'') === cleanPhone ? 'WhatsApp' : 'e-mail'}: "${dup.name}"`);
+      return;
+    }
+    setDuplicateWarning('');
     setAddingLead(true);
     await addQuote({
       name: newLead.name, email: newLead.email, whatsapp: newLead.whatsapp,
@@ -402,6 +423,30 @@ export const AdminCRM: React.FC = () => {
     setNewLead({ name: '', whatsapp: '', email: '', propertyType: '', rooms: '', serviceOption: '', addressDistrict: '', estimatedValue: '' });
     setShowAddLead(false);
     setAddingLead(false);
+  };
+
+  // ─── Bulk campaign ───────────────────────────────────────────────────────
+  const handleSendCampaign = async () => {
+    const tpl = MESSAGE_TEMPLATES.find(t => t.id === campaignTemplate);
+    if (!tpl || campaignSelected.size === 0) return;
+    setCampaignSending(true);
+    let sent = 0, failed = 0;
+    for (const leadId of Array.from(campaignSelected)) {
+      const lead = quotes.find(q => q.id === leadId);
+      if (!lead?.whatsapp) { failed++; continue; }
+      const firstName = lead.name.split(' ')[0];
+      const finalMsg = tpl.text.replace(/\[nome\]/gi, firstName);
+      try {
+        const { data, error } = await supabase.functions.invoke('evolution-proxy', {
+          body: { action: 'sendText', payload: { number: lead.whatsapp, text: finalMsg } }
+        });
+        if (!error && data?.ok !== false) { sent++; } else { failed++; }
+      } catch { failed++; }
+      // Small delay to avoid rate limiting
+      await new Promise(res => setTimeout(res, 500));
+    }
+    setCampaignResult({ sent, failed });
+    setCampaignSending(false);
   };
 
   // ─── Column card ─────────────────────────────────────────────────────────
@@ -439,6 +484,10 @@ export const AdminCRM: React.FC = () => {
           <button onClick={() => setShowTagMgr(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-lightText">
             <Tag size={15} /> Etiquetas
+          </button>
+          <button onClick={() => { setShowCampaign(true); setCampaignResult(null); setCampaignSelected(new Set(filtered.filter(q => q.whatsapp).map(q => q.id))); }}
+            className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-green-600">
+            <Zap size={15} /> Campanha
           </button>
           <button onClick={() => setShowAddLead(true)}
             className="flex items-center gap-2 px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 font-medium shadow-sm">
@@ -595,12 +644,19 @@ export const AdminCRM: React.FC = () => {
               className={`flex-shrink-0 w-72 flex flex-col rounded-xl border-2 transition-colors ${isDragTarget ? 'border-primary/40 bg-primary/5' : 'border-transparent bg-gray-50'}`}>
 
               {/* Column header */}
-              <div className="px-4 pt-4 pb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2.5 h-2.5 rounded-full ${col.dot}`} />
-                  <span className="font-bold text-sm text-darkText">{col.label}</span>
+              <div className="px-4 pt-4 pb-3">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${col.dot}`} />
+                    <span className="font-bold text-sm text-darkText">{col.label}</span>
+                  </div>
+                  <span className="text-xs font-bold bg-white border border-gray-200 text-lightText px-2 py-0.5 rounded-full">{cards.length}</span>
                 </div>
-                <span className="text-xs font-bold bg-white border border-gray-200 text-lightText px-2 py-0.5 rounded-full">{cards.length}</span>
+                {cards.some(c => c.estimatedValue) && (
+                  <p className="text-xs text-green-600 font-medium">
+                    R$ {cards.reduce((sum, c) => sum + (c.estimatedValue || 0), 0).toLocaleString('pt-BR')}
+                  </p>
+                )}
               </div>
 
               {/* Cards */}
@@ -1082,10 +1138,117 @@ export const AdminCRM: React.FC = () => {
                 </div>
               ))}
             </div>
+            {duplicateWarning && (
+              <div className="mt-3 flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2 text-xs text-orange-700">
+                <AlertCircle size={14} className="flex-shrink-0" /> {duplicateWarning}
+                <button onClick={() => setDuplicateWarning('')} className="ml-auto text-orange-400 hover:text-orange-600">Ignorar</button>
+              </div>
+            )}
             <button onClick={handleAddLead} disabled={addingLead || !newLead.name.trim()}
               className="w-full mt-5 bg-primary text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50">
               {addingLead ? <RefreshCw size={16} className="animate-spin" /> : <Plus size={16} />} Adicionar Lead
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════ Campanha em Massa Modal ═══════ */}
+      {showCampaign && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => !campaignSending && setShowCampaign(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="font-bold text-darkText text-lg flex items-center gap-2"><Zap size={18} className="text-green-500" /> Campanha de WhatsApp</h3>
+                <p className="text-xs text-lightText mt-0.5">Envie uma mensagem para múltiplos leads de uma vez</p>
+              </div>
+              {!campaignSending && <button onClick={() => setShowCampaign(false)}><X size={18} className="text-lightText" /></button>}
+            </div>
+
+            {!campaignResult ? (
+              <>
+                {/* Template picker */}
+                <div className="mb-4">
+                  <p className="text-xs font-bold text-darkText mb-2">1. Escolha o template</p>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {MESSAGE_TEMPLATES.map(tpl => (
+                      <label key={tpl.id} className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${campaignTemplate === tpl.id ? 'border-primary bg-primary/5' : 'border-gray-100 hover:border-gray-200'}`}>
+                        <input type="radio" name="cmpTpl" value={tpl.id} checked={campaignTemplate === tpl.id}
+                          onChange={() => setCampaignTemplate(tpl.id)} className="mt-0.5 accent-primary" />
+                        <div>
+                          <p className="text-sm font-bold text-darkText">{tpl.label}</p>
+                          <p className="text-xs text-lightText mt-0.5">{tpl.text.slice(0, 80)}...</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Recipient list */}
+                <div className="flex-1 overflow-hidden flex flex-col">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-bold text-darkText">2. Selecione os destinatários ({campaignSelected.size} selecionados)</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setCampaignSelected(new Set(filtered.filter(q => q.whatsapp).map(q => q.id)))}
+                        className="text-xs text-primary hover:underline">Todos</button>
+                      <button onClick={() => setCampaignSelected(new Set())}
+                        className="text-xs text-lightText hover:underline">Limpar</button>
+                    </div>
+                  </div>
+                  <div className="overflow-y-auto border border-gray-100 rounded-xl max-h-52">
+                    {filtered.filter(q => q.whatsapp).map(lead => (
+                      <label key={lead.id} className={`flex items-center gap-3 px-3 py-2.5 border-b border-gray-50 last:border-0 cursor-pointer hover:bg-gray-50 ${campaignSelected.has(lead.id) ? 'bg-primary/5' : ''}`}>
+                        <input type="checkbox" checked={campaignSelected.has(lead.id)}
+                          onChange={e => setCampaignSelected(prev => { const n = new Set(prev); e.target.checked ? n.add(lead.id) : n.delete(lead.id); return n; })}
+                          className="accent-primary" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-darkText truncate">{lead.name}</p>
+                          <p className="text-xs text-lightText">{lead.whatsapp}</p>
+                        </div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full border ${COLUMNS.find(c => c.id === lead.status)?.pill}`}>
+                          {COLUMNS.find(c => c.id === lead.status)?.label}
+                        </span>
+                      </label>
+                    ))}
+                    {filtered.filter(q => q.whatsapp).length === 0 && (
+                      <p className="text-center py-8 text-sm text-lightText">Nenhum lead com WhatsApp nos filtros atuais</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 text-xs text-yellow-700">
+                  <strong>⚠️ Atenção:</strong> Envios em massa podem acionar filtros anti-spam do WhatsApp. Recomendamos no máximo 50 envios por dia e use templates personalizados.
+                </div>
+
+                <button onClick={handleSendCampaign}
+                  disabled={campaignSending || campaignSelected.size === 0}
+                  className="w-full mt-4 bg-green-600 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-green-700">
+                  {campaignSending
+                    ? <><RefreshCw size={16} className="animate-spin" /> Enviando... aguarde</>
+                    : <><Send size={16} /> Enviar para {campaignSelected.size} lead{campaignSelected.size !== 1 ? 's' : ''}</>}
+                </button>
+              </>
+            ) : (
+              <div className="text-center py-10 flex flex-col items-center gap-4">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${campaignResult.failed === 0 ? 'bg-green-100' : 'bg-yellow-100'}`}>
+                  {campaignResult.failed === 0
+                    ? <CheckCircle2 size={32} className="text-green-500" />
+                    : <AlertCircle size={32} className="text-yellow-500" />}
+                </div>
+                <div>
+                  <h4 className="font-bold text-xl text-darkText mb-1">Campanha enviada!</h4>
+                  <p className="text-lightText">
+                    <span className="text-green-600 font-bold">{campaignResult.sent} enviados</span>
+                    {campaignResult.failed > 0 && <> · <span className="text-red-500 font-bold">{campaignResult.failed} falhas</span></>}
+                  </p>
+                  {campaignResult.failed > 0 && (
+                    <p className="text-xs text-lightText mt-2">As falhas podem ter ocorrido por número inválido ou conexão perdida.</p>
+                  )}
+                </div>
+                <button onClick={() => setShowCampaign(false)}
+                  className="bg-primary text-white font-medium px-8 py-2.5 rounded-xl">Fechar</button>
+              </div>
+            )}
           </div>
         </div>
       )}

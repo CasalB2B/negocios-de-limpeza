@@ -1,13 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { useData, Quote, ClientUser } from '../../components/DataContext';
 import {
   MessageSquare, Phone, Mail, ChevronDown,
-  CheckCircle, Clock, TrendingUp, X, Plus, FileText, UserPlus,
-  Wand2, Loader2, ImagePlus, Camera, Send, Trash2,
+  CheckCircle, Clock, TrendingUp, X, FileText, UserPlus,
+  Loader2, Send, Trash2,
 } from 'lucide-react';
-import { extractFromConversation } from '../../lib/gemini';
 import { sendMessage as sendWhatsApp, sendDocument, buildMessage, DEFAULT_TEMPLATES } from '../../lib/evolution';
 import jsPDF from 'jspdf';
 
@@ -42,7 +41,8 @@ function generateProposalWindow(
 body{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;background:#fff}
 @page{size:A4;margin:0}
 @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none!important}.pb{page-break-before:always}}
-.page{width:210mm;height:297mm;position:relative;overflow:hidden}
+.page{width:210mm;height:297mm;display:flex;flex-direction:column;overflow:hidden}
+.img-fill{flex:1;min-height:100px;overflow:hidden}
 .hdr{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:28px 48px 22px;color:#fff}
 .badge{display:inline-block;background:rgba(255,255,255,.25);font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:14px}
 .hdr h1{font-size:42px;font-weight:900;margin-bottom:6px}
@@ -65,7 +65,7 @@ body{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;background:#fff}
 .price{font-size:48px;font-weight:900;margin-bottom:20px}
 .pmethods{display:flex;gap:8px;flex-wrap:wrap}
 .pchip{background:rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600}
-.ftr{background:#1a1a2e;color:#fff;padding:14px 48px;display:flex;justify-content:space-between;align-items:center;font-size:10px;position:absolute;bottom:0;left:0;right:0}
+.ftr{background:#1a1a2e;color:#fff;padding:14px 48px;display:flex;justify-content:space-between;align-items:center;font-size:10px;flex-shrink:0}
 .hdr2{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:36px 48px;color:#fff}
 .hdr2 h1{font-size:32px;font-weight:900;margin-bottom:6px}
 .dgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
@@ -121,7 +121,7 @@ body{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;background:#fff}
       <div class="pmethods"><span class="pchip">Pix</span><span class="pchip">Cart&atilde;o (consultar taxa)</span><span class="pchip">Transfer&ecirc;ncia</span></div>
     </div>
   </div>
-  <div style="position:absolute;bottom:55px;left:0;right:0;height:185px;overflow:hidden">
+  <div class="img-fill">
     <img src="${origin}/img/foto-pdf-p1.jpg"
       style="width:100%;height:100%;object-fit:cover;object-position:center 8%" alt="Negócios de Limpeza" />
   </div>
@@ -158,7 +158,7 @@ body{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;background:#fff}
     </div>
   </div>
   <div class="cta"><h3>Transforme seu lar com a Neg&oacute;cios de Limpeza!</h3><p>Entre em contato e agende sua faxina com quem cuida de verdade.</p></div>
-  <div style="width:100%;height:280px;overflow:hidden">
+  <div class="img-fill">
     <img src="${origin}/img/foto-pdf-p2.jpg"
       style="width:100%;height:100%;object-fit:cover;object-position:center 25%" alt="Negócios de Limpeza" />
   </div>
@@ -168,182 +168,6 @@ body{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;background:#fff}
 </body></html>`);
   win.document.close();
 }
-
-// --- WhatsApp MANUAL ENTRY MODAL ---
-interface WhatsAppModalProps {
-  onClose: () => void;
-  onSave: (data: Record<string, string>) => void;
-}
-
-const WhatsAppModal: React.FC<WhatsAppModalProps> = ({ onClose, onSave }) => {
-  const [text, setText] = useState('');
-  const [images, setImages] = useState<{ base64: string; mimeType: string; preview: string }[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [extracted, setExtracted] = useState<Record<string, string> | null>(null);
-  const [error, setError] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const addImageFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target?.result as string;
-      setImages(prev => [...prev, {
-        preview: dataUrl,
-        base64: dataUrl.split(',')[1],
-        mimeType: file.type || 'image/jpeg',
-      }]);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const removeImage = (idx: number) => {
-    setImages(prev => prev.filter((_, i) => i !== idx));
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    for (const item of e.clipboardData.items) {
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile();
-        if (file) addImageFile(file);
-      }
-    }
-  };
-
-  const handleExtract = async () => {
-    if (!text.trim() && images.length === 0) return;
-    setLoading(true);
-    setError('');
-    try {
-      const data = await extractFromConversation(text, images.length > 0 ? images : undefined);
-      setExtracted(data);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao processar');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-5 border-b">
-          <div>
-            <h3 className="font-bold text-gray-900">Entrada Manual via WhatsApp</h3>
-            <p className="text-xs text-gray-500 mt-0.5">Cole o texto ou prints da conversa — a IA extrai os dados automaticamente</p>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100"><X size={18} /></button>
-        </div>
-
-        <div className="overflow-y-auto p-5 space-y-4" onPaste={handlePaste}>
-          {!extracted ? (
-            <>
-              {/* Image gallery */}
-              {images.length > 0 && (
-                <div className="grid grid-cols-3 gap-2">
-                  {images.map((img, idx) => (
-                    <div key={idx} className="relative rounded-xl overflow-hidden border border-purple-200 group">
-                      <img src={img.preview} alt={`Print ${idx + 1}`} className="w-full h-24 object-cover bg-gray-50" />
-                      <button
-                        onClick={() => removeImage(idx)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 opacity-80 group-hover:opacity-100"
-                      ><X size={12} /></button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Upload zone — always visible */}
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-purple-200 rounded-xl p-4 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50/40 transition-colors"
-              >
-                <Camera size={24} className="mx-auto mb-1 text-purple-400" />
-                <p className="text-sm font-bold text-purple-600">
-                  {images.length === 0 ? 'Cole (Ctrl+V) ou clique para adicionar prints' : 'Adicionar mais prints'}
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5">PNG, JPG — pode adicionar várias fotos</p>
-              </div>
-              <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => {
-                if (e.target.files) Array.from(e.target.files).forEach(f => addImageFile(f));
-                e.target.value = '';
-              }} />
-
-              <textarea
-                value={text}
-                onChange={e => setText(e.target.value)}
-                placeholder="Ou cole aqui o texto copiado da conversa do WhatsApp..."
-                className="w-full h-36 p-3 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-300"
-              style={{ fontSize: '16px' }}
-              />
-              {error && <p className="text-red-500 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
-              <button
-                onClick={handleExtract}
-                disabled={loading || (!text.trim() && images.length === 0)}
-                className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 transition-colors disabled:opacity-50"
-              >
-                {loading ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
-                {loading ? 'Processando com IA...' : `Extrair dados com IA${images.length > 1 ? ` (${images.length} fotos)` : ''}`}
-              </button>
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-bold text-green-700 bg-green-50 px-4 py-2 rounded-lg">
-                Dados extraídos! Revise e corrija se necessário antes de salvar.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {([
-                  { key: 'name', label: 'Nome' },
-                  { key: 'whatsapp', label: 'WhatsApp' },
-                  { key: 'email', label: 'E-mail' },
-                  { key: 'propertyType', label: 'Tipo de Imóvel' },
-                  { key: 'serviceOption', label: 'Tipo de Serviço' },
-                  { key: 'cep', label: 'CEP / Bairro' },
-                ] as const).map(({ key, label }) => (
-                  <div key={key}>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase">{label}</label>
-                    <input
-                      value={extracted[key] || ''}
-                      onChange={e => setExtracted(prev => ({ ...prev!, [key]: e.target.value }))}
-                      className="w-full mt-1 p-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
-                    />
-                  </div>
-                ))}
-              </div>
-              {([
-                { key: 'rooms', label: 'Cômodos' },
-                { key: 'priorities', label: 'Prioridades' },
-                { key: 'internalCleaning', label: 'Limpeza Interna' },
-                { key: 'renovation', label: 'Reforma / Pós-obra' },
-              ] as const).map(({ key, label }) => (
-                <div key={key}>
-                  <label className="text-[10px] font-bold text-gray-500 uppercase">{label}</label>
-                  <textarea
-                    value={extracted[key] || ''}
-                    onChange={e => setExtracted(prev => ({ ...prev!, [key]: e.target.value }))}
-                    rows={2}
-                    className="w-full mt-1 p-2 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300"
-                  />
-                </div>
-              ))}
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setExtracted(null)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50">
-                  Voltar
-                </button>
-                <button
-                  onClick={() => { onSave(extracted); onClose(); }}
-                  disabled={!extracted.name && !extracted.whatsapp}
-                  className="flex-1 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-bold hover:bg-purple-700 disabled:opacity-40"
-                >
-                  Salvar Lead
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // --- AUTO-PRICE CALCULATION ---
 function calcAutoPrice(quote: Quote): { price: string; professionals: string; hours: string; breakdown: string[] } {
@@ -400,7 +224,8 @@ async function generatePDFBase64(
   wrapper.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;overflow:visible;font-family:Arial,Helvetica,sans-serif';
   wrapper.innerHTML = `<style>
 .ndl-pdf-root,.ndl-pdf-root *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
-.ndl-pdf-root .page{width:794px;height:1123px;position:relative;overflow:hidden;background:#fff;color:#1a1a2e}
+.ndl-pdf-root .page{width:794px;height:1123px;display:flex;flex-direction:column;overflow:hidden;background:#fff;color:#1a1a2e}
+.ndl-pdf-root .img-fill{flex:1;min-height:100px;overflow:hidden}
 .ndl-pdf-root .hdr{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:28px 48px 22px;color:#fff}
 .ndl-pdf-root .badge{display:inline-block;background:rgba(255,255,255,.25);font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:14px;color:#fff}
 .ndl-pdf-root .hdr h1{font-size:42px;font-weight:900;margin-bottom:6px;color:#fff}
@@ -422,7 +247,7 @@ async function generatePDFBase64(
 .ndl-pdf-root .price{font-size:48px;font-weight:900;margin-bottom:20px;color:#fff}
 .ndl-pdf-root .pmethods{display:flex;gap:8px;flex-wrap:wrap}
 .ndl-pdf-root .pchip{background:rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600;color:#fff}
-.ndl-pdf-root .ftr{background:#1a1a2e;color:#fff;padding:14px 48px;display:flex;justify-content:space-between;align-items:center;font-size:10px;position:absolute;bottom:0;left:0;right:0}
+.ndl-pdf-root .ftr{background:#1a1a2e;color:#fff;padding:14px 48px;display:flex;justify-content:space-between;align-items:center;font-size:10px;flex-shrink:0}
 .ndl-pdf-root .hdr2{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:36px 48px;color:#fff}
 .ndl-pdf-root .hdr2 h1{font-size:32px;font-weight:900;margin-bottom:6px;color:#fff}
 .ndl-pdf-root .hdr2 .sub{font-size:13px;opacity:.85;color:#fff}
@@ -478,7 +303,7 @@ async function generatePDFBase64(
       <div class="pmethods"><span class="pchip">Pix</span><span class="pchip">Cartão (consultar taxa)</span><span class="pchip">Transferência</span></div>
     </div>
   </div>
-  <div style="position:absolute;bottom:55px;left:0;right:0;height:185px;overflow:hidden">
+  <div class="img-fill">
     <img src="${origin}/img/foto-pdf-p1.jpg"
       style="width:100%;height:100%;object-fit:cover;object-position:center 8%" alt="Negócios de Limpeza" crossorigin="anonymous" />
   </div>
@@ -514,7 +339,7 @@ async function generatePDFBase64(
     </div>
   </div>
   <div class="cta"><h3>Transforme seu lar com a Negócios de Limpeza!</h3><p>Entre em contato e agende sua faxina com quem cuida de verdade.</p></div>
-  <div style="width:100%;height:280px;overflow:hidden">
+  <div class="img-fill">
     <img src="${origin}/img/foto-pdf-p2.jpg"
       style="width:100%;height:100%;object-fit:cover;object-position:center 25%" alt="Negócios de Limpeza" crossorigin="anonymous" />
   </div>
@@ -1204,9 +1029,8 @@ const QuoteCard: React.FC<QuoteCardProps> = ({ quote, onStatusChange, onCreateAc
 
 // --- MAIN PAGE ---
 export const AdminQuotes: React.FC = () => {
-  const { quotes, addQuote, updateQuoteStatus, deleteQuote, clients, registerClient } = useData();
+  const { quotes, updateQuoteStatus, deleteQuote, clients, registerClient } = useData();
   const [filter, setFilter] = useState<Quote['status'] | 'ALL'>('ALL');
-  const [showWhatsApp, setShowWhatsApp] = useState(false);
   const [createAccountTarget, setCreateAccountTarget] = useState<Quote | null>(null);
 
   const filtered = filter === 'ALL' ? quotes : quotes.filter(q => q.status === filter);
@@ -1216,21 +1040,6 @@ export const AdminQuotes: React.FC = () => {
     CONTACTED: quotes.filter(q => q.status === 'CONTACTED').length,
     CONVERTED: quotes.filter(q => q.status === 'CONVERTED').length,
     LOST: quotes.filter(q => q.status === 'LOST').length,
-  };
-
-  const handleSaveManual = (data: Record<string, string>) => {
-    addQuote({
-      name: data.name || '',
-      email: data.email || '',
-      whatsapp: data.whatsapp || '',
-      cep: data.cep || '',
-      propertyType: data.propertyType || '',
-      rooms: data.rooms || '',
-      priorities: data.priorities || '',
-      internalCleaning: data.internalCleaning || '',
-      renovation: data.renovation || '',
-      serviceOption: data.serviceOption || '',
-    });
   };
 
   const accountExists = (quote: Quote) => {
@@ -1250,14 +1059,8 @@ export const AdminQuotes: React.FC = () => {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold text-darkText dark:text-darkTextPrimary">Orçamentos</h1>
-            <p className="text-sm text-gray-500 mt-1">Leads do chat + entradas manuais via WhatsApp</p>
+            <p className="text-sm text-gray-500 mt-1">Leads capturados pelo chat da Nina</p>
           </div>
-          <button
-            onClick={() => setShowWhatsApp(true)}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-green-700 transition-colors"
-          >
-            <Plus size={16} /> Entrada Manual (WhatsApp)
-          </button>
         </div>
 
         {/* Stats */}
@@ -1305,7 +1108,7 @@ export const AdminQuotes: React.FC = () => {
             <MessageSquare size={40} className="text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500 font-bold">Nenhum orçamento {filter !== 'ALL' ? 'com este status' : 'ainda'}</p>
             <p className="text-gray-400 text-sm mt-1">
-              {filter === 'ALL' ? 'Use o botão "Entrada Manual" ou aguarde leads do chat' : 'Tente outro filtro'}
+              {filter === 'ALL' ? 'Aguarde leads chegarem pelo chat da Nina' : 'Tente outro filtro'}
             </p>
           </div>
         ) : (
@@ -1323,9 +1126,6 @@ export const AdminQuotes: React.FC = () => {
         )}
       </div>
 
-      {showWhatsApp && (
-        <WhatsAppModal onClose={() => setShowWhatsApp(false)} onSave={handleSaveManual} />
-      )}
       {createAccountTarget && (
         <CreateAccountModal
           quote={createAccountTarget}
