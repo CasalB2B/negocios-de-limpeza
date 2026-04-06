@@ -355,6 +355,36 @@ export const AdminCRM: React.FC = () => {
   const [scheduledCampaignDate, setScheduledCampaignDate] = useState('');
   const [scheduledCampaignTime, setScheduledCampaignTime] = useState('08:00');
 
+  // ── scheduled campaigns list ──
+  interface ScheduledCampaign {
+    id: string;
+    templateLabel: string;
+    templateEmoji: string;
+    leadCount: number;
+    scheduledFor: number;
+    tplId: string;
+    leadIds: string[];
+    mediaType: CampaignMediaType;
+    mediaUrl?: string;
+    status: 'pending' | 'sent' | 'cancelled';
+  }
+  const [scheduledCampaigns, setScheduledCampaigns] = useState<ScheduledCampaign[]>(() => {
+    try {
+      const s = localStorage.getItem('crm_scheduled_v2');
+      return s ? JSON.parse(s) : [];
+    } catch { return []; }
+  });
+  const persistScheduled = (list: ScheduledCampaign[]) => {
+    try { localStorage.setItem('crm_scheduled_v2', JSON.stringify(list)); } catch {}
+  };
+  const cancelScheduled = (id: string) => {
+    setScheduledCampaigns(prev => {
+      const updated = prev.map(c => c.id === id ? { ...c, status: 'cancelled' as const } : c);
+      persistScheduled(updated);
+      return updated;
+    });
+  };
+
   // ── media recording / upload ──
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -761,26 +791,40 @@ export const AdminCRM: React.FC = () => {
     const tpl = campaignTemplates.find(t => t.id === activeTplId);
     if (!tpl || campaignSelected.size === 0) return;
 
-    // If schedule is enabled, save to localStorage and set a timeout
+    // If schedule is enabled, save to state/localStorage and set a timeout
     if (scheduleEnabled && scheduledCampaignDate && scheduledCampaignTime) {
       const scheduledFor = new Date(`${scheduledCampaignDate}T${scheduledCampaignTime}`).getTime();
       const delay = scheduledFor - Date.now();
       if (delay > 0) {
-        const scheduledData = {
+        const tpl = campaignTemplates.find(t => t.id === activeTplId);
+        const newScheduled: ScheduledCampaign = {
+          id: `sched_${Date.now()}`,
+          templateLabel: tpl?.label || 'Template',
+          templateEmoji: tpl?.emoji || '💬',
+          leadCount: campaignSelected.size,
+          scheduledFor,
           tplId: activeTplId,
           leadIds: Array.from(campaignSelected),
           mediaType: campaignMediaType,
-          mediaUrl: campaignMediaUrl,
-          scheduledFor,
+          mediaUrl: campaignMediaUrl || undefined,
+          status: 'pending',
         };
-        try { localStorage.setItem('crm_scheduled_campaign', JSON.stringify(scheduledData)); } catch {}
+        setScheduledCampaigns(prev => {
+          const updated = [...prev, newScheduled];
+          persistScheduled(updated);
+          return updated;
+        });
         setTimeout(() => {
           setScheduleEnabled(false);
+          setScheduledCampaigns(prev => {
+            const updated = prev.map(c => c.id === newScheduled.id ? { ...c, status: 'sent' as const } : c);
+            persistScheduled(updated);
+            return updated;
+          });
           handleSendCampaign();
         }, delay);
         setScheduleEnabled(false);
         setScheduledCampaignDate('');
-        alert(`✅ Campanha agendada para ${scheduledCampaignDate} às ${scheduledCampaignTime}. Mantenha o painel aberto.`);
         return;
       }
     }
@@ -1134,22 +1178,76 @@ export const AdminCRM: React.FC = () => {
           CAMPAIGNS VIEW
       ══════════════════════════════════════════════════════ */}
       {viewMode === 'campaigns' && (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+        <div className="mb-6 space-y-5">
 
-          {/* ── LEFT: Template Manager ── */}
-          <div className="space-y-4">
-            <div className="bg-white rounded-xl border border-gray-100 p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-darkText flex items-center gap-2"><Megaphone size={16} className="text-green-500" /> Templates de Mensagem</h3>
+          {/* ── Scheduled Campaigns Panel (only when there are pending) ── */}
+          {scheduledCampaigns.filter(c => c.status === 'pending').length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <CalendarPlus size={16} className="text-amber-600" />
+                <h3 className="font-bold text-amber-800 text-sm">Campanhas Agendadas</h3>
+                <span className="text-xs font-bold bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full">
+                  {scheduledCampaigns.filter(c => c.status === 'pending').length}
+                </span>
+              </div>
+              <div className="space-y-2">
+                {scheduledCampaigns.filter(c => c.status === 'pending').map(sc => {
+                  const d = new Date(sc.scheduledFor);
+                  const dateStr = d.toLocaleDateString('pt-BR');
+                  const timeStr = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                  return (
+                    <div key={sc.id} className="bg-white rounded-xl border border-amber-200 px-4 py-3 flex items-center gap-3">
+                      <span className="text-xl flex-shrink-0">{sc.templateEmoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-darkText">{sc.templateLabel}</p>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          <span className="text-xs text-lightText flex items-center gap-1">
+                            <Clock size={11} /> {dateStr} às {timeStr}
+                          </span>
+                          <span className="text-xs text-lightText flex items-center gap-1">
+                            <User size={11} /> {sc.leadCount} lead{sc.leadCount !== 1 ? 's' : ''}
+                          </span>
+                          {sc.mediaType !== 'text' && (
+                            <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full capitalize">{sc.mediaType}</span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => cancelScheduled(sc.id)}
+                        className="text-xs text-red-500 hover:text-red-700 border border-red-200 hover:border-red-300 px-3 py-1.5 rounded-lg transition-colors flex-shrink-0">
+                        Cancelar
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              {scheduledCampaigns.filter(c => c.status === 'sent').length > 0 && (
+                <p className="text-xs text-amber-600 mt-2">
+                  ✓ {scheduledCampaigns.filter(c => c.status === 'sent').length} campanha(s) já enviada(s) hoje
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* ── Main 3-column grid ── */}
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto_1fr] gap-6">
+
+            {/* ── COLUMN 1: Template Manager ── */}
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="font-bold text-darkText flex items-center gap-2">
+                  <Megaphone size={15} className="text-green-500" /> Templates
+                  <span className="text-xs font-normal text-lightText bg-gray-100 px-2 py-0.5 rounded-full">{campaignTemplates.length}</span>
+                </h3>
                 <button onClick={() => { setShowNewTplForm(p => !p); setEditingTpl(null); }}
                   className="text-xs bg-primary text-white px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-primary/90">
-                  <Plus size={12} /> Novo template
+                  <Plus size={12} /> Novo
                 </button>
               </div>
 
               {/* New template form */}
               {showNewTplForm && (
-                <div className="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200 space-y-3">
+                <div className="mx-4 mt-4 bg-gray-50 rounded-xl p-4 border border-gray-200 space-y-3">
                   <p className="text-xs font-bold text-darkText">Criar novo template</p>
                   <div className="flex gap-2">
                     <input value={newTpl.emoji} onChange={e => setNewTpl(p => ({ ...p, emoji: e.target.value }))}
@@ -1160,17 +1258,17 @@ export const AdminCRM: React.FC = () => {
                   <textarea rows={4} value={newTpl.text} onChange={e => setNewTpl(p => ({ ...p, text: e.target.value }))}
                     placeholder="Texto da mensagem... Use [nome] para o nome do cliente."
                     className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-primary resize-none" />
-                  <p className="text-xs text-lightText">Variáveis disponíveis: <code className="bg-gray-200 px-1 rounded">[nome]</code></p>
+                  <p className="text-xs text-lightText">Use <code className="bg-gray-200 px-1 rounded">[nome]</code> para personalizar</p>
                   <div className="flex gap-2">
                     <button onClick={handleAddTpl} disabled={!newTpl.label.trim() || !newTpl.text.trim()}
-                      className="flex-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-40">Salvar template</button>
+                      className="flex-1 bg-primary text-white py-2 rounded-lg text-sm font-medium disabled:opacity-40">Salvar</button>
                     <button onClick={() => setShowNewTplForm(false)} className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-lightText">Cancelar</button>
                   </div>
                 </div>
               )}
 
               {/* Template list */}
-              <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+              <div className="p-4 space-y-2 overflow-y-auto" style={{ maxHeight: 600 }}>
                 {campaignTemplates.map(tpl => (
                   <div key={tpl.id}>
                     {editingTpl?.id === tpl.id ? (
@@ -1194,16 +1292,16 @@ export const AdminCRM: React.FC = () => {
                         <span className="text-xl flex-shrink-0 mt-0.5">{tpl.emoji}</span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-darkText">{tpl.label}</p>
-                          <p className="text-xs text-lightText truncate mt-0.5">{tpl.text.slice(0, 60)}...</p>
+                          <p className="text-xs text-lightText line-clamp-2 mt-0.5 leading-relaxed">{tpl.text}</p>
                         </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                           <button onClick={e => { e.stopPropagation(); setEditingTpl(tpl); setShowNewTplForm(false); }}
-                            className="p-1.5 text-lightText hover:text-primary hover:bg-primary/10 rounded-lg transition-colors" title="Editar">
+                            className="p-1.5 text-lightText hover:text-primary hover:bg-primary/10 rounded-lg transition-colors">
                             <Pencil size={12} />
                           </button>
                           {!tpl.isDefault && (
                             <button onClick={e => { e.stopPropagation(); if (confirm('Excluir template?')) handleDeleteTpl(tpl.id); }}
-                              className="p-1.5 text-lightText hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Excluir">
+                              className="p-1.5 text-lightText hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                               <Trash2 size={12} />
                             </button>
                           )}
@@ -1214,299 +1312,272 @@ export const AdminCRM: React.FC = () => {
                 ))}
               </div>
             </div>
-          </div>
 
-          {/* ── RIGHT: Preview + Campaign Sender ── */}
-          <div className="space-y-4">
-
-            {/* Phone preview */}
-            <div className="rounded-2xl border border-gray-100 overflow-hidden bg-white">
-              <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-gray-50">
-                <p className="text-sm font-bold text-darkText flex items-center gap-2">
-                  <Smartphone size={14} className="text-primary" /> Preview
-                </p>
-                <span className="text-[11px] text-green-600 font-semibold bg-green-50 px-2.5 py-1 rounded-full flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" /> WhatsApp
-                </span>
-              </div>
-              <div
-                className="py-10 px-6 flex items-center justify-center"
-                style={{ background: 'radial-gradient(ellipse at center, #f0f0f0 0%, #e8e8e8 100%)' }}
-              >
-                <PhonePreview
-                  message={(campaignTemplates.find(t => t.id === activeTplId)?.text || '').replace(/\[nome\]/gi, 'Carlos')}
-                  contactName="Carlos"
-                  mediaType={campaignMediaType}
-                  mediaUrl={campaignMediaUrl}
-                  mediaPreviewUrl={mediaFileData?.previewUrl || recordedAudio?.url}
-                />
-              </div>
-              <div className="px-5 py-2.5 border-t border-gray-50">
-                <p className="text-[11px] text-lightText text-center">Exatamente como o cliente vai receber no WhatsApp</p>
+            {/* ── COLUMN 2: Phone Preview (centered, fixed width) ── */}
+            <div className="flex flex-col items-center gap-3">
+              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden w-full">
+                <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
+                  <p className="text-sm font-bold text-darkText flex items-center gap-2">
+                    <Smartphone size={14} className="text-primary" /> Preview
+                  </p>
+                  <span className="text-[11px] text-green-600 font-semibold bg-green-50 px-2.5 py-1 rounded-full flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" /> WhatsApp
+                  </span>
+                </div>
+                <div
+                  className="py-10 px-6 flex items-center justify-center"
+                  style={{ background: 'radial-gradient(ellipse at center, #f0f0f0 0%, #e8e8e8 100%)' }}
+                >
+                  <PhonePreview
+                    message={(campaignTemplates.find(t => t.id === activeTplId)?.text || '').replace(/\[nome\]/gi, 'Carlos')}
+                    contactName="Carlos"
+                    mediaType={campaignMediaType}
+                    mediaUrl={campaignMediaUrl}
+                    mediaPreviewUrl={mediaFileData?.previewUrl || recordedAudio?.url}
+                  />
+                </div>
+                <div className="px-4 py-2.5 border-t border-gray-50">
+                  <p className="text-[11px] text-lightText text-center">Exatamente como o cliente vai receber</p>
+                </div>
               </div>
             </div>
 
-            {/* Campaign sender */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-5">
-              <h3 className="font-bold text-darkText text-base flex items-center gap-2"><Send size={15} className="text-green-500" /> Disparar Campanha</h3>
+            {/* ── COLUMN 3: Campaign Steps ── */}
+            <div className="space-y-4">
 
-              {/* Media type selector */}
-              <div>
-                <p className="text-xs font-bold text-lightText uppercase tracking-wider mb-2">Tipo de mensagem</p>
-                <div className="grid grid-cols-4 gap-2">
-                  {([
-                    { type: 'text' as CampaignMediaType, icon: '💬', label: 'Texto' },
-                    { type: 'image' as CampaignMediaType, icon: '🖼️', label: 'Foto' },
-                    { type: 'audio' as CampaignMediaType, icon: '🎵', label: 'Áudio' },
-                    { type: 'video' as CampaignMediaType, icon: '🎥', label: 'Vídeo' },
-                  ]).map(m => (
-                    <button key={m.type} onClick={() => setCampaignMediaType(m.type)}
-                      className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border-2 text-xs font-medium transition-all ${campaignMediaType === m.type ? 'border-primary bg-primary/5 text-primary' : 'border-gray-100 text-lightText hover:border-gray-200'}`}>
-                      <span className="text-lg">{m.icon}</span>
-                      {m.label}
-                    </button>
-                  ))}
+              {/* Step 1 — Message type */}
+              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-primary text-white text-xs font-black flex items-center justify-center flex-shrink-0">1</div>
+                  <h3 className="font-bold text-darkText text-sm">Tipo de mensagem</h3>
                 </div>
-              </div>
-
-              {/* Audio recording / upload */}
-              {campaignMediaType === 'audio' && (
-                <div className="space-y-3">
-                  <p className="text-xs font-bold text-lightText uppercase tracking-wider">Áudio da mensagem</p>
-                  {recordedAudio ? (
-                    <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                        <Mic size={16} className="text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-darkText mb-1">Áudio gravado ({recordingTime}s)</p>
-                        <audio src={recordedAudio.url} controls className="w-full h-7" />
-                      </div>
-                      <button onClick={clearMedia} className="text-red-400 hover:text-red-600 flex-shrink-0"><X size={15} /></button>
-                    </div>
-                  ) : mediaFileData ? (
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
-                        <Mic size={16} className="text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-darkText mb-1 truncate">{mediaFileData.name}</p>
-                        <audio src={mediaFileData.previewUrl} controls className="w-full h-7" />
-                      </div>
-                      <button onClick={clearMedia} className="text-red-400 hover:text-red-600 flex-shrink-0"><X size={15} /></button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={isRecording ? stopRecording : startRecording}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all ${
-                          isRecording
-                            ? 'bg-red-500 text-white'
-                            : 'bg-primary text-white hover:bg-primary/90'
-                        }`}
-                      >
-                        {isRecording
-                          ? <><Square size={14} /> Parar ({recordingTime}s)</>
-                          : <><Mic size={14} /> Gravar áudio</>}
+                <div className="p-4 space-y-4">
+                  <div className="grid grid-cols-4 gap-2">
+                    {([
+                      { type: 'text' as CampaignMediaType, icon: '💬', label: 'Texto' },
+                      { type: 'image' as CampaignMediaType, icon: '🖼️', label: 'Foto' },
+                      { type: 'audio' as CampaignMediaType, icon: '🎵', label: 'Áudio' },
+                      { type: 'video' as CampaignMediaType, icon: '🎥', label: 'Vídeo' },
+                    ]).map(m => (
+                      <button key={m.type} onClick={() => { setCampaignMediaType(m.type); clearMedia(); }}
+                        className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 text-xs font-semibold transition-all ${campaignMediaType === m.type ? 'border-primary bg-primary/5 text-primary' : 'border-gray-100 text-lightText hover:border-gray-200'}`}>
+                        <span className="text-xl">{m.icon}</span>
+                        {m.label}
                       </button>
-                      <button onClick={() => audioInputRef.current?.click()}
-                        className="px-4 border-2 border-dashed border-gray-200 rounded-xl text-xs text-lightText hover:border-primary hover:text-primary transition-colors flex items-center gap-1.5">
-                        <Upload size={13} /> Arquivo
-                      </button>
-                    </div>
-                  )}
-                  <input ref={audioInputRef} type="file" accept="audio/*" className="hidden"
-                    onChange={e => e.target.files?.[0] && handleMediaFile(e.target.files[0])} />
-                  <p className="text-xs text-lightText bg-gray-50 rounded-lg px-3 py-2">
-                    💡 O texto do template será enviado como mensagem de texto <strong>antes</strong> do áudio
-                  </p>
-                </div>
-              )}
-
-              {/* Image upload */}
-              {campaignMediaType === 'image' && (
-                <div className="space-y-3">
-                  <p className="text-xs font-bold text-lightText uppercase tracking-wider">Foto da mensagem</p>
-                  {mediaFileData ? (
-                    <div className="relative rounded-xl overflow-hidden border border-gray-200">
-                      <img src={mediaFileData.previewUrl} alt="preview" className="w-full max-h-48 object-cover" />
-                      <button onClick={clearMedia}
-                        className="absolute top-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-black/80">
-                        <X size={13} />
-                      </button>
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/40 px-3 py-1.5">
-                        <p className="text-white text-[10px] truncate">{mediaFileData.name}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => photoInputRef.current?.click()}
-                      disabled={mediaFileUploading}
-                      className="w-full border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center gap-2 hover:border-primary hover:bg-primary/5 transition-all group">
-                      <Camera size={28} className="text-lightText group-hover:text-primary transition-colors" />
-                      <p className="text-sm font-medium text-darkText">Selecionar foto</p>
-                      <p className="text-xs text-lightText">JPG, PNG, WEBP — da câmera ou galeria</p>
-                    </button>
-                  )}
-                  <input ref={photoInputRef} type="file" accept="image/*" capture="environment" className="hidden"
-                    onChange={e => e.target.files?.[0] && handleMediaFile(e.target.files[0])} />
-                  <p className="text-xs text-lightText bg-gray-50 rounded-lg px-3 py-2">
-                    💡 O texto do template será enviado como legenda da foto
-                  </p>
-                </div>
-              )}
-
-              {/* Video upload */}
-              {campaignMediaType === 'video' && (
-                <div className="space-y-3">
-                  <p className="text-xs font-bold text-lightText uppercase tracking-wider">Vídeo da mensagem</p>
-                  {mediaFileData ? (
-                    <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-black">
-                      <video src={mediaFileData.previewUrl} className="w-full max-h-48 object-cover" controls />
-                      <button onClick={clearMedia}
-                        className="absolute top-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-black/80">
-                        <X size={13} />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => videoInputRef.current?.click()}
-                      disabled={mediaFileUploading}
-                      className="w-full border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center gap-2 hover:border-primary hover:bg-primary/5 transition-all group">
-                      <Film size={28} className="text-lightText group-hover:text-primary transition-colors" />
-                      <p className="text-sm font-medium text-darkText">Selecionar vídeo</p>
-                      <p className="text-xs text-lightText">MP4, MOV — da câmera ou galeria</p>
-                    </button>
-                  )}
-                  <input ref={videoInputRef} type="file" accept="video/*" capture="environment" className="hidden"
-                    onChange={e => e.target.files?.[0] && handleMediaFile(e.target.files[0])} />
-                  <p className="text-xs text-lightText bg-gray-50 rounded-lg px-3 py-2">
-                    💡 O texto do template será enviado como legenda do vídeo
-                  </p>
-                </div>
-              )}
-
-              {/* Filter by stage */}
-              <div>
-                <p className="text-xs font-bold text-lightText uppercase tracking-wider mb-2">Destinatários por estágio</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {([['all', 'Todos'] as const, ...COLUMNS.map(c => [c.id, c.label] as const)]).map(([val, label]) => (
-                    <button key={val} onClick={() => {
-                      setCampaignStatusFilter(val as any);
-                      const recipients = quotes.filter(q => q.whatsapp && (val === 'all' || q.status === val));
-                      setCampaignSelected(new Set(recipients.map(q => q.id)));
-                    }}
-                      className={`text-xs px-3 py-1.5 rounded-full border transition-all ${campaignStatusFilter === val ? 'bg-primary text-white border-primary' : 'bg-white border-gray-200 text-lightText hover:border-gray-300'}`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Recipient list */}
-              <div className="border border-gray-100 rounded-xl overflow-hidden">
-                <div className="bg-gray-50 px-4 py-2.5 flex items-center justify-between">
-                  <span className="text-xs font-bold text-darkText">{campaignSelected.size} selecionados</span>
-                  <div className="flex gap-3 text-xs">
-                    <button onClick={() => setCampaignSelected(new Set(campaignRecipients.map(q => q.id)))} className="text-primary hover:underline font-medium">Todos</button>
-                    <button onClick={() => setCampaignSelected(new Set())} className="text-lightText hover:underline">Limpar</button>
+                    ))}
                   </div>
-                </div>
-                <div className="max-h-48 overflow-y-auto divide-y divide-gray-50">
-                  {campaignRecipients.length === 0 && <p className="text-center py-8 text-sm text-lightText">Nenhum lead com WhatsApp neste filtro</p>}
-                  {campaignRecipients.map(lead => {
-                    const log = campaignLog.find(l => l.leadId === lead.id);
-                    return (
-                      <label key={lead.id} className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50 transition-colors ${campaignSelected.has(lead.id) ? 'bg-primary/5' : ''}`}>
-                        <input type="checkbox" checked={campaignSelected.has(lead.id)}
-                          onChange={e => setCampaignSelected(prev => { const n = new Set(prev); e.target.checked ? n.add(lead.id) : n.delete(lead.id); return n; })}
-                          className="accent-primary flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-darkText truncate">{lead.name}</p>
-                          <p className="text-xs text-lightText">{lead.whatsapp}</p>
-                        </div>
-                        {log && (
-                          <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              log.status === 'sent' ? 'bg-green-100 text-green-700' :
-                              log.status === 'sending' ? 'bg-blue-100 text-blue-700' :
-                              log.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'
-                            }`}>
-                              {log.status === 'sent' ? '✓ Enviado' : log.status === 'sending' ? '⏳' : log.status === 'failed' ? '✗ Falha' : 'Sem tel.'}
-                            </span>
-                            {log.status === 'failed' && log.errorMsg && (
-                              <span className="text-[9px] text-red-400 max-w-[100px] truncate" title={log.errorMsg}>{log.errorMsg}</span>
-                            )}
+
+                  {/* Audio */}
+                  {campaignMediaType === 'audio' && (
+                    <div className="space-y-3 pt-1">
+                      {recordedAudio ? (
+                        <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0"><Mic size={16} className="text-white" /></div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-darkText mb-1">Gravação ({recordingTime}s)</p>
+                            <audio src={recordedAudio.url} controls className="w-full h-7" />
                           </div>
-                        )}
-                        {log?.status === 'failed' && log.waUrl && (
-                          <a href={log.waUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
-                            className="flex-shrink-0 text-[10px] font-bold bg-green-600 text-white px-2 py-1 rounded-full hover:bg-green-700">
-                            Abrir WA
-                          </a>
-                        )}
-                      </label>
-                    );
-                  })}
+                          <button onClick={clearMedia} className="text-red-400 hover:text-red-600"><X size={15} /></button>
+                        </div>
+                      ) : mediaFileData ? (
+                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0"><Mic size={16} className="text-white" /></div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-darkText mb-1 truncate">{mediaFileData.name}</p>
+                            <audio src={mediaFileData.previewUrl} controls className="w-full h-7" />
+                          </div>
+                          <button onClick={clearMedia} className="text-red-400 hover:text-red-600"><X size={15} /></button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button onClick={isRecording ? stopRecording : startRecording}
+                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all ${isRecording ? 'bg-red-500 text-white' : 'bg-primary text-white hover:bg-primary/90'}`}>
+                            {isRecording ? <><Square size={14} /> Parar ({recordingTime}s)</> : <><Mic size={14} /> Gravar áudio</>}
+                          </button>
+                          <button onClick={() => audioInputRef.current?.click()}
+                            className="px-4 border-2 border-dashed border-gray-200 rounded-xl text-xs text-lightText hover:border-primary hover:text-primary transition-colors flex items-center gap-1.5">
+                            <Upload size={13} /> Arquivo
+                          </button>
+                        </div>
+                      )}
+                      <input ref={audioInputRef} type="file" accept="audio/*" className="hidden" onChange={e => e.target.files?.[0] && handleMediaFile(e.target.files[0])} />
+                      <p className="text-xs text-lightText bg-gray-50 rounded-lg px-3 py-2">💡 Texto do template enviado <strong>antes</strong> do áudio</p>
+                    </div>
+                  )}
+
+                  {/* Image */}
+                  {campaignMediaType === 'image' && (
+                    <div className="space-y-3 pt-1">
+                      {mediaFileData ? (
+                        <div className="relative rounded-xl overflow-hidden border border-gray-200">
+                          <img src={mediaFileData.previewUrl} alt="preview" className="w-full max-h-44 object-cover" />
+                          <button onClick={clearMedia} className="absolute top-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center text-white"><X size={13} /></button>
+                        </div>
+                      ) : (
+                        <button onClick={() => photoInputRef.current?.click()}
+                          className="w-full border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center gap-2 hover:border-primary hover:bg-primary/5 transition-all group">
+                          <Camera size={26} className="text-lightText group-hover:text-primary" />
+                          <p className="text-sm font-medium text-darkText">Selecionar foto</p>
+                          <p className="text-xs text-lightText">Da câmera ou galeria</p>
+                        </button>
+                      )}
+                      <input ref={photoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => e.target.files?.[0] && handleMediaFile(e.target.files[0])} />
+                      <p className="text-xs text-lightText bg-gray-50 rounded-lg px-3 py-2">💡 Texto do template como legenda da foto</p>
+                    </div>
+                  )}
+
+                  {/* Video */}
+                  {campaignMediaType === 'video' && (
+                    <div className="space-y-3 pt-1">
+                      {mediaFileData ? (
+                        <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-black">
+                          <video src={mediaFileData.previewUrl} className="w-full max-h-44 object-cover" controls />
+                          <button onClick={clearMedia} className="absolute top-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center text-white"><X size={13} /></button>
+                        </div>
+                      ) : (
+                        <button onClick={() => videoInputRef.current?.click()}
+                          className="w-full border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center gap-2 hover:border-primary hover:bg-primary/5 transition-all group">
+                          <Film size={26} className="text-lightText group-hover:text-primary" />
+                          <p className="text-sm font-medium text-darkText">Selecionar vídeo</p>
+                          <p className="text-xs text-lightText">Da câmera ou galeria</p>
+                        </button>
+                      )}
+                      <input ref={videoInputRef} type="file" accept="video/*" capture="environment" className="hidden" onChange={e => e.target.files?.[0] && handleMediaFile(e.target.files[0])} />
+                      <p className="text-xs text-lightText bg-gray-50 rounded-lg px-3 py-2">💡 Texto do template como legenda do vídeo</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Schedule toggle */}
-              <div className="border border-gray-100 rounded-xl overflow-hidden">
-                <button
-                  onClick={() => setScheduleEnabled(p => !p)}
-                  className={`w-full flex items-center justify-between px-4 py-3 transition-colors ${scheduleEnabled ? 'bg-primary/5' : 'hover:bg-gray-50'}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <CalendarPlus size={15} className={scheduleEnabled ? 'text-primary' : 'text-lightText'} />
-                    <span className={`text-sm font-medium ${scheduleEnabled ? 'text-primary' : 'text-darkText'}`}>Agendar envio para depois</span>
-                  </div>
-                  <div className={`w-9 h-5 rounded-full transition-all flex items-center px-0.5 ${scheduleEnabled ? 'bg-primary' : 'bg-gray-200'}`}>
-                    <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${scheduleEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
-                  </div>
-                </button>
-                {scheduleEnabled && (
-                  <div className="px-4 pb-4 pt-2 border-t border-gray-100 grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-lightText font-medium block mb-1.5">Data</label>
-                      <input type="date" value={scheduledCampaignDate} onChange={e => setScheduledCampaignDate(e.target.value)}
-                        min={new Date().toISOString().slice(0,10)}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-lightText font-medium block mb-1.5">Horário</label>
-                      <input type="time" value={scheduledCampaignTime} onChange={e => setScheduledCampaignTime(e.target.value)}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary" />
-                    </div>
-                    <div className="col-span-2">
-                      <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                        ⏰ Mantenha o painel aberto no horário agendado para o envio automático
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5 text-xs text-amber-700">
-                ⚠️ Máximo 50 envios/dia para evitar bloqueio
-              </div>
-
-              {campaignDone && (
-                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-700 flex items-center gap-2">
-                  <CheckCircle size={16} />
-                  <span>Campanha concluída — <strong>{campaignLog.filter(l => l.status === 'sent').length} enviados</strong>, {campaignLog.filter(l => l.status === 'failed').length} falhas</span>
+              {/* Step 2 — Recipients */}
+              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-primary text-white text-xs font-black flex items-center justify-center flex-shrink-0">2</div>
+                  <h3 className="font-bold text-darkText text-sm">Destinatários</h3>
+                  {campaignSelected.size > 0 && (
+                    <span className="ml-auto text-xs font-bold bg-green-100 text-green-700 px-2.5 py-1 rounded-full">{campaignSelected.size} selecionados</span>
+                  )}
                 </div>
-              )}
+                <div className="p-4 space-y-3">
+                  <div className="flex flex-wrap gap-1.5">
+                    {([['all', 'Todos'] as const, ...COLUMNS.map(c => [c.id, c.label] as const)]).map(([val, label]) => (
+                      <button key={val} onClick={() => {
+                        setCampaignStatusFilter(val as any);
+                        const recipients = quotes.filter(q => q.whatsapp && (val === 'all' || q.status === val));
+                        setCampaignSelected(new Set(recipients.map(q => q.id)));
+                      }}
+                        className={`text-xs px-3 py-1.5 rounded-full border transition-all ${campaignStatusFilter === val ? 'bg-primary text-white border-primary' : 'bg-white border-gray-200 text-lightText hover:border-gray-300'}`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="border border-gray-100 rounded-xl overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-2.5 flex items-center justify-between">
+                      <span className="text-xs font-bold text-darkText">{campaignSelected.size} de {campaignRecipients.length} selecionados</span>
+                      <div className="flex gap-3 text-xs">
+                        <button onClick={() => setCampaignSelected(new Set(campaignRecipients.map(q => q.id)))} className="text-primary hover:underline font-medium">Todos</button>
+                        <button onClick={() => setCampaignSelected(new Set())} className="text-lightText hover:underline">Limpar</button>
+                      </div>
+                    </div>
+                    <div className="divide-y divide-gray-50" style={{ maxHeight: 220, overflowY: 'auto' }}>
+                      {campaignRecipients.length === 0 && <p className="text-center py-8 text-sm text-lightText">Nenhum lead com WhatsApp neste filtro</p>}
+                      {campaignRecipients.map(lead => {
+                        const log = campaignLog.find(l => l.leadId === lead.id);
+                        return (
+                          <label key={lead.id} className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50 transition-colors ${campaignSelected.has(lead.id) ? 'bg-primary/5' : ''}`}>
+                            <input type="checkbox" checked={campaignSelected.has(lead.id)}
+                              onChange={e => setCampaignSelected(prev => { const n = new Set(prev); e.target.checked ? n.add(lead.id) : n.delete(lead.id); return n; })}
+                              className="accent-primary flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-darkText truncate">{lead.name}</p>
+                              <p className="text-xs text-lightText">{lead.whatsapp}</p>
+                            </div>
+                            {log && (
+                              <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${log.status === 'sent' ? 'bg-green-100 text-green-700' : log.status === 'sending' ? 'bg-blue-100 text-blue-700' : log.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>
+                                  {log.status === 'sent' ? '✓ Enviado' : log.status === 'sending' ? '⏳' : log.status === 'failed' ? '✗ Falha' : 'Sem tel.'}
+                                </span>
+                                {log.status === 'failed' && log.errorMsg && (
+                                  <span className="text-[9px] text-red-400 max-w-[100px] truncate" title={log.errorMsg}>{log.errorMsg}</span>
+                                )}
+                              </div>
+                            )}
+                            {log?.status === 'failed' && log.waUrl && (
+                              <a href={log.waUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
+                                className="flex-shrink-0 text-[10px] font-bold bg-green-600 text-white px-2 py-1 rounded-full hover:bg-green-700">
+                                WA
+                              </a>
+                            )}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-              <button onClick={handleSendCampaign}
-                disabled={campaignSending || campaignSelected.size === 0 || (scheduleEnabled && (!scheduledCampaignDate || !scheduledCampaignTime))}
-                className="w-full bg-green-600 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-green-700 transition-colors text-sm">
-                {campaignSending
-                  ? <><RefreshCw size={15} className="animate-spin" /> Enviando {campaignLog.filter(l => l.status !== 'sending').length}/{campaignLog.length}...</>
-                  : scheduleEnabled
-                    ? <><CalendarPlus size={15} /> Agendar para {scheduledCampaignDate} às {scheduledCampaignTime}</>
-                    : <><Send size={15} /> Enviar para {campaignSelected.size} lead{campaignSelected.size !== 1 ? 's' : ''}</>}
-              </button>
+              {/* Step 3 — Send or Schedule */}
+              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-primary text-white text-xs font-black flex items-center justify-center flex-shrink-0">3</div>
+                  <h3 className="font-bold text-darkText text-sm">Enviar</h3>
+                </div>
+                <div className="p-4 space-y-4">
+                  {/* Send now vs schedule toggle */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={() => setScheduleEnabled(false)}
+                      className={`py-3 rounded-xl border-2 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${!scheduleEnabled ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-100 text-lightText hover:border-gray-200'}`}>
+                      <Send size={14} /> Agora
+                    </button>
+                    <button onClick={() => setScheduleEnabled(true)}
+                      className={`py-3 rounded-xl border-2 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${scheduleEnabled ? 'border-primary bg-primary/5 text-primary' : 'border-gray-100 text-lightText hover:border-gray-200'}`}>
+                      <CalendarPlus size={14} /> Agendar
+                    </button>
+                  </div>
+
+                  {/* Schedule date/time */}
+                  {scheduleEnabled && (
+                    <div className="grid grid-cols-2 gap-3 p-4 bg-primary/5 rounded-xl border border-primary/20">
+                      <div>
+                        <label className="text-xs text-lightText font-medium block mb-1.5">Data</label>
+                        <input type="date" value={scheduledCampaignDate} onChange={e => setScheduledCampaignDate(e.target.value)}
+                          min={new Date().toISOString().slice(0,10)}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary bg-white" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-lightText font-medium block mb-1.5">Horário</label>
+                        <input type="time" value={scheduledCampaignTime} onChange={e => setScheduledCampaignTime(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary bg-white" />
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-xs text-primary/70">⏰ Mantenha o painel aberto no horário agendado</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5 text-xs text-amber-700">
+                    ⚠️ Máximo 50 envios/dia para evitar bloqueio
+                  </div>
+
+                  {campaignDone && (
+                    <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-700 flex items-center gap-2">
+                      <CheckCircle size={16} />
+                      <span><strong>{campaignLog.filter(l => l.status === 'sent').length} enviados</strong> · {campaignLog.filter(l => l.status === 'failed').length} falhas</span>
+                    </div>
+                  )}
+
+                  <button onClick={handleSendCampaign}
+                    disabled={campaignSending || campaignSelected.size === 0 || (scheduleEnabled && (!scheduledCampaignDate || !scheduledCampaignTime))}
+                    className={`w-full font-semibold py-4 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 transition-colors text-sm text-white ${scheduleEnabled ? 'bg-primary hover:bg-primary/90' : 'bg-green-600 hover:bg-green-700'}`}>
+                    {campaignSending
+                      ? <><RefreshCw size={15} className="animate-spin" /> Enviando {campaignLog.filter(l => l.status !== 'sending').length}/{campaignLog.length}...</>
+                      : scheduleEnabled
+                        ? <><CalendarPlus size={15} /> Agendar para {scheduledCampaignDate || '...'} às {scheduledCampaignTime}</>
+                        : <><Send size={15} /> Enviar para {campaignSelected.size} lead{campaignSelected.size !== 1 ? 's' : ''}</>}
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
