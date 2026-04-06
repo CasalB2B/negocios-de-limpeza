@@ -7,8 +7,19 @@ import {
   Plus, Search, Tag, MessageSquare, Phone, Mail, MapPin,
   Calendar, DollarSign, X, Send, Edit3, Trash2, User,
   StickyNote, ExternalLink, Copy, Check, Settings, Hash,
-  ChevronDown, MoreVertical, Clock, Home, Briefcase, RefreshCw
+  ChevronDown, MoreVertical, Clock, Home, Briefcase, RefreshCw,
+  Zap
 } from 'lucide-react';
+
+// ─── Templates de mensagem ───────────────────────────────────────────────────
+const MESSAGE_TEMPLATES = [
+  { id: 't1', label: 'Retomar contato',    text: 'Oi, [nome]! Tudo bem? Passando para saber se ainda tem interesse na limpeza. Posso te ajudar com mais informações? 😊' },
+  { id: 't2', label: 'Proposta enviada',   text: 'Oi, [nome]! Acabei de enviar sua proposta de orçamento. Deu uma olhada? Qualquer dúvida estou à disposição! 🧹' },
+  { id: 't3', label: 'Agendar visita',     text: 'Oi, [nome]! Que tal agendarmos um horário para a limpeza? Quais dias da semana ficam melhores para você?' },
+  { id: 't4', label: 'Follow-up 7 dias',   text: 'Oi, [nome]! Faz uma semana desde nosso último contato. Ainda pensando na limpeza? Temos datas disponíveis essa semana! 😊' },
+  { id: 't5', label: 'Promoção',           text: 'Oi, [nome]! Essa semana temos condições especiais para primeira limpeza. Quer aproveitar? 🌟' },
+  { id: 't6', label: 'Pós-serviço',        text: 'Oi, [nome]! Como ficou tudo depois da limpeza? Adoraríamos saber sua opinião! ⭐' },
+];
 
 // ─── Columns ────────────────────────────────────────────────────────────────
 const COLUMNS = [
@@ -90,6 +101,9 @@ export const AdminCRM: React.FC = () => {
   const [newFieldKey, setNewFieldKey] = useState('');
   const [newFieldVal, setNewFieldVal] = useState('');
 
+  // ── templates ──
+  const [showTemplates, setShowTemplates] = useState(false);
+
   // ─── Load chat when lead selected ──────────────────────────────────────
   useEffect(() => {
     if (!selected) return;
@@ -165,19 +179,22 @@ export const AdminCRM: React.FC = () => {
   };
 
   // ─── Send WhatsApp message ───────────────────────────────────────────────
-  const handleSendMessage = async () => {
-    if (!chatInput.trim() || !selected?.whatsapp) return;
-    const msg = chatInput.trim();
-    setChatInput('');
+  const handleSendMessage = async (overrideMsg?: string) => {
+    const msg = (overrideMsg || chatInput).trim();
+    if (!msg || !selected?.whatsapp) return;
+    if (!overrideMsg) setChatInput('');
     setSendingMsg(true);
 
-    // Try Evolution API via edge function, fallback to wa.me
+    // Substitui [nome] pelo primeiro nome do lead
+    const firstName = selected.name.split(' ')[0];
+    const finalMsg = msg.replace(/\[nome\]/gi, firstName);
+
     try {
-      const { error } = await supabase.functions.invoke('send-whatsapp-admin', {
-        body: { phone: selected.whatsapp.replace(/\D/g, ''), message: msg }
+      const { data, error } = await supabase.functions.invoke('evolution-proxy', {
+        body: { action: 'sendText', payload: { number: selected.whatsapp, text: finalMsg } }
       });
-      if (!error) {
-        setChatMessages(prev => [...prev, { role: 'model', text: msg }]);
+      if (!error && data?.ok !== false) {
+        setChatMessages(prev => [...prev, { role: 'model' as const, text: finalMsg }]);
         setSendingMsg(false);
         return;
       }
@@ -185,7 +202,7 @@ export const AdminCRM: React.FC = () => {
 
     // Fallback: open WhatsApp Web
     const phone = selected.whatsapp.replace(/\D/g, '');
-    window.open(`https://wa.me/${phone.startsWith('55') ? phone : '55' + phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    window.open(`https://wa.me/${phone.startsWith('55') ? phone : '55' + phone}?text=${encodeURIComponent(finalMsg)}`, '_blank');
     setSendingMsg(false);
   };
 
@@ -519,7 +536,8 @@ export const AdminCRM: React.FC = () => {
                     {!chatLoading && chatMessages.length === 0 && (
                       <div className="text-center py-8 text-lightText text-sm">
                         <MessageSquare size={32} className="mx-auto mb-2 opacity-40" />
-                        Nenhuma conversa no WhatsApp ainda
+                        <p>Nenhuma conversa no WhatsApp ainda</p>
+                        <p className="text-xs mt-1">Use os templates abaixo para iniciar</p>
                       </div>
                     )}
                     {chatMessages.map((m, i) => (
@@ -532,16 +550,45 @@ export const AdminCRM: React.FC = () => {
                     <div ref={chatEndRef} />
                   </div>
 
+                  {/* Templates picker */}
+                  {showTemplates && (
+                    <div className="border-t border-gray-100 bg-gray-50 p-3 space-y-1.5 max-h-48 overflow-y-auto">
+                      <p className="text-xs font-bold text-lightText mb-2 flex items-center gap-1"><Zap size={12} /> Templates rápidos — clique para usar</p>
+                      {MESSAGE_TEMPLATES.map(tpl => {
+                        const firstName = selected?.name.split(' ')[0] || '[nome]';
+                        const preview = tpl.text.replace(/\[nome\]/gi, firstName);
+                        return (
+                          <button key={tpl.id}
+                            onClick={() => { setChatInput(tpl.text); setShowTemplates(false); }}
+                            className="w-full text-left p-2.5 rounded-lg bg-white border border-gray-200 hover:border-primary hover:bg-primary/5 transition-all group">
+                            <p className="text-xs font-bold text-primary mb-0.5">{tpl.label}</p>
+                            <p className="text-xs text-gray-500 line-clamp-2">{preview}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   {/* Send bar */}
-                  <div className="border-t border-gray-100 p-3 flex gap-2">
-                    <input value={chatInput} onChange={e => setChatInput(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                      placeholder="Digite uma mensagem..."
-                      className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-primary bg-gray-50 focus:bg-white" />
-                    <button onClick={handleSendMessage} disabled={!chatInput.trim() || sendingMsg}
-                      className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center disabled:opacity-40">
-                      {sendingMsg ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
-                    </button>
+                  <div className="border-t border-gray-100 p-3 space-y-2">
+                    <div className="flex gap-2">
+                      <button onClick={() => setShowTemplates(p => !p)}
+                        title="Templates de mensagem"
+                        className={`w-10 h-10 rounded-xl border flex items-center justify-center flex-shrink-0 transition-colors ${showTemplates ? 'bg-primary text-white border-primary' : 'border-gray-200 text-lightText hover:border-primary hover:text-primary'}`}>
+                        <Zap size={16} />
+                      </button>
+                      <input value={chatInput} onChange={e => setChatInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                        placeholder="Digite ou escolha um template..."
+                        className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-primary bg-gray-50 focus:bg-white" />
+                      <button onClick={() => handleSendMessage()} disabled={!chatInput.trim() || sendingMsg}
+                        className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center disabled:opacity-40 flex-shrink-0">
+                        {sendingMsg ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
+                      </button>
+                    </div>
+                    {!selected?.whatsapp && (
+                      <p className="text-xs text-red-400 text-center">⚠️ Sem número de WhatsApp cadastrado</p>
+                    )}
                   </div>
                 </div>
               )}

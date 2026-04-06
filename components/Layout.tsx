@@ -169,16 +169,16 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
     switch (role) {
       case UserRole.ADMIN:
         return [
-          { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/admin/dashboard' },
-          { icon: <Calendar size={20} />, label: 'Calendário', path: '/admin/calendar' },
-          { icon: <Smile size={20} />, label: 'Clientes', path: '/admin/clients' },
-          { icon: <Users size={20} />, label: 'Equipe', path: '/admin/collaborators' },
-          { icon: <Sparkles size={20} />, label: 'Serviços', path: '/admin/services' },
-          { icon: <MessageSquare size={20} />, label: 'Orçamentos', path: '/admin/quotes' },
-          { icon: <Kanban size={20} />, label: 'CRM', path: '/admin/crm' },
-          { icon: <DollarSign size={20} />, label: 'Financeiro', path: '/admin/payments' },
-          { icon: <Settings size={20} />, label: 'Configurações', path: '/admin/settings' },
-          { icon: <MessageCircle size={20} />, label: 'WhatsApp', path: '/admin/whatsapp' },
+          { icon: <LayoutDashboard size={20} />, label: 'Dashboard',    path: '/admin/dashboard',      group: 'GESTÃO' },
+          { icon: <Calendar size={20} />,        label: 'Calendário',   path: '/admin/calendar',       group: 'GESTÃO' },
+          { icon: <Smile size={20} />,           label: 'Clientes',     path: '/admin/clients',        group: 'GESTÃO' },
+          { icon: <Users size={20} />,           label: 'Equipe',       path: '/admin/collaborators',  group: 'GESTÃO' },
+          { icon: <MessageSquare size={20} />,   label: 'Orçamentos',   path: '/admin/quotes',         group: 'VENDAS' },
+          { icon: <Kanban size={20} />,          label: 'CRM',          path: '/admin/crm',            group: 'VENDAS' },
+          { icon: <MessageCircle size={20} />,   label: 'WhatsApp',     path: '/admin/whatsapp',       group: 'VENDAS' },
+          { icon: <DollarSign size={20} />,      label: 'Financeiro',   path: '/admin/payments',       group: 'FINANCEIRO' },
+          { icon: <Sparkles size={20} />,        label: 'Serviços',     path: '/admin/services',       group: 'CONFIG' },
+          { icon: <Settings size={20} />,        label: 'Configurações',path: '/admin/settings',       group: 'CONFIG' },
         ];
       case UserRole.COLLABORATOR:
         return [
@@ -207,21 +207,34 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           </div>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2 mt-4 overflow-y-auto">
-          {menuItems.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl w-full transition-colors border-l-4 ${
-                location.pathname === item.path
-                  ? 'bg-primary/5 dark:bg-primary/10 text-primary font-bold border-primary'
-                  : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder border-transparent'
-              }`}
-            >
-              {item.icon}
-              <span className="text-sm">{item.label}</span>
-            </button>
-          ))}
+        <nav className="flex-1 px-4 mt-4 overflow-y-auto">
+          {(() => {
+            const groups = ['GESTÃO', 'VENDAS', 'FINANCEIRO', 'CONFIG'] as const;
+            const groupLabels: Record<string, string> = { GESTÃO: 'Gestão', VENDAS: 'Vendas', FINANCEIRO: 'Financeiro', CONFIG: 'Configurações' };
+            return groups.map(group => {
+              const items = menuItems.filter((i: any) => i.group === group);
+              if (!items.length) return null;
+              return (
+                <div key={group} className="mb-4">
+                  <p className="text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-widest px-4 mb-1">{groupLabels[group]}</p>
+                  {items.map((item: any) => (
+                    <button
+                      key={item.path}
+                      onClick={() => navigate(item.path)}
+                      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl w-full transition-colors border-l-4 mb-0.5 ${
+                        location.pathname === item.path
+                          ? 'bg-primary/5 dark:bg-primary/10 text-primary font-bold border-primary'
+                          : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder border-transparent'
+                      }`}
+                    >
+                      {item.icon}
+                      <span className="text-sm">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              );
+            });
+          })()}
         </nav>
 
         <div className="p-4 border-t border-gray-100 dark:border-darkBorder">
