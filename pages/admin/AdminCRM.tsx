@@ -10,7 +10,7 @@ import {
   ChevronDown, Clock, Home, Briefcase, RefreshCw,
   Zap, LayoutList, Kanban, Upload, Download, ChevronUp,
   AlertCircle, CheckCircle2, Megaphone, Pencil, Eye,
-  Smartphone, CalendarPlus, CheckCircle
+  Smartphone, CalendarPlus, CheckCircle, Mic, Square, Camera, Film
 } from 'lucide-react';
 
 // ─── Template system ─────────────────────────────────────────────────────────
@@ -49,7 +49,8 @@ const PhonePreview: React.FC<{
   contactName?: string;
   mediaType?: CampaignMediaType;
   mediaUrl?: string;
-}> = ({ message, contactName = 'Carlos', mediaType = 'text', mediaUrl }) => {
+  mediaPreviewUrl?: string;
+}> = ({ message, contactName = 'Carlos', mediaType = 'text', mediaUrl, mediaPreviewUrl }) => {
   const now = new Date();
   const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
@@ -158,8 +159,8 @@ const PhonePreview: React.FC<{
                       </div>
                       <div className="rounded-xl rounded-tr-none overflow-hidden" style={{ backgroundColor: '#005c4b', boxShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
                         {/* Media preview in bubble */}
-                        {mediaType === 'image' && mediaUrl && (
-                          <img src={mediaUrl} alt="preview" className="w-full max-h-32 object-cover" onError={e => (e.currentTarget.style.display='none')} />
+                        {mediaType === 'image' && (mediaPreviewUrl || mediaUrl) && (
+                          <img src={mediaPreviewUrl || mediaUrl} alt="preview" className="w-full max-h-32 object-cover" onError={e => (e.currentTarget.style.display='none')} />
                         )}
                         {mediaType === 'video' && (
                           <div className="bg-black/40 w-full h-20 flex items-center justify-center">
@@ -353,6 +354,18 @@ export const AdminCRM: React.FC = () => {
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduledCampaignDate, setScheduledCampaignDate] = useState('');
   const [scheduledCampaignTime, setScheduledCampaignTime] = useState('08:00');
+
+  // ── media recording / upload ──
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [recordedAudio, setRecordedAudio] = useState<{ blob: Blob; url: string } | null>(null);
+  const [mediaFileData, setMediaFileData] = useState<{ base64: string; mimeType: string; name: string; previewUrl: string } | null>(null);
+  const [mediaFileUploading, setMediaFileUploading] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
 
   // ── agendamento rápido ──
   const [schedDate, setSchedDate] = useState('');
@@ -690,6 +703,59 @@ export const AdminCRM: React.FC = () => {
     return true;
   });
 
+  // ─── Media recording ────────────────────────────────────────────────────
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus' : 'audio/ogg;codecs=opus';
+      const mr = new MediaRecorder(stream, { mimeType });
+      const chunks: Blob[] = [];
+      mr.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      mr.onstop = () => {
+        const blob = new Blob(chunks, { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        setRecordedAudio({ blob, url });
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mr.start(100);
+      mediaRecorderRef.current = mr;
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingTimerRef.current = setInterval(() => setRecordingTime(p => p + 1), 1000);
+    } catch {
+      alert('Permissão de microfone negada. Verifique as configurações do navegador.');
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    setIsRecording(false);
+  };
+
+  const handleMediaFile = (file: File) => {
+    setMediaFileUploading(true);
+    const reader = new FileReader();
+    reader.onload = e => {
+      const dataUrl = e.target?.result as string;
+      const base64 = dataUrl.split(',')[1];
+      const previewUrl = URL.createObjectURL(file);
+      setMediaFileData({ base64, mimeType: file.type, name: file.name, previewUrl });
+      setMediaFileUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearMedia = () => {
+    setMediaFileData(null);
+    setRecordedAudio(null);
+    setRecordingTime(0);
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    setIsRecording(false);
+    mediaRecorderRef.current = null;
+  };
+
   // ─── Bulk campaign (with per-lead tracking + wa.me fallback) ────────────
   const handleSendCampaign = async () => {
     const tpl = campaignTemplates.find(t => t.id === activeTplId);
@@ -737,29 +803,63 @@ export const AdminCRM: React.FC = () => {
       let status: 'sent' | 'failed' = 'failed';
       let errorMsg: string | undefined;
       try {
-        let invokeBody: any;
-        if (campaignMediaType !== 'text' && campaignMediaUrl) {
-          invokeBody = {
-            action: 'sendMedia',
-            payload: {
-              number: lead.whatsapp,
-              mediaType: campaignMediaType,
-              mediaUrl: campaignMediaUrl,
-              caption: finalMsg,
+        const hasMedia = campaignMediaType !== 'text' && (mediaFileData || recordedAudio || campaignMediaUrl);
+
+        if (campaignMediaType === 'audio' && (recordedAudio || mediaFileData)) {
+          // 1. Send text message first (if template has text)
+          if (finalMsg) {
+            await supabase.functions.invoke('evolution-proxy', {
+              body: { action: 'sendText', payload: { number: lead.whatsapp, text: finalMsg } }
+            });
+            await new Promise(r => setTimeout(r, 400));
+          }
+          // 2. Send audio (voice note)
+          let audioBase64 = '';
+          if (recordedAudio) {
+            const ab = await recordedAudio.blob.arrayBuffer();
+            audioBase64 = btoa(String.fromCharCode(...new Uint8Array(ab)));
+          } else if (mediaFileData) {
+            audioBase64 = mediaFileData.base64;
+          }
+          const { data, error } = await supabase.functions.invoke('evolution-proxy', {
+            body: { action: 'sendWhatsAppAudio', payload: { number: lead.whatsapp, base64: audioBase64 } }
+          });
+          console.log(`[Campaign Audio] Lead ${lead.name}`, { data, error });
+          if (error) { errorMsg = error.message; }
+          else if (data?.ok === false) { errorMsg = data?.data?.message || `HTTP ${data?.status}`; }
+          else { status = 'sent'; }
+
+        } else if (hasMedia) {
+          // Image or video — send media with text as caption
+          const base64 = mediaFileData?.base64 || '';
+          const mimeType = mediaFileData?.mimeType || (campaignMediaType === 'image' ? 'image/jpeg' : 'video/mp4');
+          const { data, error } = await supabase.functions.invoke('evolution-proxy', {
+            body: {
+              action: 'sendMedia',
+              payload: {
+                number: lead.whatsapp,
+                mediaType: campaignMediaType,
+                base64,
+                mediaUrl: campaignMediaUrl || undefined,
+                mimeType,
+                caption: finalMsg,
+              }
             }
-          };
+          });
+          console.log(`[Campaign Media] Lead ${lead.name}`, { data, error });
+          if (error) { errorMsg = error.message; }
+          else if (data?.ok === false) { errorMsg = data?.data?.message || `HTTP ${data?.status}`; }
+          else { status = 'sent'; }
+
         } else {
-          invokeBody = { action: 'sendText', payload: { number: lead.whatsapp, text: finalMsg } };
-        }
-        const { data, error } = await supabase.functions.invoke('evolution-proxy', { body: invokeBody });
-        console.log(`[Campaign] Lead ${lead.name} → phone: ${lead.whatsapp}`, { data, error });
-        if (error) {
-          errorMsg = error.message || 'Erro na função';
-        } else if (data?.ok === false) {
-          const apiErr = data?.data;
-          errorMsg = apiErr?.message || apiErr?.error || `HTTP ${data?.status}`;
-        } else {
-          status = 'sent';
+          // Text only
+          const { data, error } = await supabase.functions.invoke('evolution-proxy', {
+            body: { action: 'sendText', payload: { number: lead.whatsapp, text: finalMsg } }
+          });
+          console.log(`[Campaign Text] Lead ${lead.name}`, { data, error });
+          if (error) { errorMsg = error.message || 'Erro na função'; }
+          else if (data?.ok === false) { errorMsg = data?.data?.message || `HTTP ${data?.status}`; }
+          else { status = 'sent'; }
         }
       } catch (e: any) {
         errorMsg = e?.message || 'Exceção';
@@ -1138,6 +1238,7 @@ export const AdminCRM: React.FC = () => {
                   contactName="Carlos"
                   mediaType={campaignMediaType}
                   mediaUrl={campaignMediaUrl}
+                  mediaPreviewUrl={mediaFileData?.previewUrl || recordedAudio?.url}
                 />
               </div>
               <div className="px-5 py-2.5 border-t border-gray-50">
@@ -1168,20 +1269,120 @@ export const AdminCRM: React.FC = () => {
                 </div>
               </div>
 
-              {/* Media URL input for non-text types */}
-              {campaignMediaType !== 'text' && (
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-lightText uppercase tracking-wider block">
-                    URL do {campaignMediaType === 'image' ? 'arquivo de imagem' : campaignMediaType === 'audio' ? 'arquivo de áudio' : 'arquivo de vídeo'}
-                  </label>
-                  <input
-                    type="url"
-                    value={campaignMediaUrl}
-                    onChange={e => setCampaignMediaUrl(e.target.value)}
-                    placeholder={`https://... (link direto para o ${campaignMediaType === 'image' ? 'JPG/PNG' : campaignMediaType === 'audio' ? 'MP3/OGG' : 'MP4'})`}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-primary"
-                  />
-                  <p className="text-xs text-lightText">O texto do template será enviado como legenda</p>
+              {/* Audio recording / upload */}
+              {campaignMediaType === 'audio' && (
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-lightText uppercase tracking-wider">Áudio da mensagem</p>
+                  {recordedAudio ? (
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                        <Mic size={16} className="text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-darkText mb-1">Áudio gravado ({recordingTime}s)</p>
+                        <audio src={recordedAudio.url} controls className="w-full h-7" />
+                      </div>
+                      <button onClick={clearMedia} className="text-red-400 hover:text-red-600 flex-shrink-0"><X size={15} /></button>
+                    </div>
+                  ) : mediaFileData ? (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                        <Mic size={16} className="text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-darkText mb-1 truncate">{mediaFileData.name}</p>
+                        <audio src={mediaFileData.previewUrl} controls className="w-full h-7" />
+                      </div>
+                      <button onClick={clearMedia} className="text-red-400 hover:text-red-600 flex-shrink-0"><X size={15} /></button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={isRecording ? stopRecording : startRecording}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all ${
+                          isRecording
+                            ? 'bg-red-500 text-white'
+                            : 'bg-primary text-white hover:bg-primary/90'
+                        }`}
+                      >
+                        {isRecording
+                          ? <><Square size={14} /> Parar ({recordingTime}s)</>
+                          : <><Mic size={14} /> Gravar áudio</>}
+                      </button>
+                      <button onClick={() => audioInputRef.current?.click()}
+                        className="px-4 border-2 border-dashed border-gray-200 rounded-xl text-xs text-lightText hover:border-primary hover:text-primary transition-colors flex items-center gap-1.5">
+                        <Upload size={13} /> Arquivo
+                      </button>
+                    </div>
+                  )}
+                  <input ref={audioInputRef} type="file" accept="audio/*" className="hidden"
+                    onChange={e => e.target.files?.[0] && handleMediaFile(e.target.files[0])} />
+                  <p className="text-xs text-lightText bg-gray-50 rounded-lg px-3 py-2">
+                    💡 O texto do template será enviado como mensagem de texto <strong>antes</strong> do áudio
+                  </p>
+                </div>
+              )}
+
+              {/* Image upload */}
+              {campaignMediaType === 'image' && (
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-lightText uppercase tracking-wider">Foto da mensagem</p>
+                  {mediaFileData ? (
+                    <div className="relative rounded-xl overflow-hidden border border-gray-200">
+                      <img src={mediaFileData.previewUrl} alt="preview" className="w-full max-h-48 object-cover" />
+                      <button onClick={clearMedia}
+                        className="absolute top-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-black/80">
+                        <X size={13} />
+                      </button>
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/40 px-3 py-1.5">
+                        <p className="text-white text-[10px] truncate">{mediaFileData.name}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => photoInputRef.current?.click()}
+                      disabled={mediaFileUploading}
+                      className="w-full border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center gap-2 hover:border-primary hover:bg-primary/5 transition-all group">
+                      <Camera size={28} className="text-lightText group-hover:text-primary transition-colors" />
+                      <p className="text-sm font-medium text-darkText">Selecionar foto</p>
+                      <p className="text-xs text-lightText">JPG, PNG, WEBP — da câmera ou galeria</p>
+                    </button>
+                  )}
+                  <input ref={photoInputRef} type="file" accept="image/*" capture="environment" className="hidden"
+                    onChange={e => e.target.files?.[0] && handleMediaFile(e.target.files[0])} />
+                  <p className="text-xs text-lightText bg-gray-50 rounded-lg px-3 py-2">
+                    💡 O texto do template será enviado como legenda da foto
+                  </p>
+                </div>
+              )}
+
+              {/* Video upload */}
+              {campaignMediaType === 'video' && (
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-lightText uppercase tracking-wider">Vídeo da mensagem</p>
+                  {mediaFileData ? (
+                    <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-black">
+                      <video src={mediaFileData.previewUrl} className="w-full max-h-48 object-cover" controls />
+                      <button onClick={clearMedia}
+                        className="absolute top-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-black/80">
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => videoInputRef.current?.click()}
+                      disabled={mediaFileUploading}
+                      className="w-full border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center gap-2 hover:border-primary hover:bg-primary/5 transition-all group">
+                      <Film size={28} className="text-lightText group-hover:text-primary transition-colors" />
+                      <p className="text-sm font-medium text-darkText">Selecionar vídeo</p>
+                      <p className="text-xs text-lightText">MP4, MOV — da câmera ou galeria</p>
+                    </button>
+                  )}
+                  <input ref={videoInputRef} type="file" accept="video/*" capture="environment" className="hidden"
+                    onChange={e => e.target.files?.[0] && handleMediaFile(e.target.files[0])} />
+                  <p className="text-xs text-lightText bg-gray-50 rounded-lg px-3 py-2">
+                    💡 O texto do template será enviado como legenda do vídeo
+                  </p>
                 </div>
               )}
 

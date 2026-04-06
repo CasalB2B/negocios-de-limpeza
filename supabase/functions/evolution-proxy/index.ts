@@ -25,6 +25,13 @@ Deno.serve(async (req) => {
     if (action === 'sendText') {
       url = `${EVOLUTION_URL}/message/sendText/${EVOLUTION_INSTANCE}`;
       body = { number, textMessage: { text: payload.text }, delay: 1000 };
+    } else if (action === 'sendWhatsAppAudio') {
+      url = `${EVOLUTION_URL}/message/sendWhatsAppAudio/${EVOLUTION_INSTANCE}`;
+      body = {
+        number,
+        audioMessage: { audio: payload.base64 },
+        delay: 1000,
+      };
     } else if (action === 'sendMedia') {
       url = `${EVOLUTION_URL}/message/sendMedia/${EVOLUTION_INSTANCE}`;
       const mt = payload.mediaType || 'image';
