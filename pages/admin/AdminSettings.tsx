@@ -15,10 +15,15 @@ export const AdminSettings: React.FC = () => {
   const [adminName, setAdminName] = useState<string>(() => localStorage.getItem('admin_name') || 'Administrador');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const adminPhotoRef = useRef<HTMLInputElement>(null);
-  const [localSettings, setLocalSettings] = useState({ ...platformSettings, companyName: (platformSettings as any).companyName || 'Negócios de Limpeza', supportEmail: (platformSettings as any).supportEmail || 'suporte@negociosdelimpeza.com.br' });
+  type LocalSettings = typeof platformSettings & { companyName: string; supportEmail: string };
+  const [localSettings, setLocalSettings] = useState<LocalSettings>({
+    ...platformSettings,
+    companyName: localStorage.getItem('company_name') || 'Negócios de Limpeza',
+    supportEmail: localStorage.getItem('support_email') || 'suporte@negociosdelimpeza.com.br',
+  });
 
   useEffect(() => {
-      setLocalSettings(platformSettings);
+    setLocalSettings(prev => ({ ...platformSettings, companyName: prev.companyName, supportEmail: prev.supportEmail }));
   }, [platformSettings]);
 
 
@@ -28,8 +33,11 @@ export const AdminSettings: React.FC = () => {
   };
 
   const handleSaveGeneralSettings = () => {
-      updatePlatformSettings(localSettings as any);
+      const { companyName, supportEmail, ...settings } = localSettings;
+      updatePlatformSettings(settings);
       localStorage.setItem('admin_name', adminName);
+      localStorage.setItem('company_name', companyName);
+      localStorage.setItem('support_email', supportEmail);
       alert("Informações da empresa salvas com sucesso!");
   };
 
@@ -118,14 +126,14 @@ export const AdminSettings: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                    <Input
                      label="Nome da Empresa"
-                     value={(localSettings as any).companyName || ''}
-                     onChange={e => setLocalSettings({ ...localSettings, companyName: e.target.value } as any)}
+                     value={localSettings.companyName}
+                     onChange={e => setLocalSettings({ ...localSettings, companyName: e.target.value })}
                      placeholder="Ex: Negócios de Limpeza"
                    />
                    <Input
                      label="E-mail de Suporte"
-                     value={(localSettings as any).supportEmail || ''}
-                     onChange={e => setLocalSettings({ ...localSettings, supportEmail: e.target.value } as any)}
+                     value={localSettings.supportEmail}
+                     onChange={e => setLocalSettings({ ...localSettings, supportEmail: e.target.value })}
                      placeholder="suporte@suaempresa.com.br"
                    />
                    <Input
