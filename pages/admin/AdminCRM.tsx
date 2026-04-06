@@ -355,6 +355,24 @@ export const AdminCRM: React.FC = () => {
   const [scheduledCampaignDate, setScheduledCampaignDate] = useState('');
   const [scheduledCampaignTime, setScheduledCampaignTime] = useState('08:00');
 
+  // ── campaign history ──
+  interface CampaignHistoryEntry {
+    id: string;
+    sentAt: number;
+    templateLabel: string;
+    templateEmoji: string;
+    mediaType: CampaignMediaType;
+    totalLeads: number;
+    sent: number;
+    failed: number;
+    leads: Array<{ name: string; phone: string; status: 'sent' | 'failed' | 'no_phone'; waUrl?: string }>;
+  }
+  const [campaignHistory, setCampaignHistory] = useState<CampaignHistoryEntry[]>(() => {
+    try { const s = localStorage.getItem('crm_history_v1'); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  const [showHistory, setShowHistory] = useState(false);
+  const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
+
   // ── scheduled campaigns list ──
   interface ScheduledCampaign {
     id: string;
@@ -915,6 +933,27 @@ export const AdminCRM: React.FC = () => {
     }
     setCampaignSending(false);
     setCampaignDone(true);
+    // Save to history
+    setCampaignLog(currentLog => {
+      const tpl = campaignTemplates.find(t => t.id === activeTplId);
+      const entry: CampaignHistoryEntry = {
+        id: `hist_${Date.now()}`,
+        sentAt: Date.now(),
+        templateLabel: tpl?.label || 'Template',
+        templateEmoji: tpl?.emoji || '💬',
+        mediaType: campaignMediaType,
+        totalLeads: currentLog.length,
+        sent: currentLog.filter(l => l.status === 'sent').length,
+        failed: currentLog.filter(l => l.status === 'failed').length,
+        leads: currentLog.map(l => ({ name: l.name, phone: l.phone, status: l.status === 'no_phone' ? 'no_phone' : l.status as any, waUrl: l.waUrl })),
+      };
+      setCampaignHistory(prev => {
+        const updated = [entry, ...prev].slice(0, 50); // keep last 50
+        try { localStorage.setItem('crm_history_v1', JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      return currentLog;
+    });
   };
 
   // ─── Quick scheduling ────────────────────────────────────────────────────
@@ -1225,6 +1264,92 @@ export const AdminCRM: React.FC = () => {
                 <p className="text-xs text-amber-600 mt-2">
                   ✓ {scheduledCampaigns.filter(c => c.status === 'sent').length} campanha(s) já enviada(s) hoje
                 </p>
+              )}
+            </div>
+          )}
+
+          {/* ── Campaign History Panel ── */}
+          {campaignHistory.length > 0 && (
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+              <button
+                onClick={() => setShowHistory(p => !p)}
+                className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Clock size={15} className="text-primary" />
+                  <span className="font-bold text-darkText text-sm">Histórico de Campanhas</span>
+                  <span className="text-xs font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">{campaignHistory.length}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-lightText">Última: {new Date(campaignHistory[0].sentAt).toLocaleDateString('pt-BR')} às {new Date(campaignHistory[0].sentAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                  {showHistory ? <ChevronUp size={16} className="text-lightText" /> : <ChevronDown size={16} className="text-lightText" />}
+                </div>
+              </button>
+
+              {showHistory && (
+                <div className="border-t border-gray-100 divide-y divide-gray-50">
+                  {campaignHistory.map(entry => (
+                    <div key={entry.id}>
+                      <button
+                        onClick={() => setExpandedHistory(expandedHistory === entry.id ? null : entry.id)}
+                        className="w-full px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+                      >
+                        <span className="text-lg flex-shrink-0">{entry.templateEmoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-semibold text-darkText">{entry.templateLabel}</p>
+                            {entry.mediaType !== 'text' && (
+                              <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full capitalize">{entry.mediaType}</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-lightText mt-0.5">
+                            {new Date(entry.sentAt).toLocaleDateString('pt-BR')} às {new Date(entry.sentAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            {' · '}{entry.totalLeads} lead{entry.totalLeads !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {entry.sent > 0 && (
+                            <span className="text-xs font-bold bg-green-100 text-green-700 px-2.5 py-1 rounded-full">✓ {entry.sent} enviados</span>
+                          )}
+                          {entry.failed > 0 && (
+                            <span className="text-xs font-bold bg-red-100 text-red-700 px-2.5 py-1 rounded-full">✗ {entry.failed} falhas</span>
+                          )}
+                          {expandedHistory === entry.id ? <ChevronUp size={14} className="text-lightText" /> : <ChevronDown size={14} className="text-lightText" />}
+                        </div>
+                      </button>
+
+                      {expandedHistory === entry.id && (
+                        <div className="px-5 pb-4 bg-gray-50">
+                          <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 overflow-hidden bg-white">
+                            {entry.leads.map((lead, i) => (
+                              <div key={i} className="flex items-center gap-3 px-4 py-2.5">
+                                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold flex-shrink-0">
+                                  {lead.name[0]?.toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-darkText truncate">{lead.name}</p>
+                                  <p className="text-xs text-lightText">{lead.phone}</p>
+                                </div>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                                  lead.status === 'sent' ? 'bg-green-100 text-green-700' :
+                                  lead.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'
+                                }`}>
+                                  {lead.status === 'sent' ? '✓ Enviado' : lead.status === 'failed' ? '✗ Falha' : 'Sem tel.'}
+                                </span>
+                                {lead.status === 'failed' && lead.waUrl && (
+                                  <a href={lead.waUrl} target="_blank" rel="noreferrer"
+                                    className="text-[10px] font-bold bg-green-600 text-white px-2 py-0.5 rounded-full hover:bg-green-700 flex-shrink-0">
+                                    WA
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           )}
