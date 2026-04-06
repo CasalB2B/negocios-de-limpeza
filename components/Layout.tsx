@@ -15,7 +15,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { currentUser } = useData();
+  const { currentUser, logoutClient, logoutCollaborator, logoutAdmin } = useData();
   const mainRef = useRef<HTMLElement>(null);
 
   // Reset scroll to top on every route change
@@ -24,6 +24,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   }, [location.pathname]);
 
   const handleLogout = () => {
+    if (role === UserRole.ADMIN) logoutAdmin();
+    else if (role === UserRole.COLLABORATOR) logoutCollaborator();
+    else logoutClient();
     navigate('/');
   };
 
@@ -229,7 +232,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                 <img src={localStorage.getItem('admin_photo') || 'https://i.pravatar.cc/150?u=admin'} alt="Admin" className="w-full h-full object-cover"/>
              </div>
              <div>
-                <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">Ricardo Silva</p>
+                <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">Administrador</p>
                 <p className="text-xs text-lightText dark:text-darkTextSecondary">Super Admin</p>
              </div>
           </div>
