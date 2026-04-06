@@ -259,11 +259,61 @@ Deno.serve(async (req) => {
   // STEP: HUMAN — atendente humano assume
   // -------------------------------------------------------
   if (sessionMeta.step === 'human') {
+    const hasLabels = sessionMeta.labels && sessionMeta.labels !== '';
     const waitReplied = sessionMeta.waitReplied || false;
-    if (!waitReplied) {
-      await sendWhatsApp(phone, `Olá! Já avisei nossa equipe e em breve um atendente vai te responder aqui. 🙏`);
-      await saveSession(phone, history, { ...sessionMeta, waitReplied: true });
+
+    const activePrompt = await getSystemPrompt();
+
+    if (hasLabels) {
+      // Cliente existente (com etiqueta) → Nina responde de forma sutil: acolhe, mas não resolve
+      if (!waitReplied) {
+        // Primeira mensagem: avisa horário e já reconhece o contato
+        await sendWhatsApp(phone,
+          `Oi! Nossa equipe atende de segunda a sábado, das 8h às 18h. Assim que um atendente estiver disponível, ele te responde aqui mesmo! 😊`
+        );
+        await saveSession(phone, history, { ...sessionMeta, waitReplied: true });
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
+      // Mensagens seguintes: Nina acolhe sutilmente, reconhece o assunto, mas encaminha ao humano
+      history.push({ role: 'user', parts: [{ text }] });
+      sendTyping(phone, 5000);
+
+      const existingClientPrompt = activePrompt + `\n\nCONTEXTO ATUAL: Este é um cliente que já tem histórico conosco e está aguardando um atendente humano. Responda de forma breve, acolhedora e sutil. Reconheça o assunto do cliente (cancelamento, reagendamento, dúvida sobre pagamento, etc.) com empatia, mas deixe claro que o atendente certo vai resolver isso em breve. Não tente resolver — apenas acolha e reforce que a equipe está avisada. Máximo 2 frases curtas. Não use marcadores como <<HUMAN_HANDOFF>> ou <<QUOTE_DATA>>.`;
+
+      const rawResponse = await callGemini(history, existingClientPrompt);
+      const cleanedText = cleanResponse(rawResponse);
+
+      history.push({ role: 'model', parts: [{ text: rawResponse }] });
+      await saveSession(phone, history, { ...sessionMeta }); // mantém step: 'human'
+
+      if (cleanedText) await sendWhatsApp(phone, cleanedText);
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
     }
+
+    // Cliente novo (sem etiqueta) → Nina continua disponível para tirar dúvidas livremente
+    if (!waitReplied) {
+      await sendWhatsApp(phone,
+        `Já avisei nossa equipe! Enquanto aguarda, pode me perguntar qualquer coisa sobre nossos serviços. 😊`
+      );
+      await saveSession(phone, history, { ...sessionMeta, waitReplied: true });
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+
+    // Mensagens seguintes: Nina responde dúvidas normalmente
+    history.push({ role: 'user', parts: [{ text }] });
+    sendTyping(phone, 6000);
+
+    // Contexto extra: Nina sabe que já está esperando o humano, mas pode ajudar com dúvidas
+    const humanWaitPrompt = activePrompt + `\n\nCONTEXTO ATUAL: O cliente já passou pelo fluxo de orçamento e nossa equipe foi avisada. Você está aguardando o atendente humano entrar na conversa. Enquanto isso, ajude o cliente com qualquer dúvida sobre serviços, preços, prazos ou processos de forma calorosa e natural. Não inicie nova coleta de dados. Se perguntarem sobre o status, diga que a equipe já foi avisada e em breve retornará. Não use marcadores como <<HUMAN_HANDOFF>> ou <<QUOTE_DATA>>.`;
+
+    const rawResponse = await callGemini(history, humanWaitPrompt);
+    const cleanedText = cleanResponse(rawResponse);
+
+    history.push({ role: 'model', parts: [{ text: rawResponse }] });
+    await saveSession(phone, history, { ...sessionMeta }); // mantém step: 'human'
+
+    if (cleanedText) await sendWhatsApp(phone, cleanedText);
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   }
 

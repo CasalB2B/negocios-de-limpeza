@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
-import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle } from 'lucide-react';
+import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban } from 'lucide-react';
 import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
 import { useData } from './DataContext';
@@ -175,6 +175,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           { icon: <Users size={20} />, label: 'Equipe', path: '/admin/collaborators' },
           { icon: <Sparkles size={20} />, label: 'Serviços', path: '/admin/services' },
           { icon: <MessageSquare size={20} />, label: 'Orçamentos', path: '/admin/quotes' },
+          { icon: <Kanban size={20} />, label: 'CRM', path: '/admin/crm' },
           { icon: <DollarSign size={20} />, label: 'Financeiro', path: '/admin/payments' },
           { icon: <Settings size={20} />, label: 'Configurações', path: '/admin/settings' },
           { icon: <MessageCircle size={20} />, label: 'WhatsApp', path: '/admin/whatsapp' },

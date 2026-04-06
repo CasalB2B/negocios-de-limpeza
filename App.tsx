@@ -36,6 +36,7 @@ import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminServices } from './pages/admin/AdminServices';
 import { AdminQuotes } from './pages/admin/AdminQuotes';
 import { AdminWhatsApp } from './pages/admin/AdminWhatsApp';
+import { AdminCRM } from './pages/admin/AdminCRM';
 import { QuoteChat } from './pages/client/QuoteChat';
 
 const App: React.FC = () => {
@@ -87,6 +88,7 @@ const App: React.FC = () => {
               <Route path="/admin/clients" element={<AdminClients />} />
               <Route path="/admin/services" element={<AdminServices />} />
               <Route path="/admin/quotes" element={<AdminQuotes />} />
+              <Route path="/admin/crm" element={<AdminCRM />} />
               <Route path="/admin/payments" element={<AdminPayments />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
               <Route path="/admin/whatsapp" element={<AdminWhatsApp />} />

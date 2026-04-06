@@ -117,10 +117,27 @@ export interface Quote {
   internalCleaning: string;
   renovation: string;
   serviceOption: string;
-  status: 'NEW' | 'CONTACTED' | 'CONVERTED' | 'LOST';
+  status: 'NEW' | 'CONTACTED' | 'PROPOSAL' | 'NEGOTIATING' | 'CONVERTED' | 'LOST';
   chatSummary?: string;
   clientPhotos?: string[];
+  // CRM fields
+  tags?: string[];
+  crmNotes?: string;
+  estimatedValue?: number;
+  lastContactedAt?: string;
+  addressStreet?: string;
+  addressNumber?: string;
+  addressDistrict?: string;
+  addressCity?: string;
+  customFields?: Record<string, string>;
+  source?: string;
   createdAt: number;
+}
+
+export interface CrmTag {
+  id: string;
+  name: string;
+  color: string;
 }
 
 export interface Transaction {
@@ -181,8 +198,12 @@ interface DataContextType {
 
   quotes: Quote[];
   addQuote: (quote: Omit<Quote, 'id' | 'createdAt' | 'status'>) => Promise<Quote>;
+  updateQuote: (id: string, data: Partial<Quote>) => Promise<void>;
   updateQuoteStatus: (id: string, status: Quote['status']) => Promise<void>;
   deleteQuote: (id: string) => Promise<void>;
+  crmTags: CrmTag[];
+  addCrmTag: (tag: Omit<CrmTag, 'id'>) => Promise<CrmTag>;
+  deleteCrmTag: (id: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -277,6 +298,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [crmTags, setCrmTags] = useState<CrmTag[]>([]);
 
   // --- PERSISTÊNCIA DE SESSÃO (INIT) ---
   const [currentUser, setCurrentUser] = useState<ClientUser | null>(() => {
@@ -433,8 +455,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             serviceOption: q.service_option || '',
             status: q.status || 'NEW',
             chatSummary: q.chat_summary || '',
+            tags: Array.isArray(q.tags) ? q.tags : [],
+            crmNotes: q.crm_notes || '',
+            estimatedValue: q.estimated_value || undefined,
+            lastContactedAt: q.last_contacted_at || undefined,
+            addressStreet: q.address_street || '',
+            addressNumber: q.address_number || '',
+            addressDistrict: q.address_district || '',
+            addressCity: q.address_city || '',
+            customFields: q.custom_fields || {},
+            source: q.source || 'web',
             createdAt: q.created_at ? new Date(q.created_at).getTime() : Date.now()
         })));
+
+        const { data: tagsData } = await supabase.from('crm_tags').select('*').order('name');
+        if (tagsData) setCrmTags(tagsData.map((t: any) => ({ id: t.id, name: t.name, color: t.color || '#6366f1' })));
 
     } catch (error) {
         console.warn("Modo Demonstração: Usando dados Mock (Supabase não configurado ou offline).");
@@ -890,9 +925,51 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return localQuote;
   };
 
+  const updateQuote = async (id: string, data: Partial<Quote>) => {
+      setQuotes(prev => prev.map(q => q.id === id ? { ...q, ...data } : q));
+      const dbData: any = {};
+      if (data.status !== undefined) dbData.status = data.status;
+      if (data.name !== undefined) dbData.name = data.name;
+      if (data.email !== undefined) dbData.email = data.email;
+      if (data.whatsapp !== undefined) dbData.whatsapp = data.whatsapp;
+      if (data.tags !== undefined) dbData.tags = data.tags;
+      if (data.crmNotes !== undefined) dbData.crm_notes = data.crmNotes;
+      if (data.estimatedValue !== undefined) dbData.estimated_value = data.estimatedValue;
+      if (data.lastContactedAt !== undefined) dbData.last_contacted_at = data.lastContactedAt;
+      if (data.addressStreet !== undefined) dbData.address_street = data.addressStreet;
+      if (data.addressNumber !== undefined) dbData.address_number = data.addressNumber;
+      if (data.addressDistrict !== undefined) dbData.address_district = data.addressDistrict;
+      if (data.addressCity !== undefined) dbData.address_city = data.addressCity;
+      if (data.customFields !== undefined) dbData.custom_fields = data.customFields;
+      if (data.propertyType !== undefined) dbData.property_type = data.propertyType;
+      if (data.rooms !== undefined) dbData.rooms = data.rooms;
+      if (data.priorities !== undefined) dbData.priorities = data.priorities;
+      if (data.serviceOption !== undefined) dbData.service_option = data.serviceOption;
+      if (Object.keys(dbData).length > 0) {
+          await supabase.from('quotes').update(dbData).eq('id', id);
+      }
+  };
+
   const updateQuoteStatus = async (id: string, status: Quote['status']) => {
       setQuotes(prev => prev.map(q => q.id === id ? { ...q, status } : q));
       await supabase.from('quotes').update({ status }).eq('id', id);
+  };
+
+  const addCrmTag = async (tag: Omit<CrmTag, 'id'>): Promise<CrmTag> => {
+      const local: CrmTag = { ...tag, id: `tag_${Date.now()}` };
+      setCrmTags(prev => [...prev, local]);
+      const { data, error } = await supabase.from('crm_tags').insert({ name: tag.name, color: tag.color }).select().single();
+      if (data && !error) {
+          const saved: CrmTag = { id: data.id, name: data.name, color: data.color };
+          setCrmTags(prev => prev.map(t => t.id === local.id ? saved : t));
+          return saved;
+      }
+      return local;
+  };
+
+  const deleteCrmTag = async (id: string) => {
+      setCrmTags(prev => prev.filter(t => t.id !== id));
+      await supabase.from('crm_tags').delete().eq('id', id);
   };
 
   const deleteQuote = async (id: string) => {
@@ -910,7 +987,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addClientAddress, updateClientAddress, deleteClientAddress,
       registerCollaborator, updateCollaborator, deleteCollaborator, loginCollaborator, logoutCollaborator,
       loginAdmin, logoutAdmin, markAllNotificationsRead, updatePlatformSettings, markTransactionPaid, deleteTransaction,
-      quotes, addQuote, updateQuoteStatus, deleteQuote
+      quotes, addQuote, updateQuote, updateQuoteStatus, deleteQuote,
+      crmTags, addCrmTag, deleteCrmTag
     }}>
       {children}
     </DataContext.Provider>
