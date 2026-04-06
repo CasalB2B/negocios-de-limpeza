@@ -190,9 +190,9 @@ export const QuoteChat: React.FC = () => {
         // Envio automático de boas-vindas via WhatsApp
         if (quoteData.whatsapp) {
           try {
-            const storedTemplates = localStorage.getItem('ndl_whatsapp_templates');
-            const templates = storedTemplates ? JSON.parse(storedTemplates) : null;
-            const welcomeTemplate = templates?.welcome || `Olá, [Nome]! 👋 Aqui é a *Negócios de Limpeza*.\n\nRecebemos seu pedido de orçamento para *[Servico]* e já estamos analisando tudo! 🧹✨\n\nEm breve nossa equipe entra em contato com sua proposta personalizada.`;
+            let tpls: any = null;
+            try { const st = localStorage.getItem('ndl_whatsapp_templates'); if (st) tpls = JSON.parse(st); } catch { /* use default */ }
+            const welcomeTemplate = tpls?.welcome || `Olá, [Nome]! 👋 Aqui é a *Negócios de Limpeza*.\n\nRecebemos seu pedido de orçamento para *[Servico]* e já estamos analisando tudo! 🧹✨\n\nEm breve nossa equipe entra em contato com sua proposta personalizada.`;
             const msg = buildMessage(welcomeTemplate, {
               Nome: (quoteData.name || '').split(' ')[0],
               Servico: quoteData.serviceOption || 'limpeza',

@@ -302,13 +302,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // --- PERSISTÊNCIA DE SESSÃO (INIT) ---
   const [currentUser, setCurrentUser] = useState<ClientUser | null>(() => {
-    const saved = localStorage.getItem('auth_client');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('auth_client');
+      return saved ? JSON.parse(saved) : null;
+    } catch { localStorage.removeItem('auth_client'); return null; }
   });
 
   const [currentCollaborator, setCurrentCollaborator] = useState<CollaboratorUser | null>(() => {
-    const saved = localStorage.getItem('auth_collab');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('auth_collab');
+      return saved ? JSON.parse(saved) : null;
+    } catch { localStorage.removeItem('auth_collab'); return null; }
   });
 
   const [adminLoggedIn, setAdminLoggedIn] = useState<boolean>(() => {

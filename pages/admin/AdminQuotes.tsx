@@ -589,8 +589,8 @@ const PDFModal: React.FC<PDFModalProps> = ({ quote, onClose }) => {
         );
 
         // 2. Send text message
-        const storedTemplates = localStorage.getItem('ndl_whatsapp_templates');
-        const templates = storedTemplates ? JSON.parse(storedTemplates) : null;
+        let templates: any = null;
+        try { const st = localStorage.getItem('ndl_whatsapp_templates'); if (st) templates = JSON.parse(st); } catch { /* use default */ }
         const template = templates?.proposal || DEFAULT_TEMPLATES.proposal;
         const msg = buildMessage(template, {
           Nome: (quote.name || '').split(' ')[0],
@@ -780,9 +780,9 @@ const QuoteCard: React.FC<QuoteCardProps> = ({ quote, onStatusChange, onCreateAc
     setSendingWpp(true);
     setWppResult(null);
     try {
-      const storedTemplates = localStorage.getItem('ndl_whatsapp_templates');
-      const templates = storedTemplates ? JSON.parse(storedTemplates) : null;
-      const proposalTemplate = templates?.proposal || `Olá, [Nome]! Sua proposta está pronta! 🎉\n\n🏠 *Serviço:* [Servico]\n\nEntre em contato para confirmar o agendamento! 😊`;
+      let templates2: any = null;
+      try { const st = localStorage.getItem('ndl_whatsapp_templates'); if (st) templates2 = JSON.parse(st); } catch { /* use default */ }
+      const proposalTemplate = templates2?.proposal || `Olá, [Nome]! Sua proposta está pronta! 🎉\n\n🏠 *Serviço:* [Servico]\n\nEntre em contato para confirmar o agendamento! 😊`;
       const msg = buildMessage(proposalTemplate, {
         Nome: quote.name.split(' ')[0],
         Servico: quote.serviceOption || 'Limpeza',
