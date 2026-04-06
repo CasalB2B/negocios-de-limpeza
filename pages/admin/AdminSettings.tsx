@@ -10,7 +10,18 @@ import { supabase } from '../../lib/supabase';
 export const AdminSettings: React.FC = () => {
   const { platformSettings, updatePlatformSettings } = useData();
   const [activeTab, setActiveTab] = useState('general');
-  const [notifications, setNotifications] = useState({ email: true, whatsapp: true });
+  const [notifications, setNotifications] = useState(() => ({
+    email: localStorage.getItem('notif_email') !== 'false',
+    whatsapp: localStorage.getItem('notif_whatsapp') !== 'false',
+  }));
+  const [notifSaved, setNotifSaved] = useState(false);
+
+  const handleSaveNotifications = () => {
+    localStorage.setItem('notif_email', String(notifications.email));
+    localStorage.setItem('notif_whatsapp', String(notifications.whatsapp));
+    setNotifSaved(true);
+    setTimeout(() => setNotifSaved(false), 2000);
+  };
   const [adminPhoto, setAdminPhoto] = useState<string>(() => localStorage.getItem('admin_photo') || '');
   const [adminName, setAdminName] = useState<string>(() => localStorage.getItem('admin_name') || 'Administrador');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -284,27 +295,52 @@ export const AdminSettings: React.FC = () => {
         return (
            <div className="space-y-6 animate-in fade-in duration-300">
               <h3 className="text-xl font-bold text-darkText mb-4">Preferências de Notificação</h3>
-              
+
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700">
+                <p className="font-bold mb-1">Como funcionam as notificações</p>
+                <ul className="text-xs space-y-1 list-disc list-inside">
+                  <li><strong>WhatsApp:</strong> Quando um lead chega pela Nina, você recebe mensagem no número configurado em Geral → Telefone de Contato.</li>
+                  <li><strong>Browser:</strong> Notificações aparecem no sino (🔔) quando há novos leads ou atualizações.</li>
+                  <li><strong>E-mail:</strong> Em breve — requer integração com serviço de e-mail (Resend).</li>
+                </ul>
+              </div>
+
               <div className="bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder rounded-xl divide-y divide-gray-100 dark:divide-darkBorder">
                  <div className="p-4 flex items-center justify-between">
                     <div>
-                       <p className="font-bold text-darkText dark:text-darkTextPrimary">E-mail</p>
-                       <p className="text-sm text-lightText dark:text-darkTextSecondary">Receber novos orçamentos e alertas por e-mail.</p>
+                       <p className="font-bold text-darkText dark:text-darkTextPrimary">Notificações no Browser</p>
+                       <p className="text-sm text-lightText dark:text-darkTextSecondary">Alertas no sino quando chegam novos leads (já ativo).</p>
                     </div>
-                    <button onClick={() => setNotifications({...notifications, email: !notifications.email})} className={`transition-colors ${notifications.email ? 'text-primary' : 'text-gray-300'}`}>
-                       {notifications.email ? <ToggleRight size={40} fill="currentColor" className="text-primary/20" /> : <ToggleLeft size={40} />}
-                    </button>
+                    <span className="bg-green-100 text-green-700 text-xs font-bold px-3 py-1.5 rounded-full">✓ Ativo</span>
                  </div>
 
                  <div className="p-4 flex items-center justify-between">
                     <div>
-                       <p className="font-bold text-darkText dark:text-darkTextPrimary">WhatsApp</p>
-                       <p className="text-sm text-lightText dark:text-darkTextSecondary">Notificações de novos orçamentos via WhatsApp.</p>
+                       <p className="font-bold text-darkText dark:text-darkTextPrimary">WhatsApp (para o admin)</p>
+                       <p className="text-sm text-lightText dark:text-darkTextSecondary">Mensagem no seu WhatsApp quando chega novo orçamento pela Nina.</p>
+                       <p className="text-xs text-primary mt-1">Número configurado em: Geral → Telefone de Contato</p>
                     </div>
-                    <button onClick={() => setNotifications({...notifications, whatsapp: !notifications.whatsapp})} className={`transition-colors ${notifications.whatsapp ? 'text-primary' : 'text-gray-300'}`}>
+                    <button onClick={() => setNotifications(n => ({ ...n, whatsapp: !n.whatsapp }))}
+                      className={`transition-colors ${notifications.whatsapp ? 'text-primary' : 'text-gray-300'}`}>
                        {notifications.whatsapp ? <ToggleRight size={40} fill="currentColor" className="text-primary/20" /> : <ToggleLeft size={40} />}
                     </button>
                  </div>
+
+                 <div className="p-4 flex items-center justify-between opacity-60">
+                    <div>
+                       <p className="font-bold text-darkText dark:text-darkTextPrimary">E-mail <span className="text-xs font-normal text-gray-400 ml-1">Em breve</span></p>
+                       <p className="text-sm text-lightText dark:text-darkTextSecondary">Receber novos orçamentos por e-mail. Requer integração Resend.</p>
+                    </div>
+                    <button disabled className="text-gray-200 cursor-not-allowed">
+                       <ToggleLeft size={40} />
+                    </button>
+                 </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                 <Button onClick={handleSaveNotifications} icon={<Save size={18}/>}>
+                   {notifSaved ? '✓ Salvo!' : 'Salvar Preferências'}
+                 </Button>
               </div>
            </div>
         );
