@@ -239,17 +239,32 @@ const PhonePreview: React.FC<{
   );
 };
 
-// ─── Columns ────────────────────────────────────────────────────────────────
-const COLUMNS = [
-  { id: 'NEW',         label: 'Novo Lead',        dot: 'bg-violet-500',  pill: 'bg-violet-50 text-violet-700 border-violet-200' },
-  { id: 'CONTACTED',   label: 'Em Contato',        dot: 'bg-blue-500',    pill: 'bg-blue-50 text-blue-700 border-blue-200' },
-  { id: 'PROPOSAL',    label: 'Proposta Enviada',  dot: 'bg-orange-500',  pill: 'bg-orange-50 text-orange-700 border-orange-200' },
-  { id: 'NEGOTIATING', label: 'Negociando',        dot: 'bg-yellow-500',  pill: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
-  { id: 'CONVERTED',   label: 'Fechado',           dot: 'bg-green-500',   pill: 'bg-green-50 text-green-700 border-green-200' },
-  { id: 'LOST',        label: 'Perdido',           dot: 'bg-gray-400',    pill: 'bg-gray-50 text-gray-500 border-gray-200' },
-] as const;
+// ─── Stages (dynamic) ────────────────────────────────────────────────────────
+type ColId = string;
 
-type ColId = typeof COLUMNS[number]['id'];
+interface CrmStage { id: string; label: string; dot: string; pill: string; }
+
+const STAGE_COLORS = [
+  { key: 'violet', dot: 'bg-violet-500', pill: 'bg-violet-50 text-violet-700 border-violet-200', hex: '#8b5cf6' },
+  { key: 'blue',   dot: 'bg-blue-500',   pill: 'bg-blue-50 text-blue-700 border-blue-200',       hex: '#3b82f6' },
+  { key: 'orange', dot: 'bg-orange-500', pill: 'bg-orange-50 text-orange-700 border-orange-200', hex: '#f97316' },
+  { key: 'yellow', dot: 'bg-yellow-500', pill: 'bg-yellow-50 text-yellow-700 border-yellow-200', hex: '#eab308' },
+  { key: 'green',  dot: 'bg-green-500',  pill: 'bg-green-50 text-green-700 border-green-200',    hex: '#22c55e' },
+  { key: 'red',    dot: 'bg-red-500',    pill: 'bg-red-50 text-red-700 border-red-200',          hex: '#ef4444' },
+  { key: 'pink',   dot: 'bg-pink-500',   pill: 'bg-pink-50 text-pink-700 border-pink-200',       hex: '#ec4899' },
+  { key: 'teal',   dot: 'bg-teal-500',   pill: 'bg-teal-50 text-teal-700 border-teal-200',       hex: '#14b8a6' },
+  { key: 'indigo', dot: 'bg-indigo-500', pill: 'bg-indigo-50 text-indigo-700 border-indigo-200', hex: '#6366f1' },
+  { key: 'gray',   dot: 'bg-gray-400',   pill: 'bg-gray-50 text-gray-500 border-gray-200',       hex: '#9ca3af' },
+];
+
+const DEFAULT_STAGES: CrmStage[] = [
+  { id: 'NEW',         label: 'Novo Lead',       dot: 'bg-violet-500', pill: 'bg-violet-50 text-violet-700 border-violet-200' },
+  { id: 'CONTACTED',   label: 'Em Contato',      dot: 'bg-blue-500',   pill: 'bg-blue-50 text-blue-700 border-blue-200' },
+  { id: 'PROPOSAL',    label: 'Proposta Enviada',dot: 'bg-orange-500', pill: 'bg-orange-50 text-orange-700 border-orange-200' },
+  { id: 'NEGOTIATING', label: 'Negociando',      dot: 'bg-yellow-500', pill: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+  { id: 'CONVERTED',   label: 'Fechado',         dot: 'bg-green-500',  pill: 'bg-green-50 text-green-700 border-green-200' },
+  { id: 'LOST',        label: 'Perdido',         dot: 'bg-gray-400',   pill: 'bg-gray-50 text-gray-500 border-gray-200' },
+];
 
 const TAG_PALETTE = [
   '#6366f1','#8b5cf6','#ec4899','#ef4444','#f97316',
@@ -284,7 +299,7 @@ export const AdminCRM: React.FC = () => {
   const { quotes, updateQuote, deleteQuote, addQuote, crmTags, addCrmTag, deleteCrmTag, addService } = useData();
 
   // ── view mode ──
-  const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'campaigns'>('kanban');
+  const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'campaigns' | 'history'>('kanban');
 
   // ── filters ──
   const [search, setSearch] = useState('');
@@ -319,6 +334,17 @@ export const AdminCRM: React.FC = () => {
   const [sendingMsg, setSendingMsg] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'chat' | 'notes'>('info');
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // ── stage management ──
+  const [crmStages, setCrmStages] = useState<CrmStage[]>(() => {
+    try { const s = localStorage.getItem('crm_stages_v1'); return s ? JSON.parse(s) : DEFAULT_STAGES; } catch { return DEFAULT_STAGES; }
+  });
+  const persistStages = (stages: CrmStage[]) => { try { localStorage.setItem('crm_stages_v1', JSON.stringify(stages)); } catch {} };
+  const [showStageMgr, setShowStageMgr] = useState(false);
+  const [newStageLabel, setNewStageLabel] = useState('');
+  const [newStageColorKey, setNewStageColorKey] = useState('blue');
+  const [editingStageId, setEditingStageId] = useState<string | null>(null);
+  const [editingStageLabel, setEditingStageLabel] = useState('');
 
   // ── tag management ──
   const [showTagMgr, setShowTagMgr] = useState(false);
@@ -1005,7 +1031,7 @@ export const AdminCRM: React.FC = () => {
   };
 
   // ─── Column card ─────────────────────────────────────────────────────────
-  const col = COLUMNS.find(c => c.id === selected?.status);
+  const col = crmStages.find(c => c.id === selected?.status);
 
   // ═══════════════════════════════════════════════════════════════════════
   return (
@@ -1031,6 +1057,13 @@ export const AdminCRM: React.FC = () => {
               className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors ${viewMode === 'campaigns' ? 'bg-green-600 text-white' : 'bg-white text-lightText hover:bg-gray-50'}`}>
               <Megaphone size={15} /> Campanhas
             </button>
+            <button onClick={() => setViewMode('history')}
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors relative ${viewMode === 'history' ? 'bg-violet-600 text-white' : 'bg-white text-lightText hover:bg-gray-50'}`}>
+              <Clock size={15} /> Histórico
+              {campaignHistory.length > 0 && viewMode !== 'history' && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-violet-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">{campaignHistory.length}</span>
+              )}
+            </button>
           </div>
           <button onClick={handleExport} title="Exportar CSV"
             className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-lightText">
@@ -1039,6 +1072,10 @@ export const AdminCRM: React.FC = () => {
           <button onClick={() => { setShowImport(true); setImportResult(null); setCsvPreview([]); }}
             className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-lightText">
             <Upload size={15} /> Importar CSV
+          </button>
+          <button onClick={() => setShowStageMgr(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-lightText">
+            <Kanban size={15} /> Etapas
           </button>
           <button onClick={() => setShowTagMgr(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-lightText">
@@ -1078,7 +1115,7 @@ export const AdminCRM: React.FC = () => {
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
           className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none bg-white text-darkText">
           <option value="">Todos os estágios</option>
-          {COLUMNS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+          {crmStages.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
         </select>
         <select value={filterTag} onChange={e => setFilterTag(e.target.value)}
           className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none bg-white text-darkText">
@@ -1128,7 +1165,7 @@ export const AdminCRM: React.FC = () => {
                 <tr><td colSpan={8} className="text-center py-12 text-lightText text-sm">Nenhum lead encontrado</td></tr>
               )}
               {filtered.map(lead => {
-                const colDef = COLUMNS.find(c => c.id === lead.status);
+                const colDef = crmStages.find(c => c.id === lead.status);
                 const tagObjs = crmTags.filter(t => (lead.tags || []).includes(t.name));
                 return (
                   <tr key={lead.id} onClick={() => setSelected(lead)}
@@ -1188,7 +1225,7 @@ export const AdminCRM: React.FC = () => {
 
       {/* ── Kanban Board ── */}
       {viewMode === 'kanban' && <div className="flex gap-4 overflow-x-auto pb-6" style={{ minHeight: '60vh' }}>
-        {COLUMNS.map(col => {
+        {crmStages.map(col => {
           const cards = byColumn(col.id as ColId);
           const isDragTarget = dragOver === col.id;
           return (
@@ -1612,7 +1649,7 @@ export const AdminCRM: React.FC = () => {
                   <div>
                     <p className="text-[10px] font-bold text-lightText uppercase tracking-wider mb-1.5">Por Etapa</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {([['all', 'Todas'] as const, ...COLUMNS.map(c => [c.id, c.label] as const)]).map(([val, label]) => (
+                      {([['all', 'Todas'], ...crmStages.map(c => [c.id, c.label])]).map(([val, label]) => (
                         <button key={val} onClick={() => {
                           setCampaignStatusFilter(val as string);
                           const recipients = quotes.filter(q => {
@@ -1783,6 +1820,137 @@ export const AdminCRM: React.FC = () => {
         </div>
       )}
 
+      {/* ═══════ HISTÓRICO DE CAMPANHAS ═══════ */}
+      {viewMode === 'history' && (() => {
+        const totalSent = campaignHistory.reduce((a, e) => a + e.sent, 0);
+        const totalFailed = campaignHistory.reduce((a, e) => a + e.failed, 0);
+        const totalReach = totalSent + totalFailed;
+        const successRate = totalReach > 0 ? Math.round((totalSent / totalReach) * 100) : 0;
+        return (
+          <div className="space-y-5">
+            {campaignHistory.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <div className="w-16 h-16 bg-violet-50 rounded-2xl flex items-center justify-center mb-4">
+                  <Clock size={28} className="text-violet-400" />
+                </div>
+                <h3 className="font-bold text-darkText mb-1">Nenhuma campanha enviada ainda</h3>
+                <p className="text-sm text-lightText">Quando você enviar campanhas, o histórico aparece aqui.</p>
+                <button onClick={() => setViewMode('campaigns')} className="mt-4 text-sm text-primary hover:underline font-medium">
+                  Ir para Campanhas →
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* ── Métricas gerais ── */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Campanhas', value: campaignHistory.length, icon: '📣', color: 'bg-violet-50 text-violet-600' },
+                    { label: 'Mensagens enviadas', value: totalSent, icon: '✅', color: 'bg-green-50 text-green-600' },
+                    { label: 'Falhas', value: totalFailed, icon: '❌', color: 'bg-red-50 text-red-500' },
+                    { label: 'Taxa de sucesso', value: `${successRate}%`, icon: '📊', color: 'bg-blue-50 text-blue-600' },
+                  ].map(m => (
+                    <div key={m.label} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${m.color}`}>{m.icon}</div>
+                      <div>
+                        <p className="text-2xl font-black text-darkText leading-none">{m.value}</p>
+                        <p className="text-xs text-lightText mt-0.5">{m.label}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* ── Lista de campanhas ── */}
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                  <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h3 className="font-bold text-darkText text-sm">Campanhas enviadas</h3>
+                    <button onClick={() => {
+                      if (window.confirm('Limpar todo o histórico de campanhas?')) {
+                        setCampaignHistory([]);
+                        try { localStorage.removeItem('crm_history_v1'); } catch {}
+                      }
+                    }} className="text-xs text-red-400 hover:text-red-600 transition-colors">
+                      Limpar histórico
+                    </button>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {campaignHistory.map(entry => {
+                      const rate = (entry.sent + entry.failed) > 0 ? Math.round((entry.sent / (entry.sent + entry.failed)) * 100) : 0;
+                      return (
+                        <div key={entry.id}>
+                          <button
+                            onClick={() => setExpandedHistory(expandedHistory === entry.id ? null : entry.id)}
+                            className="w-full px-5 py-4 flex items-center gap-4 hover:bg-gray-50 transition-colors text-left"
+                          >
+                            <span className="text-2xl flex-shrink-0">{entry.templateEmoji}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-bold text-darkText">{entry.templateLabel}</p>
+                                {entry.mediaType !== 'text' && (
+                                  <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full capitalize">{entry.mediaType}</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-lightText mt-0.5">
+                                {new Date(entry.sentAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                {' às '}
+                                {new Date(entry.sentAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                {' · '}{entry.totalLeads} destinatário{entry.totalLeads !== 1 ? 's' : ''}
+                              </p>
+                            </div>
+                            {/* Mini progress bar */}
+                            <div className="flex-shrink-0 hidden sm:block w-24">
+                              <div className="flex justify-between text-[10px] mb-1">
+                                <span className="text-green-600 font-bold">{entry.sent}✓</span>
+                                <span className="text-red-400">{entry.failed}✗</span>
+                              </div>
+                              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-green-400 rounded-full" style={{ width: `${rate}%` }} />
+                              </div>
+                              <p className="text-[10px] text-center text-lightText mt-0.5">{rate}%</p>
+                            </div>
+                            {expandedHistory === entry.id ? <ChevronUp size={14} className="text-lightText flex-shrink-0" /> : <ChevronDown size={14} className="text-lightText flex-shrink-0" />}
+                          </button>
+
+                          {expandedHistory === entry.id && (
+                            <div className="px-5 pb-5 bg-gray-50 border-t border-gray-100">
+                              {/* Per-lead detail */}
+                              <div className="mt-4 divide-y divide-gray-100 rounded-xl border border-gray-200 overflow-hidden bg-white">
+                                {entry.leads.map((lead, i) => (
+                                  <div key={i} className="flex items-center gap-3 px-4 py-2.5">
+                                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold flex-shrink-0">
+                                      {lead.name[0]?.toUpperCase()}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-darkText truncate">{lead.name}</p>
+                                      <p className="text-xs text-lightText">{lead.phone}</p>
+                                    </div>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                                      lead.status === 'sent' ? 'bg-green-100 text-green-700' :
+                                      lead.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'
+                                    }`}>
+                                      {lead.status === 'sent' ? '✓ Enviado' : lead.status === 'failed' ? '✗ Falha' : 'Sem tel.'}
+                                    </span>
+                                    {lead.status === 'failed' && lead.waUrl && (
+                                      <a href={lead.waUrl} target="_blank" rel="noreferrer"
+                                        className="text-[10px] font-bold bg-green-600 text-white px-2 py-0.5 rounded-full hover:bg-green-700 flex-shrink-0">
+                                        WA
+                                      </a>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })()}
+
       {/* ═══════ CSV Import Modal ═══════ */}
       {showImport && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
@@ -1928,7 +2096,7 @@ export const AdminCRM: React.FC = () => {
 
             {/* Stage selector */}
             <div className="px-5 py-3 border-b border-gray-100 flex gap-2 overflow-x-auto">
-              {COLUMNS.map(c => (
+              {crmStages.map(c => (
                 <button key={c.id} onClick={() => updateQuote(selected.id, { status: c.id as any }).then(() => setSelected(p => p ? { ...p, status: c.id as any } : null))}
                   className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-all ${selected.status === c.id ? c.pill + ' border-current' : 'bg-white border-gray-200 text-lightText hover:border-gray-300'}`}>
                   {c.label}
@@ -2236,6 +2404,141 @@ export const AdminCRM: React.FC = () => {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      , document.body)}
+
+      {/* ═══════ Stage Manager Modal ═══════ */}
+      {showStageMgr && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => { setShowStageMgr(false); setEditingStageId(null); }} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="font-bold text-darkText">Gerenciar Etapas</h3>
+                <p className="text-xs text-lightText mt-0.5">Crie e organize as colunas do seu CRM</p>
+              </div>
+              <button onClick={() => { setShowStageMgr(false); setEditingStageId(null); }}><X size={18} className="text-lightText" /></button>
+            </div>
+
+            {/* Current stages */}
+            <div className="space-y-2 mb-5">
+              {crmStages.map((stage, idx) => {
+                const leadsInStage = quotes.filter(q => q.status === stage.id).length;
+                const isEditing = editingStageId === stage.id;
+                return (
+                  <div key={stage.id} className="flex items-center gap-2 bg-gray-50 rounded-xl p-2.5 border border-gray-100">
+                    {/* Color dot */}
+                    <div className={`w-3 h-3 rounded-full flex-shrink-0 ${stage.dot}`} />
+
+                    {/* Label (editable) */}
+                    {isEditing ? (
+                      <input autoFocus value={editingStageLabel}
+                        onChange={e => setEditingStageLabel(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            const updated = crmStages.map(s => s.id === stage.id ? { ...s, label: editingStageLabel.trim() || s.label } : s);
+                            setCrmStages(updated); persistStages(updated); setEditingStageId(null);
+                          }
+                          if (e.key === 'Escape') setEditingStageId(null);
+                        }}
+                        className="flex-1 text-sm font-medium text-darkText bg-white border border-primary rounded-lg px-2 py-1 outline-none" />
+                    ) : (
+                      <span className="flex-1 text-sm font-medium text-darkText">{stage.label}</span>
+                    )}
+
+                    {/* Lead count badge */}
+                    {leadsInStage > 0 && (
+                      <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">{leadsInStage}</span>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {/* Reorder */}
+                      <button disabled={idx === 0} onClick={() => {
+                        const updated = [...crmStages]; [updated[idx-1], updated[idx]] = [updated[idx], updated[idx-1]];
+                        setCrmStages(updated); persistStages(updated);
+                      }} className="p-1 rounded hover:bg-gray-200 disabled:opacity-20 transition-colors">
+                        <ChevronUp size={12} className="text-gray-500" />
+                      </button>
+                      <button disabled={idx === crmStages.length - 1} onClick={() => {
+                        const updated = [...crmStages]; [updated[idx], updated[idx+1]] = [updated[idx+1], updated[idx]];
+                        setCrmStages(updated); persistStages(updated);
+                      }} className="p-1 rounded hover:bg-gray-200 disabled:opacity-20 transition-colors">
+                        <ChevronDown size={12} className="text-gray-500" />
+                      </button>
+                      {/* Edit */}
+                      {isEditing ? (
+                        <button onClick={() => {
+                          const updated = crmStages.map(s => s.id === stage.id ? { ...s, label: editingStageLabel.trim() || s.label } : s);
+                          setCrmStages(updated); persistStages(updated); setEditingStageId(null);
+                        }} className="p-1 rounded bg-primary/10 hover:bg-primary/20 transition-colors">
+                          <Check size={12} className="text-primary" />
+                        </button>
+                      ) : (
+                        <button onClick={() => { setEditingStageId(stage.id); setEditingStageLabel(stage.label); }}
+                          className="p-1 rounded hover:bg-gray-200 transition-colors">
+                          <Pencil size={12} className="text-gray-500" />
+                        </button>
+                      )}
+                      {/* Delete */}
+                      <button
+                        onClick={() => {
+                          if (leadsInStage > 0) { alert(`Mova os ${leadsInStage} lead(s) desta etapa antes de excluir.`); return; }
+                          if (crmStages.length <= 1) { alert('É necessário pelo menos 1 etapa.'); return; }
+                          const updated = crmStages.filter(s => s.id !== stage.id);
+                          setCrmStages(updated); persistStages(updated);
+                        }}
+                        className="p-1 rounded hover:bg-red-50 transition-colors">
+                        <Trash2 size={12} className={leadsInStage > 0 ? 'text-gray-300' : 'text-red-400'} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Add new stage */}
+            <div className="border-t border-gray-100 pt-4">
+              <p className="text-xs font-bold text-darkText mb-3">Nova etapa</p>
+              <input value={newStageLabel} onChange={e => setNewStageLabel(e.target.value)}
+                placeholder="Nome da etapa (ex: Visita Agendada)"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-primary mb-3" />
+              {/* Color picker */}
+              <div className="flex gap-2 flex-wrap mb-4">
+                {STAGE_COLORS.map(c => (
+                  <button key={c.key} onClick={() => setNewStageColorKey(c.key)}
+                    className={`w-7 h-7 rounded-full border-4 transition-transform hover:scale-110 ${newStageColorKey === c.key ? 'scale-125 border-gray-400' : 'border-transparent'}`}
+                    style={{ backgroundColor: c.hex }} />
+                ))}
+              </div>
+              <button onClick={() => {
+                if (!newStageLabel.trim()) return;
+                const color = STAGE_COLORS.find(c => c.key === newStageColorKey) || STAGE_COLORS[1];
+                const newStage: CrmStage = {
+                  id: `CUSTOM_${Date.now()}`,
+                  label: newStageLabel.trim(),
+                  dot: color.dot,
+                  pill: color.pill,
+                };
+                const updated = [...crmStages, newStage];
+                setCrmStages(updated); persistStages(updated);
+                setNewStageLabel('');
+              }}
+                disabled={!newStageLabel.trim()}
+                className="w-full bg-primary text-white text-sm font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-primary/90 transition-colors">
+                <Plus size={15} /> Criar etapa
+              </button>
+            </div>
+
+            {/* Reset to defaults */}
+            <button onClick={() => {
+              if (window.confirm('Restaurar as etapas padrão? Etapas personalizadas serão removidas (leads não serão afetados).')) {
+                setCrmStages(DEFAULT_STAGES); persistStages(DEFAULT_STAGES);
+              }
+            }} className="mt-3 w-full text-xs text-gray-400 hover:text-gray-600 transition-colors py-1">
+              ↩ Restaurar padrão
+            </button>
           </div>
         </div>
       , document.body)}
