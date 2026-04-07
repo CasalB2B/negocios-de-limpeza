@@ -1055,38 +1055,38 @@ export const AdminCRM: React.FC = () => {
   return (
     <Layout role={UserRole.ADMIN}>
       {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-3">
         <div>
           <h1 className="text-2xl font-bold text-darkText">CRM</h1>
           <p className="text-sm text-lightText">Gerencie seus leads e conversões</p>
         </div>
-        <div className="flex gap-2 flex-wrap justify-end">
+        <div className="flex flex-wrap gap-2">
           {/* View toggle — only Kanban/Lista here; Campanhas & Histórico are in sidebar */}
           <div className="flex border border-gray-200 rounded-lg overflow-hidden">
             <button onClick={() => setView('kanban')}
               className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors ${viewMode === 'kanban' ? 'bg-primary text-white' : 'bg-white text-lightText hover:bg-gray-50'}`}>
-              <Kanban size={15} /> Kanban
+              <Kanban size={15} /> <span className="hidden sm:inline">Kanban</span>
             </button>
             <button onClick={() => setView('list')}
               className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-lightText hover:bg-gray-50'}`}>
-              <LayoutList size={15} /> Lista
+              <LayoutList size={15} /> <span className="hidden sm:inline">Lista</span>
             </button>
           </div>
           <button onClick={handleExport} title="Exportar CSV"
             className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-lightText">
-            <Download size={15} /> Exportar
+            <Download size={15} /> <span className="hidden sm:inline">Exportar</span>
           </button>
           <button onClick={() => { setShowImport(true); setImportResult(null); setCsvPreview([]); }}
             className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-lightText">
-            <Upload size={15} /> Importar CSV
+            <Upload size={15} /> <span className="hidden sm:inline">Importar CSV</span>
           </button>
           <button onClick={() => setShowStageMgr(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-lightText">
-            <Kanban size={15} /> Etapas
+            <Kanban size={15} /> <span className="hidden sm:inline">Etapas</span>
           </button>
           <button onClick={() => setShowTagMgr(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-lightText">
-            <Tag size={15} /> Etiquetas
+            <Tag size={15} /> <span className="hidden sm:inline">Etiquetas</span>
           </button>
           <button onClick={() => setShowAddLead(true)}
             className="flex items-center gap-2 px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 font-medium shadow-sm">

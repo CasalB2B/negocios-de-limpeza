@@ -110,12 +110,14 @@ export const AdminCollaborators: React.FC = () => {
   return (
     <Layout role={UserRole.ADMIN}>
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
            <div>
-              <h1 className="text-3xl font-display font-bold text-darkText dark:text-darkTextPrimary">Colaboradoras</h1>
-              <p className="text-lightText dark:text-darkTextSecondary mt-1">Gerencie e acompanhe o status da sua equipe em tempo real.</p>
+              <h1 className="text-2xl md:text-3xl font-display font-bold text-darkText dark:text-darkTextPrimary">Colaboradoras</h1>
+              <p className="text-lightText dark:text-darkTextSecondary mt-1 text-sm md:text-base">Gerencie e acompanhe o status da sua equipe em tempo real.</p>
            </div>
-           <Button icon={<UserPlus size={18} />} onClick={() => { setShowAddModal(true); setCollabData({ name: '', email: '', phone: '', password: generatePassword(), photo: '', level: 'JUNIOR' }); }}>Adicionar Colaboradora</Button>
+           <div className="w-full md:w-auto">
+              <Button icon={<UserPlus size={18} />} onClick={() => { setShowAddModal(true); setCollabData({ name: '', email: '', phone: '', password: generatePassword(), photo: '', level: 'JUNIOR' }); }} fullWidth>Adicionar Colaboradora</Button>
+           </div>
         </div>
 
         {/* Filters */}
@@ -134,65 +136,67 @@ export const AdminCollaborators: React.FC = () => {
 
         {/* List */}
         <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder overflow-hidden shadow-sm">
-           <table className="w-full text-left">
-              <thead className="bg-gray-50/50 dark:bg-darkBg/50 border-b border-gray-100 dark:border-darkBorder">
-                 <tr>
-                    <th className="p-5 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Colaboradora</th>
-                    <th className="p-5 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Classificação</th>
-                    <th className="p-5 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Contato</th>
-                    <th className="p-5 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Status Atual</th>
-                    <th className="p-5 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider text-right">Ações</th>
-                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-darkBorder">
-                 {filteredCollaborators.map((collab) => (
-                    <tr key={collab.id} className="hover:bg-gray-50/50 dark:hover:bg-darkBg/30 transition-colors cursor-pointer" onClick={() => { setViewCollab(collab); }}>
-                       <td className="p-5">
-                          <div className="flex items-center gap-4">
-                             <img src={collab.photo || `https://i.pravatar.cc/150?u=${collab.id}`} alt={collab.name} className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm" />
-                             <div>
-                                <p className="font-bold text-darkText dark:text-darkTextPrimary">{collab.name}</p>
-                                <p className="text-xs text-lightText dark:text-darkTextSecondary">ID: {collab.id}</p>
-                             </div>
-                          </div>
-                       </td>
-                       <td className="p-5">
-                          {getLevelBadge(collab.level || 'JUNIOR')}
-                       </td>
-                       <td className="p-5">
-                          <p className="text-sm text-darkText dark:text-darkTextPrimary">{collab.email}</p>
-                          <p className="text-xs text-lightText dark:text-darkTextSecondary">{collab.phone}</p>
-                       </td>
-                       <td className="p-5">
-                          {getStatusBadge(collab.status)}
-                       </td>
-                       <td className="p-5 text-right">
-                          <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                             <button
-                                onClick={() => setShowPayments(collab)}
-                                className="p-2 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg text-lightText hover:text-green-600 transition-colors"
-                                title="Ver pagamentos"
-                             >
-                                <DollarSign size={18} />
-                             </button>
-                             <button
-                                onClick={() => { setViewCollab(collab); }}
-                                className="p-2 hover:bg-gray-100 dark:hover:bg-darkBorder rounded-lg text-lightText hover:text-primary transition-colors"
-                             >
-                                <Edit size={18} />
-                             </button>
-                             <button
-                                onClick={(e) => handleDelete(e, collab.id)}
-                                className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-lightText hover:text-red-500 transition-colors"
-                             >
-                                <Trash2 size={18} />
-                             </button>
-                          </div>
-                       </td>
-                    </tr>
-                 ))}
-              </tbody>
-           </table>
+           <div className="overflow-x-auto w-full">
+             <table className="w-full text-left min-w-[320px]">
+                <thead className="bg-gray-50/50 dark:bg-darkBg/50 border-b border-gray-100 dark:border-darkBorder">
+                   <tr>
+                      <th className="p-4 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Colaboradora</th>
+                      <th className="p-4 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider hidden sm:table-cell">Classificação</th>
+                      <th className="p-4 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider hidden md:table-cell">Contato</th>
+                      <th className="p-4 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider hidden sm:table-cell">Status</th>
+                      <th className="p-4 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider text-right">Ações</th>
+                   </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-darkBorder">
+                   {filteredCollaborators.map((collab) => (
+                      <tr key={collab.id} className="hover:bg-gray-50/50 dark:hover:bg-darkBg/30 transition-colors cursor-pointer" onClick={() => { setViewCollab(collab); }}>
+                         <td className="p-4">
+                            <div className="flex items-center gap-3">
+                               <img src={collab.photo || `https://i.pravatar.cc/150?u=${collab.id}`} alt={collab.name} className="w-10 h-10 flex-shrink-0 rounded-full object-cover border-2 border-white shadow-sm" />
+                               <div className="min-w-0">
+                                  <p className="font-bold text-darkText dark:text-darkTextPrimary truncate max-w-[130px] sm:max-w-[180px]">{collab.name}</p>
+                                  <p className="text-xs text-lightText dark:text-darkTextSecondary truncate max-w-[130px]">#{collab.id.slice(-8)}</p>
+                               </div>
+                            </div>
+                         </td>
+                         <td className="p-4 hidden sm:table-cell">
+                            {getLevelBadge(collab.level || 'JUNIOR')}
+                         </td>
+                         <td className="p-4 hidden md:table-cell">
+                            <p className="text-sm text-darkText dark:text-darkTextPrimary truncate max-w-[180px]">{collab.email}</p>
+                            <p className="text-xs text-lightText dark:text-darkTextSecondary">{collab.phone}</p>
+                         </td>
+                         <td className="p-4 hidden sm:table-cell">
+                            {getStatusBadge(collab.status)}
+                         </td>
+                         <td className="p-4 text-right">
+                            <div className="flex justify-end gap-1 sm:gap-2" onClick={(e) => e.stopPropagation()}>
+                               <button
+                                  onClick={() => setShowPayments(collab)}
+                                  className="p-2 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg text-lightText hover:text-green-600 transition-colors"
+                                  title="Ver pagamentos"
+                               >
+                                  <DollarSign size={18} />
+                               </button>
+                               <button
+                                  onClick={() => { setViewCollab(collab); }}
+                                  className="p-2 hover:bg-gray-100 dark:hover:bg-darkBorder rounded-lg text-lightText hover:text-primary transition-colors"
+                               >
+                                  <Edit size={18} />
+                               </button>
+                               <button
+                                  onClick={(e) => handleDelete(e, collab.id)}
+                                  className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-lightText hover:text-red-500 transition-colors"
+                               >
+                                  <Trash2 size={18} />
+                               </button>
+                            </div>
+                         </td>
+                      </tr>
+                   ))}
+                </tbody>
+             </table>
+           </div>
         </div>
 
         {/* Modal: Ver/Editar Colaboradora */}

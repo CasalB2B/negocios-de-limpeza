@@ -106,64 +106,62 @@ export const AdminClients: React.FC = () => {
         {/* Table Container with Overflow */}
         <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder overflow-hidden shadow-sm flex flex-col">
            <div className="overflow-x-auto w-full">
-             <div className="min-w-[800px]"> {/* Min width forces scroll on small screens */}
-               <table className="w-full text-left">
-                  <thead className="bg-gray-50/50 dark:bg-darkBg/50 border-b border-gray-100 dark:border-darkBorder">
-                     <tr>
-                        <th className="p-5 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Cliente</th>
-                        <th className="p-5 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Contato</th>
-                        <th className="p-5 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Endereço Principal</th>
-                        <th className="p-5 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Tipo & Status</th>
-                        <th className="p-5 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider text-right">Ações</th>
-                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-darkBorder">
-                     {filteredClients.map((client) => (
-                        <tr key={client.id} className="hover:bg-gray-50/50 dark:hover:bg-darkBg/30 transition-colors group">
-                           <td className="p-5">
-                              <div className="flex items-center gap-3">
-                                 <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-primary/20 flex items-center justify-center text-primary font-bold uppercase">
-                                    {client.name.charAt(0)}
-                                 </div>
-                                 <div>
-                                    <p className="font-bold text-darkText dark:text-darkTextPrimary">{client.name}</p>
-                                    <p className="text-xs text-lightText dark:text-darkTextSecondary">ID: {client.id}</p>
-                                 </div>
-                              </div>
-                           </td>
-                           <td className="p-5">
-                              <div className="text-sm space-y-1">
-                                 <p className="flex items-center gap-2 text-darkText dark:text-darkTextPrimary"><Mail size={14} className="text-gray-400"/> {client.email}</p>
-                                 <p className="flex items-center gap-2 text-lightText dark:text-darkTextSecondary"><Phone size={14} className="text-gray-400"/> {client.phone}</p>
-                              </div>
-                           </td>
-                           <td className="p-5">
-                              <p className="flex items-center gap-2 text-sm text-darkText dark:text-darkTextPrimary truncate max-w-[200px]"><MapPin size={14} className="text-gray-400"/> {client.address}</p>
-                           </td>
-                           <td className="p-5">
-                              <div className="flex flex-col items-start gap-1">
-                                 {getClientTypeBadge(client.type || 'AVULSO')}
-                                 <Badge variant="success">Ativo</Badge>
-                              </div>
-                           </td>
-                           <td className="p-5 text-right">
-                              <div className="flex justify-end gap-2">
-                                 <button title="Ver Pagamentos" className="p-2 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg text-lightText hover:text-green-600 transition-colors">
-                                    <DollarSign size={18} />
-                                 </button>
-                                 <button onClick={() => { setEditingClient({...client}); }} className="p-2 hover:bg-gray-100 dark:hover:bg-darkBorder rounded-lg text-lightText hover:text-primary transition-colors">
-                                    <Edit size={18} />
-                                 </button>
-                                 <button onClick={(e) => handleDelete(e, client.id)} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-lightText hover:text-red-500 transition-colors">
-                                    <Trash2 size={18} />
-                                 </button>
-                              </div>
-                           </td>
-                        </tr>
-                     ))}
-                  </tbody>
-               </table>
-             </div>
+             <table className="w-full text-left min-w-[320px]">
+                <thead className="bg-gray-50/50 dark:bg-darkBg/50 border-b border-gray-100 dark:border-darkBorder">
+                   <tr>
+                      <th className="p-4 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Cliente</th>
+                      <th className="p-4 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider hidden sm:table-cell">Contato</th>
+                      <th className="p-4 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider hidden lg:table-cell">Endereço Principal</th>
+                      <th className="p-4 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider hidden md:table-cell">Tipo & Status</th>
+                      <th className="p-4 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider text-right">Ações</th>
+                   </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-darkBorder">
+                   {filteredClients.map((client) => (
+                      <tr key={client.id} className="hover:bg-gray-50/50 dark:hover:bg-darkBg/30 transition-colors group">
+                         <td className="p-4">
+                            <div className="flex items-center gap-3">
+                               <div className="w-9 h-9 flex-shrink-0 rounded-full bg-purple-100 dark:bg-primary/20 flex items-center justify-center text-primary font-bold uppercase">
+                                  {client.name.charAt(0)}
+                               </div>
+                               <div className="min-w-0">
+                                  <p className="font-bold text-darkText dark:text-darkTextPrimary truncate max-w-[140px] sm:max-w-[200px]">{client.name}</p>
+                                  <p className="text-xs text-lightText dark:text-darkTextSecondary truncate max-w-[140px]">#{client.id.slice(-8)}</p>
+                               </div>
+                            </div>
+                         </td>
+                         <td className="p-4 hidden sm:table-cell">
+                            <div className="text-sm space-y-1">
+                               <p className="flex items-center gap-2 text-darkText dark:text-darkTextPrimary truncate max-w-[180px]"><Mail size={14} className="flex-shrink-0 text-gray-400"/> <span className="truncate">{client.email}</span></p>
+                               <p className="flex items-center gap-2 text-lightText dark:text-darkTextSecondary"><Phone size={14} className="flex-shrink-0 text-gray-400"/> {client.phone}</p>
+                            </div>
+                         </td>
+                         <td className="p-4 hidden lg:table-cell">
+                            <p className="flex items-center gap-2 text-sm text-darkText dark:text-darkTextPrimary truncate max-w-[200px]"><MapPin size={14} className="flex-shrink-0 text-gray-400"/> <span className="truncate">{client.address}</span></p>
+                         </td>
+                         <td className="p-4 hidden md:table-cell">
+                            <div className="flex flex-col items-start gap-1">
+                               {getClientTypeBadge(client.type || 'AVULSO')}
+                               <Badge variant="success">Ativo</Badge>
+                            </div>
+                         </td>
+                         <td className="p-4 text-right">
+                            <div className="flex justify-end gap-1 sm:gap-2">
+                               <button title="Ver Pagamentos" className="p-2 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg text-lightText hover:text-green-600 transition-colors">
+                                  <DollarSign size={18} />
+                               </button>
+                               <button onClick={() => { setEditingClient({...client}); }} className="p-2 hover:bg-gray-100 dark:hover:bg-darkBorder rounded-lg text-lightText hover:text-primary transition-colors">
+                                  <Edit size={18} />
+                               </button>
+                               <button onClick={(e) => handleDelete(e, client.id)} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-lightText hover:text-red-500 transition-colors">
+                                  <Trash2 size={18} />
+                               </button>
+                            </div>
+                         </td>
+                      </tr>
+                   ))}
+                </tbody>
+             </table>
            </div>
         </div>
 
