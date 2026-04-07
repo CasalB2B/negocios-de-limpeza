@@ -161,6 +161,23 @@
         animation: slide-up 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
       }
     </style>
+  <script>
+    // Redirect automático antes do React — resolve PWA iOS abrindo na home
+    (function () {
+      try {
+        var hash = window.location.hash;
+        var atRoot = !hash || hash === '#' || hash === '#/' || hash === '';
+        if (!atRoot) return; // já está numa rota específica, não faz nada
+        if (localStorage.getItem('auth_admin') === 'true') {
+          window.location.replace('/#/admin/dashboard');
+        } else if (localStorage.getItem('auth_collab')) {
+          window.location.replace('/#/collab/agenda');
+        } else if (localStorage.getItem('auth_client')) {
+          window.location.replace('/#/client/dashboard');
+        }
+      } catch (e) {}
+    })();
+  </script>
   <script type="importmap">
 {
   "imports": {
