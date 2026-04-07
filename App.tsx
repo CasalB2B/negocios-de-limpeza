@@ -37,6 +37,7 @@ import { AdminServices } from './pages/admin/AdminServices';
 import { AdminQuotes } from './pages/admin/AdminQuotes';
 import { AdminWhatsApp } from './pages/admin/AdminWhatsApp';
 import { AdminCRM } from './pages/admin/AdminCRM';
+import { AdminInbox } from './pages/admin/AdminInbox';
 import { QuoteChat } from './pages/client/QuoteChat';
 import { PWAManager } from './components/PWAManager';
 
@@ -112,6 +113,7 @@ const App: React.FC = () => {
               <Route path="/admin/crm" element={<AdminCRM />} />
               <Route path="/admin/crm/campanhas" element={<AdminCRM />} />
               <Route path="/admin/crm/historico" element={<AdminCRM />} />
+              <Route path="/admin/inbox" element={<AdminInbox />} />
               <Route path="/admin/payments" element={<AdminPayments />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
               <Route path="/admin/whatsapp" element={<AdminWhatsApp />} />
