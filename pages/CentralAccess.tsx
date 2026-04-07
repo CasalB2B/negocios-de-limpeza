@@ -7,18 +7,19 @@ import { useData } from '../components/DataContext';
 
 export const CentralAccess: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, currentCollaborator, adminLoggedIn } = useData();
+  const { currentUser } = useData();
 
   // Se já estiver logado, redireciona automaticamente (resolve PWA iOS que abre sempre na home)
+  // Lê direto do localStorage para não depender do carregamento do DataContext
   useEffect(() => {
-    if (adminLoggedIn) {
+    if (localStorage.getItem('auth_admin') === 'true') {
       navigate('/admin/dashboard', { replace: true });
-    } else if (currentCollaborator) {
+    } else if (localStorage.getItem('auth_collab')) {
       navigate('/collab/agenda', { replace: true });
-    } else if (currentUser) {
+    } else if (localStorage.getItem('auth_client')) {
       navigate('/client/dashboard', { replace: true });
     }
-  }, [adminLoggedIn, currentCollaborator, currentUser, navigate]);
+  }, [navigate]);
 
   const openWhatsAppQuote = () => {
     navigate('/client/quote-chat');
