@@ -117,7 +117,7 @@ export interface Quote {
   internalCleaning: string;
   renovation: string;
   serviceOption: string;
-  status: 'NEW' | 'CONTACTED' | 'PROPOSAL' | 'NEGOTIATING' | 'CONVERTED' | 'LOST';
+  status: string;
   chatSummary?: string;
   clientPhotos?: string[];
   // CRM fields
