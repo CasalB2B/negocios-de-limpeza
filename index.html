@@ -165,9 +165,32 @@
     // Redirect automático antes do React — resolve PWA iOS abrindo na home
     (function () {
       try {
+        var params = new URLSearchParams(window.location.search);
+        var role = params.get('role');
+
+        if (role === 'admin') {
+          // PWA admin: sempre vai para o admin (login ou dashboard)
+          if (localStorage.getItem('auth_admin') === 'true') {
+            window.location.replace('/#/admin/dashboard');
+          } else {
+            window.location.replace('/#/admin/login');
+          }
+          return;
+        }
+
+        if (role === 'collab') {
+          if (localStorage.getItem('auth_collab')) {
+            window.location.replace('/#/collab/agenda');
+          } else {
+            window.location.replace('/#/collab/login');
+          }
+          return;
+        }
+
+        // Sem role: verifica se já está logado e redireciona
         var hash = window.location.hash;
-        var atRoot = !hash || hash === '#' || hash === '#/' || hash === '';
-        if (!atRoot) return; // já está numa rota específica, não faz nada
+        var atRoot = !hash || hash === '#' || hash === '#/';
+        if (!atRoot) return;
         if (localStorage.getItem('auth_admin') === 'true') {
           window.location.replace('/#/admin/dashboard');
         } else if (localStorage.getItem('auth_collab')) {
