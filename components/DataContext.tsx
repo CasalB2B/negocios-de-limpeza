@@ -904,6 +904,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           payouts: s.payouts,
           bot_prompt: s.botPrompt ?? null,
           contact_phone: s.contactPhone ?? null,
+          admin_photo: s.adminPhoto ?? null,
+          admin_name: s.adminName ?? null,
       });
       if (error) console.error("Erro ao salvar configurações:", error);
   };

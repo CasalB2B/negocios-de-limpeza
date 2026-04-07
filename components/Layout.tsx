@@ -15,7 +15,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { currentUser, logoutClient, logoutCollaborator, logoutAdmin } = useData();
+  const { currentUser, logoutClient, logoutCollaborator, logoutAdmin, platformSettings } = useData();
   const mainRef = useRef<HTMLElement>(null);
 
   // Reset scroll to top on every route change
@@ -270,12 +270,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           </div>
           <div className="flex items-center gap-3 mb-4 px-2 cursor-pointer" onClick={() => navigate('/admin/settings')}>
              <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-darkBorder flex items-center justify-center overflow-hidden shrink-0">
-                {localStorage.getItem('admin_photo')
-                  ? <img src={localStorage.getItem('admin_photo')!} alt="Admin" className="w-full h-full object-cover"/>
+                {(platformSettings.adminPhoto || localStorage.getItem('admin_photo'))
+                  ? <img src={platformSettings.adminPhoto || localStorage.getItem('admin_photo')!} alt="Admin" className="w-full h-full object-cover"/>
                   : <span className="text-lg">👤</span>}
              </div>
              <div>
-                <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">{localStorage.getItem('admin_name') || 'Administrador'}</p>
+                <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">{platformSettings.adminName || localStorage.getItem('admin_name') || 'Administrador'}</p>
                 <p className="text-xs text-lightText dark:text-darkTextSecondary">Super Admin</p>
              </div>
           </div>

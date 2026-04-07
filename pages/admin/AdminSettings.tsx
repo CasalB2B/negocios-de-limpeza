@@ -22,8 +22,8 @@ export const AdminSettings: React.FC = () => {
     setNotifSaved(true);
     setTimeout(() => setNotifSaved(false), 2000);
   };
-  const [adminPhoto, setAdminPhoto] = useState<string>(() => localStorage.getItem('admin_photo') || '');
-  const [adminName, setAdminName] = useState<string>(() => localStorage.getItem('admin_name') || 'Administrador');
+  const [adminPhoto, setAdminPhoto] = useState<string>(() => platformSettings.adminPhoto || localStorage.getItem('admin_photo') || '');
+  const [adminName, setAdminName] = useState<string>(() => platformSettings.adminName || localStorage.getItem('admin_name') || 'Administrador');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const adminPhotoRef = useRef<HTMLInputElement>(null);
   type LocalSettings = typeof platformSettings & { companyName: string; supportEmail: string };
@@ -35,6 +35,8 @@ export const AdminSettings: React.FC = () => {
 
   useEffect(() => {
     setLocalSettings(prev => ({ ...platformSettings, companyName: prev.companyName, supportEmail: prev.supportEmail }));
+    if (platformSettings.adminPhoto) setAdminPhoto(platformSettings.adminPhoto);
+    if (platformSettings.adminName) setAdminName(platformSettings.adminName);
   }, [platformSettings]);
 
 
@@ -45,8 +47,9 @@ export const AdminSettings: React.FC = () => {
 
   const handleSaveGeneralSettings = () => {
       const { companyName, supportEmail, ...settings } = localSettings;
-      updatePlatformSettings(settings);
+      updatePlatformSettings({ ...settings, adminPhoto, adminName });
       localStorage.setItem('admin_name', adminName);
+      localStorage.setItem('admin_photo', adminPhoto);
       localStorage.setItem('company_name', companyName);
       localStorage.setItem('support_email', supportEmail);
       alert("Informações da empresa salvas com sucesso!");
@@ -103,13 +106,16 @@ export const AdminSettings: React.FC = () => {
                                 const { data } = supabase.storage.from('admin-assets').getPublicUrl(path);
                                 setAdminPhoto(data.publicUrl);
                                 localStorage.setItem('admin_photo', data.publicUrl);
+                                // Salva no Supabase para sincronizar entre dispositivos
+                                await updatePlatformSettings({ ...platformSettings, adminPhoto: data.publicUrl, adminName });
                               } else {
-                                // fallback: guarda dataURL localmente
+                                // fallback: guarda dataURL localmente (sem Supabase Storage)
                                 const reader = new FileReader();
                                 reader.onload = ev => {
                                   const dataUrl = ev.target?.result as string;
                                   setAdminPhoto(dataUrl);
                                   localStorage.setItem('admin_photo', dataUrl);
+                                  updatePlatformSettings({ ...platformSettings, adminPhoto: dataUrl, adminName });
                                 };
                                 reader.readAsDataURL(file);
                               }
