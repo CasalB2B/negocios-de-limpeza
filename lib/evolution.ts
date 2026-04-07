@@ -1,5 +1,5 @@
 // All Evolution API calls go through the Supabase edge function proxy to avoid CORS
-const PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/quick-action`;
+const PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-proxy`;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 const proxyHeaders = {

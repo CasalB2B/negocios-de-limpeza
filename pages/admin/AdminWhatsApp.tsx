@@ -184,18 +184,20 @@ export const AdminWhatsApp: React.FC = () => {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
+        <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4">
           {TABS.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-colors shrink-0 ${
                 tab === t.id
                   ? 'bg-green-600 text-white shadow'
                   : 'bg-white dark:bg-darkSurface text-lightText dark:text-darkTextSecondary border border-gray-200 dark:border-darkBorder hover:border-green-300'
               }`}
             >
-              {t.icon} {t.label}
+              {t.icon}
+              <span className="hidden sm:inline">{t.label}</span>
+              <span className="sm:hidden text-xs">{t.label.split(' ')[0]}</span>
             </button>
           ))}
         </div>
