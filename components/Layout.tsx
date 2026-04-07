@@ -217,20 +217,47 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
               return (
                 <div key={group} className="mb-4">
                   <p className="text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-widest px-4 mb-1">{groupLabels[group]}</p>
-                  {items.map((item: any) => (
-                    <button
-                      key={item.path}
-                      onClick={() => navigate(item.path)}
-                      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl w-full transition-colors border-l-4 mb-0.5 ${
-                        location.pathname === item.path
-                          ? 'bg-primary/5 dark:bg-primary/10 text-primary font-bold border-primary'
-                          : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder border-transparent'
-                      }`}
-                    >
-                      {item.icon}
-                      <span className="text-sm">{item.label}</span>
-                    </button>
-                  ))}
+                  {items.map((item: any) => {
+                    const isCRM = item.path === '/admin/crm';
+                    const onCRM = location.pathname.startsWith('/admin/crm');
+                    const isActive = isCRM ? onCRM : location.pathname === item.path;
+                    return (
+                      <div key={item.path}>
+                        <button
+                          onClick={() => navigate(item.path)}
+                          className={`flex items-center gap-3 px-4 py-2.5 rounded-xl w-full transition-colors border-l-4 mb-0.5 ${
+                            isActive
+                              ? 'bg-primary/5 dark:bg-primary/10 text-primary font-bold border-primary'
+                              : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder border-transparent'
+                          }`}
+                        >
+                          {item.icon}
+                          <span className="text-sm">{item.label}</span>
+                        </button>
+
+                        {/* CRM sub-menu — visible when on any /admin/crm route */}
+                        {isCRM && onCRM && (
+                          <div className="ml-4 mb-1 pl-3 border-l-2 border-gray-100 dark:border-darkBorder space-y-0.5">
+                            {[
+                              { label: 'Leads',      path: '/admin/crm',           icon: <Grid size={14} /> },
+                              { label: 'Campanhas',  path: '/admin/crm/campanhas', icon: <MessageCircle size={14} /> },
+                              { label: 'Histórico',  path: '/admin/crm/historico', icon: <LayoutDashboard size={14} /> },
+                            ].map(sub => (
+                              <button key={sub.path} onClick={() => navigate(sub.path)}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg w-full transition-colors text-xs ${
+                                  location.pathname === sub.path
+                                    ? 'bg-primary/10 text-primary font-bold'
+                                    : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder'
+                                }`}>
+                                {sub.icon}
+                                {sub.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             });

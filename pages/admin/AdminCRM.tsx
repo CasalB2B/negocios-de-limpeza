@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { useData, Quote, CrmTag } from '../../components/DataContext';
@@ -297,9 +298,26 @@ function relativeTime(ts: number) {
 // ═══════════════════════════════════════════════════════════════════════════
 export const AdminCRM: React.FC = () => {
   const { quotes, updateQuote, deleteQuote, addQuote, crmTags, addCrmTag, deleteCrmTag, addService } = useData();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  // ── view mode ──
-  const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'campaigns' | 'history'>('kanban');
+  // ── view mode — driven by route ──
+  const viewFromRoute = (): 'kanban' | 'list' | 'campaigns' | 'history' => {
+    if (location.pathname.includes('campanhas')) return 'campaigns';
+    if (location.pathname.includes('historico')) return 'history';
+    return 'kanban';
+  };
+  const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'campaigns' | 'history'>(viewFromRoute);
+
+  // Sync viewMode when route changes (browser back/forward)
+  useEffect(() => { setViewMode(viewFromRoute()); }, [location.pathname]);
+
+  const setView = (mode: 'kanban' | 'list' | 'campaigns' | 'history') => {
+    setViewMode(mode);
+    if (mode === 'campaigns') navigate('/admin/crm/campanhas');
+    else if (mode === 'history') navigate('/admin/crm/historico');
+    else navigate('/admin/crm');
+  };
 
   // ── filters ──
   const [search, setSearch] = useState('');
@@ -1043,26 +1061,15 @@ export const AdminCRM: React.FC = () => {
           <p className="text-sm text-lightText">Gerencie seus leads e conversões</p>
         </div>
         <div className="flex gap-2 flex-wrap justify-end">
-          {/* View toggle */}
+          {/* View toggle — only Kanban/Lista here; Campanhas & Histórico are in sidebar */}
           <div className="flex border border-gray-200 rounded-lg overflow-hidden">
-            <button onClick={() => setViewMode('kanban')}
+            <button onClick={() => setView('kanban')}
               className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors ${viewMode === 'kanban' ? 'bg-primary text-white' : 'bg-white text-lightText hover:bg-gray-50'}`}>
               <Kanban size={15} /> Kanban
             </button>
-            <button onClick={() => setViewMode('list')}
+            <button onClick={() => setView('list')}
               className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-lightText hover:bg-gray-50'}`}>
               <LayoutList size={15} /> Lista
-            </button>
-            <button onClick={() => setViewMode('campaigns')}
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors ${viewMode === 'campaigns' ? 'bg-green-600 text-white' : 'bg-white text-lightText hover:bg-gray-50'}`}>
-              <Megaphone size={15} /> Campanhas
-            </button>
-            <button onClick={() => setViewMode('history')}
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors relative ${viewMode === 'history' ? 'bg-violet-600 text-white' : 'bg-white text-lightText hover:bg-gray-50'}`}>
-              <Clock size={15} /> Histórico
-              {campaignHistory.length > 0 && viewMode !== 'history' && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-violet-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">{campaignHistory.length}</span>
-              )}
             </button>
           </div>
           <button onClick={handleExport} title="Exportar CSV"
