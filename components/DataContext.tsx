@@ -51,6 +51,8 @@ export interface PlatformSettings {
   minDisplacement: number;
   botPrompt?: string; // Prompt customizado da Nina (bot WhatsApp)
   contactPhone?: string; // Telefone da empresa para notificações WhatsApp
+  adminPhoto?: string; // URL da foto do administrador
+  adminName?: string; // Nome do administrador
 }
 
 export interface Service {
@@ -409,6 +411,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 payouts: settingsData.payouts,
                 botPrompt: settingsData.bot_prompt || undefined,
                 contactPhone: settingsData.contact_phone || undefined,
+                adminPhoto: settingsData.admin_photo || undefined,
+                adminName: settingsData.admin_name || undefined,
             });
         }
 

@@ -56,6 +56,13 @@ Deno.serve(async (req) => {
       const res = await fetch(`${EVOLUTION_URL}/instance/fetchInstances`, { headers: { apikey: EVOLUTION_KEY } });
       const data = await res.json();
       return new Response(JSON.stringify(data), { headers: { ...cors, 'Content-Type': 'application/json' } });
+    } else if (action === 'logout') {
+      const res = await fetch(`${EVOLUTION_URL}/instance/logout/${EVOLUTION_INSTANCE}`, {
+        method: 'DELETE',
+        headers: { apikey: EVOLUTION_KEY },
+      });
+      const data = await res.json().catch(() => ({}));
+      return new Response(JSON.stringify({ ok: res.ok, data }), { headers: { ...cors, 'Content-Type': 'application/json' } });
     } else if (action === 'connect') {
       const tryConnect = async () => {
         const r = await fetch(`${EVOLUTION_URL}/instance/connect/${EVOLUTION_INSTANCE}`, { headers: { apikey: EVOLUTION_KEY } });

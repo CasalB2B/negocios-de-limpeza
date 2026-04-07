@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { MessageCircle, Wifi, Send, Save, RefreshCw, CheckCircle, XCircle, Smartphone, Bell, FileText, ThumbsUp, Bot, Trash2, Loader2 } from 'lucide-react';
-import { getStatus, getQrCode, sendMessage, buildMessage, DEFAULT_TEMPLATES, EvolutionStatus } from '../../lib/evolution';
+import { getStatus, getQrCode, sendMessage, buildMessage, DEFAULT_TEMPLATES, EvolutionStatus, disconnectInstance } from '../../lib/evolution';
 import { sendMessage as askNina, GeminiMessage, QUOTE_SYSTEM_PROMPT } from '../../lib/gemini';
 import { useData } from '../../components/DataContext';
 
@@ -55,6 +55,7 @@ export const AdminWhatsApp: React.FC = () => {
   const [testPhone, setTestPhone] = useState('');
   const [testResult, setTestResult] = useState<'ok' | 'err' | null>(null);
   const [sending, setSending] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   // Nina trainer
   const [ninaHistory, setNinaHistory] = useState<GeminiMessage[]>([]);
@@ -109,6 +110,15 @@ export const AdminWhatsApp: React.FC = () => {
     } finally {
       setNinaLoading(false);
     }
+  };
+
+  const handleDisconnect = async () => {
+    if (!window.confirm('Desconectar o WhatsApp? Será necessário escanear um novo QR Code para reconectar.')) return;
+    setDisconnecting(true);
+    await disconnectInstance();
+    setDisconnecting(false);
+    setQrCode(null);
+    await fetchStatus();
   };
 
   const fetchStatus = async () => {
@@ -211,9 +221,24 @@ export const AdminWhatsApp: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                <button onClick={fetchStatus} className="p-2 rounded-xl hover:bg-white/50 transition-colors" title="Atualizar">
-                  <RefreshCw size={18} className={`text-gray-500 ${loadingStatus ? 'animate-spin' : ''}`} />
-                </button>
+                <div className="flex items-center gap-2">
+                  {status.connected && (
+                    <button
+                      onClick={handleDisconnect}
+                      disabled={disconnecting}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 disabled:opacity-50 transition-colors"
+                      title="Desconectar WhatsApp"
+                    >
+                      {disconnecting
+                        ? <RefreshCw size={13} className="animate-spin" />
+                        : <XCircle size={13} />}
+                      {disconnecting ? 'Desconectando...' : 'Desconectar'}
+                    </button>
+                  )}
+                  <button onClick={fetchStatus} className="p-2 rounded-xl hover:bg-white/50 transition-colors" title="Atualizar">
+                    <RefreshCw size={18} className={`text-gray-500 ${loadingStatus ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
               </div>
             </div>
 

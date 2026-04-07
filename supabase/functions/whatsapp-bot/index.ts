@@ -199,7 +199,35 @@ async function saveSession(phone: string, history: any[], meta: Record<string, a
   }
 }
 
-async function callGemini(history: { role: string; parts: { text: string }[] }[], systemPrompt: string): Promise<string> {
+// Tipos de partes do Gemini (texto ou mídia inline)
+type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } };
+
+// Baixa mídia da Evolution API como base64 para enviar ao Gemini
+// A Evolution API exige o objeto completo { key, message } no body
+async function downloadMediaAsBase64(key: any, message: any): Promise<{ base64: string; mimeType: string } | null> {
+  try {
+    const res = await fetch(`${EVOLUTION_URL}/chat/getBase64FromMediaMessage/${EVOLUTION_INSTANCE}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_KEY },
+      body: JSON.stringify({ message: { key, message }, convertToMp4: false }),
+    });
+    if (!res.ok) {
+      console.error('[BOT] downloadMediaAsBase64 HTTP error:', res.status, await res.text().catch(() => ''));
+      return null;
+    }
+    const data = await res.json();
+    console.log('[BOT] downloadMediaAsBase64 response keys:', Object.keys(data));
+    const base64: string | null = data?.base64 || data?.mediaBase64 || data?.data || null;
+    const mimeType: string = data?.mimetype || data?.mediaType || data?.mime || 'application/octet-stream';
+    if (!base64) return null;
+    return { base64, mimeType };
+  } catch (e) {
+    console.error('[BOT] downloadMediaAsBase64 error:', e);
+    return null;
+  }
+}
+
+async function callGemini(history: { role: string; parts: GeminiPart[] }[], systemPrompt: string): Promise<string> {
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
     {
@@ -246,10 +274,40 @@ Deno.serve(async (req) => {
 
   const phone = extractPhone(remoteJid);
   const text = extractText(data.message);
-  console.log('[DEBUG] phone:', phone, '| text:', text);
-  if (!text || text.trim() === '') return new Response('ignored', { status: 200 });
 
-  const normalizedText = text.trim().toLowerCase();
+  // --- Detecção de mídia (áudio e imagem sem legenda) ---
+  const msgType = data.message ? Object.keys(data.message)[0] : '';
+  const isAudio = msgType === 'audioMessage' || msgType === 'pttMessage';
+  const isImageNoCaption = msgType === 'imageMessage' && !text;
+
+  let mediaParts: GeminiPart[] | null = null;
+
+  if (isAudio || isImageNoCaption) {
+    const mediaResult = await downloadMediaAsBase64(data.key, data.message);
+    if (mediaResult) {
+      const hint = isAudio
+        ? '[O cliente enviou um áudio. Transcreva o conteúdo e responda de forma natural e calorosa, como se tivesse ouvido.]'
+        : '[O cliente enviou uma imagem. Descreva brevemente o que você vê e responda de forma útil no contexto da conversa.]';
+      mediaParts = [
+        { inlineData: { mimeType: mediaResult.mimeType, data: mediaResult.base64 } },
+        { text: hint },
+      ];
+    } else if (isAudio) {
+      // Fallback: download falhou — pede para escrever, sem inventar desculpa
+      console.warn('[BOT] audio download failed, sending fallback for', phone);
+      await sendWhatsApp(phone, 'Recebi seu áudio! Mas tive um problema técnico para processá-lo agora. Pode escrever o que precisa? Te respondo na hora! 😊');
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+  }
+
+  const hasMedia = mediaParts !== null;
+  // Texto para salvar no histórico (não salva base64 — apenas referência legível)
+  const textForHistory: string = text || (isAudio ? '[áudio]' : isImageNoCaption ? '[imagem]' : '');
+
+  console.log('[DEBUG] phone:', phone, '| text:', text, '| msgType:', msgType, '| hasMedia:', hasMedia);
+  if (!textForHistory && !hasMedia) return new Response('ignored', { status: 200 });
+
+  const normalizedText = textForHistory.trim().toLowerCase();
 
   // --- Busca sessão ---
   const { history, meta: sessionMeta } = await getSession(phone);
@@ -276,7 +334,7 @@ Deno.serve(async (req) => {
       }
 
       // Mensagens seguintes: Nina acolhe sutilmente, reconhece o assunto, mas encaminha ao humano
-      history.push({ role: 'user', parts: [{ text }] });
+      history.push({ role: 'user', parts: [{ text: textForHistory }] });
       sendTyping(phone, 5000);
 
       const existingClientPrompt = activePrompt + `\n\nCONTEXTO ATUAL: Este é um cliente que já tem histórico conosco e está aguardando um atendente humano. Responda de forma breve, acolhedora e sutil. Reconheça o assunto do cliente (cancelamento, reagendamento, dúvida sobre pagamento, etc.) com empatia, mas deixe claro que o atendente certo vai resolver isso em breve. Não tente resolver — apenas acolha e reforce que a equipe está avisada. Máximo 2 frases curtas. Não use marcadores como <<HUMAN_HANDOFF>> ou <<QUOTE_DATA>>.`;
@@ -301,7 +359,7 @@ Deno.serve(async (req) => {
     }
 
     // Mensagens seguintes: Nina responde dúvidas normalmente
-    history.push({ role: 'user', parts: [{ text }] });
+    history.push({ role: 'user', parts: [{ text: textForHistory }] });
     sendTyping(phone, 6000);
 
     // Contexto extra: Nina sabe que já está esperando o humano, mas pode ajudar com dúvidas
@@ -352,15 +410,20 @@ Deno.serve(async (req) => {
   // FLUXO DA NINA (Gemini entende tudo naturalmente)
   // -------------------------------------------------------
 
-  // Adiciona mensagem do usuário ao histórico
-  history.push({ role: 'user', parts: [{ text }] });
+  // Adiciona mensagem ao histórico (apenas texto, sem base64 para não pesar o banco)
+  history.push({ role: 'user', parts: [{ text: textForHistory }] });
 
   // Indicator de digitação enquanto Gemini processa
   sendTyping(phone, 7000);
 
+  // Se há mídia, constrói histórico multimodal para o Gemini (substitui último entry pelo com base64)
+  const geminiHistory: { role: string; parts: GeminiPart[] }[] = hasMedia
+    ? [...history.slice(0, -1), { role: 'user', parts: mediaParts! }]
+    : history;
+
   // Chama Gemini
   const activePrompt = await getSystemPrompt();
-  const rawResponse = await callGemini(history, activePrompt);
+  const rawResponse = await callGemini(geminiHistory, activePrompt);
   const cleanedText = cleanResponse(rawResponse);
   const quoteData = extractQuoteData(rawResponse);
 

@@ -68,6 +68,11 @@ export function buildMessage(template: string, vars: Record<string, string>): st
   return template.replace(/\[(\w+)\]/g, (_, key) => vars[key] ?? `[${key}]`);
 }
 
+export async function disconnectInstance(): Promise<boolean> {
+  const result = await callProxy('logout');
+  return result.ok;
+}
+
 export async function sendDocument(phone: string, base64: string, fileName: string, caption?: string): Promise<boolean> {
   const result = await callProxy('sendMedia', { number: phone, base64, fileName, caption: caption || '' });
   return result.ok;
