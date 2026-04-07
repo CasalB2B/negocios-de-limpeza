@@ -4,24 +4,21 @@ import { Button } from '../components/Button';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { CheckCircle, ArrowRight, User, Briefcase, ShieldCheck, Star, Clock, Shield, MessageCircle, FileText, Sparkles, Package } from 'lucide-react';
 import { useData } from '../components/DataContext';
-import { UserRole } from '../types';
 
 export const CentralAccess: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser } = useData();
+  const { currentUser, currentCollaborator, adminLoggedIn } = useData();
 
-  // Se já estiver logado, redireciona para a área correta automaticamente
-  // (resolve o problema do PWA no iOS que sempre abre na home)
+  // Se já estiver logado, redireciona automaticamente (resolve PWA iOS que abre sempre na home)
   useEffect(() => {
-    if (!currentUser) return;
-    if (currentUser.role === UserRole.ADMIN) {
+    if (adminLoggedIn) {
       navigate('/admin/dashboard', { replace: true });
-    } else if (currentUser.role === UserRole.COLLABORATOR) {
+    } else if (currentCollaborator) {
       navigate('/collab/agenda', { replace: true });
-    } else if (currentUser.role === UserRole.CLIENT) {
+    } else if (currentUser) {
       navigate('/client/dashboard', { replace: true });
     }
-  }, [currentUser, navigate]);
+  }, [adminLoggedIn, currentCollaborator, currentUser, navigate]);
 
   const openWhatsAppQuote = () => {
     navigate('/client/quote-chat');
