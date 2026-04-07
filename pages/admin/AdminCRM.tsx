@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { useData, Quote, CrmTag } from '../../components/DataContext';
@@ -347,7 +348,8 @@ export const AdminCRM: React.FC = () => {
   interface CampaignLogEntry { leadId: string; name: string; phone: string; status: 'sending' | 'sent' | 'failed' | 'no_phone'; waUrl?: string; errorMsg?: string; }
   const [campaignLog, setCampaignLog] = useState<CampaignLogEntry[]>([]);
   const [campaignDone, setCampaignDone] = useState(false);
-  const [campaignStatusFilter, setCampaignStatusFilter] = useState<'all'|'NEW'|'CONTACTED'|'PROPOSAL'|'NEGOTIATING'|'CONVERTED'|'LOST'>('all');
+  const [campaignStatusFilter, setCampaignStatusFilter] = useState<string>('all');
+  const [campaignTagFilter, setCampaignTagFilter] = useState<string>('all');
   const [campaignMediaType, setCampaignMediaType] = useState<CampaignMediaType>('text');
   const [campaignMediaUrl, setCampaignMediaUrl] = useState('');
   const [campaignMediaCaption, setCampaignMediaCaption] = useState('');
@@ -467,10 +469,12 @@ export const AdminCRM: React.FC = () => {
     setChatLoading(true);
     try {
       const clean = phone.replace(/\D/g, '');
+      // Try both formats: with and without Brazil country code (55)
+      const withCountry = clean.startsWith('55') ? clean : '55' + clean;
       const { data } = await supabase
         .from('whatsapp_sessions')
         .select('history')
-        .eq('phone', clean)
+        .in('phone', [clean, withCountry])
         .order('updated_at', { ascending: false })
         .limit(1);
       setChatMessages(data?.[0]?.history ? parseSessionHistory(data[0].history) : []);
@@ -767,6 +771,7 @@ export const AdminCRM: React.FC = () => {
   const campaignRecipients = quotes.filter(q => {
     if (!q.whatsapp) return false;
     if (campaignStatusFilter !== 'all' && q.status !== campaignStatusFilter) return false;
+    if (campaignTagFilter !== 'all' && !(q.tags || []).includes(campaignTagFilter)) return false;
     return true;
   });
 
@@ -1603,18 +1608,61 @@ export const AdminCRM: React.FC = () => {
                   )}
                 </div>
                 <div className="p-4 space-y-3">
-                  <div className="flex flex-wrap gap-1.5">
-                    {([['all', 'Todos'] as const, ...COLUMNS.map(c => [c.id, c.label] as const)]).map(([val, label]) => (
-                      <button key={val} onClick={() => {
-                        setCampaignStatusFilter(val as any);
-                        const recipients = quotes.filter(q => q.whatsapp && (val === 'all' || q.status === val));
-                        setCampaignSelected(new Set(recipients.map(q => q.id)));
-                      }}
-                        className={`text-xs px-3 py-1.5 rounded-full border transition-all ${campaignStatusFilter === val ? 'bg-primary text-white border-primary' : 'bg-white border-gray-200 text-lightText hover:border-gray-300'}`}>
-                        {label}
-                      </button>
-                    ))}
+                  {/* Filter by stage */}
+                  <div>
+                    <p className="text-[10px] font-bold text-lightText uppercase tracking-wider mb-1.5">Por Etapa</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {([['all', 'Todas'] as const, ...COLUMNS.map(c => [c.id, c.label] as const)]).map(([val, label]) => (
+                        <button key={val} onClick={() => {
+                          setCampaignStatusFilter(val as string);
+                          const recipients = quotes.filter(q => {
+                            if (!q.whatsapp) return false;
+                            if (val !== 'all' && q.status !== val) return false;
+                            if (campaignTagFilter !== 'all' && !(q.tags || []).includes(campaignTagFilter)) return false;
+                            return true;
+                          });
+                          setCampaignSelected(new Set(recipients.map(q => q.id)));
+                        }}
+                          className={`text-xs px-3 py-1.5 rounded-full border transition-all ${campaignStatusFilter === val ? 'bg-primary text-white border-primary' : 'bg-white border-gray-200 text-lightText hover:border-gray-300'}`}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
+                  {/* Filter by tag */}
+                  {crmTags.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-bold text-lightText uppercase tracking-wider mb-1.5">Por Etiqueta</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button onClick={() => {
+                          setCampaignTagFilter('all');
+                          const recipients = quotes.filter(q => q.whatsapp && (campaignStatusFilter === 'all' || q.status === campaignStatusFilter));
+                          setCampaignSelected(new Set(recipients.map(q => q.id)));
+                        }}
+                          className={`text-xs px-3 py-1.5 rounded-full border transition-all ${campaignTagFilter === 'all' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white border-gray-200 text-lightText hover:border-gray-300'}`}>
+                          Todas
+                        </button>
+                        {crmTags.map(tag => (
+                          <button key={tag.id} onClick={() => {
+                            setCampaignTagFilter(tag.name);
+                            const recipients = quotes.filter(q => {
+                              if (!q.whatsapp) return false;
+                              if (campaignStatusFilter !== 'all' && q.status !== campaignStatusFilter) return false;
+                              if (!(q.tags || []).includes(tag.name)) return false;
+                              return true;
+                            });
+                            setCampaignSelected(new Set(recipients.map(q => q.id)));
+                          }}
+                            className={`text-xs px-3 py-1.5 rounded-full border transition-all flex items-center gap-1.5 ${campaignTagFilter === tag.name ? 'text-white border-transparent' : 'bg-white border-gray-200 text-lightText hover:border-gray-300'}`}
+                            style={campaignTagFilter === tag.name ? { backgroundColor: tag.color, borderColor: tag.color } : {}}>
+                            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: campaignTagFilter === tag.name ? 'rgba(255,255,255,0.7)' : tag.color }} />
+                            {tag.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="border border-gray-100 rounded-xl overflow-hidden">
                     <div className="bg-gray-50 px-4 py-2.5 flex items-center justify-between">
                       <span className="text-xs font-bold text-darkText">{campaignSelected.size} de {campaignRecipients.length} selecionados</span>
@@ -1634,7 +1682,15 @@ export const AdminCRM: React.FC = () => {
                               className="accent-primary flex-shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-darkText truncate">{lead.name}</p>
-                              <p className="text-xs text-lightText">{lead.whatsapp}</p>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-xs text-lightText">{lead.whatsapp}</p>
+                                {(lead.tags || []).map(t => {
+                                  const tagObj = crmTags.find(ct => ct.name === t);
+                                  return tagObj ? (
+                                    <span key={t} className="text-[9px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: tagObj.color }}>{t}</span>
+                                  ) : null;
+                                })}
+                              </div>
                             </div>
                             {log && (
                               <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
@@ -1728,8 +1784,8 @@ export const AdminCRM: React.FC = () => {
       )}
 
       {/* ═══════ CSV Import Modal ═══════ */}
-      {showImport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {showImport && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowImport(false)} />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
@@ -1829,11 +1885,11 @@ export const AdminCRM: React.FC = () => {
             )}
           </div>
         </div>
-      )}
+      , document.body)}
 
-      {/* ═══════ Lead Drawer ═══════ */}
-      {selected && (
-        <div className="fixed inset-0 z-50 flex justify-end">
+      {/* ═══════ Lead Drawer — Portal (escapa o overflow-hidden do Layout no mobile) ═══════ */}
+      {selected && createPortal(
+        <div className="fixed inset-0 z-[9999] flex justify-end">
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => { setSelected(null); setEditMode(false); }} />
           <div className="relative w-full max-w-xl bg-white shadow-2xl flex flex-col h-full overflow-hidden">
 
@@ -2182,11 +2238,11 @@ export const AdminCRM: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* ═══════ Tag Manager Modal ═══════ */}
-      {showTagMgr && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {showTagMgr && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowTagMgr(false)} />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
             <div className="flex items-center justify-between mb-5">
@@ -2228,11 +2284,11 @@ export const AdminCRM: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* ═══════ Add Lead Modal ═══════ */}
-      {showAddLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {showAddLead && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowAddLead(false)} />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-5">
@@ -2270,7 +2326,7 @@ export const AdminCRM: React.FC = () => {
             </button>
           </div>
         </div>
-      )}
+      , document.body)}
 
     </Layout>
   );
