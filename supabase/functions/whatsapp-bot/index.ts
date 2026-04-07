@@ -43,6 +43,9 @@ Quando alguém manda mensagem pela primeira vez, entenda pelo contexto o que ela
 TRANSFERÊNCIA PARA HUMANO:
 Se o cliente pedir explicitamente para falar com atendente, pessoa, gerente, responsável, ou demonstrar frustração clara: responda "Claro! Já chamo alguém pra te ajudar. Um segundo! 😊" e inclua <<HUMAN_HANDOFF>> ao final.
 
+WHATSAPP DO CLIENTE:
+O número de WhatsApp do cliente nesta conversa é: {{PHONE}}. NUNCA peça o WhatsApp ao cliente — você já tem essa informação. Use-o diretamente no campo "whatsapp" do QUOTE_DATA. Se precisar confirmar, diga algo como "Vou usar o número que você está me mandando mensagem, {{PHONE}}, tá bom?" mas nunca peça que ele informe o número.
+
 COLETA DE ORÇAMENTO (em ordem natural, conversando):
 Nome do cliente. Tipo de serviço (primeira limpeza, manutenção, pós-obra, passadoria). Tipo de imóvel (casa, apartamento, escritório). Número de cômodos (quartos, banheiros, sala, cozinha, varanda). Características: tipo de piso, muitos móveis, vidros grandes. Prioridades ou o que está mais incomodando. Limpeza interna de eletrodomésticos como geladeira, fogão, armários (custo extra). Se passou por reforma ou pintura recente. Endereço: rua, número e bairro.
 
@@ -55,7 +58,7 @@ Se não tiver ou não quiser, aceite e finalize sem insistir.
 
 Após ter as informações principais, encerre com mensagem calorosa e inclua OBRIGATORIAMENTE:
 <<QUOTE_DATA>>
-{"name":"NOME","email":"EMAIL_OU_VAZIO","whatsapp":"WHATSAPP_DO_CLIENTE","addressStreet":"RUA","addressNumber":"NUMERO","addressDistrict":"BAIRRO","addressCity":"Guarapari","addressState":"ES","addressCep":"","propertyType":"TIPO","rooms":"COMODOS","priorities":"PRIORIDADES","internalCleaning":"LIMPEZA_INTERNA","renovation":"REFORMA","serviceOption":"TIPO_SERVICO"}
+{"name":"NOME","email":"EMAIL_OU_VAZIO","whatsapp":"{{PHONE}}","addressStreet":"RUA","addressNumber":"NUMERO","addressDistrict":"BAIRRO","addressCity":"Guarapari","addressState":"ES","addressCep":"","propertyType":"TIPO","rooms":"COMODOS","priorities":"PRIORIDADES","internalCleaning":"LIMPEZA_INTERNA","renovation":"REFORMA","serviceOption":"TIPO_SERVICO"}
 <<END_QUOTE>>`;
 
 const supabase = createClient(
@@ -79,6 +82,12 @@ async function getSystemPrompt(): Promise<string> {
     }
   } catch { /* usa o padrão */ }
   return SYSTEM_PROMPT;
+}
+
+// Injeta o número do cliente no prompt, substituindo {{PHONE}}
+async function getPromptForPhone(phone: string): Promise<string> {
+  const prompt = await getSystemPrompt();
+  return prompt.replace(/\{\{PHONE\}\}/g, phone);
 }
 
 // --- Helpers ---
@@ -320,7 +329,7 @@ Deno.serve(async (req) => {
     const hasLabels = sessionMeta.labels && sessionMeta.labels !== '';
     const waitReplied = sessionMeta.waitReplied || false;
 
-    const activePrompt = await getSystemPrompt();
+    const activePrompt = await getPromptForPhone(phone);
 
     if (hasLabels) {
       // Cliente existente (com etiqueta) → Nina responde de forma sutil: acolhe, mas não resolve
@@ -422,7 +431,7 @@ Deno.serve(async (req) => {
     : history;
 
   // Chama Gemini
-  const activePrompt = await getSystemPrompt();
+  const activePrompt = await getPromptForPhone(phone);
   const rawResponse = await callGemini(geminiHistory, activePrompt);
   const cleanedText = cleanResponse(rawResponse);
   const quoteData = extractQuoteData(rawResponse);

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>NL Admin</title>
+  <link rel="manifest" href="/manifest-admin.json" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="NL Admin" />
+  <link rel="apple-touch-icon" href="/icons/icon.svg" />
+  <style>
+    body { margin: 0; background: #0f172a; display: flex; align-items: center; justify-content: center; height: 100vh; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #a163ff; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  </style>
+  <script>
+    // Redireciona para o app admin imediatamente
+    window.location.replace('/#/admin/login');
+  </script>
+</head>
+<body>
+  <div class="dot"></div>
+</body>
+</html>
