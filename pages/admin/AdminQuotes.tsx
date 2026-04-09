@@ -226,28 +226,7 @@ async function generatePDFBase64(
   dateScheduled = '',
 ): Promise<string> {
   const { default: html2canvas } = await import('html2canvas');
-  const origin = window.location.origin;
   const e = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-  // Pre-fetch images as base64 to avoid CORS issues in html2canvas
-  async function imgToDataUrl(src: string): Promise<string> {
-    try {
-      const res = await fetch(src);
-      const blob = await res.blob();
-      return await new Promise<string>(resolve => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => resolve(src);
-        reader.readAsDataURL(blob);
-      });
-    } catch {
-      return src;
-    }
-  }
-  const [img1, img2] = await Promise.all([
-    imgToDataUrl(`${origin}/img/foto-pdf-p1.jpg`),
-    imgToDataUrl(`${origin}/img/foto-pdf-p2.jpg`),
-  ]);
 
   const wrapper = document.createElement('div');
   wrapper.className = 'ndl-pdf-root';
@@ -255,7 +234,9 @@ async function generatePDFBase64(
   wrapper.innerHTML = `<style>
 .ndl-pdf-root,.ndl-pdf-root *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
 .ndl-pdf-root .page{width:794px;height:1123px;display:flex;flex-direction:column;overflow:hidden;background:#fff;color:#1a1a2e}
-.ndl-pdf-root .img-fill{flex:1;min-height:100px;overflow:hidden;background-size:cover;background-repeat:no-repeat}
+.ndl-pdf-root .fill{flex:1;background:linear-gradient(135deg,#f9f5ff 0%,#fff0f8 100%);display:flex;align-items:center;justify-content:center}
+.ndl-pdf-root .fill-inner{text-align:center;opacity:.25}
+.ndl-pdf-root .fill-inner p{font-size:32px;font-weight:900;letter-spacing:2px;color:#a163ff}
 .ndl-pdf-root .hdr{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:28px 48px 22px;color:#fff}
 .ndl-pdf-root .badge{display:inline-block;background:rgba(255,255,255,.25);font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:14px;color:#fff}
 .ndl-pdf-root .hdr h1{font-size:42px;font-weight:900;margin-bottom:6px;color:#fff}
@@ -276,7 +257,7 @@ async function generatePDFBase64(
 .ndl-pdf-root .idesc{font-size:16px;font-weight:600;margin-bottom:14px;opacity:.9;color:#fff}
 .ndl-pdf-root .price{font-size:48px;font-weight:900;margin-bottom:20px;color:#fff}
 .ndl-pdf-root .pmethods{display:flex;gap:8px;flex-wrap:wrap}
-.ndl-pdf-root .pchip{background:rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600;color:#fff}
+.ndl-pdf-root .pchip{background:rgba(255,255,255,.2);border-radius:20px;padding:6px 16px;font-size:11px;font-weight:600;color:#fff;text-align:center;display:inline-block;line-height:1.4}
 .ndl-pdf-root .ftr{background:#1a1a2e;color:#fff;padding:14px 48px;display:flex;justify-content:space-between;align-items:center;font-size:10px;flex-shrink:0}
 .ndl-pdf-root .hdr2{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:36px 48px;color:#fff}
 .ndl-pdf-root .hdr2 h1{font-size:32px;font-weight:900;margin-bottom:6px;color:#fff}
@@ -333,8 +314,8 @@ async function generatePDFBase64(
       <div class="pmethods"><span class="pchip">Pix</span><span class="pchip">Cartão (consultar taxa)</span><span class="pchip">Transferência</span></div>
     </div>
   </div>
-  <div class="img-fill" style="background-image:url('${img1}');background-position:center 8%"></div>
-  <div class="ftr"><span>Negócios de Limpeza</span><span>Proposta Comercial · Página 1 de 2</span><span>Validade: 7 dias</span></div>
+  <div class="fill"><div class="fill-inner"><p>NEGÓCIOS DE LIMPEZA</p></div></div>
+  <div class="ftr"><span>Negócios de Limpeza</span><span>Proposta Comercial · Página 1 de 2</span><span>Validade: ${e(validityDays)} dias</span></div>
 </div>
 <div class="page">
   <div class="hdr2">
@@ -366,8 +347,8 @@ async function generatePDFBase64(
     </div>
   </div>
   <div class="cta"><h3>Transforme seu lar com a Negócios de Limpeza!</h3><p>Entre em contato e agende sua faxina com quem cuida de verdade.</p></div>
-  <div class="img-fill" style="background-image:url('${img2}');background-position:center 25%"></div>
-  <div class="ftr"><span>Negócios de Limpeza</span><span>Proposta Comercial · Página 2 de 2</span><span>Validade: 7 dias</span></div>
+  <div class="fill"><div class="fill-inner"><p>NEGÓCIOS DE LIMPEZA</p></div></div>
+  <div class="ftr"><span>Negócios de Limpeza</span><span>Proposta Comercial · Página 2 de 2</span><span>Validade: ${e(validityDays)} dias</span></div>
 </div>`;
 
   document.body.appendChild(wrapper);
