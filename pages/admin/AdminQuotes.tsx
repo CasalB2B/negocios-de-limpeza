@@ -228,6 +228,20 @@ async function generatePDFBase64(
   const { default: html2canvas } = await import('html2canvas');
   const e = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+  async function imgToDataUrl(src: string): Promise<string> {
+    try {
+      const res = await fetch(src);
+      const blob = await res.blob();
+      return await new Promise<string>(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(blob);
+      });
+    } catch { return ''; }
+  }
+  const logoDataUrl = await imgToDataUrl(`${window.location.origin}/img/logo.png`);
+
   const wrapper = document.createElement('div');
   wrapper.className = 'ndl-pdf-root';
   wrapper.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;overflow:visible;font-family:Arial,Helvetica,sans-serif';
@@ -256,7 +270,8 @@ async function generatePDFBase64(
 .ndl-pdf-root .price{font-size:48px;font-weight:900;margin-bottom:20px;color:#fff}
 .ndl-pdf-root .pmethods{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .ndl-pdf-root .pchip{background:rgba(255,255,255,.2);border-radius:20px;padding:7px 18px;font-size:11px;font-weight:600;color:#fff;text-align:center;display:flex;align-items:center;justify-content:center;line-height:1}
-.ndl-pdf-root .ftr{background:#1a1a2e;color:#fff;padding:14px 48px;display:flex;justify-content:space-between;align-items:center;font-size:10px;flex-shrink:0}
+.ndl-pdf-root .ftr{background:#1a1a2e;color:#fff;padding:10px 48px;display:flex;justify-content:space-between;align-items:center;font-size:10px;flex-shrink:0}
+.ndl-pdf-root .ftr-logo{height:28px;width:auto;object-fit:contain;opacity:.9}
 .ndl-pdf-root .hdr2{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:36px 48px;color:#fff}
 .ndl-pdf-root .hdr2 h1{font-size:32px;font-weight:900;margin-bottom:6px;color:#fff}
 .ndl-pdf-root .hdr2 .sub{font-size:13px;opacity:.85;color:#fff}
@@ -313,7 +328,7 @@ async function generatePDFBase64(
     </div>
   </div>
   <div class="fill"></div>
-  <div class="ftr"><span>Negócios de Limpeza</span><span>Proposta Comercial · Página 1 de 2</span><span>Validade: ${e(validityDays)} dias</span></div>
+  <div class="ftr"><span>Proposta Comercial · Página 1 de 2</span><span>Validade: ${e(validityDays)} dias</span>${logoDataUrl ? `<img src="${logoDataUrl}" class="ftr-logo" alt="Logo" />` : '<span>Negócios de Limpeza</span>'}</div>
 </div>
 <div class="page">
   <div class="hdr2">
@@ -346,7 +361,7 @@ async function generatePDFBase64(
   </div>
   <div class="cta"><h3>Transforme seu lar com a Negócios de Limpeza!</h3><p>Entre em contato e agende sua faxina com quem cuida de verdade.</p></div>
   <div class="fill"></div>
-  <div class="ftr"><span>Negócios de Limpeza</span><span>Proposta Comercial · Página 2 de 2</span><span>Validade: ${e(validityDays)} dias</span></div>
+  <div class="ftr"><span>Proposta Comercial · Página 2 de 2</span><span>Validade: ${e(validityDays)} dias</span>${logoDataUrl ? `<img src="${logoDataUrl}" class="ftr-logo" alt="Logo" />` : '<span>Negócios de Limpeza</span>'}</div>
 </div>`;
 
   document.body.appendChild(wrapper);

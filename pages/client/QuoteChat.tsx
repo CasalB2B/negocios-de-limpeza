@@ -276,7 +276,7 @@ export const QuoteChat: React.FC = () => {
           </button>
           <div className="flex items-center gap-3 flex-1">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
-              <img src="/img/nina-avatar.jpg" alt="Nina" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display='none'; (e.target as HTMLImageElement).parentElement!.innerHTML = '<span style="font-size:20px">🧹</span>'; }} />
+              <img src="/img/logo-icon.png" alt="Logo" className="w-full h-full object-contain p-1" onError={e => { (e.target as HTMLImageElement).style.display='none'; (e.target as HTMLImageElement).parentElement!.innerHTML = '<span style="font-size:20px">🧹</span>'; }} />
             </div>
             <div>
               <h1 className="font-bold text-white text-sm leading-tight">Nina — Negócios de Limpeza</h1>
