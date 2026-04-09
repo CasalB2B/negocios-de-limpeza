@@ -255,7 +255,7 @@ async function generatePDFBase64(
   wrapper.innerHTML = `<style>
 .ndl-pdf-root,.ndl-pdf-root *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
 .ndl-pdf-root .page{width:794px;height:1123px;display:flex;flex-direction:column;overflow:hidden;background:#fff;color:#1a1a2e}
-.ndl-pdf-root .img-fill{flex:1;min-height:100px;overflow:hidden}
+.ndl-pdf-root .img-fill{flex:1;min-height:100px;overflow:hidden;background-size:cover;background-repeat:no-repeat}
 .ndl-pdf-root .hdr{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:28px 48px 22px;color:#fff}
 .ndl-pdf-root .badge{display:inline-block;background:rgba(255,255,255,.25);font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:14px;color:#fff}
 .ndl-pdf-root .hdr h1{font-size:42px;font-weight:900;margin-bottom:6px;color:#fff}
@@ -333,10 +333,7 @@ async function generatePDFBase64(
       <div class="pmethods"><span class="pchip">Pix</span><span class="pchip">Cartão (consultar taxa)</span><span class="pchip">Transferência</span></div>
     </div>
   </div>
-  <div class="img-fill">
-    <img src="${img1}"
-      style="width:100%;height:100%;object-fit:cover;object-position:center 8%" alt="Negócios de Limpeza" />
-  </div>
+  <div class="img-fill" style="background-image:url('${img1}');background-position:center 8%"></div>
   <div class="ftr"><span>Negócios de Limpeza</span><span>Proposta Comercial · Página 1 de 2</span><span>Validade: 7 dias</span></div>
 </div>
 <div class="page">
@@ -369,10 +366,7 @@ async function generatePDFBase64(
     </div>
   </div>
   <div class="cta"><h3>Transforme seu lar com a Negócios de Limpeza!</h3><p>Entre em contato e agende sua faxina com quem cuida de verdade.</p></div>
-  <div class="img-fill">
-    <img src="${img2}"
-      style="width:100%;height:100%;object-fit:cover;object-position:center 25%" alt="Negócios de Limpeza" />
-  </div>
+  <div class="img-fill" style="background-image:url('${img2}');background-position:center 25%"></div>
   <div class="ftr"><span>Negócios de Limpeza</span><span>Proposta Comercial · Página 2 de 2</span><span>Validade: 7 dias</span></div>
 </div>`;
 
