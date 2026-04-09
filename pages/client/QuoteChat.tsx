@@ -8,7 +8,7 @@ import { sendMessage as sendWhatsApp, buildMessage } from '../../lib/evolution';
 
 const INITIAL_AI_MESSAGE = `Olá! 👋 Bem-vindo à **Negócios de Limpeza**!
 
-Sou a assistente virtual e vou te ajudar a gerar um **orçamento gratuito** rapidinho. 🏠✨
+Vou te ajudar a gerar um **orçamento gratuito** rapidinho. 🏠✨
 
 Para começar... qual é o seu **nome**? 😊`;
 
@@ -275,14 +275,14 @@ export const QuoteChat: React.FC = () => {
             <ArrowLeft size={22} />
           </button>
           <div className="flex items-center gap-3 flex-1">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-              <Bot size={20} className="text-white" />
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
+              <img src="/img/nina-avatar.jpg" alt="Nina" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display='none'; (e.target as HTMLImageElement).parentElement!.innerHTML = '<span style="font-size:20px">🧹</span>'; }} />
             </div>
             <div>
-              <h1 className="font-bold text-white text-sm leading-tight">Assistente NDL</h1>
+              <h1 className="font-bold text-white text-sm leading-tight">Nina — Negócios de Limpeza</h1>
               <div className="flex items-center gap-1.5">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-white/70 text-xs">Online agora</span>
+                <span className="text-white/70 text-xs">Disponível agora</span>
               </div>
             </div>
           </div>
