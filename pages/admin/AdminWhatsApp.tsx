@@ -1,13 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
-import { MessageCircle, Wifi, Send, Save, RefreshCw, CheckCircle, XCircle, Smartphone, Bell, FileText, ThumbsUp, Bot, Trash2, Loader2, Settings } from 'lucide-react';
+import { MessageCircle, Wifi, Send, Save, RefreshCw, CheckCircle, XCircle, Smartphone, Bell, FileText, ThumbsUp, Bot, Trash2, Loader2, Settings, Plus, ChevronDown, Clock, Zap } from 'lucide-react';
 import { getStatus, getQrCode, sendMessage, buildMessage, DEFAULT_TEMPLATES, EvolutionStatus, disconnectInstance } from '../../lib/evolution';
 import { sendMessage as askNina, GeminiMessage, QUOTE_SYSTEM_PROMPT } from '../../lib/gemini';
 import { useData } from '../../components/DataContext';
 
 const STORAGE_KEY = 'ndl_whatsapp_templates';
 const PROMPT_STORAGE_KEY = 'ndl_nina_prompt';
+
+interface FollowUpStep {
+  hours: number;
+  message: string;
+}
+
+const DEFAULT_FOLLOWUP_STEPS: FollowUpStep[] = [
+  { hours: 2, message: 'Olá, [Nome]! 👋 Passando para ver se ainda tem interesse no orçamento de [Servico]. Qualquer dúvida é só responder aqui!' },
+  { hours: 24, message: 'Oi, [Nome]! Sua proposta de [Servico] ainda está disponível. Posso agendar uma visita ou tirar alguma dúvida? 😊' },
+];
+
+const HOUR_OPTIONS = [1, 2, 4, 6, 12, 24, 48, 72];
 
 function loadTemplates() {
   try {
@@ -58,6 +70,8 @@ export const AdminWhatsApp: React.FC = () => {
   const [testResult, setTestResult] = useState<'ok' | 'err' | null>(null);
   const [sending, setSending] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [followUpSteps, setFollowUpSteps] = useState<FollowUpStep[]>(DEFAULT_FOLLOWUP_STEPS);
+  const [followUpSaved, setFollowUpSaved] = useState(false);
 
   // Nina trainer
   const [ninaHistory, setNinaHistory] = useState<GeminiMessage[]>([]);
@@ -72,6 +86,13 @@ export const AdminWhatsApp: React.FC = () => {
   useEffect(() => {
     if (platformSettings.botPrompt) setNinaPrompt(platformSettings.botPrompt);
   }, [platformSettings.botPrompt]);
+
+  // Sync followUpSteps from Supabase
+  useEffect(() => {
+    if (platformSettings.followUpSteps) {
+      try { setFollowUpSteps(JSON.parse(platformSettings.followUpSteps)); } catch { /* use default */ }
+    }
+  }, [platformSettings.followUpSteps]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -155,6 +176,25 @@ export const AdminWhatsApp: React.FC = () => {
     setTimeout(() => setSaved(false), 2500);
   };
 
+  const handleSaveFollowUp = async () => {
+    await updatePlatformSettings({ ...platformSettings, followUpSteps: JSON.stringify(followUpSteps) });
+    setFollowUpSaved(true);
+    setTimeout(() => setFollowUpSaved(false), 2500);
+  };
+
+  const updateStep = (i: number, field: keyof FollowUpStep, value: string | number) => {
+    setFollowUpSteps(steps => steps.map((s, idx) => idx === i ? { ...s, [field]: value } : s));
+  };
+
+  const addStep = () => {
+    const lastHours = followUpSteps[followUpSteps.length - 1]?.hours || 24;
+    setFollowUpSteps(s => [...s, { hours: lastHours * 2, message: 'Olá, [Nome]! Só passando para ver se posso ajudar com algo em relação ao serviço de [Servico]. 😊' }]);
+  };
+
+  const removeStep = (i: number) => {
+    setFollowUpSteps(s => s.filter((_, idx) => idx !== i));
+  };
+
   const handleTest = async () => {
     if (!testPhone) return;
     setSending(true);
@@ -175,7 +215,7 @@ export const AdminWhatsApp: React.FC = () => {
 
   return (
     <Layout role={UserRole.ADMIN}>
-      <div className="p-4 md:p-6 max-w-3xl mx-auto">
+      <div className="p-4 md:p-6 max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center">
@@ -478,109 +518,187 @@ export const AdminWhatsApp: React.FC = () => {
 
         {/* Tab: Personalizar */}
         {tab === 'config' && (
-          <div className="space-y-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
 
-            {/* Horário de Atendimento */}
-            <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Horário de Atendimento</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Nina só responde dentro deste horário</p>
-                </div>
-                <button
-                  onClick={() => updatePlatformSettings({ ...platformSettings, workingHoursEnabled: !platformSettings.workingHoursEnabled })}
-                  className={`relative w-12 h-6 rounded-full transition-colors shrink-0 overflow-hidden ${platformSettings.workingHoursEnabled ? 'bg-green-500' : 'bg-gray-300'}`}
-                >
-                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${platformSettings.workingHoursEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                </button>
-              </div>
-              {platformSettings.workingHoursEnabled && (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+            {/* Coluna esquerda */}
+            <div className="space-y-5">
+              {/* Horário de Atendimento */}
+              <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Clock size={16} className="text-blue-500" />
                     <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Abertura</label>
-                      <input type="time" value={platformSettings.workingHoursStart || '08:00'}
-                        onChange={e => updatePlatformSettings({ ...platformSettings, workingHoursStart: e.target.value })}
-                        className="w-full p-2.5 border border-gray-200 dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-green-300" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Fechamento</label>
-                      <input type="time" value={platformSettings.workingHoursEnd || '18:00'}
-                        onChange={e => updatePlatformSettings({ ...platformSettings, workingHoursEnd: e.target.value })}
-                        className="w-full p-2.5 border border-gray-200 dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-green-300" />
+                      <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Horário de Atendimento</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Nina só responde dentro deste horário</p>
                     </div>
                   </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Mensagem fora do horário</label>
-                    <textarea value={platformSettings.awayMessage || ''}
-                      onChange={e => updatePlatformSettings({ ...platformSettings, awayMessage: e.target.value })}
-                      rows={2}
-                      className="w-full p-2.5 border border-gray-200 dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-green-300 resize-none" />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Follow-up Automático */}
-            <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-5">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Follow-up Automático</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Lembrete para clientes que pararam de responder</p>
-                </div>
-                <button
-                  onClick={() => updatePlatformSettings({ ...platformSettings, followUpEnabled: !platformSettings.followUpEnabled })}
-                  className={`relative w-12 h-6 rounded-full transition-colors shrink-0 overflow-hidden ${platformSettings.followUpEnabled ? 'bg-green-500' : 'bg-gray-300'}`}
-                >
-                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${platformSettings.followUpEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                </button>
-              </div>
-              {platformSettings.followUpEnabled && (
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Enviar após (horas)</label>
-                    <select value={platformSettings.followUpHours || 24}
-                      onChange={e => updatePlatformSettings({ ...platformSettings, followUpHours: Number(e.target.value) })}
-                      className="w-full p-2.5 border border-gray-200 dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-green-300">
-                      <option value={2}>2 horas</option>
-                      <option value={6}>6 horas</option>
-                      <option value={12}>12 horas</option>
-                      <option value={24}>24 horas</option>
-                      <option value={48}>48 horas</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Mensagem de follow-up</label>
-                    <p className="text-[10px] text-gray-400 mb-1">Use <span className="font-mono">[Nome]</span> e <span className="font-mono">[Servico]</span> como variáveis</p>
-                    <textarea
-                      rows={4}
-                      value={platformSettings.followUpMessage || ''}
-                      onChange={e => updatePlatformSettings({ ...platformSettings, followUpMessage: e.target.value })}
-                      className="w-full p-2.5 border border-gray-200 dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-green-300 resize-none font-mono"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Tom de Voz */}
-            <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-5">
-              <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary mb-1">Tom de Voz da Nina</p>
-              <p className="text-xs text-gray-500 mb-3">Ajusta automaticamente o estilo de conversa</p>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { value: 'casual', label: 'Casual', desc: 'Próxima e amigável' },
-                  { value: 'formal', label: 'Formal', desc: 'Profissional e direta' },
-                  { value: 'commercial', label: 'Comercial', desc: 'Foco em conversão' },
-                ].map(opt => (
-                  <button key={opt.value}
-                    onClick={() => updatePlatformSettings({ ...platformSettings, ninaTone: opt.value })}
-                    className={`p-3 rounded-xl border-2 text-left transition-all ${platformSettings.ninaTone === opt.value || (!platformSettings.ninaTone && opt.value === 'casual') ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-200 dark:border-darkBorder hover:border-gray-300'}`}>
-                    <p className="font-bold text-xs text-darkText dark:text-darkTextPrimary">{opt.label}</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">{opt.desc}</p>
+                  <button
+                    onClick={() => updatePlatformSettings({ ...platformSettings, workingHoursEnabled: !platformSettings.workingHoursEnabled })}
+                    className={`relative w-12 h-6 rounded-full transition-colors shrink-0 overflow-hidden ${platformSettings.workingHoursEnabled ? 'bg-green-500' : 'bg-gray-300'}`}
+                  >
+                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${platformSettings.workingHoursEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
                   </button>
-                ))}
+                </div>
+                {platformSettings.workingHoursEnabled && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Abertura</label>
+                        <input type="time" value={platformSettings.workingHoursStart || '08:00'}
+                          onChange={e => updatePlatformSettings({ ...platformSettings, workingHoursStart: e.target.value })}
+                          className="w-full p-2.5 border border-gray-200 dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-green-300" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Fechamento</label>
+                        <input type="time" value={platformSettings.workingHoursEnd || '18:00'}
+                          onChange={e => updatePlatformSettings({ ...platformSettings, workingHoursEnd: e.target.value })}
+                          className="w-full p-2.5 border border-gray-200 dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-green-300" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Mensagem fora do horário</label>
+                      <textarea value={platformSettings.awayMessage || ''}
+                        onChange={e => updatePlatformSettings({ ...platformSettings, awayMessage: e.target.value })}
+                        rows={2}
+                        className="w-full p-2.5 border border-gray-200 dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-green-300 resize-none" />
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Tom de Voz */}
+              <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-5">
+                <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary mb-1">Tom de Voz da Nina</p>
+                <p className="text-xs text-gray-500 mb-3">Ajusta automaticamente o estilo de conversa</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'casual', label: 'Casual', desc: 'Próxima e amigável' },
+                    { value: 'formal', label: 'Formal', desc: 'Profissional e direta' },
+                    { value: 'commercial', label: 'Comercial', desc: 'Foco em conversão' },
+                  ].map(opt => (
+                    <button key={opt.value}
+                      onClick={() => updatePlatformSettings({ ...platformSettings, ninaTone: opt.value })}
+                      className={`p-3 rounded-xl border-2 text-left transition-all ${platformSettings.ninaTone === opt.value || (!platformSettings.ninaTone && opt.value === 'casual') ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-200 dark:border-darkBorder hover:border-gray-300'}`}>
+                      <p className="font-bold text-xs text-darkText dark:text-darkTextPrimary">{opt.label}</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">{opt.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Coluna direita — Follow-up Sequencial */}
+            <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-5">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Zap size={16} className="text-orange-500" />
+                  <div>
+                    <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Follow-up Automático</p>
+                    <p className="text-xs text-gray-500">Sequência de mensagens para quem parou de responder</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${platformSettings.followUpEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {platformSettings.followUpEnabled ? '● Ativo' : '○ Inativo'}
+                  </span>
+                  <button
+                    onClick={() => updatePlatformSettings({ ...platformSettings, followUpEnabled: !platformSettings.followUpEnabled })}
+                    className={`relative w-12 h-6 rounded-full transition-colors shrink-0 overflow-hidden ${platformSettings.followUpEnabled ? 'bg-green-500' : 'bg-gray-300'}`}
+                  >
+                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${platformSettings.followUpEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Timeline */}
+              <div className="space-y-0">
+                {/* Trigger */}
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-darkBorder flex items-center justify-center shrink-0">
+                    <span className="text-sm">💬</span>
+                  </div>
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Cliente para de responder</span>
+                </div>
+
+                {followUpSteps.map((step, i) => (
+                  <div key={i}>
+                    {/* Connector + delay */}
+                    <div className="flex items-center gap-2 ml-3.5 my-1">
+                      <div className="w-px h-3 bg-gray-200 dark:bg-darkBorder" />
+                      <div className="flex items-center gap-1.5 ml-1">
+                        <ChevronDown size={12} className="text-gray-400" />
+                        <div className="flex items-center gap-1 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg px-2 py-0.5">
+                          <span className="text-[10px] text-orange-600 font-bold">Aguarda</span>
+                          <select
+                            value={step.hours}
+                            onChange={e => updateStep(i, 'hours', Number(e.target.value))}
+                            className="text-[10px] font-bold text-orange-600 bg-transparent border-none outline-none cursor-pointer"
+                          >
+                            {HOUR_OPTIONS.map(h => (
+                              <option key={h} value={h}>{h}h</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Step card */}
+                    <div className="flex gap-2 ml-3.5">
+                      <div className="flex flex-col items-center">
+                        <div className="w-px h-2 bg-gray-200 dark:bg-darkBorder" />
+                        <div className="w-7 h-7 rounded-full bg-green-100 dark:bg-green-900/30 border-2 border-green-300 flex items-center justify-center shrink-0 text-xs font-bold text-green-700">
+                          {i + 1}
+                        </div>
+                      </div>
+                      <div className="flex-1 bg-gray-50 dark:bg-darkBg rounded-xl border border-gray-200 dark:border-darkBorder p-3 mb-0">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase">Mensagem {i + 1}</span>
+                          {followUpSteps.length > 1 && (
+                            <button
+                              onClick={() => removeStep(i)}
+                              className="text-red-400 hover:text-red-600 p-0.5 rounded transition-colors"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                        <textarea
+                          rows={3}
+                          value={step.message}
+                          onChange={e => updateStep(i, 'message', e.target.value)}
+                          placeholder="Ex: Olá, [Nome]! Ainda tem interesse no orçamento de [Servico]?"
+                          className="w-full text-xs text-darkText dark:text-darkTextPrimary bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder rounded-lg p-2 resize-none focus:outline-none focus:ring-2 focus:ring-green-300 font-mono"
+                        />
+                        <p className="text-[9px] text-gray-400 mt-1">Use <span className="font-mono">[Nome]</span> e <span className="font-mono">[Servico]</span></p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Add step */}
+                <div className="flex items-center gap-2 ml-3.5 mt-2">
+                  <div className="w-px h-3 bg-gray-200 dark:bg-darkBorder" />
+                  <button
+                    onClick={addStep}
+                    className="ml-1 flex items-center gap-1.5 text-xs font-bold text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg px-3 py-1.5 transition-colors"
+                  >
+                    <Plus size={12} /> Adicionar etapa
+                  </button>
+                </div>
+              </div>
+
+              {/* Save button */}
+              <button
+                onClick={handleSaveFollowUp}
+                className={`mt-5 w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                  followUpSaved
+                    ? 'bg-green-100 text-green-700 border border-green-200'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                {followUpSaved ? <><CheckCircle size={15} /> Fluxo salvo!</> : <><Save size={15} /> Salvar fluxo</>}
+              </button>
             </div>
 
           </div>

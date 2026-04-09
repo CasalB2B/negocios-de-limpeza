@@ -62,6 +62,7 @@ export interface PlatformSettings {
   followUpEnabled?: boolean;
   followUpHours?: number;
   followUpMessage?: string;
+  followUpSteps?: string;
   ninaTone?: string;
 }
 
@@ -431,7 +432,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 awayMessage: settingsData.away_message || 'Olá! Nosso atendimento é de segunda a sábado, das 8h às 18h. Retornaremos em breve! 😊',
                 followUpEnabled: settingsData.follow_up_enabled || false,
                 followUpHours: settingsData.follow_up_hours || 24,
-                followUpMessage: settingsData.follow_up_message || 'Olá, [Nome]! Passando para verificar se você ainda tem interesse no orçamento de [Servico]. Qualquer dúvida estamos à disposição! 😊',
+                followUpMessage: settingsData.follow_up_message || '',
+                followUpSteps: settingsData.follow_up_steps || '',
                 ninaTone: settingsData.nina_tone || 'casual',
             });
         }
@@ -935,6 +937,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           follow_up_enabled: s.followUpEnabled ?? false,
           follow_up_hours: s.followUpHours ?? 24,
           follow_up_message: s.followUpMessage ?? null,
+          follow_up_steps: s.followUpSteps ?? null,
           nina_tone: s.ninaTone ?? 'casual',
       });
       if (error) console.error("Erro ao salvar configurações:", error);
