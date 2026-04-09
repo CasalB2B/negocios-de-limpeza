@@ -234,9 +234,7 @@ async function generatePDFBase64(
   wrapper.innerHTML = `<style>
 .ndl-pdf-root,.ndl-pdf-root *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
 .ndl-pdf-root .page{width:794px;height:1123px;display:flex;flex-direction:column;overflow:hidden;background:#fff;color:#1a1a2e}
-.ndl-pdf-root .fill{flex:1;background:linear-gradient(135deg,#f9f5ff 0%,#fff0f8 100%);display:flex;align-items:center;justify-content:center}
-.ndl-pdf-root .fill-inner{text-align:center;opacity:.25}
-.ndl-pdf-root .fill-inner p{font-size:32px;font-weight:900;letter-spacing:2px;color:#a163ff}
+.ndl-pdf-root .fill{flex:1;background:linear-gradient(135deg,#f9f5ff 0%,#fff0f8 100%)}
 .ndl-pdf-root .hdr{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:28px 48px 22px;color:#fff}
 .ndl-pdf-root .badge{display:inline-block;background:rgba(255,255,255,.25);font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:14px;color:#fff}
 .ndl-pdf-root .hdr h1{font-size:42px;font-weight:900;margin-bottom:6px;color:#fff}
@@ -314,7 +312,7 @@ async function generatePDFBase64(
       <div class="pmethods"><span class="pchip">Pix</span><span class="pchip">Cartão (consultar taxa)</span><span class="pchip">Transferência</span></div>
     </div>
   </div>
-  <div class="fill"><div class="fill-inner"><p>NEGÓCIOS DE LIMPEZA</p></div></div>
+  <div class="fill"></div>
   <div class="ftr"><span>Negócios de Limpeza</span><span>Proposta Comercial · Página 1 de 2</span><span>Validade: ${e(validityDays)} dias</span></div>
 </div>
 <div class="page">
@@ -347,7 +345,7 @@ async function generatePDFBase64(
     </div>
   </div>
   <div class="cta"><h3>Transforme seu lar com a Negócios de Limpeza!</h3><p>Entre em contato e agende sua faxina com quem cuida de verdade.</p></div>
-  <div class="fill"><div class="fill-inner"><p>NEGÓCIOS DE LIMPEZA</p></div></div>
+  <div class="fill"></div>
   <div class="ftr"><span>Negócios de Limpeza</span><span>Proposta Comercial · Página 2 de 2</span><span>Validade: ${e(validityDays)} dias</span></div>
 </div>`;
 
