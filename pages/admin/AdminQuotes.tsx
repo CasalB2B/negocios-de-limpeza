@@ -674,46 +674,21 @@ const PDFModal: React.FC<PDFModalProps> = ({ quote, onClose }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Profissionais</label>
-              <div className="flex gap-1.5">
-                <select value={['1','2','3','4'].includes(professionals) ? professionals : 'outro'}
-                  onChange={e => { if (e.target.value !== 'outro') setProfessionals(e.target.value); }}
-                  className="flex-1 p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                  <option value="4">4</option>
-                  <option value="outro">Outro</option>
-                </select>
-                <input
-                  type="number"
-                  min="1"
-                  value={professionals}
-                  onChange={e => setProfessionals(e.target.value)}
-                  className="w-16 p-2.5 border border-gray-200 rounded-xl text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-300"
-                />
-              </div>
+              <select value={professionals} onChange={e => setProfessionals(e.target.value)}
+                className="w-full p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
+                {['1','2','3','4','5','6'].map(n => (
+                  <option key={n} value={n}>{n} profissional{Number(n) > 1 ? 'is' : ''}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Horas</label>
-              <div className="flex gap-1.5">
-                <select value={['4','6','8','10','12'].includes(hours) ? hours : 'outro'}
-                  onChange={e => { if (e.target.value !== 'outro') setHours(e.target.value); }}
-                  className="flex-1 p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
-                  <option value="4">4h</option>
-                  <option value="6">6h</option>
-                  <option value="8">8h</option>
-                  <option value="10">10h</option>
-                  <option value="12">12h</option>
-                  <option value="outro">Outro</option>
-                </select>
-                <input
-                  type="number"
-                  min="1"
-                  value={hours}
-                  onChange={e => setHours(e.target.value)}
-                  className="w-16 p-2.5 border border-gray-200 rounded-xl text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-300"
-                />
-              </div>
+              <select value={hours} onChange={e => setHours(e.target.value)}
+                className="w-full p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
+                {['2','3','4','5','6','7','8','9','10','12'].map(h => (
+                  <option key={h} value={h}>{h} horas</option>
+                ))}
+              </select>
             </div>
           </div>
 
