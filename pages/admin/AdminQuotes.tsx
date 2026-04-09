@@ -604,14 +604,12 @@ const PDFModal: React.FC<PDFModalProps> = ({ quote, onClose }) => {
       try {
         // 1. Send PDF as document
         const pdfBase64 = await generatePDFBase64(quote, price, professionals, hours, neighborhood, serviceType, validityDays, paymentMethod, includedServices, observations, dateScheduled);
-        console.log('[PDF] base64 size (chars):', pdfBase64.length);
-        const docOk = await sendDocument(
+        await sendDocument(
           quote.whatsapp,
           pdfBase64,
           `Proposta_${quote.name.replace(/\s+/g, '_')}.pdf`,
           `Proposta de serviço — ${serviceType}`,
         );
-        console.log('[PDF] sendDocument result:', docOk);
 
         // 2. Send text message
         let templates: any = null;
