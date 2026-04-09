@@ -245,7 +245,7 @@ async function callGemini(history: { role: string; parts: GeminiPart[] }[], syst
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents: history,
-        generationConfig: { temperature: 1.0, maxOutputTokens: 400 },
+        generationConfig: { temperature: 1.0, maxOutputTokens: 1000 },
       }),
     }
   );

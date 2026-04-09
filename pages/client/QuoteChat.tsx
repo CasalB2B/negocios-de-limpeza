@@ -225,116 +225,39 @@ export const QuoteChat: React.FC = () => {
 
   if (isComplete) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#a163ff] to-[#6b21a8] overflow-y-auto">
-        <div className="max-w-lg mx-auto px-4 py-10 space-y-4 animate-in fade-in slide-in-from-bottom-4">
+      <div className="min-h-screen bg-gradient-to-br from-[#a163ff] to-[#6b21a8] flex items-center justify-center px-4">
+        <div className="max-w-sm w-full space-y-5 animate-in fade-in slide-in-from-bottom-4">
 
-          {/* Welcome header */}
-          <div className="text-center pb-2">
-            <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle size={40} className="text-white" />
+          {/* Ícone de sucesso */}
+          <div className="text-center">
+            <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle size={48} className="text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-white">Bem-vindo(a){savedName ? `, ${savedName}` : ''}!</h1>
-            <p className="text-white/80 mt-1 text-sm">Seu orçamento foi enviado com sucesso ✨</p>
+            <h1 className="text-3xl font-bold text-white">
+              {savedName ? `Obrigada, ${savedName}!` : 'Obrigada!'}
+            </h1>
+            <p className="text-white/80 mt-2 text-base leading-relaxed">
+              Seu orçamento foi recebido com sucesso.
+            </p>
           </div>
 
-          {/* Orçamento card */}
-          <div className="bg-white rounded-2xl p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-[#a163ff] rounded-full flex items-center justify-center flex-shrink-0">
-                <Phone size={18} className="text-white" />
-              </div>
-              <div>
-                <p className="font-bold text-gray-800">Orçamento em andamento</p>
-                <p className="text-xs text-gray-500">Nossa equipe entra em contato em até 24h pelo WhatsApp</p>
-              </div>
+          {/* Card principal */}
+          <div className="bg-white rounded-2xl p-6 text-center space-y-3">
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+              <Phone size={22} className="text-green-600" />
             </div>
+            <p className="font-bold text-gray-800 text-lg">Nossa equipe entra em contato!</p>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Em breve você receberá uma mensagem no WhatsApp com seu orçamento personalizado. Fique de olho! 😊
+            </p>
             <button
-              onClick={() => window.open('https://wa.me/5527999526102', '_blank')}
-              className="w-full py-2.5 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-colors text-sm"
+              onClick={() => navigate('/')}
+              className="w-full py-3 bg-[#a163ff] hover:bg-[#8f4ee0] text-white font-bold rounded-xl transition-colors text-sm mt-2"
             >
-              Falar no WhatsApp agora
+              Voltar ao início
             </button>
           </div>
 
-          {/* Credentials card */}
-          {credentials && (
-            <div className="bg-white rounded-2xl p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                  <User size={16} className="text-[#a163ff]" />
-                </div>
-                <div>
-                  <p className="font-bold text-gray-800 text-sm">Sua conta foi criada!</p>
-                  <p className="text-xs text-gray-500">Guarde seu login e senha para acessar o app</p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                {/* Login = phone number */}
-                <div className="bg-gray-50 rounded-xl p-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Login — seu e-mail</p>
-                    <p className="font-bold text-gray-800 text-sm break-all">{credentials.login}</p>
-                  </div>
-                  <button onClick={() => handleCopy(credentials.login, 'login')}
-                    className="ml-2 p-2 rounded-lg hover:bg-gray-200 transition-colors flex-shrink-0">
-                    {copied === 'login' ? <CheckCircle size={16} className="text-green-500" /> : <Copy size={16} className="text-gray-400" />}
-                  </button>
-                </div>
-
-                {/* Password = last 3 digits */}
-                <div className="bg-gray-50 rounded-xl p-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Senha — últimos 4 dígitos do celular</p>
-                    <p className="font-bold text-gray-800 text-sm tracking-widest">{showPassword ? credentials.password : '••••'}</p>
-                  </div>
-                  <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                    <button onClick={() => setShowPassword(p => !p)}
-                      className="p-2 rounded-lg hover:bg-gray-200 transition-colors">
-                      {showPassword ? <EyeOff size={16} className="text-gray-400" /> : <Eye size={16} className="text-gray-400" />}
-                    </button>
-                    <button onClick={() => handleCopy(credentials.password, 'password')}
-                      className="p-2 rounded-lg hover:bg-gray-200 transition-colors">
-                      {copied === 'password' ? <CheckCircle size={16} className="text-green-500" /> : <Copy size={16} className="text-gray-400" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Mini tutorial */}
-          <div className="bg-white rounded-2xl p-5">
-            <p className="font-bold text-gray-800 mb-3 text-sm">O que você encontra no app:</p>
-            <div className="space-y-3">
-              {[
-                { icon: <Home size={18} className="text-[#a163ff]" />, title: 'Início', desc: 'Veja sua próxima limpeza agendada e avisos importantes' },
-                { icon: <Calendar size={18} className="text-[#a163ff]" />, title: 'Agendamentos', desc: 'Histórico completo dos seus serviços com data e horário' },
-                { icon: <FileText size={18} className="text-[#a163ff]" />, title: 'Pagamentos', desc: 'Acompanhe faturas e formas de pagamento disponíveis' },
-                { icon: <User size={18} className="text-[#a163ff]" />, title: 'Perfil', desc: 'Atualize seus dados, foto e endereços. Clique na foto para trocar!' },
-              ].map((item, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="w-9 h-9 bg-purple-50 rounded-xl flex items-center justify-center flex-shrink-0">{item.icon}</div>
-                  <div>
-                    <p className="font-bold text-gray-800 text-sm">{item.title}</p>
-                    <p className="text-xs text-gray-500">{item.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* CTA */}
-          <button
-            onClick={() => navigate('/client/dashboard')}
-            className="w-full py-4 bg-white text-[#a163ff] font-bold rounded-2xl text-lg shadow-xl hover:bg-purple-50 transition-colors"
-          >
-            Entrar na minha área →
-          </button>
-
-          <p className="text-center text-white/60 text-xs pb-4">
-            Você pode acessar novamente em app.negociosdelimpeza.com.br
-          </p>
         </div>
       </div>
     );
