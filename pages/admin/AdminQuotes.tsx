@@ -28,6 +28,11 @@ function generateProposalWindow(
   hours: string,
   neighborhood: string,
   serviceType: string,
+  validityDays = '7',
+  paymentMethod = 'Pix, Cartão de Crédito',
+  includedServices = '',
+  observations = '',
+  dateScheduled = '',
 ) {
   const origin = window.location.origin;
   const win = window.open('', '_blank');
@@ -214,6 +219,11 @@ async function generatePDFBase64(
   hours: string,
   neighborhood: string,
   serviceType: string,
+  validityDays = '7',
+  paymentMethod = 'Pix, Cartão de Crédito',
+  includedServices = '',
+  observations = '',
+  dateScheduled = '',
 ): Promise<string> {
   const { default: html2canvas } = await import('html2canvas');
   const origin = window.location.origin;
@@ -568,19 +578,24 @@ const PDFModal: React.FC<PDFModalProps> = ({ quote, onClose }) => {
   const [hours, setHours] = useState(auto.hours);
   const [neighborhood, setNeighborhood] = useState('');
   const [serviceType, setServiceType] = useState(quote.serviceOption || 'Faxina Residencial');
+  const [validityDays, setValidityDays] = useState('7');
+  const [paymentMethod, setPaymentMethod] = useState('Pix, Cartão de Crédito');
+  const [includedServices, setIncludedServices] = useState(quote.rooms || '');
+  const [observations, setObservations] = useState('');
+  const [dateScheduled, setDateScheduled] = useState('');
   const [waSending, setWaSending] = useState(false);
   const [waStatus, setWaStatus] = useState<'idle' | 'sent' | 'error'>('idle');
 
   const handleOpenAndSend = async () => {
     if (!price.trim()) return;
     // Open HTML preview in new window
-    generateProposalWindow(quote, price, professionals, hours, neighborhood, serviceType);
+    generateProposalWindow(quote, price, professionals, hours, neighborhood, serviceType, validityDays, paymentMethod, includedServices, observations, dateScheduled);
 
     if (quote.whatsapp) {
       setWaSending(true);
       try {
         // 1. Send PDF as document
-        const pdfBase64 = await generatePDFBase64(quote, price, professionals, hours, neighborhood, serviceType);
+        const pdfBase64 = await generatePDFBase64(quote, price, professionals, hours, neighborhood, serviceType, validityDays, paymentMethod, includedServices, observations, dateScheduled);
         await sendDocument(
           quote.whatsapp,
           pdfBase64,
@@ -597,7 +612,7 @@ const PDFModal: React.FC<PDFModalProps> = ({ quote, onClose }) => {
           Servico: serviceType,
           Endereco: neighborhood || quote.propertyType || 'Guarapari',
           Valor: price,
-          Data: 'a combinar',
+          Data: dateScheduled ? new Date(dateScheduled + 'T12:00').toLocaleDateString('pt-BR') : 'a combinar',
         });
         const ok = await sendWhatsApp(quote.whatsapp, msg);
         setWaStatus(ok ? 'sent' : 'error');
@@ -658,6 +673,44 @@ const PDFModal: React.FC<PDFModalProps> = ({ quote, onClose }) => {
                 <option value="8">8 horas</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Data prevista</label>
+            <input type="date" value={dateScheduled} onChange={e => setDateScheduled(e.target.value)}
+              className="w-full p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Serviços incluídos</label>
+            <textarea value={includedServices} onChange={e => setIncludedServices(e.target.value)} rows={2}
+              placeholder="Ex: Cozinha, banheiro, quartos..."
+              className="w-full p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Validade (dias)</label>
+              <select value={validityDays} onChange={e => setValidityDays(e.target.value)}
+                className="w-full p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
+                <option value="3">3 dias</option>
+                <option value="5">5 dias</option>
+                <option value="7">7 dias</option>
+                <option value="15">15 dias</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Pagamento</label>
+              <input value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}
+                className="w-full p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Observações</label>
+            <textarea value={observations} onChange={e => setObservations(e.target.value)} rows={2}
+              placeholder="Informações adicionais para o cliente..."
+              className="w-full p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
           </div>
 
           {/* Auto-calculation breakdown */}
@@ -936,28 +989,6 @@ const QuoteCard: React.FC<QuoteCardProps> = ({ quote, onStatusChange, onCreateAc
             >
               <UserPlus size={12} /> Criar Conta
             </button>
-            {quote.whatsapp && (
-              <button
-                onClick={handleSendProposal}
-                disabled={sendingWpp}
-                className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-60 ${
-                  wppResult === 'ok'
-                    ? 'text-green-700 bg-green-50 border-green-300'
-                    : wppResult === 'err'
-                    ? 'text-red-700 bg-red-50 border-red-200'
-                    : 'text-white bg-green-600 border-green-600 hover:bg-green-700'
-                }`}
-              >
-                {sendingWpp
-                  ? <><Loader2 size={12} className="animate-spin" /> Enviando...</>
-                  : wppResult === 'ok'
-                  ? <><CheckCircle size={12} /> Proposta Enviada!</>
-                  : wppResult === 'err'
-                  ? <><X size={12} /> Falha no envio</>
-                  : <><Send size={12} /> Enviar Proposta WhatsApp</>
-                }
-              </button>
-            )}
           </div>
           {wppResult === 'ok' && (
             <p className="text-[10px] text-green-600 mt-1">✅ Mensagem enviada e status atualizado para "Contatado"</p>

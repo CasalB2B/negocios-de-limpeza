@@ -74,7 +74,7 @@ export async function disconnectInstance(): Promise<boolean> {
 }
 
 export async function sendDocument(phone: string, base64: string, fileName: string, caption?: string): Promise<boolean> {
-  const result = await callProxy('sendMedia', { number: phone, base64, fileName, caption: caption || '' });
+  const result = await callProxy('sendMedia', { number: phone, base64, mediaType: 'document', fileName, caption: caption || '' });
   return result.ok;
 }
 

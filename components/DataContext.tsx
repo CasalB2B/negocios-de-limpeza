@@ -53,6 +53,15 @@ export interface PlatformSettings {
   contactPhone?: string; // Telefone da empresa para notificações WhatsApp
   adminPhoto?: string; // URL da foto do administrador
   adminName?: string; // Nome do administrador
+  ninaEnabled?: boolean;
+  workingHoursEnabled?: boolean;
+  workingHoursStart?: string;
+  workingHoursEnd?: string;
+  workingHoursDays?: string;
+  awayMessage?: string;
+  followUpEnabled?: boolean;
+  followUpHours?: number;
+  ninaTone?: string;
 }
 
 export interface Service {
@@ -413,6 +422,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 contactPhone: settingsData.contact_phone || undefined,
                 adminPhoto: settingsData.admin_photo || undefined,
                 adminName: settingsData.admin_name || undefined,
+                ninaEnabled: settingsData.nina_enabled !== false, // default true
+                workingHoursEnabled: settingsData.working_hours_enabled || false,
+                workingHoursStart: settingsData.working_hours_start || '08:00',
+                workingHoursEnd: settingsData.working_hours_end || '18:00',
+                workingHoursDays: settingsData.working_hours_days || '1,2,3,4,5,6',
+                awayMessage: settingsData.away_message || 'Olá! Nosso atendimento é de segunda a sábado, das 8h às 18h. Retornaremos em breve! 😊',
+                followUpEnabled: settingsData.follow_up_enabled || false,
+                followUpHours: settingsData.follow_up_hours || 24,
+                ninaTone: settingsData.nina_tone || 'casual',
             });
         }
 
@@ -906,6 +924,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           contact_phone: s.contactPhone ?? null,
           admin_photo: s.adminPhoto ?? null,
           admin_name: s.adminName ?? null,
+          nina_enabled: s.ninaEnabled !== false,
+          working_hours_enabled: s.workingHoursEnabled ?? false,
+          working_hours_start: s.workingHoursStart ?? '08:00',
+          working_hours_end: s.workingHoursEnd ?? '18:00',
+          working_hours_days: s.workingHoursDays ?? '1,2,3,4,5,6',
+          away_message: s.awayMessage ?? null,
+          follow_up_enabled: s.followUpEnabled ?? false,
+          follow_up_hours: s.followUpHours ?? 24,
+          nina_tone: s.ninaTone ?? 'casual',
       });
       if (error) console.error("Erro ao salvar configurações:", error);
   };

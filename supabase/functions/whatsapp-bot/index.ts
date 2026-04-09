@@ -90,6 +90,39 @@ async function getPromptForPhone(phone: string): Promise<string> {
   return prompt.replace(/\{\{PHONE\}\}/g, phone);
 }
 
+async function isNinaEnabled(phone: string): Promise<{ enabled: boolean; reason?: string }> {
+  try {
+    const { data } = await supabase.from('platform_settings').select('nina_enabled, working_hours_enabled, working_hours_start, working_hours_end, working_hours_days, away_message').eq('id', 1).single();
+    if (!data) return { enabled: true };
+
+    // Check Nina toggle
+    if (data.nina_enabled === false) return { enabled: false, reason: 'disabled' };
+
+    // Check working hours
+    if (data.working_hours_enabled) {
+      const now = new Date();
+      const brasiliaOffset = -3 * 60;
+      const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+      const brasilia = new Date(utc + brasiliaOffset * 60000);
+      const dayOfWeek = brasilia.getDay(); // 0=Sun, 1=Mon...
+      const currentTime = `${String(brasilia.getHours()).padStart(2,'0')}:${String(brasilia.getMinutes()).padStart(2,'0')}`;
+
+      const allowedDays = (data.working_hours_days || '1,2,3,4,5,6').split(',').map(Number);
+      const start = data.working_hours_start || '08:00';
+      const end = data.working_hours_end || '18:00';
+
+      if (!allowedDays.includes(dayOfWeek) || currentTime < start || currentTime > end) {
+        const awayMsg = data.away_message || 'Olá! Nosso atendimento é de segunda a sábado, das 8h às 18h. Retornaremos em breve! 😊';
+        return { enabled: false, reason: awayMsg };
+      }
+    }
+
+    return { enabled: true };
+  } catch {
+    return { enabled: true };
+  }
+}
+
 // --- Helpers ---
 function extractPhone(remoteJid: string): string {
   if (remoteJid.includes('@lid')) return remoteJid;
@@ -317,6 +350,21 @@ Deno.serve(async (req) => {
   if (!textForHistory && !hasMedia) return new Response('ignored', { status: 200 });
 
   const normalizedText = textForHistory.trim().toLowerCase();
+
+  // --- Verifica se Nina está ativa ---
+  const ninaCheck = await isNinaEnabled(phone);
+  if (!ninaCheck.enabled) {
+    if (ninaCheck.reason && ninaCheck.reason !== 'disabled') {
+      // Fora do horário — manda mensagem de ausência uma vez por sessão
+      const { history: sess } = await getSession(phone);
+      const lastMsg = sess[sess.length - 1];
+      const alreadySentAway = lastMsg?.parts?.[0]?.text?.includes(ninaCheck.reason.slice(0, 20));
+      if (!alreadySentAway) {
+        await sendWhatsApp(phone, ninaCheck.reason);
+      }
+    }
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  }
 
   // --- Busca sessão ---
   const { history, meta: sessionMeta } = await getSession(phone);
