@@ -19,12 +19,12 @@ function loadTemplates() {
 }
 
 const TABS = [
-  { id: 'status', label: 'Conexão', icon: <Wifi size={16} /> },
-  { id: 'nina', label: 'Treinar Nina', icon: <Bot size={16} /> },
-  { id: 'config', label: 'Personalizar', icon: <Settings size={16} /> },
-  { id: 'welcome', label: 'Boas-vindas', icon: <Bell size={16} /> },
-  { id: 'proposal', label: 'Proposta', icon: <FileText size={16} /> },
-  { id: 'confirmation', label: 'Confirmação', icon: <ThumbsUp size={16} /> },
+  { id: 'status',       label: 'Conexão',     icon: <Wifi size={18} />,      color: 'text-green-600',  bg: 'bg-green-100 dark:bg-green-900/30' },
+  { id: 'nina',         label: 'Treinar Nina', icon: <Bot size={18} />,       color: 'text-purple-600', bg: 'bg-purple-100 dark:bg-purple-900/30' },
+  { id: 'config',       label: 'Personalizar', icon: <Settings size={18} />,  color: 'text-blue-600',   bg: 'bg-blue-100 dark:bg-blue-900/30' },
+  { id: 'welcome',      label: 'Boas-vindas',  icon: <Bell size={18} />,      color: 'text-yellow-600', bg: 'bg-yellow-100 dark:bg-yellow-900/30' },
+  { id: 'proposal',     label: 'Proposta',     icon: <FileText size={18} />,  color: 'text-orange-600', bg: 'bg-orange-100 dark:bg-orange-900/30' },
+  { id: 'confirmation', label: 'Confirmação',  icon: <ThumbsUp size={18} />,  color: 'text-pink-600',   bg: 'bg-pink-100 dark:bg-pink-900/30' },
 ];
 
 const PLACEHOLDERS: Record<string, { key: string; desc: string }[]> = {
@@ -54,6 +54,7 @@ export const AdminWhatsApp: React.FC = () => {
   const [templates, setTemplates] = useState(loadTemplates());
   const [saved, setSaved] = useState(false);
   const [testPhone, setTestPhone] = useState('');
+  const [testMessageText, setTestMessageText] = useState('');
   const [testResult, setTestResult] = useState<'ok' | 'err' | null>(null);
   const [sending, setSending] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -158,13 +159,15 @@ export const AdminWhatsApp: React.FC = () => {
     if (!testPhone) return;
     setSending(true);
     setTestResult(null);
-    const msg = buildMessage(templates[tab === 'status' ? 'welcome' : tab], {
-      Nome: 'Cliente Teste',
-      Servico: 'Limpeza Residencial',
-      Endereco: 'Rua Exemplo, 123',
-      Valor: '280,00',
-      Data: 'Segunda-feira às 09h',
-    });
+    const msg = testMessageText.trim()
+      ? testMessageText.trim()
+      : buildMessage(templates[tab === 'status' ? 'welcome' : tab], {
+          Nome: 'Cliente Teste',
+          Servico: 'Limpeza Residencial',
+          Endereco: 'Rua Exemplo, 123',
+          Valor: '280,00',
+          Data: 'Segunda-feira às 09h',
+        });
     const ok = await sendMessage(testPhone, msg);
     setTestResult(ok ? 'ok' : 'err');
     setSending(false);
@@ -185,20 +188,23 @@ export const AdminWhatsApp: React.FC = () => {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4">
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-6">
           {TABS.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-colors shrink-0 ${
+              className={`flex flex-col items-center gap-2 py-3 px-2 rounded-2xl font-bold transition-all ${
                 tab === t.id
-                  ? 'bg-green-600 text-white shadow'
-                  : 'bg-white dark:bg-darkSurface text-lightText dark:text-darkTextSecondary border border-gray-200 dark:border-darkBorder hover:border-green-300'
+                  ? 'bg-green-600 text-white shadow-lg shadow-green-200 dark:shadow-green-900/40 scale-[1.03]'
+                  : 'bg-white dark:bg-darkSurface text-gray-500 dark:text-darkTextSecondary border border-gray-200 dark:border-darkBorder hover:border-green-300 hover:text-green-600'
               }`}
             >
-              {t.icon}
-              <span className="hidden sm:inline">{t.label}</span>
-              <span className="sm:hidden text-xs">{t.label.split(' ')[0]}</span>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+                tab === t.id ? 'bg-white/20' : t.bg + ' ' + t.color
+              }`}>
+                {t.icon}
+              </div>
+              <span className="text-[11px] leading-tight text-center">{t.label}</span>
             </button>
           ))}
         </div>
@@ -223,7 +229,7 @@ export const AdminWhatsApp: React.FC = () => {
               </div>
               <button
                 onClick={() => updatePlatformSettings({ ...platformSettings, ninaEnabled: platformSettings.ninaEnabled === false })}
-                className={`relative w-12 h-6 rounded-full transition-colors ${platformSettings.ninaEnabled !== false ? 'bg-green-500' : 'bg-gray-300'}`}
+                className={`relative w-12 h-6 rounded-full transition-colors shrink-0 overflow-hidden ${platformSettings.ninaEnabled !== false ? 'bg-green-500' : 'bg-gray-300'}`}
               >
                 <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${platformSettings.ninaEnabled !== false ? 'translate-x-6' : 'translate-x-0.5'}`} />
               </button>
@@ -308,18 +314,25 @@ export const AdminWhatsApp: React.FC = () => {
                 <p className="font-bold text-darkText dark:text-darkTextPrimary mb-3 flex items-center gap-2">
                   <Send size={16} className="text-green-600" /> Enviar mensagem de teste
                 </p>
-                <div className="flex gap-2">
+                <div className="space-y-2">
                   <input
                     type="tel"
                     placeholder="27 99999-0000"
                     value={testPhone}
                     onChange={e => setTestPhone(e.target.value)}
-                    className="flex-1 p-3 rounded-xl border border-gray-200 dark:border-darkBorder bg-gray-50 dark:bg-darkBg text-sm text-darkText dark:text-darkTextPrimary"
+                    className="w-full p-3 rounded-xl border border-gray-200 dark:border-darkBorder bg-gray-50 dark:bg-darkBg text-sm text-darkText dark:text-darkTextPrimary"
+                  />
+                  <textarea
+                    rows={3}
+                    placeholder="Digite a mensagem de teste... (deixe em branco para usar o template de boas-vindas)"
+                    value={testMessageText}
+                    onChange={e => setTestMessageText(e.target.value)}
+                    className="w-full p-3 rounded-xl border border-gray-200 dark:border-darkBorder bg-gray-50 dark:bg-darkBg text-sm text-darkText dark:text-darkTextPrimary resize-none"
                   />
                   <button
                     onClick={handleTest}
                     disabled={sending || !testPhone}
-                    className="px-5 py-3 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 disabled:opacity-50 transition-colors"
+                    className="w-full px-5 py-3 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 disabled:opacity-50 transition-colors"
                   >
                     {sending ? '...' : 'Enviar'}
                   </button>
@@ -476,7 +489,7 @@ export const AdminWhatsApp: React.FC = () => {
                 </div>
                 <button
                   onClick={() => updatePlatformSettings({ ...platformSettings, workingHoursEnabled: !platformSettings.workingHoursEnabled })}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${platformSettings.workingHoursEnabled ? 'bg-green-500' : 'bg-gray-300'}`}
+                  className={`relative w-12 h-6 rounded-full transition-colors shrink-0 overflow-hidden ${platformSettings.workingHoursEnabled ? 'bg-green-500' : 'bg-gray-300'}`}
                 >
                   <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${platformSettings.workingHoursEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
                 </button>
@@ -517,23 +530,35 @@ export const AdminWhatsApp: React.FC = () => {
                 </div>
                 <button
                   onClick={() => updatePlatformSettings({ ...platformSettings, followUpEnabled: !platformSettings.followUpEnabled })}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${platformSettings.followUpEnabled ? 'bg-green-500' : 'bg-gray-300'}`}
+                  className={`relative w-12 h-6 rounded-full transition-colors shrink-0 overflow-hidden ${platformSettings.followUpEnabled ? 'bg-green-500' : 'bg-gray-300'}`}
                 >
                   <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${platformSettings.followUpEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
                 </button>
               </div>
               {platformSettings.followUpEnabled && (
-                <div className="mt-3">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Enviar após (horas)</label>
-                  <select value={platformSettings.followUpHours || 24}
-                    onChange={e => updatePlatformSettings({ ...platformSettings, followUpHours: Number(e.target.value) })}
-                    className="w-full p-2.5 border border-gray-200 dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-green-300">
-                    <option value={2}>2 horas</option>
-                    <option value={6}>6 horas</option>
-                    <option value={12}>12 horas</option>
-                    <option value={24}>24 horas</option>
-                    <option value={48}>48 horas</option>
-                  </select>
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Enviar após (horas)</label>
+                    <select value={platformSettings.followUpHours || 24}
+                      onChange={e => updatePlatformSettings({ ...platformSettings, followUpHours: Number(e.target.value) })}
+                      className="w-full p-2.5 border border-gray-200 dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-green-300">
+                      <option value={2}>2 horas</option>
+                      <option value={6}>6 horas</option>
+                      <option value={12}>12 horas</option>
+                      <option value={24}>24 horas</option>
+                      <option value={48}>48 horas</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Mensagem de follow-up</label>
+                    <p className="text-[10px] text-gray-400 mb-1">Use <span className="font-mono">[Nome]</span> e <span className="font-mono">[Servico]</span> como variáveis</p>
+                    <textarea
+                      rows={4}
+                      value={platformSettings.followUpMessage || ''}
+                      onChange={e => updatePlatformSettings({ ...platformSettings, followUpMessage: e.target.value })}
+                      className="w-full p-2.5 border border-gray-200 dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-green-300 resize-none font-mono"
+                    />
+                  </div>
                 </div>
               )}
             </div>
