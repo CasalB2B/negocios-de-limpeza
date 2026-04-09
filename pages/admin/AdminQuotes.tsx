@@ -373,7 +373,7 @@ async function generatePDFBase64(
     for (let i = 0; i < pages.length; i++) {
       if (i > 0) doc.addPage();
       const canvas = await html2canvas(pages[i], {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         allowTaint: true,
         logging: false,
@@ -382,7 +382,7 @@ async function generatePDFBase64(
         windowWidth: 794,
         backgroundColor: '#ffffff',
       });
-      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      const imgData = canvas.toDataURL('image/jpeg', 0.78);
       doc.addImage(imgData, 'JPEG', 0, 0, 210, 297);
     }
 
@@ -596,12 +596,14 @@ const PDFModal: React.FC<PDFModalProps> = ({ quote, onClose }) => {
       try {
         // 1. Send PDF as document
         const pdfBase64 = await generatePDFBase64(quote, price, professionals, hours, neighborhood, serviceType, validityDays, paymentMethod, includedServices, observations, dateScheduled);
-        await sendDocument(
+        console.log('[PDF] base64 size (chars):', pdfBase64.length);
+        const docOk = await sendDocument(
           quote.whatsapp,
           pdfBase64,
           `Proposta_${quote.name.replace(/\s+/g, '_')}.pdf`,
           `Proposta de serviço — ${serviceType}`,
         );
+        console.log('[PDF] sendDocument result:', docOk);
 
         // 2. Send text message
         let templates: any = null;
