@@ -229,6 +229,26 @@ async function generatePDFBase64(
   const origin = window.location.origin;
   const e = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+  // Pre-fetch images as base64 to avoid CORS issues in html2canvas
+  async function imgToDataUrl(src: string): Promise<string> {
+    try {
+      const res = await fetch(src);
+      const blob = await res.blob();
+      return await new Promise<string>(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => resolve(src);
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return src;
+    }
+  }
+  const [img1, img2] = await Promise.all([
+    imgToDataUrl(`${origin}/img/foto-pdf-p1.jpg`),
+    imgToDataUrl(`${origin}/img/foto-pdf-p2.jpg`),
+  ]);
+
   const wrapper = document.createElement('div');
   wrapper.className = 'ndl-pdf-root';
   wrapper.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;overflow:visible;font-family:Arial,Helvetica,sans-serif';
@@ -314,8 +334,8 @@ async function generatePDFBase64(
     </div>
   </div>
   <div class="img-fill">
-    <img src="${origin}/img/foto-pdf-p1.jpg"
-      style="width:100%;height:100%;object-fit:cover;object-position:center 8%" alt="Negócios de Limpeza" crossorigin="anonymous" />
+    <img src="${img1}"
+      style="width:100%;height:100%;object-fit:cover;object-position:center 8%" alt="Negócios de Limpeza" />
   </div>
   <div class="ftr"><span>Negócios de Limpeza</span><span>Proposta Comercial · Página 1 de 2</span><span>Validade: 7 dias</span></div>
 </div>
@@ -350,8 +370,8 @@ async function generatePDFBase64(
   </div>
   <div class="cta"><h3>Transforme seu lar com a Negócios de Limpeza!</h3><p>Entre em contato e agende sua faxina com quem cuida de verdade.</p></div>
   <div class="img-fill">
-    <img src="${origin}/img/foto-pdf-p2.jpg"
-      style="width:100%;height:100%;object-fit:cover;object-position:center 25%" alt="Negócios de Limpeza" crossorigin="anonymous" />
+    <img src="${img2}"
+      style="width:100%;height:100%;object-fit:cover;object-position:center 25%" alt="Negócios de Limpeza" />
   </div>
   <div class="ftr"><span>Negócios de Limpeza</span><span>Proposta Comercial · Página 2 de 2</span><span>Validade: 7 dias</span></div>
 </div>`;
@@ -373,16 +393,16 @@ async function generatePDFBase64(
     for (let i = 0; i < pages.length; i++) {
       if (i > 0) doc.addPage();
       const canvas = await html2canvas(pages[i], {
-        scale: 1.5,
-        useCORS: true,
-        allowTaint: true,
+        scale: 2,
+        useCORS: false,
+        allowTaint: false,
         logging: false,
         width: 794,
         height: 1123,
         windowWidth: 794,
         backgroundColor: '#ffffff',
       });
-      const imgData = canvas.toDataURL('image/jpeg', 0.78);
+      const imgData = canvas.toDataURL('image/jpeg', 0.82);
       doc.addImage(imgData, 'JPEG', 0, 0, 210, 297);
     }
 
@@ -660,20 +680,46 @@ const PDFModal: React.FC<PDFModalProps> = ({ quote, onClose }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Profissionais</label>
-              <select value={professionals} onChange={e => setProfessionals(e.target.value)}
-                className="w-full p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
-                <option value="1">1 profissional</option>
-                <option value="2">2 profissionais</option>
-              </select>
+              <div className="flex gap-1.5">
+                <select value={['1','2','3','4'].includes(professionals) ? professionals : 'outro'}
+                  onChange={e => { if (e.target.value !== 'outro') setProfessionals(e.target.value); }}
+                  className="flex-1 p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="outro">Outro</option>
+                </select>
+                <input
+                  type="number"
+                  min="1"
+                  value={professionals}
+                  onChange={e => setProfessionals(e.target.value)}
+                  className="w-16 p-2.5 border border-gray-200 rounded-xl text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-300"
+                />
+              </div>
             </div>
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Horas</label>
-              <select value={hours} onChange={e => setHours(e.target.value)}
-                className="w-full p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
-                <option value="4">4 horas</option>
-                <option value="6">6 horas</option>
-                <option value="8">8 horas</option>
-              </select>
+              <div className="flex gap-1.5">
+                <select value={['4','6','8','10','12'].includes(hours) ? hours : 'outro'}
+                  onChange={e => { if (e.target.value !== 'outro') setHours(e.target.value); }}
+                  className="flex-1 p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
+                  <option value="4">4h</option>
+                  <option value="6">6h</option>
+                  <option value="8">8h</option>
+                  <option value="10">10h</option>
+                  <option value="12">12h</option>
+                  <option value="outro">Outro</option>
+                </select>
+                <input
+                  type="number"
+                  min="1"
+                  value={hours}
+                  onChange={e => setHours(e.target.value)}
+                  className="w-16 p-2.5 border border-gray-200 rounded-xl text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-300"
+                />
+              </div>
             </div>
           </div>
 
