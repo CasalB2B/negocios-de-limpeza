@@ -256,8 +256,8 @@ async function generatePDFBase64(
 .ndl-pdf-root .ilbl{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.8;margin-bottom:3px;color:#fff}
 .ndl-pdf-root .idesc{font-size:16px;font-weight:600;margin-bottom:14px;opacity:.9;color:#fff}
 .ndl-pdf-root .price{font-size:48px;font-weight:900;margin-bottom:20px;color:#fff}
-.ndl-pdf-root .pmethods{display:flex;gap:8px;flex-wrap:wrap}
-.ndl-pdf-root .pchip{background:rgba(255,255,255,.2);border-radius:20px;padding:6px 16px;font-size:11px;font-weight:600;color:#fff;text-align:center;display:inline-block;line-height:1.4}
+.ndl-pdf-root .pmethods{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ndl-pdf-root .pchip{background:rgba(255,255,255,.2);border-radius:20px;padding:7px 18px;font-size:11px;font-weight:600;color:#fff;text-align:center;display:flex;align-items:center;justify-content:center;line-height:1}
 .ndl-pdf-root .ftr{background:#1a1a2e;color:#fff;padding:14px 48px;display:flex;justify-content:space-between;align-items:center;font-size:10px;flex-shrink:0}
 .ndl-pdf-root .hdr2{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:36px 48px;color:#fff}
 .ndl-pdf-root .hdr2 h1{font-size:32px;font-weight:900;margin-bottom:6px;color:#fff}
