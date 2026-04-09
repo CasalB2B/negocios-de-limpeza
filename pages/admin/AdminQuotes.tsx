@@ -264,12 +264,12 @@ async function generatePDFBase64(
 .ndl-pdf-root .sct{display:flex;align-items:center;gap:7px;font-weight:700;font-size:12px;margin-bottom:7px}
 .ndl-pdf-root .dot{width:7px;height:7px;border-radius:50%;background:#a163ff;flex-shrink:0;display:inline-block}
 .ndl-pdf-root .sc p{font-size:10px;line-height:1.5;color:#6b6b8a}
-.ndl-pdf-root .inv{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);margin:0 48px;border-radius:14px;padding:28px;color:#fff}
-.ndl-pdf-root .ilbl{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.8;margin-bottom:3px;color:#fff}
-.ndl-pdf-root .idesc{font-size:16px;font-weight:600;margin-bottom:14px;opacity:.9;color:#fff}
-.ndl-pdf-root .price{font-size:48px;font-weight:900;margin-bottom:20px;color:#fff}
-.ndl-pdf-root .pmethods{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.ndl-pdf-root .pchip{background:rgba(255,255,255,.2);border-radius:20px;padding:7px 18px;font-size:11px;font-weight:600;color:#fff;text-align:center;display:flex;align-items:center;justify-content:center;line-height:1}
+.ndl-pdf-root .inv{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);border-radius:14px;padding:32px 40px;color:#fff}
+.ndl-pdf-root .ilbl{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.8;margin-bottom:4px;color:#fff}
+.ndl-pdf-root .idesc{font-size:16px;font-weight:600;margin-bottom:16px;opacity:.9;color:#fff}
+.ndl-pdf-root .price{font-size:52px;font-weight:900;margin-bottom:22px;color:#fff;line-height:1}
+.ndl-pdf-root .pmethods{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.ndl-pdf-root .pchip{background:rgba(255,255,255,.25);border-radius:20px;padding:8px 20px;font-size:12px;font-weight:700;color:#fff;display:inline-flex;align-items:center;justify-content:center;line-height:1;white-space:nowrap}
 .ndl-pdf-root .ftr{background:#1a1a2e;color:#fff;padding:10px 48px;display:flex;justify-content:space-between;align-items:center;font-size:10px;flex-shrink:0}
 .ndl-pdf-root .ftr-logo{height:28px;width:auto;object-fit:contain;opacity:.9}
 .ndl-pdf-root .hdr2{background:linear-gradient(135deg,#a163ff 0%,#ff3ca0 100%);padding:36px 48px;color:#fff}
@@ -319,10 +319,10 @@ async function generatePDFBase64(
       <div class="sc"><div class="sct"><div class="dot"></div>Varanda / Gourmet</div><p>Limpeza dos vidros, trilhos e canaletas, limpeza externa de armários, e limpeza do chão.</p></div>
     </div>
   </div>
-  <div style="padding:0 48px 20px">
+  <div style="padding:0 48px 24px">
     <div class="inv">
       <div class="ilbl">Investimento</div>
-      <div class="idesc">${e(professionals)} profissionais · ${e(hours)} horas de serviço</div>
+      <div class="idesc">${e(professionals)} profissional${Number(professionals) > 1 ? 'is' : ''} · ${e(hours)} horas de serviço</div>
       <div class="price">R$ ${e(price)}</div>
       <div class="pmethods"><span class="pchip">Pix</span><span class="pchip">Cartão (consultar taxa)</span><span class="pchip">Transferência</span></div>
     </div>
@@ -390,7 +390,7 @@ async function generatePDFBase64(
         windowWidth: 794,
         backgroundColor: '#ffffff',
       });
-      const imgData = canvas.toDataURL('image/jpeg', 0.82);
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
       doc.addImage(imgData, 'JPEG', 0, 0, 210, 297);
     }
 
