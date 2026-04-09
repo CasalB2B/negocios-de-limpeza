@@ -309,7 +309,27 @@ Deno.serve(async (req) => {
   if (event !== 'messages.upsert') return new Response('ignored', { status: 200 });
 
   const data = body?.data;
-  if (!data || data.key?.fromMe) return new Response('ignored', { status: 200 });
+
+  // Admin respondeu pelo WhatsApp — detectar e marcar sessão
+  if (data?.key?.fromMe) {
+    const fromPhone = extractPhone(data?.key?.remoteJid || '');
+    if (fromPhone && !data?.key?.remoteJid?.includes('@g.us')) {
+      const adminText = extractText(data?.message)?.trim() || '';
+      const { history: sess, meta: sessMeta } = await getSession(fromPhone);
+      // Comando especial: #nina reativa a Nina para esse número
+      if (adminText.toLowerCase() === '#nina') {
+        await saveSession(fromPhone, [], {});
+        console.log('[BOT] Nina reativada para:', fromPhone);
+      } else if (sessMeta.step === 'human' && !sessMeta.adminReplied) {
+        // Primeira resposta do admin — marca silêncio da Nina
+        await saveSession(fromPhone, sess, { ...sessMeta, adminReplied: true, adminRepliedAt: new Date().toISOString() });
+        console.log('[BOT] Admin assumiu conversa com:', fromPhone);
+      }
+    }
+    return new Response('ignored', { status: 200 });
+  }
+
+  if (!data) return new Response('ignored', { status: 200 });
 
   const remoteJid: string = data.key?.remoteJid || '';
   if (remoteJid.includes('@g.us')) return new Response('ignored', { status: 200 });
@@ -374,6 +394,12 @@ Deno.serve(async (req) => {
   // STEP: HUMAN — atendente humano assume
   // -------------------------------------------------------
   if (sessionMeta.step === 'human') {
+    // Admin já assumiu a conversa — Nina fica completamente em silêncio
+    if (sessionMeta.adminReplied) {
+      console.log('[BOT] Admin handling conversation, Nina silent for:', phone);
+      return new Response('ignored', { status: 200 });
+    }
+
     const hasLabels = sessionMeta.labels && sessionMeta.labels !== '';
     const waitReplied = sessionMeta.waitReplied || false;
 
