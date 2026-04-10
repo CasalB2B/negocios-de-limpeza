@@ -2170,63 +2170,73 @@ export const AdminCRM: React.FC = () => {
                   {/* Contact info */}
                   <Section title="Contato">
                     <Field icon={<Phone size={14} />} label="WhatsApp">
-                      {editMode
-                        ? <input className="text-sm text-darkText outline-none border-b border-gray-200 focus:border-primary w-full bg-transparent" value={editData.whatsapp || ''} onChange={e => setEditData(p => ({ ...p, whatsapp: e.target.value }))} />
-                        : <div className="flex items-center gap-2">
-                            <span className="text-sm text-darkText">
-                              {selected.whatsapp?.includes('@lid')
-                                ? <span className="text-amber-600 text-xs">ID interno WhatsApp (iPhone) — edite para inserir o número</span>
-                                : (selected.whatsapp || '—')}
-                            </span>
-                            {selected.whatsapp && !selected.whatsapp.includes('@lid') && <>
-                              <button onClick={() => navigator.clipboard.writeText(selected.whatsapp)} className="text-lightText hover:text-darkText"><Copy size={12} /></button>
-                              <a href={`https://wa.me/${selected.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-green-600 hover:text-green-700"><ExternalLink size={12} /></a>
-                            </>}
-                          </div>
-                      }
+                      {selected.whatsapp?.includes('@lid') ? (
+                        <div>
+                          <InlineEdit value={''} placeholder="Clique para inserir o número"
+                            onSave={v => { updateQuote(selected.id, { whatsapp: v }); setSelected(p => p ? { ...p, whatsapp: v } : null); }} />
+                          <p className="text-[10px] text-amber-500 mt-0.5">ID interno (iPhone) — insira o número manualmente</p>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <InlineEdit value={selected.whatsapp || ''}
+                            onSave={v => { updateQuote(selected.id, { whatsapp: v }); setSelected(p => p ? { ...p, whatsapp: v } : null); }} />
+                          {selected.whatsapp && <>
+                            <button onClick={() => navigator.clipboard.writeText(selected.whatsapp)} className="text-lightText hover:text-darkText flex-shrink-0"><Copy size={12} /></button>
+                            <a href={`https://wa.me/${selected.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-green-600 hover:text-green-700 flex-shrink-0"><ExternalLink size={12} /></a>
+                          </>}
+                        </div>
+                      )}
                     </Field>
                     <Field icon={<Mail size={14} />} label="E-mail">
-                      {editMode
-                        ? <input className="text-sm text-darkText outline-none border-b border-gray-200 focus:border-primary w-full bg-transparent" value={editData.email || ''} onChange={e => setEditData(p => ({ ...p, email: e.target.value }))} />
-                        : <span className="text-sm text-darkText">{selected.email || '—'}</span>
-                      }
+                      <InlineEdit value={selected.email || ''}
+                        onSave={v => { updateQuote(selected.id, { email: v }); setSelected(p => p ? { ...p, email: v } : null); }} />
                     </Field>
                     <Field icon={<Calendar size={14} />} label="Captado em">
                       <span className="text-sm text-darkText">{formatDate(selected.createdAt)} · {relativeTime(selected.createdAt)}</span>
                     </Field>
                     <Field icon={<DollarSign size={14} />} label="Valor estimado">
-                      {editMode
-                        ? <input type="number" placeholder="R$ 0" className="text-sm text-darkText outline-none border-b border-gray-200 focus:border-primary w-full bg-transparent" value={editData.estimatedValue || ''} onChange={e => setEditData(p => ({ ...p, estimatedValue: parseFloat(e.target.value) || undefined }))} />
-                        : <span className="text-sm text-darkText">{selected.estimatedValue ? `R$ ${selected.estimatedValue}` : '—'}</span>
-                      }
+                      <InlineEdit value={selected.estimatedValue ? String(selected.estimatedValue) : ''} placeholder="R$ 0,00" type="number"
+                        onSave={v => { updateQuote(selected.id, { estimatedValue: parseFloat(v) || undefined }); setSelected(p => p ? { ...p, estimatedValue: parseFloat(v) || undefined } : null); }} />
                     </Field>
                   </Section>
 
                   {/* Service info */}
                   <Section title="Serviço">
                     <Field icon={<Home size={14} />} label="Tipo de imóvel">
-                      {editMode
-                        ? <input className="text-sm text-darkText outline-none border-b border-gray-200 focus:border-primary w-full bg-transparent" value={editData.propertyType || ''} onChange={e => setEditData(p => ({ ...p, propertyType: e.target.value }))} />
-                        : <span className="text-sm text-darkText">{selected.propertyType || '—'}</span>
-                      }
+                      <InlineEdit value={selected.propertyType || ''}
+                        onSave={v => { updateQuote(selected.id, { propertyType: v }); setSelected(p => p ? { ...p, propertyType: v } : null); }} />
                     </Field>
                     <Field icon={<Hash size={14} />} label="Cômodos">
-                      {editMode
-                        ? <input className="text-sm text-darkText outline-none border-b border-gray-200 focus:border-primary w-full bg-transparent" value={editData.rooms || ''} onChange={e => setEditData(p => ({ ...p, rooms: e.target.value }))} />
-                        : <span className="text-sm text-darkText">{selected.rooms || '—'}</span>
-                      }
+                      <InlineEdit value={selected.rooms || ''}
+                        onSave={v => { updateQuote(selected.id, { rooms: v }); setSelected(p => p ? { ...p, rooms: v } : null); }} />
                     </Field>
                     <Field icon={<Briefcase size={14} />} label="Serviço">
-                      {editMode
-                        ? <input className="text-sm text-darkText outline-none border-b border-gray-200 focus:border-primary w-full bg-transparent" value={editData.serviceOption || ''} onChange={e => setEditData(p => ({ ...p, serviceOption: e.target.value }))} />
-                        : <span className="text-sm text-darkText">{selected.serviceOption || '—'}</span>
-                      }
+                      <InlineEdit value={selected.serviceOption || ''}
+                        onSave={v => { updateQuote(selected.id, { serviceOption: v }); setSelected(p => p ? { ...p, serviceOption: v } : null); }} />
+                    </Field>
+                  </Section>
+
+                  {/* Address */}
+                  <Section title="Endereço">
+                    <Field icon={<MapPin size={14} />} label="Rua">
+                      <InlineEdit value={(selected as any).addressStreet || ''}
+                        onSave={v => { updateQuote(selected.id, { addressStreet: v } as any); setSelected(p => p ? { ...p, addressStreet: v } as any : null); }} />
+                    </Field>
+                    <Field icon={<MapPin size={14} />} label="Número">
+                      <InlineEdit value={(selected as any).addressNumber || ''}
+                        onSave={v => { updateQuote(selected.id, { addressNumber: v } as any); setSelected(p => p ? { ...p, addressNumber: v } as any : null); }} />
                     </Field>
                     <Field icon={<MapPin size={14} />} label="Bairro">
-                      {editMode
-                        ? <input className="text-sm text-darkText outline-none border-b border-gray-200 focus:border-primary w-full bg-transparent" value={editData.addressDistrict || ''} onChange={e => setEditData(p => ({ ...p, addressDistrict: e.target.value }))} />
-                        : <span className="text-sm text-darkText">{selected.addressDistrict || selected.cep || '—'}</span>
-                      }
+                      <InlineEdit value={selected.addressDistrict || ''}
+                        onSave={v => { updateQuote(selected.id, { addressDistrict: v }); setSelected(p => p ? { ...p, addressDistrict: v } : null); }} />
+                    </Field>
+                    <Field icon={<MapPin size={14} />} label="Cidade">
+                      <InlineEdit value={(selected as any).addressCity || 'Guarapari'}
+                        onSave={v => { updateQuote(selected.id, { addressCity: v } as any); setSelected(p => p ? { ...p, addressCity: v } as any : null); }} />
+                    </Field>
+                    <Field icon={<MapPin size={14} />} label="CEP">
+                      <InlineEdit value={selected.cep || ''}
+                        onSave={v => { updateQuote(selected.id, { cep: v }); setSelected(p => p ? { ...p, cep: v } : null); }} />
                     </Field>
                   </Section>
 
@@ -2702,6 +2712,36 @@ const Field: React.FC<{ icon: React.ReactNode; label: string; children: React.Re
     </div>
   </div>
 );
+
+const InlineEdit: React.FC<{
+  value: string;
+  placeholder?: string;
+  onSave: (v: string) => void;
+  type?: string;
+  className?: string;
+}> = ({ value, placeholder = '—', onSave, type = 'text', className = '' }) => {
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState(value);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  React.useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
+  React.useEffect(() => { setDraft(value); }, [value]);
+  const commit = () => { setEditing(false); if (draft !== value) onSave(draft); };
+  if (editing) return (
+    <input ref={inputRef} type={type} value={draft}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setDraft(value); setEditing(false); } }}
+      className={`text-sm text-darkText outline-none border-b-2 border-primary w-full bg-transparent ${className}`}
+    />
+  );
+  return (
+    <button onClick={() => setEditing(true)}
+      className={`text-sm text-left w-full group flex items-center gap-1.5 ${value ? 'text-darkText' : 'text-gray-400'} ${className}`}>
+      <span className="flex-1">{value || placeholder}</span>
+      <Pencil size={11} className="opacity-0 group-hover:opacity-40 shrink-0 transition-opacity" />
+    </button>
+  );
+};
 
 interface LeadCardProps {
   lead: Quote;
