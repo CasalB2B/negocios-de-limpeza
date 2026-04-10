@@ -60,9 +60,8 @@ export interface PlatformSettings {
   workingHoursDays?: string;
   awayMessage?: string;
   followUpEnabled?: boolean;
-  followUpHours?: number;
-  followUpMessage?: string;
-  followUpSteps?: string;
+  followUpChatHours?: number;    // horas para re-engajar quem parou no meio do fluxo
+  followUpHumanDelays?: number[]; // [horas1, horas2] para quem recebeu orçamento e sumiu
   ninaTone?: string;
   ninaSilenceHours?: number; // horas de inatividade para reativar Nina automaticamente
 }
@@ -432,9 +431,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 workingHoursDays: settingsData.working_hours_days || '1,2,3,4,5,6',
                 awayMessage: settingsData.away_message || 'Olá! Nosso atendimento é de segunda a sábado, das 8h às 18h. Retornaremos em breve! 😊',
                 followUpEnabled: settingsData.follow_up_enabled || false,
-                followUpHours: settingsData.follow_up_hours || 24,
-                followUpMessage: settingsData.follow_up_message || '',
-                followUpSteps: settingsData.follow_up_steps || '',
+                followUpChatHours: settingsData.follow_up_hours ?? 2,
+                followUpHumanDelays: (() => { try { const v = JSON.parse(settingsData.follow_up_steps || ''); if (Array.isArray(v) && v.every((n: unknown) => typeof n === 'number')) return v; } catch { /* ignore */ } return [24, 48]; })(),
                 ninaTone: settingsData.nina_tone || 'casual',
                 ninaSilenceHours: settingsData.nina_silence_hours ?? 24,
             });
@@ -937,9 +935,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           working_hours_days: s.workingHoursDays ?? '1,2,3,4,5,6',
           away_message: s.awayMessage ?? null,
           follow_up_enabled: s.followUpEnabled ?? false,
-          follow_up_hours: s.followUpHours ?? 24,
-          follow_up_message: s.followUpMessage ?? null,
-          follow_up_steps: s.followUpSteps ?? null,
+          follow_up_hours: s.followUpChatHours ?? 2,
+          follow_up_steps: JSON.stringify(s.followUpHumanDelays ?? [24, 48]),
           nina_tone: s.ninaTone ?? 'casual',
           nina_silence_hours: s.ninaSilenceHours ?? 24,
       });

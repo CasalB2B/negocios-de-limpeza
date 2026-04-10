@@ -9,17 +9,8 @@ import { useData } from '../../components/DataContext';
 const STORAGE_KEY = 'ndl_whatsapp_templates';
 const PROMPT_STORAGE_KEY = 'ndl_nina_prompt';
 
-interface FollowUpStep {
-  hours: number;
-  message: string;
-}
-
-const DEFAULT_FOLLOWUP_STEPS: FollowUpStep[] = [
-  { hours: 2, message: 'Olá, [Nome]! 👋 Passando para ver se ainda tem interesse no orçamento de [Servico]. Qualquer dúvida é só responder aqui!' },
-  { hours: 24, message: 'Oi, [Nome]! Sua proposta de [Servico] ainda está disponível. Posso agendar uma visita ou tirar alguma dúvida? 😊' },
-];
-
-const HOUR_OPTIONS = [1, 2, 4, 6, 12, 24, 48, 72];
+const CHAT_HOUR_OPTIONS  = [1, 2, 4, 6, 12, 24];
+const HUMAN_HOUR_OPTIONS = [12, 24, 48, 72, 96, 168];
 
 function loadTemplates() {
   try {
@@ -70,8 +61,9 @@ export const AdminWhatsApp: React.FC = () => {
   const [testResult, setTestResult] = useState<'ok' | 'err' | null>(null);
   const [sending, setSending] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
-  const [followUpSteps, setFollowUpSteps] = useState<FollowUpStep[]>(DEFAULT_FOLLOWUP_STEPS);
-  const [followUpSaved, setFollowUpSaved] = useState(false);
+  const [followUpChatHours,    setFollowUpChatHours]    = useState<number>(2);
+  const [followUpHumanDelays,  setFollowUpHumanDelays]  = useState<number[]>([24, 48]);
+  const [followUpSaved,        setFollowUpSaved]        = useState(false);
 
   // Nina trainer
   const [ninaHistory, setNinaHistory] = useState<GeminiMessage[]>([]);
@@ -87,12 +79,11 @@ export const AdminWhatsApp: React.FC = () => {
     if (platformSettings.botPrompt) setNinaPrompt(platformSettings.botPrompt);
   }, [platformSettings.botPrompt]);
 
-  // Sync followUpSteps from Supabase
+  // Sync follow-up config from Supabase
   useEffect(() => {
-    if (platformSettings.followUpSteps) {
-      try { setFollowUpSteps(JSON.parse(platformSettings.followUpSteps)); } catch { /* use default */ }
-    }
-  }, [platformSettings.followUpSteps]);
+    if (platformSettings.followUpChatHours)   setFollowUpChatHours(platformSettings.followUpChatHours);
+    if (platformSettings.followUpHumanDelays) setFollowUpHumanDelays(platformSettings.followUpHumanDelays);
+  }, [platformSettings.followUpChatHours, platformSettings.followUpHumanDelays]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -177,22 +168,13 @@ export const AdminWhatsApp: React.FC = () => {
   };
 
   const handleSaveFollowUp = async () => {
-    await updatePlatformSettings({ ...platformSettings, followUpSteps: JSON.stringify(followUpSteps) });
+    await updatePlatformSettings({
+      ...platformSettings,
+      followUpChatHours: followUpChatHours,
+      followUpHumanDelays: followUpHumanDelays,
+    });
     setFollowUpSaved(true);
     setTimeout(() => setFollowUpSaved(false), 2500);
-  };
-
-  const updateStep = (i: number, field: keyof FollowUpStep, value: string | number) => {
-    setFollowUpSteps(steps => steps.map((s, idx) => idx === i ? { ...s, [field]: value } : s));
-  };
-
-  const addStep = () => {
-    const lastHours = followUpSteps[followUpSteps.length - 1]?.hours || 24;
-    setFollowUpSteps(s => [...s, { hours: lastHours * 2, message: 'Olá, [Nome]! Só passando para ver se posso ajudar com algo em relação ao serviço de [Servico]. 😊' }]);
-  };
-
-  const removeStep = (i: number) => {
-    setFollowUpSteps(s => s.filter((_, idx) => idx !== i));
   };
 
   const handleTest = async () => {
@@ -617,15 +599,16 @@ export const AdminWhatsApp: React.FC = () => {
               </div>
             </div>
 
-            {/* Coluna direita — Follow-up Sequencial */}
-            <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-5">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-4">
+            {/* Coluna direita — Follow-up Inteligente */}
+            <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-5 flex flex-col gap-4">
+
+              {/* Header + toggle */}
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Zap size={16} className="text-orange-500" />
                   <div>
-                    <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Follow-up Automático</p>
-                    <p className="text-xs text-gray-500">Sequência de mensagens para quem parou de responder</p>
+                    <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Follow-up Inteligente</p>
+                    <p className="text-xs text-gray-500">Nina retoma a conversa automaticamente</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -641,93 +624,92 @@ export const AdminWhatsApp: React.FC = () => {
                 </div>
               </div>
 
-              {/* Timeline */}
-              <div className="space-y-0">
-                {/* Trigger */}
-                <div className="flex items-center gap-3 mb-1">
-                  <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-darkBorder flex items-center justify-center shrink-0">
-                    <span className="text-sm">💬</span>
-                  </div>
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Cliente para de responder</span>
+              {/* Caixa de explicação */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-3 text-xs text-blue-800 dark:text-blue-300 space-y-1.5">
+                <p className="font-bold text-blue-700 dark:text-blue-200">💡 Como funciona</p>
+                <p>A Nina analisa o histórico da conversa e envia uma mensagem <strong>personalizada e natural</strong> — sem templates genéricos.</p>
+                <div className="mt-1 space-y-1">
+                  <p className="font-semibold text-blue-700 dark:text-blue-200">✅ Ative quando:</p>
+                  <p>• Quer recuperar leads que pararam de responder sem precisar fazer isso manualmente</p>
+                  <p>• Tem volume alto de conversas e não consegue acompanhar tudo</p>
                 </div>
-
-                {followUpSteps.map((step, i) => (
-                  <div key={i}>
-                    {/* Connector + delay */}
-                    <div className="flex items-center gap-2 ml-3.5 my-1">
-                      <div className="w-px h-3 bg-gray-200 dark:bg-darkBorder" />
-                      <div className="flex items-center gap-1.5 ml-1">
-                        <ChevronDown size={12} className="text-gray-400" />
-                        <div className="flex items-center gap-1 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg px-2 py-0.5">
-                          <span className="text-[10px] text-orange-600 font-bold">Aguarda</span>
-                          <select
-                            value={step.hours}
-                            onChange={e => updateStep(i, 'hours', Number(e.target.value))}
-                            className="text-[10px] font-bold text-orange-600 bg-transparent border-none outline-none cursor-pointer"
-                          >
-                            {HOUR_OPTIONS.map(h => (
-                              <option key={h} value={h}>{h}h</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Step card */}
-                    <div className="flex gap-2 ml-3.5">
-                      <div className="flex flex-col items-center">
-                        <div className="w-px h-2 bg-gray-200 dark:bg-darkBorder" />
-                        <div className="w-7 h-7 rounded-full bg-green-100 dark:bg-green-900/30 border-2 border-green-300 flex items-center justify-center shrink-0 text-xs font-bold text-green-700">
-                          {i + 1}
-                        </div>
-                      </div>
-                      <div className="flex-1 bg-gray-50 dark:bg-darkBg rounded-xl border border-gray-200 dark:border-darkBorder p-3 mb-0">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[10px] font-bold text-gray-400 uppercase">Mensagem {i + 1}</span>
-                          {followUpSteps.length > 1 && (
-                            <button
-                              onClick={() => removeStep(i)}
-                              className="text-red-400 hover:text-red-600 p-0.5 rounded transition-colors"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          )}
-                        </div>
-                        <textarea
-                          rows={3}
-                          value={step.message}
-                          onChange={e => updateStep(i, 'message', e.target.value)}
-                          placeholder="Ex: Olá, [Nome]! Ainda tem interesse no orçamento de [Servico]?"
-                          className="w-full text-xs text-darkText dark:text-darkTextPrimary bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder rounded-lg p-2 resize-none focus:outline-none focus:ring-2 focus:ring-green-300 font-mono"
-                        />
-                        <p className="text-[9px] text-gray-400 mt-1">Use <span className="font-mono">[Nome]</span> e <span className="font-mono">[Servico]</span></p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Add step */}
-                <div className="flex items-center gap-2 ml-3.5 mt-2">
-                  <div className="w-px h-3 bg-gray-200 dark:bg-darkBorder" />
-                  <button
-                    onClick={addStep}
-                    className="ml-1 flex items-center gap-1.5 text-xs font-bold text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg px-3 py-1.5 transition-colors"
-                  >
-                    <Plus size={12} /> Adicionar etapa
-                  </button>
+                <div className="space-y-1">
+                  <p className="font-semibold text-blue-700 dark:text-blue-200">⏸ Desative quando:</p>
+                  <p>• Prefere fazer o follow-up pessoalmente com cada cliente</p>
+                  <p>• Está em período de baixo volume e quer controle total</p>
                 </div>
+              </div>
+
+              {/* Cenário 1 */}
+              <div className="bg-gray-50 dark:bg-darkBg rounded-xl border border-gray-200 dark:border-darkBorder p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-base">💬</span>
+                  <div>
+                    <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary">Cliente parou no meio da conversa</p>
+                    <p className="text-[10px] text-gray-400">Ainda não recebeu orçamento</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-[11px] text-gray-500">Nina tenta retomar após</span>
+                  <div className="flex items-center gap-1 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg px-2 py-1">
+                    <Clock size={11} className="text-orange-500" />
+                    <select
+                      value={followUpChatHours}
+                      onChange={e => setFollowUpChatHours(Number(e.target.value))}
+                      className="text-[11px] font-bold text-orange-600 bg-transparent border-none outline-none cursor-pointer"
+                    >
+                      {CHAT_HOUR_OPTIONS.map(h => <option key={h} value={h}>{h === 1 ? '1 hora' : `${h} horas`}</option>)}
+                    </select>
+                  </div>
+                  <span className="text-[11px] text-gray-400">sem resposta</span>
+                </div>
+                <p className="text-[10px] text-gray-400 mt-2 italic">Nina lê a conversa e manda uma mensagem para continuar de onde parou</p>
+              </div>
+
+              {/* Cenário 2 */}
+              <div className="bg-gray-50 dark:bg-darkBg rounded-xl border border-gray-200 dark:border-darkBorder p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-base">📋</span>
+                  <div>
+                    <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary">Cliente recebeu orçamento e sumiu</p>
+                    <p className="text-[10px] text-gray-400">Até 2 tentativas de follow-up</p>
+                  </div>
+                </div>
+                <div className="space-y-2 mt-2">
+                  {[0, 1].map(i => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-gray-400 w-16">Tentativa {i + 1}</span>
+                      <div className="flex items-center gap-1 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg px-2 py-1">
+                        <Clock size={11} className="text-purple-500" />
+                        <select
+                          value={followUpHumanDelays[i] ?? (i === 0 ? 24 : 48)}
+                          onChange={e => {
+                            const next = [...followUpHumanDelays];
+                            next[i] = Number(e.target.value);
+                            setFollowUpHumanDelays(next);
+                          }}
+                          className="text-[11px] font-bold text-purple-600 bg-transparent border-none outline-none cursor-pointer"
+                        >
+                          {HUMAN_HOUR_OPTIONS.map(h => <option key={h} value={h}>{h < 24 ? `${h}h` : `${h / 24}d`}</option>)}
+                        </select>
+                      </div>
+                      <span className="text-[11px] text-gray-400">após o orçamento</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-gray-400 mt-2 italic">Nina relê o histórico e faz o follow-up de forma natural, sem pressionar</p>
               </div>
 
               {/* Save button */}
               <button
                 onClick={handleSaveFollowUp}
-                className={`mt-5 w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                className={`w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
                   followUpSaved
                     ? 'bg-green-100 text-green-700 border border-green-200'
                     : 'bg-green-600 text-white hover:bg-green-700'
                 }`}
               >
-                {followUpSaved ? <><CheckCircle size={15} /> Fluxo salvo!</> : <><Save size={15} /> Salvar fluxo</>}
+                {followUpSaved ? <><CheckCircle size={15} /> Salvo!</> : <><Save size={15} /> Salvar configuração</>}
               </button>
             </div>
 

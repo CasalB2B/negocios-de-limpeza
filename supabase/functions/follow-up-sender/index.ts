@@ -1,11 +1,17 @@
-// Supabase Edge Function — Follow-up Automático
+// Supabase Edge Function — Follow-up Inteligente com Nina
 // Chamada a cada 30 minutos via pg_cron
-// Lida com dois cenários:
-// 1. Cliente parou no meio do fluxo (step: chat) → re-engajamento simples após 2h
-// 2. Cliente recebeu orçamento e sumiu (step: human) → steps configurados no painel
+// Nina lê o histórico e gera mensagens contextuais — sem templates fixos
+//
+// Cenário 1: Cliente parou no meio do fluxo (step: chat)
+//   → após `follow_up_hours` horas, Nina retoma naturalmente (1 tentativa)
+//
+// Cenário 2: Cliente recebeu orçamento e sumiu (step: human)
+//   → após delays configurados em `follow_up_steps` (JSON array [24, 48]), Nina faz follow-up (até 2 tentativas)
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+const GEMINI_API_KEY     = Deno.env.get('GEMINI_API_KEY') || '';
+const GEMINI_MODEL       = 'gemini-2.5-flash';
 const EVOLUTION_URL      = Deno.env.get('EVOLUTION_URL') || '';
 const EVOLUTION_KEY      = Deno.env.get('EVOLUTION_KEY') || '';
 const EVOLUTION_INSTANCE = Deno.env.get('EVOLUTION_INSTANCE') || '';
@@ -15,8 +21,7 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
-interface FollowUpStep { hours: number; message: string; }
-
+// ── Envia mensagem via Evolution API ────────────────────────────────────────
 async function sendWhatsApp(phone: string, text: string): Promise<boolean> {
   if (phone.includes('@lid')) {
     console.warn('[FOLLOWUP] pulando @lid:', phone);
@@ -42,23 +47,110 @@ async function sendWhatsApp(phone: string, text: string): Promise<boolean> {
   }
 }
 
+// ── Gera mensagem de follow-up via Gemini ────────────────────────────────────
+async function generateFollowUp(
+  history: Array<{ role: string; parts: { text: string }[] }>,
+  scenario: 'chat' | 'human',
+  hoursElapsed: number,
+  pushName: string,
+): Promise<string> {
+  if (!GEMINI_API_KEY) {
+    console.error('[FOLLOWUP] GEMINI_API_KEY não configurada');
+    return '';
+  }
+
+  const firstName = pushName.split(' ')[0] || '';
+
+  // Monta o histórico como texto para contexto
+  const historyText = (history || [])
+    .filter(m => m.parts?.[0]?.text)
+    .slice(-12)
+    .map(m => {
+      const txt = m.parts[0].text
+        .replace(/<<QUOTE_DATA>>[\s\S]*?<<END_QUOTE>>/g, '[orçamento coletado]')
+        .replace(/<<HUMAN_HANDOFF>>/g, '')
+        .trim();
+      return txt ? `${m.role === 'user' ? 'Cliente' : 'Nina'}: ${txt}` : null;
+    })
+    .filter(Boolean)
+    .join('\n');
+
+  const scenarioInstruction = scenario === 'chat'
+    ? `O cliente ${firstName ? `(${firstName}) ` : ''}parou de responder há ${Math.round(hoursElapsed)} hora(s) no meio da conversa de orçamento. Escreva UMA mensagem curta e natural para retomar a conversa de onde parou. Não se apresente novamente. Seja genuína e interessada em ajudar. Máximo 2 linhas.`
+    : `O cliente ${firstName ? `(${firstName}) ` : ''}recebeu o orçamento há ${Math.round(hoursElapsed)} hora(s) e não respondeu. Escreva UMA mensagem de follow-up natural. Pergunte se surgiu alguma dúvida ou se pode ajudar. Não pressione, seja amigável. Máximo 2 linhas.`;
+
+  const systemInstruction = `Você é a Nina, assistente da Negócios de Limpeza (empresa de limpeza profissional em Guarapari, ES). Você está fazendo um follow-up pelo WhatsApp.
+
+${scenarioInstruction}
+
+REGRAS:
+- Escreva APENAS a mensagem, sem aspas, sem explicação, sem prefixo
+- Tom casual e humano, como num WhatsApp de verdade
+- No máximo 1 emoji — ou nenhum
+- Nunca diga que é robô ou IA
+- Use o nome do cliente se souber
+
+HISTÓRICO DA CONVERSA:
+${historyText || '(sem histórico)'}`;
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemInstruction }] },
+          contents: [{ role: 'user', parts: [{ text: 'Escreva a mensagem de follow-up agora.' }] }],
+          generationConfig: { temperature: 0.75, maxOutputTokens: 150 },
+        }),
+      }
+    );
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    if (!text) console.warn('[FOLLOWUP] Gemini retornou texto vazio:', JSON.stringify(data).slice(0, 300));
+    return text;
+  } catch (e) {
+    console.error('[FOLLOWUP] Gemini exception:', e);
+    return '';
+  }
+}
+
+// ── Main handler ─────────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
-  if (req.method !== 'GET' && req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
+  if (req.method !== 'GET' && req.method !== 'POST')
+    return new Response('Method not allowed', { status: 405 });
 
   console.log('[FOLLOWUP] iniciando varredura...');
 
   // Busca configurações
   const { data: cfg } = await supabase
     .from('platform_settings')
-    .select('follow_up_enabled, follow_up_steps')
+    .select('follow_up_enabled, follow_up_hours, follow_up_steps')
     .eq('id', 1)
     .single();
 
   const followUpEnabled = cfg?.follow_up_enabled ?? false;
-  let configuredSteps: FollowUpStep[] = [];
-  try { configuredSteps = cfg?.follow_up_steps ? JSON.parse(cfg.follow_up_steps) : []; } catch { /* ignora */ }
+  if (!followUpEnabled) {
+    console.log('[FOLLOWUP] desativado nas configurações.');
+    return new Response(JSON.stringify({ ok: true, sent: 0, reason: 'disabled' }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 
-  // Busca todas as sessões que têm lastUserMessageAt
+  // Cenário 1: horas para re-engajar quem parou no meio do fluxo
+  const chatHours: number = cfg?.follow_up_hours ?? 2;
+
+  // Cenário 2: delays (em horas) para follow-up pós-orçamento
+  let humanDelays: number[] = [24, 48];
+  try {
+    const parsed = JSON.parse(cfg?.follow_up_steps || '');
+    if (Array.isArray(parsed) && parsed.every((n: unknown) => typeof n === 'number')) {
+      humanDelays = parsed;
+    }
+  } catch { /* usa default */ }
+
+  // Busca todas as sessões
   const { data: sessions, error } = await supabase
     .from('whatsapp_sessions')
     .select('phone, history, meta, updated_at');
@@ -75,58 +167,61 @@ Deno.serve(async (req) => {
     const meta = session.meta || {};
     const phone: string = session.phone;
 
-    // Ignora @lid
-    if (phone.includes('@lid')) continue;
+    if (phone.includes('@lid')) continue;       // não envia para @lid
+    if (meta.adminReplied)       continue;       // admin no controle — Nina não interfere
 
-    // Ignora se admin está atendendo
-    if (meta.adminReplied) continue;
-
-    const step = meta.step as string || 'chat';
-    const lastUserAt = meta.lastUserMessageAt;
+    const step         = (meta.step as string) || 'chat';
+    const lastUserAt   = meta.lastUserMessageAt;
     if (!lastUserAt) continue;
 
     const hoursElapsed = (now - new Date(lastUserAt).getTime()) / (1000 * 60 * 60);
-    const sentSteps: number[] = meta.followUpSentSteps || [];
-    const pushName: string = meta.pushName || '';
-    const firstName = pushName.split(' ')[0] || '';
+    const pushName     = (meta.pushName as string) || '';
+    const history      = session.history || [];
 
-    // ── CENÁRIO 1: Cliente parou no meio do fluxo (step: chat) ──
-    // Manda uma mensagem de re-engajamento simples após 2h
+    // ── CENÁRIO 1: parou no meio do fluxo ──────────────────────────────────
     if (step === 'chat') {
       const reengageSent = meta.reengageSent === true;
-      if (!reengageSent && hoursElapsed >= 2) {
-        const msg = firstName
-          ? `Oi, ${firstName}! Tudo bem? Ainda consigo te ajudar com o orçamento 😊`
-          : `Oi! Tudo bem? Ainda consigo te ajudar com o orçamento 😊`;
-        console.log(`[FOLLOWUP] re-engajamento para ${phone} (${hoursElapsed.toFixed(1)}h no fluxo)`);
+      if (!reengageSent && hoursElapsed >= chatHours) {
+        console.log(`[FOLLOWUP] gerando re-engajamento para ${phone} (${hoursElapsed.toFixed(1)}h)`);
+        const msg = await generateFollowUp(history, 'chat', hoursElapsed, pushName);
+        if (!msg) { console.warn('[FOLLOWUP] Gemini não gerou mensagem para', phone); continue; }
+
         const ok = await sendWhatsApp(phone, msg);
         if (ok) {
+          // Salva a mensagem no histórico e marca como enviado
+          const newHistory = [...history, { role: 'model', parts: [{ text: msg }] }];
           await supabase.from('whatsapp_sessions')
-            .update({ meta: { ...meta, reengageSent: true } })
+            .update({ history: newHistory, meta: { ...meta, reengageSent: true, lastBotMessageAt: new Date().toISOString() } })
             .eq('phone', phone);
           sent++;
         }
       }
-      continue; // follow-up de orçamento não se aplica aqui
+      continue; // follow-up pós-orçamento não se aplica aqui
     }
 
-    // ── CENÁRIO 2: Orçamento enviado, cliente sumiu (step: human) ──
-    if (step === 'human' && followUpEnabled && configuredSteps.length > 0) {
-      for (let i = 0; i < configuredSteps.length; i++) {
+    // ── CENÁRIO 2: orçamento enviado, cliente sumiu ─────────────────────────
+    if (step === 'human') {
+      const sentSteps: number[] = meta.followUpSentSteps || [];
+
+      for (let i = 0; i < humanDelays.length; i++) {
         if (sentSteps.includes(i)) continue;
-        if (hoursElapsed >= configuredSteps[i].hours) {
-          const text = configuredSteps[i].message
-            .replace(/\[Nome\]/gi, firstName || 'tudo bem')
-            .replace(/\[Serviço\]/gi, 'sua limpeza');
-          console.log(`[FOLLOWUP] step ${i + 1} pós-orçamento para ${phone} (${hoursElapsed.toFixed(1)}h)`);
-          const ok = await sendWhatsApp(phone, text);
+        if (hoursElapsed >= humanDelays[i]) {
+          console.log(`[FOLLOWUP] gerando follow-up ${i + 1} pós-orçamento para ${phone} (${hoursElapsed.toFixed(1)}h)`);
+          const msg = await generateFollowUp(history, 'human', hoursElapsed, pushName);
+          if (!msg) { console.warn('[FOLLOWUP] Gemini não gerou mensagem para', phone); break; }
+
+          const ok = await sendWhatsApp(phone, msg);
           if (ok) {
+            const newHistory = [...history, { role: 'model', parts: [{ text: msg }] }];
             await supabase.from('whatsapp_sessions')
-              .update({ meta: { ...meta, followUpSentSteps: [...sentSteps, i] } })
+              .update({
+                history: newHistory,
+                meta: { ...meta, followUpSentSteps: [...sentSteps, i], lastBotMessageAt: new Date().toISOString() },
+              })
               .eq('phone', phone);
             sent++;
           }
-          break;
+          break; // uma tentativa por ciclo de 30 min
         }
       }
     }
