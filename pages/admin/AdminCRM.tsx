@@ -535,12 +535,29 @@ export const AdminCRM: React.FC = () => {
     try {
       const clean = selected.whatsapp.replace(/\D/g, '');
       const withCountry = clean.startsWith('55') ? clean : '55' + clean;
+
+      // Fetch current session to preserve history and other meta fields
+      const { data } = await supabase
+        .from('whatsapp_sessions')
+        .select('history, meta')
+        .in('phone', [clean, withCountry])
+        .order('updated_at', { ascending: false })
+        .limit(1);
+
+      const currentHistory = data?.[0]?.history || [];
+      const currentMeta = data?.[0]?.meta || {};
+
+      // Remove only the admin-takeover flags, keep everything else
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { adminReplied, adminRepliedAt, lastActivityAt, ...cleanMeta } = currentMeta as Record<string, unknown>;
+
       await supabase.from('whatsapp_sessions').upsert(
-        { phone: withCountry, history: [], meta: {}, updated_at: new Date().toISOString() },
+        { phone: withCountry, history: currentHistory, meta: { ...cleanMeta, step: 'chat' }, updated_at: new Date().toISOString() },
         { onConflict: 'phone' }
       );
-      setChatMessages([]);
-      setSessionMeta({});
+
+      // Update local meta state — keep existing chat messages visible
+      setSessionMeta({ ...cleanMeta, step: 'chat' });
     } finally {
       setReactivatingNina(false);
     }

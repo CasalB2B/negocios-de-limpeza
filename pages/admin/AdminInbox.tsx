@@ -4,7 +4,7 @@ import { UserRole } from '../../types';
 import { supabase } from '../../lib/supabase';
 import {
   MessageCircle, Send, Search, RefreshCw, Bot, User,
-  ChevronLeft, Phone, Inbox, Trash2, X,
+  ChevronLeft, Phone, Inbox, Trash2, X, Zap, BellOff,
 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -97,6 +97,8 @@ export const AdminInbox: React.FC = () => {
   const [search,    setSearch]    = useState('');
   const [showList,  setShowList]  = useState(true);
   const [connected, setConnected] = useState(false);
+  const [silencingNina,    setSilencingNina]    = useState(false);
+  const [reactivatingNina, setReactivatingNina] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const channelRef     = useRef<any>(null);
   const inputRef       = useRef<HTMLInputElement>(null);
@@ -201,6 +203,49 @@ export const AdminInbox: React.FC = () => {
     setSessions([]);
     setSelected(null);
     setShowList(true);
+  };
+
+  // ── Silenciar Nina ────────────────────────────────────────────────────────
+  const handleSilenceNina = async () => {
+    if (!selected || silencingNina) return;
+    setSilencingNina(true);
+    try {
+      const now = new Date().toISOString();
+      const newMeta = {
+        ...selected.meta,
+        adminReplied: true,
+        adminRepliedAt: now,
+        lastActivityAt: now,
+      };
+      await supabase.from('whatsapp_sessions')
+        .update({ meta: newMeta, updated_at: now })
+        .eq('phone', selected.phone);
+      // Update local state immediately
+      setSelected(prev => prev ? { ...prev, meta: newMeta } : prev);
+      setSessions(prev => prev.map(s => s.phone === selected.phone ? { ...s, meta: newMeta } : s));
+    } finally {
+      setSilencingNina(false);
+    }
+  };
+
+  // ── Reativar Nina ─────────────────────────────────────────────────────────
+  const handleReactivateNina = async () => {
+    if (!selected || reactivatingNina) return;
+    setReactivatingNina(true);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { adminReplied, adminRepliedAt, lastActivityAt, ...cleanMeta } = selected.meta as Record<string, unknown>;
+      const newMeta = { ...cleanMeta, step: 'chat' };
+      const now = new Date().toISOString();
+      await supabase.from('whatsapp_sessions')
+        .update({ meta: newMeta, updated_at: now })
+        .eq('phone', selected.phone);
+      // Update local state immediately
+      setSelected(prev => prev ? { ...prev, meta: newMeta } : prev);
+      setSessions(prev => prev.map(s => s.phone === selected.phone ? { ...s, meta: newMeta } : s));
+    } finally {
+      setReactivatingNina(false);
+    }
   };
 
   // ── Send ──────────────────────────────────────────────────────────────────
@@ -318,9 +363,10 @@ export const AdminInbox: React.FC = () => {
                 const name    = getName(s.phone, s.meta);
                 const lastMsg = getLastMsg(s.history);
                 const unread  = isUnread(s);
-                const human   = s.meta?.step === 'human';
-                const active  = selected?.phone === s.phone;
-                const color   = human ? '#f97316' : avatarColor(s.phone);
+                const human        = s.meta?.step === 'human';
+                const adminControl = !!s.meta?.adminReplied;
+                const active       = selected?.phone === s.phone;
+                const color        = adminControl ? '#f59e0b' : human ? '#f97316' : avatarColor(s.phone);
 
                 return (
                   <div
@@ -349,7 +395,9 @@ export const AdminInbox: React.FC = () => {
                         {unread && <span className="w-2 h-2 bg-green-500 rounded-full shrink-0" />}
                       </div>
                       <div className="mt-0.5">
-                        {human
+                        {adminControl
+                          ? <span className="text-[10px] text-amber-500 font-semibold flex items-center gap-0.5"><User size={9} /> Admin no controle</span>
+                          : human
                           ? <span className="text-[10px] text-orange-500 font-semibold flex items-center gap-0.5"><User size={9} /> Aguarda humano</span>
                           : <span className="text-[10px] text-green-500 font-semibold flex items-center gap-0.5"><Bot size={9} /> Nina ativa</span>
                         }
@@ -407,14 +455,46 @@ export const AdminInbox: React.FC = () => {
                     <p className="text-xs text-gray-400">{fmtPhone(selected.phone)}</p>
                   </div>
 
-                  {selected.meta?.step === 'human'
-                    ? <span className="text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 font-bold px-3 py-1 rounded-xl flex items-center gap-1 shrink-0">
-                        <User size={11} /> Aguarda humano
+                  {/* Nina status badge + action button */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* Status badge */}
+                    {selected.meta?.adminReplied ? (
+                      <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-semibold px-2.5 py-1 rounded-xl flex items-center gap-1">
+                        <User size={10} /> Admin no controle
                       </span>
-                    : <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold px-3 py-1 rounded-xl flex items-center gap-1 shrink-0">
-                        <Bot size={11} /> Nina ativa
+                    ) : selected.meta?.step === 'human' ? (
+                      <span className="text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 font-semibold px-2.5 py-1 rounded-xl flex items-center gap-1">
+                        <User size={10} /> Aguarda humano
                       </span>
-                  }
+                    ) : (
+                      <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-semibold px-2.5 py-1 rounded-xl flex items-center gap-1">
+                        <Bot size={10} /> Nina ativa
+                      </span>
+                    )}
+
+                    {/* Action button */}
+                    {selected.meta?.adminReplied ? (
+                      <button
+                        onClick={handleReactivateNina}
+                        disabled={reactivatingNina}
+                        title="Reativar Nina nesta conversa"
+                        className="flex items-center gap-1 text-xs bg-green-500 hover:bg-green-600 text-white font-bold px-3 py-1.5 rounded-xl transition-colors disabled:opacity-50 shadow-sm"
+                      >
+                        {reactivatingNina ? <RefreshCw size={11} className="animate-spin" /> : <Zap size={11} />}
+                        {reactivatingNina ? 'Reativando...' : 'Reativar Nina'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleSilenceNina}
+                        disabled={silencingNina}
+                        title="Silenciar Nina e assumir conversa"
+                        className="flex items-center gap-1 text-xs bg-gray-100 hover:bg-red-100 dark:bg-darkBorder dark:hover:bg-red-900/30 text-gray-500 hover:text-red-600 dark:text-darkTextSecondary dark:hover:text-red-400 font-bold px-3 py-1.5 rounded-xl transition-colors disabled:opacity-50"
+                      >
+                        {silencingNina ? <RefreshCw size={11} className="animate-spin" /> : <BellOff size={11} />}
+                        {silencingNina ? 'Silenciando...' : 'Silenciar Nina'}
+                      </button>
+                    )}
+                  </div>
                   <button
                     onClick={() => deleteSession(selected.phone)}
                     title="Apagar conversa"

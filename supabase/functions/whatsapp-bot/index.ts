@@ -336,12 +336,12 @@ Deno.serve(async (req) => {
       const adminTextLower = adminText.toLowerCase();
       const { history: sess, meta: sessMeta } = await getSession(fromPhone);
 
-      // Comando especial: #nina reativa a Nina para esse número
+      // Comando especial: #nina reativa a Nina para esse número (zera histórico)
       if (adminTextLower === '#nina') {
         await saveSession(fromPhone, [], {});
-        console.log('[BOT] Nina reativada via #nina para:', fromPhone);
+        console.log('[BOT] Nina reativada via #nina (histórico zerado) para:', fromPhone);
       } else {
-        // Detecta mensagem de encerramento — Nina retoma automaticamente
+        // Detecta mensagem de encerramento — Nina retoma automaticamente preservando histórico
         const farewellPhrases = [
           'qualquer dúvida', 'qualquer coisa', 'até logo', 'até mais', 'até breve',
           'tchau', 'bom dia', 'boa tarde', 'boa noite', 'obrigado por entrar',
@@ -352,9 +352,10 @@ Deno.serve(async (req) => {
         const isFarewell = farewellPhrases.some(p => adminTextLower.includes(p));
 
         if (isFarewell && sessMeta.adminReplied) {
-          // Encerramento detectado → reset → Nina retoma
-          await saveSession(fromPhone, [], {});
-          console.log('[BOT] Encerramento detectado, Nina reativada para:', fromPhone);
+          // Encerramento detectado → preserva histórico, só remove adminReplied
+          const { adminReplied, adminRepliedAt, lastActivityAt, ...cleanMeta } = sessMeta;
+          await saveSession(fromPhone, sess, { ...cleanMeta, step: 'chat' });
+          console.log('[BOT] Encerramento detectado, Nina reativada (histórico preservado) para:', fromPhone);
         } else if (!sessMeta.adminReplied) {
           // Primeira resposta do admin — marca silêncio da Nina
           await saveSession(fromPhone, sess, {
@@ -495,8 +496,13 @@ Deno.serve(async (req) => {
       : 999;
 
     if (hoursSinceActivity >= silenceHours) {
-      console.log(`[BOT] Inatividade ${hoursSinceActivity.toFixed(1)}h >= ${silenceHours}h — Nina reativada para:`, phone);
-      await saveSession(phone, [], {});
+      console.log(`[BOT] Inatividade ${hoursSinceActivity.toFixed(1)}h >= ${silenceHours}h — Nina reativada (histórico preservado) para:`, phone);
+      // Remove adminReplied mas preserva histórico e pushName
+      const { adminReplied, adminRepliedAt, lastActivityAt, ...cleanMeta } = sessionMeta;
+      await saveSession(phone, history, { ...cleanMeta, step: 'chat' });
+      // Atualiza sessionMeta local para o fluxo abaixo usar corretamente
+      Object.assign(sessionMeta, cleanMeta);
+      sessionMeta.adminReplied = undefined;
       // Cai no fluxo normal abaixo
     } else {
       await saveSession(phone, history, { ...sessionMeta, lastActivityAt: new Date().toISOString() });
@@ -644,7 +650,11 @@ Deno.serve(async (req) => {
     : history;
 
   // Chama Gemini
-  const activePrompt = await getPromptForPhone(phone);
+  let activePrompt = await getPromptForPhone(phone);
+  // Se já tem histórico (conversa retomada), instrui Nina a não se reapresentar
+  if (history.length > 2) {
+    activePrompt += `\n\nCONTEXTO: Você já está em conversa com este cliente. NÃO se reapresente, NÃO diga "Olá, sou a Nina". Continue a conversa de onde parou, de forma natural, como se fosse uma resposta normal.`;
+  }
   const rawResponse = await callGemini(geminiHistory, activePrompt);
   const cleanedText = cleanResponse(rawResponse);
   const quoteData = extractQuoteData(rawResponse);
