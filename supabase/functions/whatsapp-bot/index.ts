@@ -474,6 +474,28 @@ Deno.serve(async (req) => {
 
   // --- Busca sessão ---
   const { history, meta: sessionMeta } = await getSession(phone);
+
+  // ── Primeiro contato → cria lead na pipeline imediatamente ──
+  if (history.length === 0 && !phone.includes('@lid')) {
+    const { data: existingQ } = await supabase
+      .from('quotes').select('id').eq('whatsapp', phone).limit(1).maybeSingle();
+    if (!existingQ) {
+      await supabase.from('quotes').insert({
+        name: pushName || '',
+        whatsapp: phone,
+        status: 'NEW',
+        source: 'whatsapp',
+        chat_summary: 'Em conversa com Nina',
+      });
+      await supabase.from('page_analytics').insert({
+        event_type: 'whatsapp_contact',
+        source: 'whatsapp',
+        session_id: phone,
+      }).catch(() => {});
+      console.log('[BOT] Lead criado na pipeline para:', phone);
+    }
+  }
+
   // Salva pushName se ainda não estiver na sessão
   if (pushName && !sessionMeta.pushName) {
     await saveSession(phone, history, { ...sessionMeta, pushName });
@@ -693,9 +715,9 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   }
 
-  // Orçamento completo → salva e encerra
+  // Orçamento completo → atualiza lead existente ou cria novo
   if (quoteData && quoteData.name) {
-    const { data: savedQuote } = await supabase.from('quotes').insert({
+    const quotePayload = {
       name: quoteData.name || '',
       email: quoteData.email || '',
       whatsapp: phone,
@@ -712,7 +734,31 @@ Deno.serve(async (req) => {
         .map(m => `Cliente: ${m.parts[0].text}`)
         .join('\n'),
       source: 'whatsapp',
-    }).select().single();
+    };
+
+    // Tenta atualizar lead existente para este telefone
+    const { data: existingQuote } = await supabase
+      .from('quotes').select('id').eq('whatsapp', phone)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+
+    let savedQuote: any;
+    if (existingQuote) {
+      const { data } = await supabase.from('quotes').update(quotePayload).eq('id', existingQuote.id).select().single();
+      savedQuote = data;
+      console.log('[BOT] Lead existente atualizado com orçamento completo:', phone);
+    } else {
+      const { data } = await supabase.from('quotes').insert(quotePayload).select().single();
+      savedQuote = data;
+    }
+
+    // Registra conclusão nos analytics
+    await supabase.from('page_analytics').insert({
+      event_type: 'whatsapp_completed',
+      source: 'whatsapp',
+      session_id: phone,
+    }).catch(() => {});
+
+    const _ = savedQuote; // usado abaixo se necessário
 
     // Auto-cadastro do cliente
     if (quoteData.email) {

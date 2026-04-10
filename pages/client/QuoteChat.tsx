@@ -5,6 +5,16 @@ import { useData } from '../../components/DataContext';
 import { UserRole } from '../../types';
 import { sendMessage, GeminiMessage, extractQuoteData, cleanAIResponse } from '../../lib/gemini';
 import { sendMessage as sendWhatsApp, buildMessage } from '../../lib/evolution';
+import { supabase } from '../../lib/supabase';
+
+// ── Analytics helpers ────────────────────────────────────────────────────────
+function trackEvent(eventType: string, sessionId: string) {
+  supabase.from('page_analytics').insert({
+    event_type: eventType,
+    source: 'web_chat',
+    session_id: sessionId,
+  }).then(); // fire and forget
+}
 
 const INITIAL_AI_MESSAGE = `Olá! 👋 Bem-vindo à **Negócios de Limpeza**!
 
@@ -40,6 +50,10 @@ export const QuoteChat: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  // Stable session ID for analytics (generated once per page load)
+  const analyticsSessionId = useRef(
+    typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `ws_${Date.now()}`
+  );
 
   // Demo mode: ?demo=true skips the chat and shows the onboarding screen with fake data
   // HashRouter puts params in the hash: /#/client/quote-chat?demo=true
@@ -67,6 +81,11 @@ export const QuoteChat: React.FC = () => {
     if (currentUser) navigate('/client/dashboard');
   }, [currentUser, navigate]);
 
+  // Track page view on mount
+  useEffect(() => {
+    if (!isDemo) trackEvent('page_view', analyticsSessionId.current);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
@@ -87,6 +106,9 @@ export const QuoteChat: React.FC = () => {
     setChatPhotos([]);
     setIsLoading(true);
     setApiError(null);
+
+    // Track first user message
+    if (messages.length === 1 && !isDemo) trackEvent('chat_started', analyticsSessionId.current);
 
     try {
       // Build Gemini history (skip the hardcoded initial message — it's in system prompt)
@@ -186,6 +208,7 @@ export const QuoteChat: React.FC = () => {
         setSavedName((quoteData.name || '').split(' ')[0]);
         setCredentials({ login: loginEmail, password: loginPassword });
         setIsComplete(true);
+        if (!isDemo) trackEvent('chat_completed', analyticsSessionId.current);
 
         // Envio automático de boas-vindas via WhatsApp
         if (quoteData.whatsapp) {
