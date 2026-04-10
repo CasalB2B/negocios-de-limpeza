@@ -480,6 +480,32 @@ Deno.serve(async (req) => {
   console.log('[DEBUG] phone:', phone, '| pushName:', pushName, '| step:', sessionMeta.step, '| history:', history.length);
 
   // -------------------------------------------------------
+  // ADMIN REPLIED — silencia Nina independente do step
+  // -------------------------------------------------------
+  if (sessionMeta.adminReplied) {
+    let silenceHours = 24;
+    try {
+      const { data: cfg } = await supabase.from('platform_settings').select('nina_silence_hours').eq('id', 1).single();
+      if (cfg?.nina_silence_hours) silenceHours = Number(cfg.nina_silence_hours);
+    } catch { /* usa padrão */ }
+
+    const lastActivity = sessionMeta.lastActivityAt || sessionMeta.adminRepliedAt;
+    const hoursSinceActivity = lastActivity
+      ? (Date.now() - new Date(lastActivity).getTime()) / (1000 * 60 * 60)
+      : 999;
+
+    if (hoursSinceActivity >= silenceHours) {
+      console.log(`[BOT] Inatividade ${hoursSinceActivity.toFixed(1)}h >= ${silenceHours}h — Nina reativada para:`, phone);
+      await saveSession(phone, [], {});
+      // Cai no fluxo normal abaixo
+    } else {
+      await saveSession(phone, history, { ...sessionMeta, lastActivityAt: new Date().toISOString() });
+      console.log(`[BOT] Admin handling, Nina silent (${hoursSinceActivity.toFixed(1)}h/${silenceHours}h) for:`, phone);
+      return new Response('ignored', { status: 200 });
+    }
+  }
+
+  // -------------------------------------------------------
   // STEP: HUMAN — atendente humano assume
   // -------------------------------------------------------
   if (sessionMeta.step === 'human') {
