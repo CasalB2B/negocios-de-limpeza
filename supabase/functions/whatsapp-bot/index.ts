@@ -597,8 +597,13 @@ Deno.serve(async (req) => {
   // Adiciona resposta ao histórico
   history.push({ role: 'model', parts: [{ text: rawResponse }] });
 
-  // Salva sessão
-  await saveSession(phone, history, { step: 'chat' });
+  // Salva sessão — atualiza lastUserMessageAt para o follow-up saber quando o cliente parou
+  await saveSession(phone, history, {
+    step: 'chat',
+    pushName: sessionMeta.pushName || pushName || '',
+    lastUserMessageAt: new Date().toISOString(),
+    followUpSentSteps: [], // reseta follow-up ao receber nova mensagem do cliente
+  });
 
   // Envia resposta (já sem os marcadores internos)
   if (cleanedText) await sendWhatsApp(phone, cleanedText);
