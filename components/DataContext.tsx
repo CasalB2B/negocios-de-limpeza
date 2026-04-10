@@ -64,6 +64,7 @@ export interface PlatformSettings {
   followUpMessage?: string;
   followUpSteps?: string;
   ninaTone?: string;
+  ninaSilenceHours?: number; // horas de inatividade para reativar Nina automaticamente
 }
 
 export interface Service {
@@ -435,6 +436,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 followUpMessage: settingsData.follow_up_message || '',
                 followUpSteps: settingsData.follow_up_steps || '',
                 ninaTone: settingsData.nina_tone || 'casual',
+                ninaSilenceHours: settingsData.nina_silence_hours ?? 24,
             });
         }
 
@@ -939,6 +941,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           follow_up_message: s.followUpMessage ?? null,
           follow_up_steps: s.followUpSteps ?? null,
           nina_tone: s.ninaTone ?? 'casual',
+          nina_silence_hours: s.ninaSilenceHours ?? 24,
       });
       if (error) console.error("Erro ao salvar configurações:", error);
   };

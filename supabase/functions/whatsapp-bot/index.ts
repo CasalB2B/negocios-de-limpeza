@@ -315,15 +315,45 @@ Deno.serve(async (req) => {
     const fromPhone = extractPhone(data?.key?.remoteJid || '');
     if (fromPhone && !data?.key?.remoteJid?.includes('@g.us')) {
       const adminText = extractText(data?.message)?.trim() || '';
+      const adminTextLower = adminText.toLowerCase();
       const { history: sess, meta: sessMeta } = await getSession(fromPhone);
+
       // Comando especial: #nina reativa a Nina para esse número
-      if (adminText.toLowerCase() === '#nina') {
+      if (adminTextLower === '#nina') {
         await saveSession(fromPhone, [], {});
-        console.log('[BOT] Nina reativada para:', fromPhone);
-      } else if (sessMeta.step === 'human' && !sessMeta.adminReplied) {
-        // Primeira resposta do admin — marca silêncio da Nina
-        await saveSession(fromPhone, sess, { ...sessMeta, adminReplied: true, adminRepliedAt: new Date().toISOString() });
-        console.log('[BOT] Admin assumiu conversa com:', fromPhone);
+        console.log('[BOT] Nina reativada via #nina para:', fromPhone);
+      } else {
+        // Detecta mensagem de encerramento — Nina retoma automaticamente
+        const farewellPhrases = [
+          'qualquer dúvida', 'qualquer coisa', 'até logo', 'até mais', 'até breve',
+          'tchau', 'bom dia', 'boa tarde', 'boa noite', 'obrigado por entrar',
+          'estamos à disposição', 'pode contar', 'foi um prazer', 'encerrando',
+          'encerrado', 'atendimento encerrado', 'sucesso', 'ótimo atendimento',
+          'resolvido', 'problema resolvido', 'tudo certo', 'tudo resolvido',
+        ];
+        const isFarewell = farewellPhrases.some(p => adminTextLower.includes(p));
+
+        if (isFarewell && sessMeta.adminReplied) {
+          // Encerramento detectado → reset → Nina retoma
+          await saveSession(fromPhone, [], {});
+          console.log('[BOT] Encerramento detectado, Nina reativada para:', fromPhone);
+        } else if (!sessMeta.adminReplied) {
+          // Primeira resposta do admin — marca silêncio da Nina
+          await saveSession(fromPhone, sess, {
+            ...sessMeta,
+            step: 'human',
+            adminReplied: true,
+            adminRepliedAt: new Date().toISOString(),
+            lastActivityAt: new Date().toISOString(),
+          });
+          console.log('[BOT] Admin assumiu conversa com:', fromPhone);
+        } else {
+          // Admin continua respondendo — atualiza timestamp de atividade
+          await saveSession(fromPhone, sess, {
+            ...sessMeta,
+            lastActivityAt: new Date().toISOString(),
+          });
+        }
       }
     }
     return new Response('ignored', { status: 200 });
@@ -394,10 +424,34 @@ Deno.serve(async (req) => {
   // STEP: HUMAN — atendente humano assume
   // -------------------------------------------------------
   if (sessionMeta.step === 'human') {
-    // Admin já assumiu a conversa — Nina fica completamente em silêncio
+    // Admin já assumiu a conversa — verifica inatividade para auto-reativar
     if (sessionMeta.adminReplied) {
-      console.log('[BOT] Admin handling conversation, Nina silent for:', phone);
-      return new Response('ignored', { status: 200 });
+      // Busca configuração de horas de silêncio (padrão 24h)
+      let silenceHours = 24;
+      try {
+        const { data: cfg } = await supabase.from('platform_settings').select('nina_silence_hours').eq('id', 1).single();
+        if (cfg?.nina_silence_hours) silenceHours = Number(cfg.nina_silence_hours);
+      } catch { /* usa padrão */ }
+
+      const lastActivity = sessionMeta.lastActivityAt || sessionMeta.adminRepliedAt;
+      const hoursSinceActivity = lastActivity
+        ? (Date.now() - new Date(lastActivity).getTime()) / (1000 * 60 * 60)
+        : 999;
+
+      if (hoursSinceActivity >= silenceHours) {
+        // Inatividade atingiu o limite — Nina reativa e responde normalmente
+        console.log(`[BOT] Inatividade de ${hoursSinceActivity.toFixed(1)}h >= ${silenceHours}h — Nina reativada para:`, phone);
+        await saveSession(phone, [], {});
+        // Cai no fluxo normal abaixo (não retorna aqui)
+      } else {
+        // Ainda dentro do período de silêncio — atualiza timestamp do cliente e silencia
+        await saveSession(phone, history, {
+          ...sessionMeta,
+          lastActivityAt: new Date().toISOString(),
+        });
+        console.log(`[BOT] Admin handling, Nina silent (${hoursSinceActivity.toFixed(1)}h/${silenceHours}h) for:`, phone);
+        return new Response('ignored', { status: 200 });
+      }
     }
 
     const hasLabels = sessionMeta.labels && sessionMeta.labels !== '';

@@ -585,6 +585,36 @@ export const AdminWhatsApp: React.FC = () => {
                   ))}
                 </div>
               </div>
+              {/* Retomada Automática */}
+              <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Zap size={16} className="text-amber-500" />
+                  <div>
+                    <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Retomada Automática da Nina</p>
+                    <p className="text-xs text-gray-500">Quando você atende um cliente, Nina fica em silêncio. Após inatividade, ela retoma sozinha.</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Reativar Nina após inatividade de</label>
+                    <select
+                      value={platformSettings.ninaSilenceHours ?? 24}
+                      onChange={e => updatePlatformSettings({ ...platformSettings, ninaSilenceHours: Number(e.target.value) })}
+                      className="w-full p-2.5 border border-gray-200 dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-amber-300"
+                    >
+                      {[2, 4, 6, 8, 12, 24, 48, 72].map(h => (
+                        <option key={h} value={h}>{h === 24 ? '24 horas (padrão)' : h < 24 ? `${h} horas` : `${h/24} dias`}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3 text-xs text-amber-700 dark:text-amber-400 space-y-1">
+                    <p><strong>Como funciona:</strong></p>
+                    <p>• Você responde o cliente no WhatsApp → Nina silencia</p>
+                    <p>• Após {platformSettings.ninaSilenceHours ?? 24}h sem mensagens → Nina reativa automaticamente</p>
+                    <p>• Mensagem de encerramento detectada → Nina reativa na hora</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Coluna direita — Follow-up Sequencial */}
