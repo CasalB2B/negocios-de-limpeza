@@ -14,6 +14,11 @@ interface RawEvent {
   source: string;
   session_id: string | null;
   created_at: string;
+  utm_source:   string | null;
+  utm_medium:   string | null;
+  utm_campaign: string | null;
+  utm_content:  string | null;
+  utm_term:     string | null;
 }
 
 type Period = 'today' | '7d' | '30d' | '90d';
@@ -68,7 +73,7 @@ export const AdminAnalytics: React.FC = () => {
     const since = getSince(period);
     const { data, error } = await supabase
       .from('page_analytics')
-      .select('event_type, source, session_id, created_at')
+      .select('event_type, source, session_id, created_at, utm_source, utm_medium, utm_campaign, utm_content, utm_term')
       .gte('created_at', since.toISOString())
       .order('created_at', { ascending: true });
     if (!error && data) setEvents(data);
@@ -160,6 +165,58 @@ export const AdminAnalytics: React.FC = () => {
     weekdayData.forEach(d => { if (d.contatos > max) { max = d.contatos; peak = d.label; } });
     return peak;
   }, [weekdayData]);
+
+  // ── UTM: agrega por source ────────────────────────────────────────────────
+  const utmSourceData = useMemo(() => {
+    const map: Record<string, { contatos: number; conversoes: number }> = {};
+    events.forEach(e => {
+      const src = e.utm_source || '(direto)';
+      if (!map[src]) map[src] = { contatos: 0, conversoes: 0 };
+      map[src].contatos++;
+      if (e.event_type === 'chat_completed' || e.event_type === 'whatsapp_completed') map[src].conversoes++;
+    });
+    return Object.entries(map)
+      .map(([name, v]) => ({ name, ...v, taxa: pct(v.conversoes, v.contatos) }))
+      .sort((a, b) => b.contatos - a.contatos);
+  }, [events]);
+
+  // ── UTM: agrega por medium ────────────────────────────────────────────────
+  const utmMediumData = useMemo(() => {
+    const map: Record<string, number> = {};
+    events.forEach(e => {
+      const m = e.utm_medium || '(nenhum)';
+      map[m] = (map[m] || 0) + 1;
+    });
+    return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [events]);
+
+  // ── UTM: campanhas com performance ───────────────────────────────────────
+  const utmCampaignData = useMemo(() => {
+    const map: Record<string, { source: string; medium: string; contatos: number; conversoes: number }> = {};
+    events.forEach(e => {
+      const camp = e.utm_campaign || null;
+      if (!camp) return;
+      if (!map[camp]) map[camp] = { source: e.utm_source || '—', medium: e.utm_medium || '—', contatos: 0, conversoes: 0 };
+      map[camp].contatos++;
+      if (e.event_type === 'chat_completed' || e.event_type === 'whatsapp_completed') map[camp].conversoes++;
+    });
+    return Object.entries(map)
+      .map(([name, v]) => ({ name, ...v, taxa: pct(v.conversoes, v.contatos) }))
+      .sort((a, b) => b.contatos - a.contatos);
+  }, [events]);
+
+  const hasUtmData = utmSourceData.some(s => s.name !== '(direto)');
+
+  // ── UTM source colors ─────────────────────────────────────────────────────
+  const SOURCE_COLORS: Record<string, string> = {
+    instagram: '#e1306c', facebook: '#1877f2', google: '#4285f4',
+    tiktok: '#010101', youtube: '#ff0000', whatsapp: '#25d366',
+    email: '#f97316', organic: '#22c55e', direct: '#6b7280',
+  };
+  function sourceColor(name: string) {
+    const key = name.toLowerCase();
+    return SOURCE_COLORS[key] || '#8b5cf6';
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -426,6 +483,139 @@ export const AdminAnalytics: React.FC = () => {
           )}
         </div>
 
+        {/* ── UTM: Origem das campanhas ── */}
+        <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-100 dark:border-darkBorder p-6">
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="font-bold text-darkText">🎯 Origem das Campanhas</h3>
+            {!hasUtmData && (
+              <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 font-semibold px-2 py-1 rounded-lg">
+                Sem UTMs detectados ainda
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-lightText mb-5">De onde vêm os seus leads e qual canal converte melhor</p>
+
+          {!hasUtmData ? (
+            <div className="bg-gray-50 dark:bg-darkBg rounded-2xl p-6 text-center space-y-3">
+              <p className="text-sm font-bold text-darkText">Como adicionar UTMs aos seus links</p>
+              <p className="text-xs text-gray-500 max-w-lg mx-auto">
+                Adicione parâmetros UTM ao link do chat para rastrear de onde vêm os leads. Exemplo:
+              </p>
+              <div className="bg-white dark:bg-darkSurface rounded-xl p-3 text-left overflow-x-auto border border-gray-200 dark:border-darkBorder">
+                <code className="text-xs text-violet-700 dark:text-violet-300 break-all">
+                  app.negociosdelimpeza.com.br/#/client/quote-chat<br/>
+                  <span className="text-orange-600">?utm_source=instagram</span><br/>
+                  <span className="text-blue-600">&utm_medium=ads</span><br/>
+                  <span className="text-green-600">&utm_campaign=limpeza-abril</span>
+                </code>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-left mt-2">
+                {[
+                  { param: 'utm_source',   desc: 'Origem', ex: 'instagram, google, facebook' },
+                  { param: 'utm_medium',   desc: 'Mídia',  ex: 'ads, organic, email, stories' },
+                  { param: 'utm_campaign', desc: 'Campanha', ex: 'limpeza-abril, promo-maio' },
+                  { param: 'utm_content',  desc: 'Conteúdo', ex: 'banner-topo, card-azul' },
+                  { param: 'utm_term',     desc: 'Termo',   ex: 'limpeza guarapari' },
+                ].map(u => (
+                  <div key={u.param} className="bg-white dark:bg-darkSurface rounded-xl p-2.5 border border-gray-100 dark:border-darkBorder">
+                    <p className="font-mono text-[11px] font-bold text-violet-700 dark:text-violet-300">{u.param}</p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">{u.desc}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5 italic">{u.ex}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Barras por fonte */}
+              <div>
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-3">Contatos por origem</p>
+                <div className="space-y-2">
+                  {utmSourceData.map(s => {
+                    const maxContatos = utmSourceData[0]?.contatos || 1;
+                    const barPct = Math.round((s.contatos / maxContatos) * 100);
+                    return (
+                      <div key={s.name} className="flex items-center gap-3">
+                        <div className="w-24 text-xs text-right font-medium text-gray-600 truncate shrink-0">{s.name}</div>
+                        <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-700"
+                            style={{ width: `${barPct}%`, background: sourceColor(s.name) }}/>
+                        </div>
+                        <div className="w-28 text-xs text-gray-500 shrink-0">
+                          <span className="font-bold text-darkText">{s.contatos}</span> contatos ·{' '}
+                          <span className={`font-bold ${s.taxa >= 30 ? 'text-green-600' : s.taxa >= 10 ? 'text-orange-500' : 'text-gray-400'}`}>{s.taxa}%</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Gráfico por medium */}
+              {utmMediumData.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-3">Contatos por mídia</p>
+                  <ResponsiveContainer width="100%" height={120}>
+                    <BarChart data={utmMediumData} layout="vertical" margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
+                      <XAxis type="number" tick={{ fontSize: 11 }} axisLine={false} tickLine={false}/>
+                      <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={60}/>
+                      <Tooltip content={<CustomTooltip/>}/>
+                      <Bar dataKey="value" name="Contatos" radius={[0,4,4,0]}>
+                        {utmMediumData.map((_, i) => <Cell key={i} fill={['#8b5cf6','#3b82f6','#f97316','#22c55e','#e1306c'][i % 5]}/>)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── UTM: Tabela de campanhas ── */}
+        {hasUtmData && utmCampaignData.length > 0 && (
+          <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-100 dark:border-darkBorder p-6">
+            <h3 className="font-bold text-darkText mb-1">📋 Performance das Campanhas</h3>
+            <p className="text-xs text-lightText mb-5">Resultado de cada campanha no período</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left border-b border-gray-100 dark:border-darkBorder">
+                    {['Campanha','Origem','Mídia','Contatos','Conversões','Taxa'].map(h => (
+                      <th key={h} className="pb-2 pr-4 text-xs font-bold text-gray-400 uppercase tracking-wide">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {utmCampaignData.map((c, i) => (
+                    <tr key={i} className="border-b border-gray-50 dark:border-darkBorder hover:bg-gray-50 dark:hover:bg-darkBorder transition-colors">
+                      <td className="py-3 pr-4 font-semibold text-darkText">{c.name}</td>
+                      <td className="py-3 pr-4">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2 py-0.5 rounded-full text-white"
+                          style={{ background: sourceColor(c.source) }}>
+                          {c.source}
+                        </span>
+                      </td>
+                      <td className="py-3 pr-4 text-xs text-gray-500">{c.medium}</td>
+                      <td className="py-3 pr-4 font-bold text-darkText">{c.contatos}</td>
+                      <td className="py-3 pr-4 font-bold text-green-600">{c.conversoes}</td>
+                      <td className="py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${c.taxa}%`, background: c.taxa >= 30 ? '#22c55e' : c.taxa >= 10 ? '#f97316' : '#e5e7eb' }}/>
+                          </div>
+                          <span className={`text-xs font-bold ${c.taxa >= 30 ? 'text-green-600' : c.taxa >= 10 ? 'text-orange-500' : 'text-gray-400'}`}>
+                            {c.taxa}%
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* ── Tabela de eventos recentes ── */}
         <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-100 dark:border-darkBorder p-6">
           <div className="flex items-center justify-between mb-4">
@@ -449,8 +639,9 @@ export const AdminAnalytics: React.FC = () => {
                   <tr className="text-left border-b border-gray-100 dark:border-darkBorder">
                     <th className="pb-2 text-xs font-bold text-gray-400 uppercase tracking-wide">Evento</th>
                     <th className="pb-2 text-xs font-bold text-gray-400 uppercase tracking-wide">Canal</th>
+                    <th className="pb-2 text-xs font-bold text-gray-400 uppercase tracking-wide">Origem</th>
+                    <th className="pb-2 text-xs font-bold text-gray-400 uppercase tracking-wide">Campanha</th>
                     <th className="pb-2 text-xs font-bold text-gray-400 uppercase tracking-wide">Data/Hora</th>
-                    <th className="pb-2 text-xs font-bold text-gray-400 uppercase tracking-wide">Sessão</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -465,8 +656,6 @@ export const AdminAnalytics: React.FC = () => {
                     const ev = eventLabels[e.event_type] || { label: e.event_type, color: 'bg-gray-100 text-gray-600', icon: '•' };
                     const d = new Date(e.created_at);
                     const dateStr = `${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-                    const sessionShort = e.session_id ? (e.session_id.length > 20 ? e.session_id.slice(0, 20) + '…' : e.session_id) : '—';
-
                     return (
                       <tr key={i} className="border-b border-gray-50 dark:border-darkBorder hover:bg-gray-50 dark:hover:bg-darkBorder transition-colors">
                         <td className="py-2.5 pr-4">
@@ -479,8 +668,15 @@ export const AdminAnalytics: React.FC = () => {
                             {e.source === 'web_chat' ? '💻 Chat Web' : '💬 WhatsApp'}
                           </span>
                         </td>
-                        <td className="py-2.5 pr-4 text-xs text-gray-500">{dateStr}</td>
-                        <td className="py-2.5 text-xs text-gray-400 font-mono">{sessionShort}</td>
+                        <td className="py-2.5 pr-4">
+                          {e.utm_source
+                            ? <span className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{ background: sourceColor(e.utm_source) }}>{e.utm_source}</span>
+                            : <span className="text-xs text-gray-300">—</span>
+                          }
+                          {e.utm_medium && <span className="ml-1 text-[10px] text-gray-400">{e.utm_medium}</span>}
+                        </td>
+                        <td className="py-2.5 pr-4 text-xs text-gray-500">{e.utm_campaign || <span className="text-gray-300">—</span>}</td>
+                        <td className="py-2.5 text-xs text-gray-500">{dateStr}</td>
                       </tr>
                     );
                   })}

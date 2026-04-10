@@ -7,12 +7,55 @@ import { sendMessage, GeminiMessage, extractQuoteData, cleanAIResponse } from '.
 import { sendMessage as sendWhatsApp, buildMessage } from '../../lib/evolution';
 import { supabase } from '../../lib/supabase';
 
+// ── UTM helpers ──────────────────────────────────────────────────────────────
+interface UtmParams {
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
+}
+
+function readUtmsFromUrl(): UtmParams {
+  // HashRouter: URL looks like /#/client/quote-chat?utm_source=instagram
+  const hashSearch = window.location.hash.includes('?')
+    ? window.location.hash.split('?')[1]
+    : window.location.search;
+  const params = new URLSearchParams(hashSearch);
+  const utms: UtmParams = {};
+  if (params.get('utm_source'))   utms.utm_source   = params.get('utm_source')!;
+  if (params.get('utm_medium'))   utms.utm_medium   = params.get('utm_medium')!;
+  if (params.get('utm_campaign')) utms.utm_campaign = params.get('utm_campaign')!;
+  if (params.get('utm_content'))  utms.utm_content  = params.get('utm_content')!;
+  if (params.get('utm_term'))     utms.utm_term     = params.get('utm_term')!;
+  return utms;
+}
+
+function saveUtmsToSession(sessionId: string, utms: UtmParams) {
+  if (Object.keys(utms).length > 0) {
+    sessionStorage.setItem(`utm_${sessionId}`, JSON.stringify(utms));
+  }
+}
+
+function getUtmsFromSession(sessionId: string): UtmParams {
+  try {
+    const stored = sessionStorage.getItem(`utm_${sessionId}`);
+    return stored ? JSON.parse(stored) : {};
+  } catch { return {}; }
+}
+
 // ── Analytics helpers ────────────────────────────────────────────────────────
-function trackEvent(eventType: string, sessionId: string) {
+function trackEvent(eventType: string, sessionId: string, extraUtms?: UtmParams) {
+  const utms = extraUtms || getUtmsFromSession(sessionId);
   supabase.from('page_analytics').insert({
     event_type: eventType,
     source: 'web_chat',
     session_id: sessionId,
+    utm_source:   utms.utm_source   || null,
+    utm_medium:   utms.utm_medium   || null,
+    utm_campaign: utms.utm_campaign || null,
+    utm_content:  utms.utm_content  || null,
+    utm_term:     utms.utm_term     || null,
   }).then(); // fire and forget
 }
 
@@ -81,9 +124,12 @@ export const QuoteChat: React.FC = () => {
     if (currentUser) navigate('/client/dashboard');
   }, [currentUser, navigate]);
 
-  // Track page view on mount
+  // Capture UTMs from URL on mount and track page view
   useEffect(() => {
-    if (!isDemo) trackEvent('page_view', analyticsSessionId.current);
+    if (isDemo) return;
+    const utms = readUtmsFromUrl();
+    saveUtmsToSession(analyticsSessionId.current, utms);
+    trackEvent('page_view', analyticsSessionId.current, utms);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
