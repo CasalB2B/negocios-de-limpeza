@@ -4,7 +4,7 @@ import { UserRole } from '../../types';
 import { supabase } from '../../lib/supabase';
 import {
   MessageCircle, Send, Search, RefreshCw, Bot, User,
-  ChevronLeft, Phone, Inbox, Wifi,
+  ChevronLeft, Phone, Inbox, Trash2, X,
 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -188,6 +188,21 @@ export const AdminInbox: React.FC = () => {
     setTimeout(() => inputRef.current?.focus(), 200);
   };
 
+  // ── Delete session ────────────────────────────────────────────────────────
+  const deleteSession = async (phone: string) => {
+    await supabase.from('whatsapp_sessions').delete().eq('phone', phone);
+    setSessions(prev => prev.filter(s => s.phone !== phone));
+    if (selected?.phone === phone) { setSelected(null); setShowList(true); }
+  };
+
+  const clearAll = async () => {
+    if (!confirm('Apagar todas as conversas? Isso não afeta os leads salvos no CRM.')) return;
+    await supabase.from('whatsapp_sessions').delete().neq('phone', '');
+    setSessions([]);
+    setSelected(null);
+    setShowList(true);
+  };
+
   // ── Send ──────────────────────────────────────────────────────────────────
   const handleSend = async () => {
     if (!input.trim() || !selected || sending) return;
@@ -257,14 +272,15 @@ export const AdminInbox: React.FC = () => {
                   )}
                 </div>
                 <div className="flex items-center gap-1.5">
-                  {/* Realtime indicator */}
                   <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-400' : 'bg-gray-300'}`} title={connected ? 'Tempo real ativo' : 'Polling'} />
-                  <button
-                    onClick={() => loadSessions()}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-darkBorder transition-colors"
-                  >
+                  <button onClick={() => loadSessions()} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-darkBorder transition-colors" title="Atualizar">
                     <RefreshCw size={13} className={`text-gray-400 ${loading ? 'animate-spin' : ''}`} />
                   </button>
+                  {sessions.length > 0 && (
+                    <button onClick={clearAll} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Apagar todas">
+                      <Trash2 size={13} className="text-gray-400 hover:text-red-500" />
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -307,28 +323,21 @@ export const AdminInbox: React.FC = () => {
                 const color   = human ? '#f97316' : avatarColor(s.phone);
 
                 return (
-                  <button
+                  <div
                     key={s.phone}
-                    onClick={() => handleSelect(s)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all relative ${
-                      active
-                        ? 'bg-green-50 dark:bg-green-900/20'
-                        : 'hover:bg-gray-50 dark:hover:bg-darkBorder'
+                    className={`group relative flex items-center gap-3 px-4 py-3 cursor-pointer transition-all ${
+                      active ? 'bg-green-50 dark:bg-green-900/20' : 'hover:bg-gray-50 dark:hover:bg-darkBorder'
                     }`}
+                    onClick={() => handleSelect(s)}
                   >
-                    {/* Active indicator */}
                     {active && <div className="absolute left-0 top-2 bottom-2 w-[3px] bg-green-500 rounded-r-full" />}
 
-                    {/* Avatar */}
-                    <div
-                      className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm"
-                      style={{ background: color }}
-                    >
+                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm"
+                      style={{ background: color }}>
                       {initials(name) || <Phone size={14} />}
                     </div>
 
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 pr-6">
                       <div className="flex items-center justify-between gap-1">
                         <span className={`text-sm truncate ${unread ? 'font-bold text-darkText dark:text-darkTextPrimary' : 'font-medium text-gray-600 dark:text-darkTextSecondary'}`}>
                           {name}
@@ -341,12 +350,21 @@ export const AdminInbox: React.FC = () => {
                       </div>
                       <div className="mt-0.5">
                         {human
-                          ? <span className="text-[10px] text-orange-500 font-semibold flex items-center gap-0.5"><User size={9} />Aguarda humano</span>
-                          : <span className="text-[10px] text-green-500 font-semibold flex items-center gap-0.5"><Bot size={9} />Nina ativa</span>
+                          ? <span className="text-[10px] text-orange-500 font-semibold flex items-center gap-0.5"><User size={9} /> Aguarda humano</span>
+                          : <span className="text-[10px] text-green-500 font-semibold flex items-center gap-0.5"><Bot size={9} /> Nina ativa</span>
                         }
                       </div>
                     </div>
-                  </button>
+
+                    {/* Botão apagar — aparece no hover */}
+                    <button
+                      onClick={e => { e.stopPropagation(); deleteSession(s.phone); }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30"
+                      title="Apagar conversa"
+                    >
+                      <X size={13} className="text-gray-400 hover:text-red-500" />
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -397,6 +415,13 @@ export const AdminInbox: React.FC = () => {
                         <Bot size={11} /> Nina ativa
                       </span>
                   }
+                  <button
+                    onClick={() => deleteSession(selected.phone)}
+                    title="Apagar conversa"
+                    className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
+                  >
+                    <Trash2 size={15} className="text-gray-400 hover:text-red-500" />
+                  </button>
                 </div>
 
                 {/* Messages */}
