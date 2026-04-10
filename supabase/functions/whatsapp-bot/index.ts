@@ -85,9 +85,13 @@ async function getSystemPrompt(): Promise<string> {
 }
 
 // Injeta o número do cliente no prompt, substituindo {{PHONE}}
+// Se for @lid (iPhone), usa formato amigável para não expor ID interno
 async function getPromptForPhone(phone: string): Promise<string> {
   const prompt = await getSystemPrompt();
-  return prompt.replace(/\{\{PHONE\}\}/g, phone);
+  const displayPhone = phone.includes('@lid')
+    ? 'o número que você está usando para falar comigo'
+    : (phone.startsWith('55') ? `+${phone}` : `+55${phone}`);
+  return prompt.replace(/\{\{PHONE\}\}/g, displayPhone);
 }
 
 async function isNinaEnabled(phone: string): Promise<{ enabled: boolean; reason?: string }> {
@@ -309,6 +313,20 @@ Deno.serve(async (req) => {
   if (event !== 'messages.upsert') return new Response('ignored', { status: 200 });
 
   const data = body?.data;
+
+  // Deduplicação: ignora mensagens já processadas (anúncios do Facebook disparam 2x)
+  const msgId: string = data?.key?.id || '';
+  if (msgId) {
+    const { data: existing } = await supabase
+      .from('whatsapp_sessions')
+      .select('phone')
+      .eq('meta->>lastMsgId', msgId)
+      .limit(1);
+    if (existing && existing.length > 0) {
+      console.log('[BOT] Mensagem duplicada ignorada:', msgId);
+      return new Response('ignored', { status: 200 });
+    }
+  }
 
   // Admin respondeu pelo WhatsApp — detectar e marcar sessão
   if (data?.key?.fromMe) {
@@ -603,6 +621,7 @@ Deno.serve(async (req) => {
     pushName: sessionMeta.pushName || pushName || '',
     lastUserMessageAt: new Date().toISOString(),
     followUpSentSteps: [], // reseta follow-up ao receber nova mensagem do cliente
+    lastMsgId: msgId || sessionMeta.lastMsgId || '',
   });
 
   // Envia resposta (já sem os marcadores internos)
