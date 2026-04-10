@@ -442,6 +442,20 @@ Deno.serve(async (req) => {
 
   const normalizedText = textForHistory.trim().toLowerCase();
 
+  // --- Deduplicação por conteúdo + janela de tempo (30s) ---
+  // Anúncios do Facebook disparam múltiplos webhooks com msgIds diferentes mas mesmo conteúdo
+  {
+    const { history: existingHist, meta: existingMeta } = await getSession(phone);
+    const lastEntry = existingHist[existingHist.length - 1];
+    const lastBotAt = existingMeta.lastBotMessageAt;
+    const secsSinceBot = lastBotAt ? (Date.now() - new Date(lastBotAt).getTime()) / 1000 : 999;
+    // Se o último item do histórico é do bot E foi há menos de 30s → duplicata
+    if (lastEntry?.role === 'model' && secsSinceBot < 30) {
+      console.log('[BOT] Duplicata detectada (bot respondeu há', secsSinceBot.toFixed(1), 's), ignorando');
+      return new Response('ignored', { status: 200 });
+    }
+  }
+
   // --- Verifica se Nina está ativa ---
   const ninaCheck = await isNinaEnabled(phone);
   if (!ninaCheck.enabled) {
@@ -615,11 +629,12 @@ Deno.serve(async (req) => {
   // Adiciona resposta ao histórico
   history.push({ role: 'model', parts: [{ text: rawResponse }] });
 
-  // Salva sessão — atualiza lastUserMessageAt para o follow-up saber quando o cliente parou
+  // Salva sessão — atualiza timestamps para deduplicação e follow-up
   await saveSession(phone, history, {
     step: 'chat',
     pushName: sessionMeta.pushName || pushName || '',
     lastUserMessageAt: new Date().toISOString(),
+    lastBotMessageAt: new Date().toISOString(),
     followUpSentSteps: [], // reseta follow-up ao receber nova mensagem do cliente
     lastMsgId: msgId || sessionMeta.lastMsgId || '',
   });
