@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
@@ -6,46 +6,17 @@ import { Card } from '../../components/Card';
 import {
   Calendar, FileText, TrendingUp, TrendingDown, DollarSign, Bell,
   UserPlus, AlertCircle, CheckCircle, X, Info, Kanban, Users,
-  MessageSquare, ArrowRight, Phone, Clock, Star, Zap, Eye, MousePointerClick
+  MessageSquare, ArrowRight, Phone, Clock, Star, Zap
 } from 'lucide-react';
 import { useData } from '../../components/DataContext';
-import { supabase } from '../../lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const FUNNEL_COLORS = ['#8b5cf6','#3b82f6','#f97316','#eab308','#22c55e','#6b7280'];
-
-interface AnalyticsData {
-  webViews: number; webStarted: number; webCompleted: number;
-  waContacts: number; waCompleted: number;
-}
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { notifications, markAllNotificationsRead, services, transactions, quotes, clients, collaborators } = useData();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [analyticsPeriod, setAnalyticsPeriod] = useState<'today' | '7d' | '30d'>('7d');
-  const [analytics, setAnalytics] = useState<AnalyticsData>({ webViews: 0, webStarted: 0, webCompleted: 0, waContacts: 0, waCompleted: 0 });
-
-  useEffect(() => {
-    const load = async () => {
-      const since = new Date();
-      if (analyticsPeriod === 'today') since.setHours(0, 0, 0, 0);
-      else if (analyticsPeriod === '7d') since.setDate(since.getDate() - 7);
-      else since.setDate(since.getDate() - 30);
-
-      const { data } = await supabase.from('page_analytics').select('event_type, source').gte('created_at', since.toISOString());
-      if (data) {
-        setAnalytics({
-          webViews:     data.filter(e => e.event_type === 'page_view').length,
-          webStarted:   data.filter(e => e.event_type === 'chat_started').length,
-          webCompleted: data.filter(e => e.event_type === 'chat_completed').length,
-          waContacts:   data.filter(e => e.event_type === 'whatsapp_contact').length,
-          waCompleted:  data.filter(e => e.event_type === 'whatsapp_completed').length,
-        });
-      }
-    };
-    load();
-  }, [analyticsPeriod]);
 
   const today = new Date();
   const formattedDate = new Intl.DateTimeFormat('pt-BR', {
@@ -231,86 +202,14 @@ export const AdminDashboard: React.FC = () => {
           ))}
         </div>
 
-        {/* ── Analytics do Chat ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-6">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h3 className="font-bold text-darkText">📊 Analytics do Chat</h3>
-              <p className="text-xs text-lightText mt-0.5">Funil de conversão da página de orçamento</p>
-            </div>
-            <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-              {(['today', '7d', '30d'] as const).map(p => (
-                <button key={p} onClick={() => setAnalyticsPeriod(p)}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${analyticsPeriod === p ? 'bg-white shadow-sm text-darkText' : 'text-lightText hover:text-darkText'}`}>
-                  {p === 'today' ? 'Hoje' : p === '7d' ? '7 dias' : '30 dias'}
-                </button>
-              ))}
-            </div>
+        {/* ── Analytics preview card ── */}
+        <div onClick={() => navigate('/admin/analytics')}
+          className="bg-gradient-to-r from-violet-600 to-blue-600 rounded-2xl p-5 mb-6 cursor-pointer hover:opacity-95 transition-opacity flex items-center justify-between group">
+          <div className="text-white">
+            <p className="font-bold text-lg">📊 Analytics do Chat</p>
+            <p className="text-violet-100 text-sm mt-0.5">Funil de conversão, horários de pico, origem de tráfego e muito mais</p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Chat Web funnel */}
-            <div>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                <Eye size={12}/> Chat Web (app.negociosdelimpeza.com.br)
-              </p>
-              <div className="space-y-2">
-                {[
-                  { label: 'Visitaram a página',   value: analytics.webViews,     color: 'bg-blue-500',   pct: 100 },
-                  { label: 'Iniciaram o chat',      value: analytics.webStarted,   color: 'bg-violet-500', pct: analytics.webViews > 0 ? Math.round((analytics.webStarted / analytics.webViews) * 100) : 0 },
-                  { label: 'Concluíram orçamento', value: analytics.webCompleted,  color: 'bg-green-500',  pct: analytics.webStarted > 0 ? Math.round((analytics.webCompleted / analytics.webStarted) * 100) : 0 },
-                ].map(row => (
-                  <div key={row.label}>
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-gray-600">{row.label}</span>
-                      <span className="font-bold text-darkText">{row.value} <span className="text-gray-400 font-normal">({row.pct}%)</span></span>
-                    </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div className={`h-full ${row.color} rounded-full transition-all duration-700`} style={{ width: `${row.pct}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {analytics.webViews > 0 && (
-                <p className="text-[11px] text-gray-400 mt-3">
-                  Taxa de conversão web: <strong className="text-green-600">{analytics.webViews > 0 ? Math.round((analytics.webCompleted / analytics.webViews) * 100) : 0}%</strong>
-                </p>
-              )}
-            </div>
-
-            {/* WhatsApp funnel */}
-            <div>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                <MessageSquare size={12}/> WhatsApp (Nina)
-              </p>
-              <div className="space-y-2">
-                {[
-                  { label: 'Entraram em contato',   value: analytics.waContacts,   color: 'bg-green-500',  pct: 100 },
-                  { label: 'Concluíram orçamento', value: analytics.waCompleted,  color: 'bg-emerald-600', pct: analytics.waContacts > 0 ? Math.round((analytics.waCompleted / analytics.waContacts) * 100) : 0 },
-                ].map(row => (
-                  <div key={row.label}>
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-gray-600">{row.label}</span>
-                      <span className="font-bold text-darkText">{row.value} <span className="text-gray-400 font-normal">({row.pct}%)</span></span>
-                    </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div className={`h-full ${row.color} rounded-full transition-all duration-700`} style={{ width: `${row.pct}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {analytics.waContacts > 0 && (
-                <p className="text-[11px] text-gray-400 mt-3">
-                  Taxa de conversão WhatsApp: <strong className="text-green-600">{analytics.waContacts > 0 ? Math.round((analytics.waCompleted / analytics.waContacts) * 100) : 0}%</strong>
-                </p>
-              )}
-              {analytics.waContacts === 0 && analytics.webViews === 0 && (
-                <div className="mt-4 p-3 bg-gray-50 rounded-xl text-xs text-gray-400 text-center">
-                  Os dados aparecerão aqui após as primeiras interações
-                </div>
-              )}
-            </div>
-          </div>
+          <ArrowRight size={22} className="text-white/70 group-hover:translate-x-1 transition-transform shrink-0"/>
         </div>
 
         {/* ── Middle Row ── */}

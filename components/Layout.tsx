@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
-import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox } from 'lucide-react';
+import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2 } from 'lucide-react';
 import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
 import { useData } from './DataContext';
@@ -178,6 +178,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           { icon: <Inbox size={20} />,            label: 'Conversas',    path: '/admin/inbox',          group: 'VENDAS' },
           { icon: <MessageCircle size={20} />,   label: 'WhatsApp',     path: '/admin/whatsapp',       group: 'VENDAS' },
           { icon: <DollarSign size={20} />,      label: 'Financeiro',   path: '/admin/payments',       group: 'FINANCEIRO' },
+          { icon: <BarChart2 size={20} />,       label: 'Analytics',    path: '/admin/analytics',      group: 'FINANCEIRO' },
           { icon: <Sparkles size={20} />,        label: 'Serviços',     path: '/admin/services',       group: 'CONFIG' },
           { icon: <Settings size={20} />,        label: 'Configurações',path: '/admin/settings',       group: 'CONFIG' },
         ];
