@@ -364,7 +364,30 @@ Deno.serve(async (req) => {
   const remoteJid: string = data.key?.remoteJid || '';
   if (remoteJid.includes('@g.us')) return new Response('ignored', { status: 200 });
 
-  const phone = extractPhone(remoteJid);
+  // Captura nome do contato (pushName vem no webhook)
+  const pushName: string = data.pushName || data.notifyName || '';
+
+  // Tenta resolver @lid para número real via Evolution API
+  let phone = extractPhone(remoteJid);
+  if (remoteJid.includes('@lid')) {
+    try {
+      const res = await fetch(`${EVOLUTION_URL}/chat/findChats/${EVOLUTION_INSTANCE}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_KEY },
+        body: JSON.stringify({ where: { remoteJid } }),
+      });
+      if (res.ok) {
+        const chats = await res.json();
+        const chat = Array.isArray(chats) ? chats[0] : chats?.chats?.[0];
+        const realJid: string = chat?.jid || chat?.remoteJid || '';
+        if (realJid && !realJid.includes('@lid') && realJid.includes('@s.whatsapp.net')) {
+          phone = realJid.replace('@s.whatsapp.net', '');
+          console.log('[BOT] @lid resolvido para:', phone);
+        }
+      }
+    } catch { /* mantém @lid se falhar */ }
+  }
+
   const text = extractText(data.message);
 
   // --- Detecção de mídia (áudio e imagem sem legenda) ---
@@ -418,7 +441,11 @@ Deno.serve(async (req) => {
 
   // --- Busca sessão ---
   const { history, meta: sessionMeta } = await getSession(phone);
-  console.log('[DEBUG] session step:', sessionMeta.step, '| history length:', history.length);
+  // Salva pushName se ainda não estiver na sessão
+  if (pushName && !sessionMeta.pushName) {
+    await saveSession(phone, history, { ...sessionMeta, pushName });
+  }
+  console.log('[DEBUG] phone:', phone, '| pushName:', pushName, '| step:', sessionMeta.step, '| history:', history.length);
 
   // -------------------------------------------------------
   // STEP: HUMAN — atendente humano assume

@@ -352,6 +352,8 @@ export const AdminCRM: React.FC = () => {
   const [sendingMsg, setSendingMsg] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'chat' | 'notes'>('info');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [sessionMeta, setSessionMeta] = useState<Record<string, any>>({});
+  const [reactivatingNina, setReactivatingNina] = useState(false);
 
   // ── stage management ──
   const [crmStages, setCrmStages] = useState<CrmStage[]>(() => {
@@ -517,13 +519,31 @@ export const AdminCRM: React.FC = () => {
       const withCountry = clean.startsWith('55') ? clean : '55' + clean;
       const { data } = await supabase
         .from('whatsapp_sessions')
-        .select('history')
+        .select('history, meta')
         .in('phone', [clean, withCountry])
         .order('updated_at', { ascending: false })
         .limit(1);
       setChatMessages(data?.[0]?.history ? parseSessionHistory(data[0].history) : []);
-    } catch { setChatMessages([]); }
+      setSessionMeta(data?.[0]?.meta || {});
+    } catch { setChatMessages([]); setSessionMeta({}); }
     finally { setChatLoading(false); }
+  };
+
+  const handleReactivateNina = async () => {
+    if (!selected?.whatsapp) return;
+    setReactivatingNina(true);
+    try {
+      const clean = selected.whatsapp.replace(/\D/g, '');
+      const withCountry = clean.startsWith('55') ? clean : '55' + clean;
+      await supabase.from('whatsapp_sessions').upsert(
+        { phone: withCountry, history: [], meta: {}, updated_at: new Date().toISOString() },
+        { onConflict: 'phone' }
+      );
+      setChatMessages([]);
+      setSessionMeta({});
+    } finally {
+      setReactivatingNina(false);
+    }
   };
 
   // ─── Filtered + sorted quotes ───────────────────────────────────────────
@@ -2153,8 +2173,12 @@ export const AdminCRM: React.FC = () => {
                       {editMode
                         ? <input className="text-sm text-darkText outline-none border-b border-gray-200 focus:border-primary w-full bg-transparent" value={editData.whatsapp || ''} onChange={e => setEditData(p => ({ ...p, whatsapp: e.target.value }))} />
                         : <div className="flex items-center gap-2">
-                            <span className="text-sm text-darkText">{selected.whatsapp || '—'}</span>
-                            {selected.whatsapp && <>
+                            <span className="text-sm text-darkText">
+                              {selected.whatsapp?.includes('@lid')
+                                ? <span className="text-amber-600 text-xs">ID interno WhatsApp (iPhone) — edite para inserir o número</span>
+                                : (selected.whatsapp || '—')}
+                            </span>
+                            {selected.whatsapp && !selected.whatsapp.includes('@lid') && <>
                               <button onClick={() => navigator.clipboard.writeText(selected.whatsapp)} className="text-lightText hover:text-darkText"><Copy size={12} /></button>
                               <a href={`https://wa.me/${selected.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-green-600 hover:text-green-700"><ExternalLink size={12} /></a>
                             </>}
@@ -2257,6 +2281,23 @@ export const AdminCRM: React.FC = () => {
               {/* ── CHAT TAB ── */}
               {activeTab === 'chat' && (
                 <div className="flex flex-col h-full" style={{ minHeight: '400px' }}>
+                  {/* Nina silenciada — banner de aviso */}
+                  {sessionMeta.adminReplied && (
+                    <div className="mx-4 mt-3 mb-1 flex items-center justify-between gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                      <div className="flex items-center gap-2 text-amber-700 text-xs font-medium">
+                        <span>🤫</span>
+                        <span>Nina está em silêncio — você está atendendo este cliente</span>
+                      </div>
+                      <button
+                        onClick={handleReactivateNina}
+                        disabled={reactivatingNina}
+                        className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline disabled:opacity-50 flex-shrink-0"
+                      >
+                        {reactivatingNina ? <RefreshCw size={12} className="animate-spin" /> : <Zap size={12} />}
+                        Reativar Nina
+                      </button>
+                    </div>
+                  )}
                   <div className="flex-1 overflow-y-auto p-4 space-y-3">
                     {chatLoading && (
                       <div className="flex items-center justify-center py-8 text-lightText text-sm">

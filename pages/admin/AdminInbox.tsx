@@ -68,6 +68,7 @@ function markRead(phone: string) {
 }
 
 function fmtPhone(phone: string): string {
+  if (phone.includes('@lid')) return 'WhatsApp ID';
   const d = phone.replace(/\D/g, '').replace(/^55/, '');
   if (d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
   if (d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
@@ -209,9 +210,12 @@ export const AdminInbox: React.FC = () => {
   };
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  const getName = (phone: string) => {
+  const getName = (phone: string, meta?: Record<string, any>) => {
     const k = phone.replace(/\D/g, '');
-    return names[k] || names[k.startsWith('55') ? k.slice(2) : '55' + k] || fmtPhone(phone);
+    const fromDB = names[k] || names[k.startsWith('55') ? k.slice(2) : '55' + k];
+    if (fromDB) return fromDB;
+    if (meta?.pushName) return meta.pushName;
+    return fmtPhone(phone);
   };
 
   const filtered = sessions.filter(s => {
@@ -295,7 +299,7 @@ export const AdminInbox: React.FC = () => {
               )}
 
               {filtered.map(s => {
-                const name    = getName(s.phone);
+                const name    = getName(s.phone, s.meta);
                 const lastMsg = getLastMsg(s.history);
                 const unread  = isUnread(s);
                 const human   = s.meta?.step === 'human';
@@ -381,7 +385,7 @@ export const AdminInbox: React.FC = () => {
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary truncate">{getName(selected.phone)}</p>
+                    <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary truncate">{getName(selected.phone, selected.meta)}</p>
                     <p className="text-xs text-gray-400">{fmtPhone(selected.phone)}</p>
                   </div>
 
