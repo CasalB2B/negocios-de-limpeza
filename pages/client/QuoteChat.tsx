@@ -119,6 +119,14 @@ export const QuoteChat: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState<'login' | 'password' | null>(null);
 
+  // Pré-chat: coleta nome e WhatsApp antes de iniciar
+  const [showPreChat, setShowPreChat] = useState(!isDemo);
+  const [preChatName, setPreChatName] = useState('');
+  const [preChatPhone, setPreChatPhone] = useState('');
+  const [preChatLoading, setPreChatLoading] = useState(false);
+  const [preChatError, setPreChatError] = useState('');
+  const [preChatLeadId, setPreChatLeadId] = useState<string | null>(null);
+
   // Se já está logado, vai direto pro dashboard
   useEffect(() => {
     if (currentUser) navigate('/client/dashboard');
@@ -131,6 +139,43 @@ export const QuoteChat: React.FC = () => {
     saveUtmsToSession(analyticsSessionId.current, utms);
     trackEvent('page_view', analyticsSessionId.current, utms);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handlePreChatSubmit = async () => {
+    const name = preChatName.trim();
+    const phone = preChatPhone.replace(/\D/g, '');
+    if (!name) { setPreChatError('Informe seu nome para continuar.'); return; }
+    if (phone.length < 10) { setPreChatError('Informe um WhatsApp válido com DDD.'); return; }
+
+    setPreChatLoading(true);
+    setPreChatError('');
+    try {
+      const fullPhone = phone.startsWith('55') ? phone : `55${phone}`;
+      // Cria lead no CRM imediatamente
+      const { data: lead } = await supabase
+        .from('quotes')
+        .insert({ name, whatsapp: fullPhone, status: 'NEW', source: 'web_chat', chat_summary: 'Em conversa com Nina (chat web)' })
+        .select('id')
+        .single();
+      if (lead?.id) setPreChatLeadId(lead.id);
+
+      // Analytics
+      trackEvent('chat_started', analyticsSessionId.current);
+      setSavedName(name.split(' ')[0]);
+
+      // Personaliza a saudação inicial da Nina
+      setMessages([{
+        role: 'model',
+        text: `Olá, ${name.split(' ')[0]}! 😊 Que bom te ver aqui!\n\nSou a **Nina**, da Negócios de Limpeza, e vou te ajudar a criar um orçamento gratuito.\n\nMe conta: o que você precisa? Pode ser limpeza de casa, apartamento, escritório...`,
+        timestamp: new Date(),
+      }]);
+
+      setShowPreChat(false);
+    } catch {
+      setPreChatError('Erro ao iniciar. Tente novamente.');
+    } finally {
+      setPreChatLoading(false);
+    }
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -153,8 +198,7 @@ export const QuoteChat: React.FC = () => {
     setIsLoading(true);
     setApiError(null);
 
-    // Track first user message
-    if (messages.length === 1 && !isDemo) trackEvent('chat_started', analyticsSessionId.current);
+    // chat_started já disparado no formulário pré-chat
 
     try {
       // Build Gemini history (skip the hardcoded initial message — it's in system prompt)
@@ -188,21 +232,40 @@ export const QuoteChat: React.FC = () => {
           .map(m => `${m.role === 'user' ? 'Cliente' : 'Assistente'}: ${m.text}`)
           .join('\n\n');
 
-        const saved = await addQuote({
-          name: quoteData.name || '',
-          email: quoteData.email || '',
-          whatsapp: quoteData.whatsapp || '',
-          cep: quoteData.cep || '',
-          propertyType: quoteData.propertyType || '',
-          rooms: quoteData.rooms || '',
-          priorities: quoteData.priorities || '',
-          internalCleaning: quoteData.internalCleaning || '',
-          renovation: quoteData.renovation || '',
-          serviceOption: quoteData.serviceOption || '',
-          chatSummary: summary,
-          clientPhotos: chatPhotos,
-        });
-        setQuoteId(saved.id);
+        let savedId: string | null = preChatLeadId;
+        if (preChatLeadId) {
+          // Atualiza o lead já criado no pré-chat com os dados completos
+          await supabase.from('quotes').update({
+            name: quoteData.name || '',
+            email: quoteData.email || '',
+            whatsapp: quoteData.whatsapp || '',
+            property_type: quoteData.propertyType || '',
+            rooms: quoteData.rooms || '',
+            priorities: quoteData.priorities || '',
+            internal_cleaning: quoteData.internalCleaning || '',
+            renovation: quoteData.renovation || '',
+            service_option: quoteData.serviceOption || '',
+            chat_summary: summary,
+            status: 'NEW',
+          }).eq('id', preChatLeadId);
+        } else {
+          const saved = await addQuote({
+            name: quoteData.name || '',
+            email: quoteData.email || '',
+            whatsapp: quoteData.whatsapp || '',
+            cep: quoteData.cep || '',
+            propertyType: quoteData.propertyType || '',
+            rooms: quoteData.rooms || '',
+            priorities: quoteData.priorities || '',
+            internalCleaning: quoteData.internalCleaning || '',
+            renovation: quoteData.renovation || '',
+            serviceOption: quoteData.serviceOption || '',
+            chatSummary: summary,
+            clientPhotos: chatPhotos,
+          });
+          savedId = saved.id;
+        }
+        setQuoteId(savedId);
 
         // Generate credentials and register client account automatically
         const phoneDigits = (quoteData.whatsapp || '').replace(/\D/g, '');
@@ -291,6 +354,73 @@ export const QuoteChat: React.FC = () => {
     setCopied(field);
     setTimeout(() => setCopied(null), 2000);
   };
+
+  // ── Tela Pré-Chat ──────────────────────────────────────────────────────────
+  if (showPreChat) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#a163ff] to-[#6b21a8] flex items-center justify-center px-4">
+        <div className="max-w-sm w-full space-y-6">
+          {/* Avatar Nina */}
+          <div className="text-center">
+            <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <Bot size={40} className="text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-white">Olá! Sou a Nina 👋</h1>
+            <p className="text-white/80 mt-1 text-sm">Vou te ajudar a criar um orçamento gratuito em minutos.</p>
+          </div>
+
+          {/* Formulário */}
+          <div className="bg-white rounded-2xl p-6 space-y-4 shadow-xl">
+            <p className="text-sm font-semibold text-gray-700">Antes de começar, me fala:</p>
+
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase block mb-1.5">Seu nome</label>
+              <input
+                value={preChatName}
+                onChange={e => { setPreChatName(e.target.value); setPreChatError(''); }}
+                onKeyDown={e => e.key === 'Enter' && handlePreChatSubmit()}
+                placeholder="Ex: Maria Silva"
+                className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase block mb-1.5">Seu WhatsApp</label>
+              <input
+                value={preChatPhone}
+                onChange={e => { setPreChatPhone(e.target.value); setPreChatError(''); }}
+                onKeyDown={e => e.key === 'Enter' && handlePreChatSubmit()}
+                placeholder="(27) 99999-0000"
+                type="tel"
+                className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">Para enviarmos seu orçamento 📲</p>
+            </div>
+
+            {preChatError && (
+              <p className="text-xs text-red-500 font-medium">{preChatError}</p>
+            )}
+
+            <button
+              onClick={handlePreChatSubmit}
+              disabled={preChatLoading}
+              className="w-full py-3.5 bg-gradient-to-r from-[#a163ff] to-[#6b21a8] text-white font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+            >
+              {preChatLoading
+                ? <><Loader size={16} className="animate-spin" /> Iniciando...</>
+                : <><Sparkles size={16} /> Iniciar conversa</>
+              }
+            </button>
+
+            <p className="text-[10px] text-gray-400 text-center leading-relaxed">
+              Seus dados são usados apenas para enviar o orçamento. Não compartilhamos com terceiros.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isComplete) {
     return (
