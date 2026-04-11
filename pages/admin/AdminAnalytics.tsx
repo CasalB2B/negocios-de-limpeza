@@ -79,14 +79,24 @@ export const AdminAnalytics: React.FC = () => {
       .gte('created_at', since.toISOString())
       .order('created_at', { ascending: true });
 
-    // Busca leads do WhatsApp da tabela quotes (fallback para eventos não capturados)
+    // Busca TODAS as sessões WhatsApp ativas no período (fonte primária — tem todos os contatos)
+    const { data: waSessions } = await supabase
+      .from('whatsapp_sessions')
+      .select('phone, updated_at, history')
+      .gte('updated_at', since.toISOString())
+      .not('phone', 'ilike', '%@lid%');
+
+    // Busca leads WhatsApp com orçamento completo da tabela quotes
     const { data: waQuotes } = await supabase
       .from('quotes')
-      .select('id, created_at, whatsapp, rooms, property_type')
+      .select('id, created_at, whatsapp, rooms')
       .eq('source', 'whatsapp')
-      .gte('created_at', since.toISOString());
+      .not('rooms', 'is', null)
+      .neq('rooms', '');
 
-    // Monta eventos sintéticos para leads WhatsApp que não têm evento no analytics
+    const completedPhones = new Set((waQuotes || []).map(q => q.whatsapp).filter(Boolean));
+
+    // Monta eventos sintéticos para contatos WhatsApp
     const existingWaSessions = new Set(
       (analyticsData || [])
         .filter(e => e.event_type === 'whatsapp_contact' || e.event_type === 'whatsapp_completed')
@@ -94,26 +104,26 @@ export const AdminAnalytics: React.FC = () => {
     );
 
     const syntheticEvents: RawEvent[] = [];
-    for (const lead of (waQuotes || [])) {
-      const phone = lead.whatsapp || lead.id;
-      if (!existingWaSessions.has(phone)) {
+    for (const sess of (waSessions || [])) {
+      const phone = sess.phone;
+      if (!phone || existingWaSessions.has(phone)) continue;
+      const hasHistory = Array.isArray(sess.history) && sess.history.length > 0;
+      if (!hasHistory) continue;
+      syntheticEvents.push({
+        event_type: 'whatsapp_contact',
+        source: 'whatsapp',
+        session_id: phone,
+        created_at: sess.updated_at,
+        utm_source: null, utm_medium: null, utm_campaign: null, utm_content: null, utm_term: null,
+      });
+      if (completedPhones.has(phone)) {
         syntheticEvents.push({
-          event_type: 'whatsapp_contact',
+          event_type: 'whatsapp_completed',
           source: 'whatsapp',
           session_id: phone,
-          created_at: lead.created_at,
+          created_at: sess.updated_at,
           utm_source: null, utm_medium: null, utm_campaign: null, utm_content: null, utm_term: null,
         });
-        // Lead com orçamento completo (tem cômodos preenchidos)
-        if (lead.rooms && lead.rooms.trim() !== '') {
-          syntheticEvents.push({
-            event_type: 'whatsapp_completed',
-            source: 'whatsapp',
-            session_id: phone,
-            created_at: lead.created_at,
-            utm_source: null, utm_medium: null, utm_campaign: null, utm_content: null, utm_term: null,
-          });
-        }
       }
     }
 
