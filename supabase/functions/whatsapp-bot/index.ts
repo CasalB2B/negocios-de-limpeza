@@ -513,7 +513,9 @@ Deno.serve(async (req) => {
       sessionMeta.adminReplied = undefined;
       // Cai no fluxo normal abaixo
     } else {
-      await saveSession(phone, history, { ...sessionMeta, lastActivityAt: new Date().toISOString() });
+      // Salva a mensagem do cliente no histórico mesmo com Nina silenciada
+      const updatedHistory = [...history, { role: 'user', parts: [{ text: textForHistory }] }];
+      await saveSession(phone, updatedHistory, { ...sessionMeta, lastActivityAt: new Date().toISOString() });
       console.log(`[BOT] Admin handling, Nina silent (${hoursSinceActivity.toFixed(1)}h/${silenceHours}h) for:`, phone);
       return new Response('ignored', { status: 200 });
     }
@@ -543,8 +545,9 @@ Deno.serve(async (req) => {
         await saveSession(phone, [], {});
         // Cai no fluxo normal abaixo (não retorna aqui)
       } else {
-        // Ainda dentro do período de silêncio — atualiza timestamp do cliente e silencia
-        await saveSession(phone, history, {
+        // Salva a mensagem do cliente no histórico mesmo com Nina silenciada
+        const updatedHistory = [...history, { role: 'user', parts: [{ text: textForHistory }] }];
+        await saveSession(phone, updatedHistory, {
           ...sessionMeta,
           lastActivityAt: new Date().toISOString(),
         });
@@ -706,7 +709,7 @@ Deno.serve(async (req) => {
     const quotePayload = {
       name: quoteData.name || '',
       email: quoteData.email || '',
-      whatsapp: phone,
+      whatsapp: phone.includes('@lid') ? '' : phone,
       cep: quoteData.addressCep || '',
       property_type: quoteData.propertyType || '',
       rooms: quoteData.rooms || '',
