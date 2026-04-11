@@ -79,24 +79,26 @@ export const AdminAnalytics: React.FC = () => {
       .gte('created_at', since.toISOString())
       .order('created_at', { ascending: true });
 
-    // Busca TODAS as sessões WhatsApp ativas no período (fonte primária — tem todos os contatos)
-    const { data: waSessions } = await supabase
+    // Busca TODAS as sessões WhatsApp (sem history — campo grande demais)
+    const { data: waSessions, error: waErr } = await supabase
       .from('whatsapp_sessions')
-      .select('phone, updated_at, history')
-      .gte('updated_at', since.toISOString())
-      .not('phone', 'ilike', '%@lid%');
+      .select('phone, updated_at')
+      .not('phone', 'ilike', '%@lid%')
+      .not('phone', 'ilike', '%@g.us%');
 
-    // Busca leads WhatsApp com orçamento completo da tabela quotes
+    console.log('[Analytics] waSessions:', waSessions?.length, waErr?.message);
+
+    // Busca leads WhatsApp com orçamento completo (tem cômodos)
     const { data: waQuotes } = await supabase
       .from('quotes')
-      .select('id, created_at, whatsapp, rooms')
+      .select('whatsapp, created_at, rooms')
       .eq('source', 'whatsapp')
       .not('rooms', 'is', null)
       .neq('rooms', '');
 
     const completedPhones = new Set((waQuotes || []).map(q => q.whatsapp).filter(Boolean));
 
-    // Monta eventos sintéticos para contatos WhatsApp
+    // Monta eventos sintéticos
     const existingWaSessions = new Set(
       (analyticsData || [])
         .filter(e => e.event_type === 'whatsapp_contact' || e.event_type === 'whatsapp_completed')
@@ -107,8 +109,8 @@ export const AdminAnalytics: React.FC = () => {
     for (const sess of (waSessions || [])) {
       const phone = sess.phone;
       if (!phone || existingWaSessions.has(phone)) continue;
-      const hasHistory = Array.isArray(sess.history) && sess.history.length > 0;
-      if (!hasHistory) continue;
+      // Filtra pelo período
+      if (sess.updated_at < since.toISOString()) continue;
       syntheticEvents.push({
         event_type: 'whatsapp_contact',
         source: 'whatsapp',
