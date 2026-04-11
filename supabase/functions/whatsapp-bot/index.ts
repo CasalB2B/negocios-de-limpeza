@@ -314,16 +314,16 @@ Deno.serve(async (req) => {
 
   const data = body?.data;
 
-  // Deduplicação: ignora mensagens já processadas (anúncios do Facebook disparam 2x)
+  // Deduplicação atômica: tenta inserir msgId na tabela de dedup.
+  // Se já existe (PRIMARY KEY conflict), é duplicata — ignora.
   const msgId: string = data?.key?.id || '';
   if (msgId) {
-    const { data: existing } = await supabase
-      .from('whatsapp_sessions')
-      .select('phone')
-      .eq('meta->>lastMsgId', msgId)
-      .limit(1);
-    if (existing && existing.length > 0) {
-      console.log('[BOT] Mensagem duplicada ignorada:', msgId);
+    const { error: dedupError } = await supabase
+      .from('whatsapp_dedup')
+      .insert({ msg_id: msgId });
+    if (dedupError) {
+      // código 23505 = unique_violation → já processado
+      console.log('[BOT] Mensagem duplicada ignorada:', msgId, dedupError.code);
       return new Response('ignored', { status: 200 });
     }
   }
@@ -442,20 +442,6 @@ Deno.serve(async (req) => {
   if (!textForHistory && !hasMedia) return new Response('ignored', { status: 200 });
 
   const normalizedText = textForHistory.trim().toLowerCase();
-
-  // --- Deduplicação por conteúdo + janela de tempo (30s) ---
-  // Anúncios do Facebook disparam múltiplos webhooks com msgIds diferentes mas mesmo conteúdo
-  {
-    const { history: existingHist, meta: existingMeta } = await getSession(phone);
-    const lastEntry = existingHist[existingHist.length - 1];
-    const lastBotAt = existingMeta.lastBotMessageAt;
-    const secsSinceBot = lastBotAt ? (Date.now() - new Date(lastBotAt).getTime()) / 1000 : 999;
-    // Se o último item do histórico é do bot E foi há menos de 30s → duplicata
-    if (lastEntry?.role === 'model' && secsSinceBot < 30) {
-      console.log('[BOT] Duplicata detectada (bot respondeu há', secsSinceBot.toFixed(1), 's), ignorando');
-      return new Response('ignored', { status: 200 });
-    }
-  }
 
   // --- Verifica se Nina está ativa ---
   const ninaCheck = await isNinaEnabled(phone);
