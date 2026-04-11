@@ -634,8 +634,8 @@ const PDFModal: React.FC<PDFModalProps> = ({ quote, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-5 border-b">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-5 border-b shrink-0">
           <div>
             <h3 className="font-bold text-gray-900">Gerar Proposta — {quote.name}</h3>
             <p className="text-xs text-gray-500 mt-0.5">Preencha os detalhes do orçamento</p>
@@ -643,7 +643,7 @@ const PDFModal: React.FC<PDFModalProps> = ({ quote, onClose }) => {
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100"><X size={18} /></button>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-4 overflow-y-auto flex-1">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Tipo de Serviço</label>

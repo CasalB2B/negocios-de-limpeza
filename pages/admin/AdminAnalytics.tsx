@@ -633,9 +633,9 @@ export const AdminAnalytics: React.FC = () => {
           ) : events.length === 0 ? (
             <div className="py-8 text-center text-sm text-gray-400">Nenhum evento no período</div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-80 overflow-y-auto">
               <table className="w-full text-sm">
-                <thead>
+                <thead className="sticky top-0 bg-white dark:bg-darkSurface">
                   <tr className="text-left border-b border-gray-100 dark:border-darkBorder">
                     <th className="pb-2 text-xs font-bold text-gray-400 uppercase tracking-wide">Evento</th>
                     <th className="pb-2 text-xs font-bold text-gray-400 uppercase tracking-wide">Canal</th>
@@ -645,7 +645,7 @@ export const AdminAnalytics: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {[...events].reverse().slice(0, 50).map((e, i) => {
+                  {[...events].reverse().slice(0, 20).map((e, i) => {
                     const eventLabels: Record<string, { label: string; color: string; icon: string }> = {
                       page_view:           { label: 'Visualizou página',   color: 'bg-blue-100 text-blue-700',    icon: '👁️' },
                       chat_started:        { label: 'Iniciou chat',        color: 'bg-violet-100 text-violet-700', icon: '💬' },
@@ -682,8 +682,8 @@ export const AdminAnalytics: React.FC = () => {
                   })}
                 </tbody>
               </table>
-              {events.length > 50 && (
-                <p className="text-xs text-gray-400 text-center mt-3">Mostrando os 50 eventos mais recentes de {events.length} no período</p>
+              {events.length > 20 && (
+                <p className="text-xs text-gray-400 text-center mt-3">Mostrando os 20 eventos mais recentes de {events.length} no período</p>
               )}
             </div>
           )}
