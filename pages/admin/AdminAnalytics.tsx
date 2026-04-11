@@ -79,14 +79,13 @@ export const AdminAnalytics: React.FC = () => {
       .gte('created_at', since.toISOString())
       .order('created_at', { ascending: true });
 
-    // Busca TODAS as sessões WhatsApp (sem history — campo grande demais)
-    const { data: waSessions, error: waErr } = await supabase
+    // Busca sessões WhatsApp ativas no período (sem history — campo grande demais)
+    const { data: waSessions } = await supabase
       .from('whatsapp_sessions')
       .select('phone, updated_at')
+      .gte('updated_at', since.toISOString())
       .not('phone', 'ilike', '%@lid%')
       .not('phone', 'ilike', '%@g.us%');
-
-    console.log('[Analytics] waSessions:', waSessions?.length, waErr?.message);
 
     // Busca leads WhatsApp com orçamento completo (tem cômodos)
     const { data: waQuotes } = await supabase
@@ -109,8 +108,6 @@ export const AdminAnalytics: React.FC = () => {
     for (const sess of (waSessions || [])) {
       const phone = sess.phone;
       if (!phone || existingWaSessions.has(phone)) continue;
-      // Filtra pelo período
-      if (sess.updated_at < since.toISOString()) continue;
       syntheticEvents.push({
         event_type: 'whatsapp_contact',
         source: 'whatsapp',
