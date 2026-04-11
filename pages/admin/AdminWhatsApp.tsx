@@ -380,10 +380,10 @@ export const AdminWhatsApp: React.FC = () => {
               {editingPrompt && (
                 <>
                   <textarea
-                    rows={12}
+                    rows={28}
                     value={ninaPrompt}
                     onChange={e => setNinaPrompt(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-gray-200 dark:border-darkBorder bg-gray-50 dark:bg-darkBg text-xs font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full p-3 rounded-xl border border-gray-200 dark:border-darkBorder bg-gray-50 dark:bg-darkBg text-xs font-mono resize-y focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                   <div className="flex gap-2 mt-2">
                     <button
