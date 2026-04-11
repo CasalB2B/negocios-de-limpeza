@@ -288,10 +288,12 @@ function formatDate(ts: number) {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 }
 function relativeTime(ts: number) {
-  const diff = Date.now() - ts;
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return 'Hoje';
-  if (days === 1) return 'Ontem';
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const yesterdayStart = todayStart - 86400000;
+  if (ts >= todayStart) return 'Hoje';
+  if (ts >= yesterdayStart) return 'Ontem';
+  const days = Math.floor((todayStart - ts) / 86400000);
   return `${days}d atrás`;
 }
 
