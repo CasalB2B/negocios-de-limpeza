@@ -71,12 +71,56 @@ export const AdminAnalytics: React.FC = () => {
   const load = async () => {
     setLoading(true);
     const since = getSince(period);
-    const { data, error } = await supabase
+
+    // Busca eventos do analytics (web)
+    const { data: analyticsData } = await supabase
       .from('page_analytics')
       .select('event_type, source, session_id, created_at, utm_source, utm_medium, utm_campaign, utm_content, utm_term')
       .gte('created_at', since.toISOString())
       .order('created_at', { ascending: true });
-    if (!error && data) setEvents(data);
+
+    // Busca leads do WhatsApp da tabela quotes (fallback para eventos não capturados)
+    const { data: waQuotes } = await supabase
+      .from('quotes')
+      .select('id, created_at, whatsapp, rooms, property_type')
+      .eq('source', 'whatsapp')
+      .gte('created_at', since.toISOString());
+
+    // Monta eventos sintéticos para leads WhatsApp que não têm evento no analytics
+    const existingWaSessions = new Set(
+      (analyticsData || [])
+        .filter(e => e.event_type === 'whatsapp_contact' || e.event_type === 'whatsapp_completed')
+        .map(e => e.session_id)
+    );
+
+    const syntheticEvents: RawEvent[] = [];
+    for (const lead of (waQuotes || [])) {
+      const phone = lead.whatsapp || lead.id;
+      if (!existingWaSessions.has(phone)) {
+        syntheticEvents.push({
+          event_type: 'whatsapp_contact',
+          source: 'whatsapp',
+          session_id: phone,
+          created_at: lead.created_at,
+          utm_source: null, utm_medium: null, utm_campaign: null, utm_content: null, utm_term: null,
+        });
+        // Lead com orçamento completo (tem cômodos preenchidos)
+        if (lead.rooms && lead.rooms.trim() !== '') {
+          syntheticEvents.push({
+            event_type: 'whatsapp_completed',
+            source: 'whatsapp',
+            session_id: phone,
+            created_at: lead.created_at,
+            utm_source: null, utm_medium: null, utm_campaign: null, utm_content: null, utm_term: null,
+          });
+        }
+      }
+    }
+
+    const allEvents = [...(analyticsData || []), ...syntheticEvents]
+      .sort((a, b) => a.created_at.localeCompare(b.created_at));
+
+    setEvents(allEvents);
     setLoading(false);
     setLastRefresh(new Date());
   };
@@ -356,7 +400,7 @@ export const AdminAnalytics: React.FC = () => {
               <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-3">💻 Chat Web</p>
               <div className="space-y-2">
                 {funnelWeb.map((step, i) => {
-                  const barPct = i === 0 ? 100 : pct(step.value, funnelWeb[0].value);
+                  const barPct = step.value === 0 ? 0 : (i === 0 ? 100 : pct(step.value, funnelWeb[0].value));
                   return (
                     <div key={step.name}>
                       <div className="flex justify-between text-xs mb-1">
@@ -378,7 +422,7 @@ export const AdminAnalytics: React.FC = () => {
               <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-3">💬 WhatsApp</p>
               <div className="space-y-2">
                 {funnelWa.map((step, i) => {
-                  const barPct = i === 0 ? 100 : pct(step.value, funnelWa[0].value);
+                  const barPct = step.value === 0 ? 0 : (i === 0 ? 100 : pct(step.value, funnelWa[0].value));
                   return (
                     <div key={step.name}>
                       <div className="flex justify-between text-xs mb-1">
