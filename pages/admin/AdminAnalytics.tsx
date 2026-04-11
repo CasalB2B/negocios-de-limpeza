@@ -63,7 +63,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export const AdminAnalytics: React.FC = () => {
-  const [period, setPeriod] = useState<Period>('30d');
+  const [period, setPeriod] = useState<Period>('today');
   const [events, setEvents] = useState<RawEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
