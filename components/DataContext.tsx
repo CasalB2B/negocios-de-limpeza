@@ -60,7 +60,8 @@ export interface PlatformSettings {
   workingHoursDays?: string;
   awayMessage?: string;
   followUpEnabled?: boolean;
-  followUpChatHours?: number;    // horas para re-engajar quem parou no meio do fluxo
+  followUpChatHours?: number;   // 1ª tentativa: re-engajar quem parou no meio do fluxo
+  followUpChatHours2?: number;  // 2ª tentativa: segunda chance de re-engajamento
   followUpHumanDelays?: number[]; // [horas1, horas2] para quem recebeu orçamento e sumiu
   ninaTone?: string;
   ninaSilenceHours?: number; // horas de inatividade para reativar Nina automaticamente
@@ -435,6 +436,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 awayMessage: settingsData.away_message || 'Olá! Nosso atendimento é de segunda a sábado, das 8h às 18h. Retornaremos em breve! 😊',
                 followUpEnabled: settingsData.follow_up_enabled || false,
                 followUpChatHours: settingsData.follow_up_hours ?? 2,
+                followUpChatHours2: settingsData.follow_up_hours_2 ?? 26,
                 followUpHumanDelays: (() => { try { const v = JSON.parse(settingsData.follow_up_steps || ''); if (Array.isArray(v) && v.every((n: unknown) => typeof n === 'number')) return v; } catch { /* ignore */ } return [24, 48]; })(),
                 ninaTone: settingsData.nina_tone || 'casual',
                 ninaSilenceHours: settingsData.nina_silence_hours ?? 24,
@@ -942,6 +944,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           away_message: s.awayMessage ?? null,
           follow_up_enabled: s.followUpEnabled ?? false,
           follow_up_hours: s.followUpChatHours ?? 2,
+          follow_up_hours_2: s.followUpChatHours2 ?? 26,
           follow_up_steps: JSON.stringify(s.followUpHumanDelays ?? [24, 48]),
           nina_tone: s.ninaTone ?? 'casual',
           nina_silence_hours: s.ninaSilenceHours ?? 24,

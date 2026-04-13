@@ -50,6 +50,7 @@ export const AdminWhatsApp: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [followUpChatHours,    setFollowUpChatHours]    = useState<number>(2);
+  const [followUpChatHours2,   setFollowUpChatHours2]   = useState<number>(26);
   const [followUpHumanDelays,  setFollowUpHumanDelays]  = useState<number[]>([24, 48]);
   const [followUpSaved,        setFollowUpSaved]        = useState(false);
 
@@ -70,8 +71,9 @@ export const AdminWhatsApp: React.FC = () => {
   // Sync follow-up config from Supabase
   useEffect(() => {
     if (platformSettings.followUpChatHours)   setFollowUpChatHours(platformSettings.followUpChatHours);
+    if (platformSettings.followUpChatHours2)  setFollowUpChatHours2(platformSettings.followUpChatHours2);
     if (platformSettings.followUpHumanDelays) setFollowUpHumanDelays(platformSettings.followUpHumanDelays);
-  }, [platformSettings.followUpChatHours, platformSettings.followUpHumanDelays]);
+  }, [platformSettings.followUpChatHours, platformSettings.followUpChatHours2, platformSettings.followUpHumanDelays]);
 
   // Sync templates from Supabase
   useEffect(() => {
@@ -173,6 +175,7 @@ export const AdminWhatsApp: React.FC = () => {
     await updatePlatformSettings({
       ...platformSettings,
       followUpChatHours: followUpChatHours,
+      followUpChatHours2: followUpChatHours2,
       followUpHumanDelays: followUpHumanDelays,
     });
     setFollowUpSaved(true);
@@ -651,22 +654,30 @@ export const AdminWhatsApp: React.FC = () => {
                   <span className="text-base">💬</span>
                   <div>
                     <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary">Cliente parou no meio da conversa</p>
-                    <p className="text-[10px] text-gray-400">Ainda não recebeu orçamento</p>
+                    <p className="text-[10px] text-gray-400">Ainda não recebeu orçamento — até 2 tentativas</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-[11px] text-gray-500">Nina tenta retomar após</span>
-                  <div className="flex items-center gap-1 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg px-2 py-1">
-                    <Clock size={11} className="text-orange-500" />
-                    <select
-                      value={followUpChatHours}
-                      onChange={e => setFollowUpChatHours(Number(e.target.value))}
-                      className="text-[11px] font-bold text-orange-600 bg-transparent border-none outline-none cursor-pointer"
-                    >
-                      {CHAT_HOUR_OPTIONS.map(h => <option key={h} value={h}>{h === 1 ? '1 hora' : `${h} horas`}</option>)}
-                    </select>
-                  </div>
-                  <span className="text-[11px] text-gray-400">sem resposta</span>
+                <div className="space-y-2 mt-2">
+                  {[
+                    { label: 'Tentativa 1', value: followUpChatHours, set: setFollowUpChatHours, color: 'orange' },
+                    { label: 'Tentativa 2', value: followUpChatHours2, set: setFollowUpChatHours2, color: 'orange' },
+                  ].map(({ label, value, set, color }) => (
+                    <div key={label} className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-gray-400 w-16">{label}</span>
+                      <div className={`flex items-center gap-1 bg-${color}-50 dark:bg-${color}-900/20 border border-${color}-200 dark:border-${color}-800 rounded-lg px-2 py-1`}>
+                        <Clock size={11} className={`text-${color}-500`} />
+                        <select
+                          value={value}
+                          onChange={e => set(Number(e.target.value))}
+                          className={`text-[11px] font-bold text-${color}-600 bg-transparent border-none outline-none cursor-pointer`}
+                        >
+                          {CHAT_HOUR_OPTIONS.map(h => <option key={h} value={h}>{h === 1 ? '1 hora' : `${h} horas`}</option>)}
+                          {[12, 24, 26, 48, 72].map(h => <option key={h} value={h}>{h < 24 ? `${h}h` : `${h/24}d`}</option>)}
+                        </select>
+                      </div>
+                      <span className="text-[11px] text-gray-400">sem resposta</span>
+                    </div>
+                  ))}
                 </div>
                 <p className="text-[10px] text-gray-400 mt-2 italic">Nina lê a conversa e manda uma mensagem para continuar de onde parou</p>
               </div>
