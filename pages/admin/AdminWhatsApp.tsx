@@ -6,20 +6,8 @@ import { getStatus, getQrCode, sendMessage, buildMessage, DEFAULT_TEMPLATES, Evo
 import { sendMessage as askNina, GeminiMessage, QUOTE_SYSTEM_PROMPT } from '../../lib/gemini';
 import { useData } from '../../components/DataContext';
 
-const STORAGE_KEY = 'ndl_whatsapp_templates';
-const PROMPT_STORAGE_KEY = 'ndl_nina_prompt';
-
 const CHAT_HOUR_OPTIONS  = [1, 2, 4, 6, 12, 24];
 const HUMAN_HOUR_OPTIONS = [12, 24, 48, 72, 96, 168];
-
-function loadTemplates() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : { ...DEFAULT_TEMPLATES };
-  } catch {
-    return { ...DEFAULT_TEMPLATES };
-  }
-}
 
 const TABS = [
   { id: 'status',       label: 'Conexão',     icon: <Wifi size={18} />,      color: 'text-green-600',  bg: 'bg-green-100 dark:bg-green-900/30' },
@@ -54,7 +42,7 @@ export const AdminWhatsApp: React.FC = () => {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [loadingQr, setLoadingQr] = useState(false);
-  const [templates, setTemplates] = useState(loadTemplates());
+  const [templates, setTemplates] = useState({ ...DEFAULT_TEMPLATES });
   const [saved, setSaved] = useState(false);
   const [testPhone, setTestPhone] = useState('');
   const [testMessageText, setTestMessageText] = useState('');
@@ -84,6 +72,15 @@ export const AdminWhatsApp: React.FC = () => {
     if (platformSettings.followUpChatHours)   setFollowUpChatHours(platformSettings.followUpChatHours);
     if (platformSettings.followUpHumanDelays) setFollowUpHumanDelays(platformSettings.followUpHumanDelays);
   }, [platformSettings.followUpChatHours, platformSettings.followUpHumanDelays]);
+
+  // Sync templates from Supabase
+  useEffect(() => {
+    setTemplates({
+      welcome:      platformSettings.templateWelcome      ?? DEFAULT_TEMPLATES.welcome,
+      proposal:     platformSettings.templateProposal     ?? DEFAULT_TEMPLATES.proposal,
+      confirmation: platformSettings.templateConfirmation ?? DEFAULT_TEMPLATES.confirmation,
+    });
+  }, [platformSettings.templateWelcome, platformSettings.templateProposal, platformSettings.templateConfirmation]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -161,8 +158,13 @@ export const AdminWhatsApp: React.FC = () => {
     }
   }, [status.connected]);
 
-  const handleSave = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
+  const handleSave = async () => {
+    await updatePlatformSettings({
+      ...platformSettings,
+      templateWelcome:      templates.welcome,
+      templateProposal:     templates.proposal,
+      templateConfirmation: templates.confirmation,
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -550,8 +552,11 @@ export const AdminWhatsApp: React.FC = () => {
 
               {/* Tom de Voz */}
               <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-5">
-                <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary mb-1">Tom de Voz da Nina</p>
-                <p className="text-xs text-gray-500 mb-3">Ajusta automaticamente o estilo de conversa</p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Tom de Voz da Nina</p>
+                  <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">● Ativo</span>
+                </div>
+                <p className="text-xs text-gray-500 mb-3">Ajusta automaticamente o estilo de conversa da Nina</p>
                 <div className="grid grid-cols-3 gap-2">
                   {[
                     { value: 'casual', label: 'Casual', desc: 'Próxima e amigável' },

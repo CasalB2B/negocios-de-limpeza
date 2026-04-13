@@ -119,9 +119,6 @@ export const QuoteChat: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState<'login' | 'password' | null>(null);
 
-  // Rastreia lead criado no início da conversa (atualizado ao concluir)
-  const [preChatLeadId, setPreChatLeadId] = useState<string | null>(null);
-
   // Se já está logado, vai direto pro dashboard
   useEffect(() => {
     if (currentUser) navigate('/client/dashboard');
@@ -156,18 +153,9 @@ export const QuoteChat: React.FC = () => {
     setIsLoading(true);
     setApiError(null);
 
-    // Primeira mensagem: cria lead minimal no CRM e dispara analytics
-    if (messages.length === 1 && !isDemo && !preChatLeadId) {
+    // Primeira mensagem: dispara evento de analytics
+    if (messages.length === 1 && !isDemo) {
       trackEvent('chat_started', analyticsSessionId.current);
-      supabase.from('quotes').insert({
-        name: 'Aguardando...',
-        whatsapp: '',
-        status: 'NEW',
-        source: 'web_chat',
-        chat_summary: `Sessão: ${analyticsSessionId.current}`,
-      }).select('id').single().then(({ data }) => {
-        if (data?.id) setPreChatLeadId(data.id);
-      });
     }
 
     try {
@@ -202,40 +190,26 @@ export const QuoteChat: React.FC = () => {
           .map(m => `${m.role === 'user' ? 'Cliente' : 'Assistente'}: ${m.text}`)
           .join('\n\n');
 
-        let savedId: string | null = preChatLeadId;
-        if (preChatLeadId) {
-          // Atualiza o lead já criado no pré-chat com os dados completos
-          await supabase.from('quotes').update({
-            name: quoteData.name || '',
-            email: quoteData.email || '',
-            whatsapp: quoteData.whatsapp || '',
-            property_type: quoteData.propertyType || '',
-            rooms: quoteData.rooms || '',
-            priorities: quoteData.priorities || '',
-            internal_cleaning: quoteData.internalCleaning || '',
-            renovation: quoteData.renovation || '',
-            service_option: quoteData.serviceOption || '',
-            chat_summary: summary,
-            status: 'NEW',
-          }).eq('id', preChatLeadId);
-        } else {
-          const saved = await addQuote({
-            name: quoteData.name || '',
-            email: quoteData.email || '',
-            whatsapp: quoteData.whatsapp || '',
-            cep: quoteData.cep || '',
-            propertyType: quoteData.propertyType || '',
-            rooms: quoteData.rooms || '',
-            priorities: quoteData.priorities || '',
-            internalCleaning: quoteData.internalCleaning || '',
-            renovation: quoteData.renovation || '',
-            serviceOption: quoteData.serviceOption || '',
-            chatSummary: summary,
-            clientPhotos: chatPhotos,
-          });
-          savedId = saved.id;
-        }
-        setQuoteId(savedId);
+        const saved = await addQuote({
+          name: quoteData.name || '',
+          email: quoteData.email || '',
+          whatsapp: quoteData.whatsapp || '',
+          cep: quoteData.cep || '',
+          propertyType: quoteData.propertyType || '',
+          rooms: quoteData.rooms || '',
+          priorities: quoteData.priorities || '',
+          internalCleaning: quoteData.internalCleaning || '',
+          renovation: quoteData.renovation || '',
+          serviceOption: quoteData.serviceOption || '',
+          addressStreet: quoteData.addressStreet || '',
+          addressNumber: quoteData.addressNumber || '',
+          addressDistrict: quoteData.addressDistrict || '',
+          addressCity: quoteData.addressCity || '',
+          chatSummary: summary,
+          clientPhotos: chatPhotos,
+          source: 'web_chat',
+        });
+        setQuoteId(saved.id);
 
         // Generate credentials and register client account automatically
         const phoneDigits = (quoteData.whatsapp || '').replace(/\D/g, '');

@@ -64,6 +64,9 @@ export interface PlatformSettings {
   followUpHumanDelays?: number[]; // [horas1, horas2] para quem recebeu orçamento e sumiu
   ninaTone?: string;
   ninaSilenceHours?: number; // horas de inatividade para reativar Nina automaticamente
+  templateWelcome?: string;
+  templateProposal?: string;
+  templateConfirmation?: string;
 }
 
 export interface Service {
@@ -435,6 +438,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 followUpHumanDelays: (() => { try { const v = JSON.parse(settingsData.follow_up_steps || ''); if (Array.isArray(v) && v.every((n: unknown) => typeof n === 'number')) return v; } catch { /* ignore */ } return [24, 48]; })(),
                 ninaTone: settingsData.nina_tone || 'casual',
                 ninaSilenceHours: settingsData.nina_silence_hours ?? 24,
+                templateWelcome: settingsData.template_welcome || undefined,
+                templateProposal: settingsData.template_proposal || undefined,
+                templateConfirmation: settingsData.template_confirmation || undefined,
             });
         }
 
@@ -939,6 +945,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           follow_up_steps: JSON.stringify(s.followUpHumanDelays ?? [24, 48]),
           nina_tone: s.ninaTone ?? 'casual',
           nina_silence_hours: s.ninaSilenceHours ?? 24,
+          template_welcome: s.templateWelcome ?? null,
+          template_proposal: s.templateProposal ?? null,
+          template_confirmation: s.templateConfirmation ?? null,
       });
       if (error) console.error("Erro ao salvar configurações:", error);
   };
@@ -974,7 +983,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         internal_cleaning: quoteData.internalCleaning,
         renovation: quoteData.renovation,
         service_option: quoteData.serviceOption,
+        address_street: quoteData.addressStreet || '',
+        address_number: quoteData.addressNumber || '',
+        address_district: quoteData.addressDistrict || '',
+        address_city: quoteData.addressCity || '',
         status: 'NEW',
+        source: quoteData.source || 'web_chat',
         chat_summary: quoteData.chatSummary || ''
     }).select().single();
 
