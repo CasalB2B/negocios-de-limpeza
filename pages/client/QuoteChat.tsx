@@ -119,10 +119,10 @@ export const QuoteChat: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState<'login' | 'password' | null>(null);
 
-  // Se já está logado, vai direto pro dashboard
+  // Se já está logado E não acabou de completar o chat, vai pro dashboard
   useEffect(() => {
-    if (currentUser) navigate('/client/dashboard');
-  }, [currentUser, navigate]);
+    if (currentUser && !isComplete) navigate('/client/dashboard');
+  }, [currentUser, navigate, isComplete]);
 
   // Capture UTMs from URL on mount and track page view
   useEffect(() => {
