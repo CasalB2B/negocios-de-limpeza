@@ -183,6 +183,7 @@ export const QuoteChat: React.FC = () => {
 
       setMessages(prev => [...prev, aiMessage]);
 
+      console.log('[CHAT] quoteData detectado:', quoteData ? JSON.stringify(quoteData).slice(0, 200) : 'nenhum');
       if (quoteData && quoteData.name) {
         // Build chat summary
         const summary = updatedMessages
@@ -190,21 +191,25 @@ export const QuoteChat: React.FC = () => {
           .map(m => `${m.role === 'user' ? 'Cliente' : 'Assistente'}: ${m.text}`)
           .join('\n\n');
 
+        // Sanitiza valores placeholder que a IA pode retornar literalmente
+        const PLACEHOLDERS = ['EMAIL', 'WHATSAPP', 'NOME', 'RUA', 'NUMERO', 'BAIRRO', 'CEP', 'TELEFONE', 'E-MAIL'];
+        const clean = (val: string) => (!val || PLACEHOLDERS.includes(val.trim().toUpperCase())) ? '' : val.trim();
+
         const saved = await addQuote({
-          name: quoteData.name || '',
-          email: quoteData.email || '',
-          whatsapp: quoteData.whatsapp || '',
-          cep: quoteData.cep || '',
-          propertyType: quoteData.propertyType || '',
-          rooms: quoteData.rooms || '',
-          priorities: quoteData.priorities || '',
-          internalCleaning: quoteData.internalCleaning || '',
-          renovation: quoteData.renovation || '',
-          serviceOption: quoteData.serviceOption || '',
-          addressStreet: quoteData.addressStreet || '',
-          addressNumber: quoteData.addressNumber || '',
-          addressDistrict: quoteData.addressDistrict || '',
-          addressCity: quoteData.addressCity || '',
+          name: clean(quoteData.name) || '',
+          email: clean(quoteData.email),
+          whatsapp: clean(quoteData.whatsapp),
+          cep: clean(quoteData.cep),
+          propertyType: clean(quoteData.propertyType),
+          rooms: clean(quoteData.rooms),
+          priorities: clean(quoteData.priorities),
+          internalCleaning: clean(quoteData.internalCleaning),
+          renovation: clean(quoteData.renovation),
+          serviceOption: clean(quoteData.serviceOption),
+          addressStreet: clean(quoteData.addressStreet),
+          addressNumber: clean(quoteData.addressNumber),
+          addressDistrict: clean(quoteData.addressDistrict),
+          addressCity: clean(quoteData.addressCity) || 'Guarapari',
           chatSummary: summary,
           clientPhotos: chatPhotos,
           source: 'web_chat',

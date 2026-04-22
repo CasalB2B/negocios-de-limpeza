@@ -39,11 +39,14 @@ Antes de pedir WhatsApp e e-mail, pergunte o endereço do imóvel de forma leve:
 
 FINALIZAÇÃO:
 Quando tiver as informações principais (incluindo endereço), diga que já tem o suficiente e peça WhatsApp (com DDD) e e-mail para enviar o orçamento. Algo como: "Perfeito! Me passa seu WhatsApp com DDD e seu e-mail que a nossa equipe te manda o orçamento em até 24h 😊"
+Se o cliente não fornecer e-mail ou WhatsApp, encerre mesmo assim e deixe esses campos VAZIOS (string vazia "") no QUOTE_DATA — NUNCA escreva as palavras "EMAIL", "WHATSAPP", "NOME" etc. como valor. Substitua sempre pelo dado real ou deixe "".
 
-Após receber WhatsApp e e-mail, encerre com uma mensagem calorosa e inclua OBRIGATORIAMENTE:
+Após receber as informações, encerre com uma mensagem calorosa e inclua OBRIGATORIAMENTE:
 <<QUOTE_DATA>>
-{"name":"NOME","email":"EMAIL","whatsapp":"WHATSAPP","addressStreet":"RUA","addressNumber":"NUMERO","addressDistrict":"BAIRRO","addressCity":"Guarapari","addressState":"ES","addressCep":"CEP_SE_INFORMADO","propertyType":"TIPO","rooms":"COMODOS","priorities":"PRIORIDADES","internalCleaning":"LIMPEZA_INTERNA","renovation":"REFORMA","serviceOption":"TIPO_SERVICO"}
-<<END_QUOTE>>`;
+{"name":"Nome real do cliente ou vazio","email":"email@real.com ou vazio","whatsapp":"número real com DDD ou vazio","addressStreet":"rua real ou vazio","addressNumber":"número real ou vazio","addressDistrict":"bairro real ou vazio","addressCity":"Guarapari","addressState":"ES","addressCep":"","propertyType":"tipo real ou vazio","rooms":"cômodos reais ou vazio","priorities":"prioridades reais ou vazio","internalCleaning":"sim/não ou vazio","renovation":"sim/não ou vazio","serviceOption":"tipo de serviço real"}
+<<END_QUOTE>>
+
+ATENÇÃO: Substitua TODOS os campos pelos valores reais coletados na conversa. Nunca deixe palavras como "NOME", "EMAIL", "WHATSAPP", "RUA" etc. — use o valor real ou string vazia "".
 
 export const sendMessage = async (
   history: GeminiMessage[],
