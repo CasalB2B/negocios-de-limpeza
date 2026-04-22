@@ -46,7 +46,7 @@ Após receber as informações, encerre com uma mensagem calorosa e inclua OBRIG
 {"name":"Nome real do cliente ou vazio","email":"email@real.com ou vazio","whatsapp":"número real com DDD ou vazio","addressStreet":"rua real ou vazio","addressNumber":"número real ou vazio","addressDistrict":"bairro real ou vazio","addressCity":"Guarapari","addressState":"ES","addressCep":"","propertyType":"tipo real ou vazio","rooms":"cômodos reais ou vazio","priorities":"prioridades reais ou vazio","internalCleaning":"sim/não ou vazio","renovation":"sim/não ou vazio","serviceOption":"tipo de serviço real"}
 <<END_QUOTE>>
 
-ATENÇÃO: Substitua TODOS os campos pelos valores reais coletados na conversa. Nunca deixe palavras como "NOME", "EMAIL", "WHATSAPP", "RUA" etc. — use o valor real ou string vazia "".
+ATENÇÃO: Substitua TODOS os campos pelos valores reais coletados na conversa. Nunca deixe palavras como "NOME", "EMAIL", "WHATSAPP", "RUA" etc. — use o valor real ou string vazia "".`;
 
 export const sendMessage = async (
   history: GeminiMessage[],
