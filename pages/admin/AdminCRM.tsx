@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
@@ -8,12 +8,20 @@ import { supabase } from '../../lib/supabase';
 import {
   Plus, Search, Tag, MessageSquare, Phone, Mail, MapPin,
   Calendar, DollarSign, X, Send, Edit3, Trash2, User,
-  ExternalLink, Copy, Check, Hash,
+  ExternalLink, Copy, Check, Hash, Paperclip,
   ChevronDown, Clock, Home, Briefcase, RefreshCw,
   Zap, LayoutList, Kanban, Upload, Download, ChevronUp,
   AlertCircle, CheckCircle2, Megaphone, Pencil, Eye,
   Smartphone, CalendarPlus, CheckCircle, Mic, Square, Camera, Film
 } from 'lucide-react';
+
+// ─── CRM Note (comment entry) ────────────────────────────────────────────────
+interface CrmNote {
+  id: string;
+  text: string;
+  createdAt: string;
+  files?: { name: string; url: string; type: string }[];
+}
 
 // ─── Template system ─────────────────────────────────────────────────────────
 interface CampaignTemplate { id: string; label: string; emoji: string; text: string; isDefault?: boolean; }
@@ -348,6 +356,10 @@ export const AdminCRM: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
   const [notesSaved, setNotesSaved] = useState(false);
+  const [noteInput, setNoteInput] = useState('');
+  const [noteFiles, setNoteFiles] = useState<{ name: string; url: string; type: string; file: File }[]>([]);
+  const [addingNote, setAddingNote] = useState(false);
+  const noteFileRef = useRef<HTMLInputElement>(null);
 
   // ── chat ──
   const [chatMessages, setChatMessages] = useState<WaMsg[]>([]);
@@ -721,6 +733,59 @@ export const AdminCRM: React.FC = () => {
     setSelected(prev => prev ? { ...prev, ...editData } : null);
     setEditMode(false);
     setSaving(false);
+  };
+
+  // ─── CRM Notes (comment system) ─────────────────────────────────────────
+  const parsedNotes = useMemo<CrmNote[]>(() => {
+    const raw = editData.crmNotes || '';
+    if (!raw.trim()) return [];
+    try {
+      const p = JSON.parse(raw);
+      if (Array.isArray(p)) return p;
+    } catch {}
+    // legacy: plain text → wrap as single note
+    return [{ id: 'legacy', text: raw, createdAt: new Date().toISOString() }];
+  }, [editData.crmNotes]);
+
+  const handleAddNote = async () => {
+    if (!noteInput.trim() && noteFiles.length === 0) return;
+    if (!selected) return;
+    setAddingNote(true);
+    try {
+      const uploadedFiles: { name: string; url: string; type: string }[] = [];
+      for (const f of noteFiles) {
+        const path = `crm/${selected.id}/${Date.now()}_${f.name}`;
+        const { error } = await supabase.storage.from('crm-files').upload(path, f.file, { upsert: true });
+        if (!error) {
+          const { data: urlData } = supabase.storage.from('crm-files').getPublicUrl(path);
+          uploadedFiles.push({ name: f.name, url: urlData.publicUrl, type: f.type });
+        }
+      }
+      const newNote: CrmNote = {
+        id: `note_${Date.now()}`,
+        text: noteInput.trim(),
+        createdAt: new Date().toISOString(),
+        ...(uploadedFiles.length > 0 && { files: uploadedFiles }),
+      };
+      const updated = [...parsedNotes, newNote];
+      const jsonStr = JSON.stringify(updated);
+      await updateQuote(selected.id, { crmNotes: jsonStr });
+      setSelected(p => p ? { ...p, crmNotes: jsonStr } : null);
+      setEditData(p => ({ ...p, crmNotes: jsonStr }));
+      setNoteInput('');
+      setNoteFiles([]);
+    } finally {
+      setAddingNote(false);
+    }
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    if (!selected) return;
+    const updated = parsedNotes.filter(n => n.id !== noteId);
+    const jsonStr = JSON.stringify(updated);
+    await updateQuote(selected.id, { crmNotes: jsonStr });
+    setSelected(p => p ? { ...p, crmNotes: jsonStr } : null);
+    setEditData(p => ({ ...p, crmNotes: jsonStr }));
   };
 
   // ─── Send WhatsApp message ───────────────────────────────────────────────
@@ -2397,39 +2462,117 @@ export const AdminCRM: React.FC = () => {
 
               {/* ── NOTES TAB ── */}
               {activeTab === 'notes' && (
-                <div className="p-5">
-                  <p className="text-xs text-lightText mb-3">Anotações internas (visível só para o time)</p>
-                  <textarea
-                    className="w-full border border-gray-200 rounded-xl p-3 text-sm outline-none focus:border-primary h-48 resize-none"
-                    placeholder="Ex: Cliente demonstrou interesse alto. Agendar retorno quinta-feira..."
-                    value={editData.crmNotes || ''}
-                    onChange={e => setEditData(p => ({ ...p, crmNotes: e.target.value }))}
-                  />
-                  <button
-                    disabled={savingNotes}
-                    onClick={async () => {
-                      if (!selected) return;
-                      setSavingNotes(true);
-                      setNotesSaved(false);
-                      try {
-                        await updateQuote(selected.id, { crmNotes: editData.crmNotes });
-                        setSelected(p => p ? { ...p, crmNotes: editData.crmNotes } : null);
-                        setNotesSaved(true);
-                        setTimeout(() => setNotesSaved(false), 2500);
-                      } catch {
-                        // silent
-                      } finally {
-                        setSavingNotes(false);
-                      }
-                    }}
-                    className={`mt-3 px-4 py-2 text-white text-sm rounded-lg flex items-center gap-2 transition-colors ${notesSaved ? 'bg-green-500' : 'bg-primary hover:bg-primary/90'} disabled:opacity-60`}>
-                    {savingNotes
-                      ? <><RefreshCw size={14} className="animate-spin" /> Salvando...</>
-                      : notesSaved
-                        ? <><Check size={14} /> Notas salvas!</>
-                        : <><Check size={14} /> Salvar notas</>
-                    }
-                  </button>
+                <div className="flex flex-col" style={{ minHeight: '340px' }}>
+                  {/* Comment list */}
+                  <div className="flex-1 overflow-y-auto px-4 pt-4 pb-2 space-y-3 max-h-64">
+                    {parsedNotes.length === 0 ? (
+                      <div className="text-center py-8 text-gray-400">
+                        <p className="text-sm font-medium">Nenhuma anotação ainda</p>
+                        <p className="text-xs mt-1">Adicione comentários, observações e arquivos</p>
+                      </div>
+                    ) : (
+                      [...parsedNotes].reverse().map(note => (
+                        <div key={note.id} className="bg-gray-50 rounded-xl p-3 group relative">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
+                                <span className="text-[10px] font-bold text-primary">A</span>
+                              </div>
+                              <span className="text-xs font-semibold text-darkText">Admin</span>
+                              <span className="text-[10px] text-gray-400">
+                                {new Date(note.createdAt).toLocaleDateString('pt-BR')} às {new Date(note.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteNote(note.id)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-400 p-0.5"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                          {note.text && <p className="text-sm text-gray-700 ml-8 leading-relaxed whitespace-pre-wrap">{note.text}</p>}
+                          {note.files && note.files.length > 0 && (
+                            <div className="ml-8 mt-2 flex flex-wrap gap-2">
+                              {note.files.map((f, i) => (
+                                f.type.startsWith('image/') ? (
+                                  <a key={i} href={f.url} target="_blank" rel="noopener noreferrer">
+                                    <img src={f.url} alt={f.name} className="w-20 h-20 object-cover rounded-lg border border-gray-200 hover:opacity-80 transition-opacity" />
+                                  </a>
+                                ) : (
+                                  <a key={i} href={f.url} target="_blank" rel="noopener noreferrer"
+                                    className="flex items-center gap-1.5 text-xs bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 hover:border-primary transition-colors text-gray-600">
+                                    <Paperclip size={11} /> {f.name}
+                                  </a>
+                                )
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Input area */}
+                  <div className="border-t border-gray-100 p-3 space-y-2">
+                    {noteFiles.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {noteFiles.map((f, i) => (
+                          <div key={i} className="flex items-center gap-1.5 text-xs bg-purple-50 border border-purple-200 rounded-lg px-2 py-1">
+                            {f.type.startsWith('image/')
+                              ? <img src={f.url} className="w-4 h-4 object-cover rounded" alt="" />
+                              : <Paperclip size={10} className="text-primary" />
+                            }
+                            <span className="text-primary max-w-[80px] truncate">{f.name}</span>
+                            <button onClick={() => setNoteFiles(prev => prev.filter((_, idx) => idx !== i))} className="text-gray-400 hover:text-red-400">
+                              <X size={10} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2 items-end">
+                      <textarea
+                        value={noteInput}
+                        onChange={e => setNoteInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddNote(); } }}
+                        placeholder="Adicione uma anotação... (Enter para enviar)"
+                        rows={2}
+                        className="flex-1 resize-none border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-primary transition-colors"
+                      />
+                      <div className="flex flex-col gap-1.5">
+                        <button
+                          onClick={() => noteFileRef.current?.click()}
+                          className="p-2 border border-gray-200 rounded-xl hover:border-primary hover:bg-purple-50 transition-colors"
+                          title="Anexar imagem ou arquivo"
+                        >
+                          <Paperclip size={15} className="text-gray-400" />
+                        </button>
+                        <button
+                          onClick={handleAddNote}
+                          disabled={addingNote || (!noteInput.trim() && noteFiles.length === 0)}
+                          className="p-2 bg-primary hover:bg-primary/90 disabled:opacity-40 text-white rounded-xl transition-colors"
+                        >
+                          {addingNote ? <RefreshCw size={15} className="animate-spin" /> : <Send size={15} />}
+                        </button>
+                      </div>
+                    </div>
+                    <input
+                      ref={noteFileRef}
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                      className="hidden"
+                      onChange={e => {
+                        if (!e.target.files) return;
+                        Array.from(e.target.files).forEach(file => {
+                          const url = URL.createObjectURL(file);
+                          setNoteFiles(prev => [...prev, { name: file.name, url, type: file.type, file }]);
+                        });
+                        e.target.value = '';
+                      }}
+                    />
+                    <p className="text-[10px] text-gray-400 text-center">Visível apenas para o time · Shift+Enter para nova linha</p>
+                  </div>
                 </div>
               )}
 
