@@ -346,6 +346,8 @@ export const AdminCRM: React.FC = () => {
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState<Partial<Quote>>({});
   const [saving, setSaving] = useState(false);
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [notesSaved, setNotesSaved] = useState(false);
 
   // ── chat ──
   const [chatMessages, setChatMessages] = useState<WaMsg[]>([]);
@@ -2403,9 +2405,30 @@ export const AdminCRM: React.FC = () => {
                     value={editData.crmNotes || ''}
                     onChange={e => setEditData(p => ({ ...p, crmNotes: e.target.value }))}
                   />
-                  <button onClick={async () => { if (!selected) return; await updateQuote(selected.id, { crmNotes: editData.crmNotes }); setSelected(p => p ? { ...p, crmNotes: editData.crmNotes } : null); }}
-                    className="mt-3 px-4 py-2 bg-primary text-white text-sm rounded-lg flex items-center gap-2">
-                    <Check size={14} /> Salvar notas
+                  <button
+                    disabled={savingNotes}
+                    onClick={async () => {
+                      if (!selected) return;
+                      setSavingNotes(true);
+                      setNotesSaved(false);
+                      try {
+                        await updateQuote(selected.id, { crmNotes: editData.crmNotes });
+                        setSelected(p => p ? { ...p, crmNotes: editData.crmNotes } : null);
+                        setNotesSaved(true);
+                        setTimeout(() => setNotesSaved(false), 2500);
+                      } catch {
+                        // silent
+                      } finally {
+                        setSavingNotes(false);
+                      }
+                    }}
+                    className={`mt-3 px-4 py-2 text-white text-sm rounded-lg flex items-center gap-2 transition-colors ${notesSaved ? 'bg-green-500' : 'bg-primary hover:bg-primary/90'} disabled:opacity-60`}>
+                    {savingNotes
+                      ? <><RefreshCw size={14} className="animate-spin" /> Salvando...</>
+                      : notesSaved
+                        ? <><Check size={14} /> Notas salvas!</>
+                        : <><Check size={14} /> Salvar notas</>
+                    }
                   </button>
                 </div>
               )}
