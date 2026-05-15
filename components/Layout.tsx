@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
-import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2 } from 'lucide-react';
+import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog } from 'lucide-react';
 import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
 import { useData } from './DataContext';
@@ -179,6 +179,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           { icon: <MessageCircle size={20} />,   label: 'WhatsApp',     path: '/admin/whatsapp',       group: 'VENDAS' },
           { icon: <DollarSign size={20} />,      label: 'Financeiro',   path: '/admin/payments',       group: 'FINANCEIRO' },
           { icon: <BarChart2 size={20} />,       label: 'Analytics',    path: '/admin/analytics',      group: 'FINANCEIRO' },
+          { icon: <UserCog size={20} />,          label: 'RH',           path: '/admin/rh',             group: 'GESTÃO' },
           { icon: <Sparkles size={20} />,        label: 'Serviços',     path: '/admin/services',       group: 'CONFIG' },
           { icon: <Settings size={20} />,        label: 'Configurações',path: '/admin/settings',       group: 'CONFIG' },
         ];
@@ -222,7 +223,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                   {items.map((item: any) => {
                     const isCRM = item.path === '/admin/crm';
                     const onCRM = location.pathname.startsWith('/admin/crm');
-                    const isActive = isCRM ? onCRM : location.pathname === item.path;
+                    const isRH = item.path === '/admin/rh';
+                    const onRH = location.pathname.startsWith('/admin/rh');
+                    const isActive = isCRM ? onCRM : isRH ? onRH : location.pathname === item.path;
                     return (
                       <div key={item.path}>
                         <button
@@ -236,6 +239,31 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                           {item.icon}
                           <span className="text-sm">{item.label}</span>
                         </button>
+
+                        {/* RH sub-menu */}
+                        {isRH && onRH && (
+                          <div className="ml-4 mb-1 pl-3 border-l-2 border-gray-100 dark:border-darkBorder space-y-0.5">
+                            {[
+                              { label: 'Dashboard',      path: '/admin/rh',                  icon: <LayoutDashboard size={14}/> },
+                              { label: 'Colaboradoras',  path: '/admin/rh/colaboradoras',    icon: <Users size={14}/> },
+                              { label: 'Avaliações',     path: '/admin/rh/avaliacoes',       icon: <MessageSquare size={14}/> },
+                              { label: 'Desempenho',     path: '/admin/rh/desempenho',       icon: <BarChart2 size={14}/> },
+                              { label: 'Bônus',          path: '/admin/rh/bonus',            icon: <DollarSign size={14}/> },
+                              { label: 'Promoções',      path: '/admin/rh/promocoes',        icon: <Sparkles size={14}/> },
+                              { label: 'Configurações',  path: '/admin/rh/configuracoes',    icon: <Settings size={14}/> },
+                            ].map(sub => (
+                              <button key={sub.path} onClick={() => navigate(sub.path)}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg w-full transition-colors text-xs ${
+                                  location.pathname === sub.path
+                                    ? 'bg-primary/10 text-primary font-bold'
+                                    : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder'
+                                }`}>
+                                {sub.icon}
+                                {sub.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
 
                         {/* CRM sub-menu — visible when on any /admin/crm route */}
                         {isCRM && onCRM && (

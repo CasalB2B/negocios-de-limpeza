@@ -41,6 +41,15 @@ import { AdminInbox } from './pages/admin/AdminInbox';
 import { AdminAnalytics } from './pages/admin/AdminAnalytics';
 import { QuoteChat } from './pages/client/QuoteChat';
 import { PWAManager } from './components/PWAManager';
+import { RHProvider } from './components/RHContext';
+import { AdminRHDashboard } from './pages/admin/rh/AdminRHDashboard';
+import { AdminRHColaboradoras } from './pages/admin/rh/AdminRHColaboradoras';
+import { AdminRHDesempenho } from './pages/admin/rh/AdminRHDesempenho';
+import { AdminRHBonus } from './pages/admin/rh/AdminRHBonus';
+import { AdminRHPromocoes } from './pages/admin/rh/AdminRHPromocoes';
+import { AdminRHConfiguracoes } from './pages/admin/rh/AdminRHConfiguracoes';
+import { AdminRHAvaliacoes } from './pages/admin/rh/AdminRHAvaliacoes';
+import { AvaliacaoPage } from './pages/AvaliacaoPage';
 
 // ── Troca o manifest dinamicamente conforme a rota ────────────────────────────
 function ManifestSwitcher() {
@@ -63,6 +72,7 @@ const App: React.FC = () => {
   return (
     <ThemeProvider>
       <DataProvider>
+      <RHProvider>
         {/* PWA: manifest dinâmico + install prompt + notifications */}
         <ManifestSwitcher />
         <PWAManager />
@@ -74,6 +84,9 @@ const App: React.FC = () => {
             <Route path="/collab/login" element={<CollaboratorLogin />} />
             <Route path="/admin/login" element={<AdminLogin />} />
             
+            {/* Avaliação pública — sem login */}
+            <Route path="/avaliar" element={<AvaliacaoPage />} />
+
             {/* Rota pública para fazer orçamento (pode ser acessada sem login, mas exige no final) */}
             <Route path="/client/new-request" element={<ClientRequest />} />
             {/* Chat de orçamento com IA - rota pública */}
@@ -119,12 +132,20 @@ const App: React.FC = () => {
               <Route path="/admin/payments" element={<AdminPayments />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
               <Route path="/admin/whatsapp" element={<AdminWhatsApp />} />
+              <Route path="/admin/rh" element={<AdminRHDashboard />} />
+              <Route path="/admin/rh/colaboradoras" element={<AdminRHColaboradoras />} />
+              <Route path="/admin/rh/desempenho" element={<AdminRHDesempenho />} />
+              <Route path="/admin/rh/bonus" element={<AdminRHBonus />} />
+              <Route path="/admin/rh/promocoes" element={<AdminRHPromocoes />} />
+              <Route path="/admin/rh/configuracoes" element={<AdminRHConfiguracoes />} />
+              <Route path="/admin/rh/avaliacoes" element={<AdminRHAvaliacoes />} />
             </Route>
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </HashRouter>
+      </RHProvider>
       </DataProvider>
     </ThemeProvider>
   );

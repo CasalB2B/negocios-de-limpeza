@@ -67,3 +67,20 @@ export interface Collaborator {
   photo: string;
   location: string;
 }
+
+// ─── Módulo RH ────────────────────────────────────────────────────────────────
+
+export enum CargoRH {
+  JUNIOR = 'JUNIOR',
+  PROFISSIONAL = 'PROFISSIONAL',
+  LIDER = 'LIDER',
+  GERENTE = 'GERENTE',
+}
+
+export enum StatusColaboradoraRH {
+  ATIVA = 'ATIVA',
+  INATIVA = 'INATIVA',
+  AFASTADA = 'AFASTADA',
+}
+
+export type ElegibilidadeRH = 'GREEN' | 'YELLOW' | 'GRAY';
