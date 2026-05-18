@@ -1,23 +1,38 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../../components/Layout';
 import { UserRole, CargoRH } from '../../../types';
 import { useRH } from '../../../components/RHContext';
+import { supabase } from '../../../lib/supabase';
 import { Button } from '../../../components/Button';
 import { Input } from '../../../components/Input';
 import { Modal } from '../../../components/Modal';
 import {
   Settings, DollarSign, Award, History, AlertTriangle, CheckCircle,
   Calculator, Target, Star, Save, Info, TrendingUp, X,
+  RefreshCw, Link2, Zap, Eye, EyeOff, Copy,
 } from 'lucide-react';
 
-const TAB_KEYS = ['remuneracao', 'bonus', 'criterios'] as const;
+const TAB_KEYS = ['remuneracao', 'bonus', 'criterios', 'integracoes'] as const;
 type Tab = typeof TAB_KEYS[number];
 const TAB_LABELS: Record<Tab, string> = {
-  remuneracao: 'Remuneração',
-  bonus:       'Bônus / Líder',
-  criterios:   'Critérios de Promoção',
+  remuneracao:  'Remuneração',
+  bonus:        'Bônus / Líder',
+  criterios:    'Critérios de Promoção',
+  integracoes:  '🔗 Integrações',
 };
+
+// ── Gendo helpers ─────────────────────────────────────────────────────────────
+const LS_GENDO_USER  = 'gendo_username';
+const LS_GENDO_TOKEN = 'gendo_token';
+
+function getSupabaseRef(): string {
+  try {
+    const url = (import.meta as any).env?.VITE_SUPABASE_URL || '';
+    // https://abcdefgh.supabase.co → abcdefgh
+    return url.replace('https://', '').split('.')[0] || '';
+  } catch { return ''; }
+}
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const fmt     = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -122,6 +137,69 @@ export const AdminRHConfiguracoes: React.FC = () => {
     setShowSaveCal(false);
     setFaxinas('');
   };
+
+  // ── Gendo integration state ─────────────────────────────────────────────────
+  const [gendoUsername, setGendoUsername] = useState(() => localStorage.getItem(LS_GENDO_USER) || '');
+  const [gendoToken,    setGendoToken]    = useState(() => localStorage.getItem(LS_GENDO_TOKEN) || '');
+  const [showToken,     setShowToken]     = useState(false);
+  const [gendoSyncing,  setGendoSyncing]  = useState(false);
+  const [gendoResult,   setGendoResult]   = useState<null | {
+    periodo: string;
+    totalFinalizados: number;
+    professionals: { id_responsavel: number; nome_responsavel: string; count: number }[];
+  }>(null);
+  const [gendoError,    setGendoError]    = useState('');
+  const [copied,        setCopied]        = useState(false);
+
+  const saveGendoConfig = () => {
+    localStorage.setItem(LS_GENDO_USER,  gendoUsername.trim());
+    localStorage.setItem(LS_GENDO_TOKEN, gendoToken.trim());
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const supabaseRef = getSupabaseRef();
+  const webhookUrl  = supabaseRef
+    ? `https://${supabaseRef}.supabase.co/functions/v1/gendo-webhook`
+    : '(configure VITE_SUPABASE_URL no .env)';
+
+  const copyWebhook = () => {
+    navigator.clipboard.writeText(webhookUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  // Called from the Bônus calculator to pull faxinas for the selected month
+  const syncFromGendo = useCallback(async () => {
+    if (!gendoUsername || !gendoToken) {
+      setGendoError('Configure o usuário e token do Gendo na aba Integrações primeiro.');
+      return;
+    }
+    setGendoSyncing(true);
+    setGendoError('');
+    setGendoResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('gendo-sync', {
+        body: { username: gendoUsername, token: gendoToken, mes: calcMes, ano: calcAno },
+      });
+      if (error) throw new Error(error.message);
+      if (!data?.ok) throw new Error(data?.error || 'Erro desconhecido');
+      setGendoResult(data);
+      // Auto-fill if we find the selected líder by name match
+      if (lider && data.professionals?.length) {
+        const match = data.professionals.find((p: any) =>
+          p.nome_responsavel.toLowerCase().includes(lider.nome.split(' ')[0].toLowerCase()) ||
+          lider.nome.toLowerCase().includes(p.nome_responsavel.split(' ')[0].toLowerCase())
+        );
+        if (match) setFaxinas(String(match.count));
+      }
+    } catch (e: any) {
+      setGendoError(e.message || 'Erro ao conectar ao Gendo');
+    } finally {
+      setGendoSyncing(false);
+    }
+  }, [gendoUsername, gendoToken, calcMes, calcAno, lider]);
 
   // ── Critérios ───────────────────────────────────────────────────────────────
   const getCrit = (cargo: CargoRH) => configCriterios.find(c => c.cargoOrigem === cargo);
@@ -469,10 +547,39 @@ export const AdminRHConfiguracoes: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     {/* Faxinas */}
                     <div className="space-y-2">
-                      <label className="block text-xs font-bold text-darkText dark:text-darkTextPrimary flex items-center gap-1.5">
-                        <Target size={11} className="text-primary"/> Faxinas da equipe
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-darkText dark:text-darkTextPrimary flex items-center gap-1.5">
+                          <Target size={11} className="text-primary"/> Faxinas da equipe
+                        </label>
+                        {gendoUsername && gendoToken ? (
+                          <button onClick={syncFromGendo} disabled={gendoSyncing}
+                            className="flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-lg px-2 py-1 transition-colors disabled:opacity-60">
+                            <RefreshCw size={10} className={gendoSyncing ? 'animate-spin' : ''}/>
+                            {gendoSyncing ? 'Buscando...' : 'Gendo'}
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-lightText italic">Configure Gendo na aba Integrações</span>
+                        )}
+                      </div>
                       <Input type="number" placeholder={`Meta: >${meta}`} value={faxinas} onChange={e => setFaxinas(e.target.value)}/>
+                      {gendoError && (
+                        <p className="text-[10px] text-red-500 font-bold">{gendoError}</p>
+                      )}
+                      {gendoResult && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 space-y-1">
+                          <p className="text-[10px] font-bold text-blue-700 dark:text-blue-400">
+                            Gendo: {gendoResult.totalFinalizados} faxinas finalizadas ({gendoResult.periodo})
+                          </p>
+                          {gendoResult.professionals.map(p => (
+                            <button key={p.id_responsavel}
+                              onClick={() => setFaxinas(String(p.count))}
+                              className="w-full flex justify-between items-center text-[10px] px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
+                              <span className="text-blue-800 dark:text-blue-300 font-bold">{p.nome_responsavel}</span>
+                              <span className="text-blue-600 dark:text-blue-400 font-bold">{p.count} faxinas →</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       {faxinas !== '' && !isNaN(totalFaxinas) && (
                         <div className="space-y-1">
                           <div className="h-2.5 bg-gray-200 dark:bg-darkBorder rounded-full overflow-hidden">
@@ -641,6 +748,116 @@ export const AdminRHConfiguracoes: React.FC = () => {
                 ))}
               </HistoricoSection>
             )}
+          </div>
+        )}
+
+        {/* ═══ TAB: INTEGRAÇÕES ═══ */}
+        {tab === 'integracoes' && (
+          <div className="space-y-5">
+
+            {/* Gendo */}
+            <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-100 dark:border-darkBorder overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-50 dark:border-darkBorder flex items-center gap-2">
+                <Zap size={15} className="text-primary"/>
+                <h3 className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Gendo — Agendamento</h3>
+                <span className="ml-2 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-bold rounded-full">API disponível</span>
+              </div>
+              <div className="p-5 space-y-4">
+                <p className="text-xs text-lightText dark:text-darkTextSecondary">
+                  Conecte sua conta Gendo para que o sistema busque automaticamente a contagem de faxinas finalizadas de cada colaboradora e pré-preencha o calculador de bônus.
+                </p>
+
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-darkText dark:text-darkTextPrimary mb-1">
+                      Usuário Gendo <span className="font-normal text-lightText">(subdomínio: <em>seuusuario</em>.adm.gendo.app)</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: negociosdelimpeza"
+                      value={gendoUsername}
+                      onChange={e => setGendoUsername(e.target.value)}
+                      className="w-full border border-input bg-background dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-darkText dark:text-darkTextPrimary mb-1">
+                      API Token <span className="font-normal text-lightText">(Gendo → Outras Configurações → API Token)</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type={showToken ? 'text' : 'password'}
+                        placeholder="eyJh..."
+                        value={gendoToken}
+                        onChange={e => setGendoToken(e.target.value)}
+                        className="flex-1 border border-input bg-background dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono"
+                      />
+                      <button onClick={() => setShowToken(v => !v)}
+                        className="px-3 py-2 border border-input rounded-xl text-lightText hover:text-darkText dark:hover:text-darkTextPrimary transition-colors">
+                        {showToken ? <EyeOff size={14}/> : <Eye size={14}/>}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-lightText dark:text-darkTextSecondary mt-1">
+                      Salvo localmente no seu navegador. Não é enviado para nenhum servidor nosso.
+                    </p>
+                  </div>
+                </div>
+
+                <Button onClick={saveGendoConfig} fullWidth>
+                  <Save size={14} className="mr-2"/> Salvar Configuração Gendo
+                </Button>
+
+                {/* Webhook section */}
+                <div className="border-t border-gray-100 dark:border-darkBorder pt-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Link2 size={14} className="text-primary"/>
+                    <h4 className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Webhook (tempo real)</h4>
+                    <span className="text-[10px] text-lightText">(opcional)</span>
+                  </div>
+                  <p className="text-xs text-lightText dark:text-darkTextSecondary">
+                    Configure este URL no Gendo → Outras Configurações → Webhook para receber faxinas finalizadas em tempo real, sem precisar clicar em "Buscar do Gendo":
+                  </p>
+                  <div className="flex gap-2 items-center">
+                    <code className="flex-1 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-lg px-3 py-2 text-xs text-darkText dark:text-darkTextPrimary font-mono break-all">
+                      {webhookUrl}
+                    </code>
+                    <button onClick={copyWebhook}
+                      className="shrink-0 flex items-center gap-1 px-3 py-2 border border-input rounded-lg text-xs font-bold text-primary hover:bg-primary/10 transition-colors">
+                      {copied ? <CheckCircle size={13}/> : <Copy size={13}/>}
+                      {copied ? 'Copiado!' : 'Copiar'}
+                    </button>
+                  </div>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                    <p className="font-bold">Como configurar no Gendo:</p>
+                    <ol className="list-decimal pl-4 space-y-0.5">
+                      <li>Acesse <strong>Outras Configurações → Webhook</strong></li>
+                      <li>Cole a URL acima no campo <strong>Webhook URL</strong></li>
+                      <li>Clique em <strong>Validar e Salvar</strong></li>
+                    </ol>
+                    <p className="mt-2 text-blue-600 dark:text-blue-400">
+                      A cada atendimento finalizado no Gendo, o sistema registrará a faxina automaticamente.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Como usar */}
+            <div className="bg-gray-50 dark:bg-darkBg rounded-2xl border border-gray-100 dark:border-darkBorder p-5 space-y-3">
+              <h4 className="font-bold text-sm text-darkText dark:text-darkTextPrimary flex items-center gap-2">
+                <Info size={14} className="text-primary"/> Como usar a integração
+              </h4>
+              <ol className="text-xs text-lightText dark:text-darkTextSecondary space-y-2 list-decimal pl-4">
+                <li>Configure o usuário e token Gendo acima e salve.</li>
+                <li>Na aba <strong>Bônus / Líder</strong>, selecione a Líder e o mês desejado.</li>
+                <li>Clique no botão <strong>Gendo</strong> (ao lado de "Faxinas da equipe").</li>
+                <li>O sistema busca todos os atendimentos finalizados no Gendo para o período e exibe a contagem por profissional.</li>
+                <li>Clique no nome da colaboradora para pré-preencher o campo de faxinas.</li>
+                <li>Confira a avaliação e clique em <strong>Calcular e Salvar</strong>.</li>
+              </ol>
+            </div>
+
           </div>
         )}
       </div>
