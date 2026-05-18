@@ -78,8 +78,13 @@ export const AdminRHColaboradoras: React.FC = () => {
     colaboradoras, addColaboradora, updateColaboradora, deleteColaboradora,
     getElegibilidade, getMesesNaEmpresa, rhLoading,
     avaliacoes, observacoes, addObservacao, deleteObservacao,
-    promocoes,
+    promocoes, configRemuneracao,
   } = useRH();
+
+  const getRemuneracao = (cargo: CargoRH) =>
+    configRemuneracao.find(r => r.cargo === cargo) ?? null;
+
+  const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
@@ -245,6 +250,20 @@ export const AdminRHColaboradoras: React.FC = () => {
                         </span>
                       )}
                     </div>
+
+                    {/* Diárias */}
+                    {(() => {
+                      const rem = getRemuneracao(col.cargoAtual);
+                      if (!rem) return null;
+                      return (
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          <span className="text-[10px] text-lightText dark:text-darkTextSecondary font-bold uppercase tracking-wide">Diárias:</span>
+                          <span className="text-[10px] font-bold text-darkText dark:text-darkTextPrimary bg-gray-100 dark:bg-darkBg px-1.5 py-0.5 rounded">4h {fmt(rem.diaria4h)}</span>
+                          <span className="text-[10px] font-bold text-darkText dark:text-darkTextPrimary bg-gray-100 dark:bg-darkBg px-1.5 py-0.5 rounded">6h {fmt(rem.diaria6h)}</span>
+                          <span className="text-[10px] font-bold text-darkText dark:text-darkTextPrimary bg-gray-100 dark:bg-darkBg px-1.5 py-0.5 rounded">8h {fmt(rem.diaria8h)}</span>
+                        </div>
+                      );
+                    })()}
 
                     {col.status === StatusColaboradoraRH.ATIVA && col.cargoAtual !== CargoRH.GERENTE && (
                       <div className={`mt-2 flex items-center gap-1.5 px-2.5 py-1 rounded-full w-fit ${ec.bg}`}>
@@ -428,6 +447,34 @@ export const AdminRHColaboradoras: React.FC = () => {
                         </div>
                       )}
                     </div>
+
+                    {/* Remuneração */}
+                    {(() => {
+                      const rem = getRemuneracao(perfilAberto.cargoAtual);
+                      if (!rem) return (
+                        <div className="bg-gray-50 dark:bg-darkBg rounded-xl p-3 text-xs text-lightText dark:text-darkTextSecondary">
+                          Remuneração baseada em salário fixo + bônus. Configure na aba <strong>Bônus / Líder</strong> em Config. RH.
+                        </div>
+                      );
+                      return (
+                        <div className="bg-primary/5 border border-primary/15 rounded-xl p-4">
+                          <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary mb-3">Tabela de Remuneração — {CARGO_LABEL[perfilAberto.cargoAtual]}</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                              { label: 'Diária 4h', value: rem.diaria4h },
+                              { label: 'Diária 6h', value: rem.diaria6h },
+                              { label: 'Diária 8h', value: rem.diaria8h },
+                              { label: 'Passagem',  value: rem.passagem },
+                            ].map(({ label, value }) => (
+                              <div key={label} className="bg-white dark:bg-darkSurface rounded-lg px-3 py-2">
+                                <p className="text-[10px] text-lightText dark:text-darkTextSecondary">{label}</p>
+                                <p className="text-sm font-bold text-primary">{fmt(value)}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Link avaliação */}
                     {perfilAberto.status === StatusColaboradoraRH.ATIVA && (
