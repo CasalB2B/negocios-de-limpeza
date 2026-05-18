@@ -66,6 +66,7 @@ export interface ConfiguracaoBonusLider {
   id: string;
   multiplicadorFaxina: number;
   bonusAvaliacao: number;
+  bonusAvaliacao5estrelas?: number;   // bônus quando média ≥ 4.9 (5 estrelas)
   metaAvaliacao: number;
   metaFaxinasMes: number;
   salarioFixo: number;
@@ -120,7 +121,9 @@ export interface BonusCalculo {
   valorBonusAvaliacao: number;
   totalBonus: number;
   totalReceber: number;
-  atingiuMetaAvaliacao: boolean;
+  metaAtingida: boolean;           // totalFaxinas > metaFaxinasMes
+  atingiuMetaAvaliacao: boolean;   // média >= metaAvaliacao
+  atingiu5estrelas: boolean;       // média >= 4.9
 }
 
 export interface AvaliacaoCliente {
@@ -201,9 +204,10 @@ const DEFAULT_CONFIG_BONUS: ConfiguracaoBonusLider = {
   id: 'default',
   multiplicadorFaxina: 3,
   bonusAvaliacao: 150,
+  bonusAvaliacao5estrelas: 300,
   metaAvaliacao: 4.5,
   metaFaxinasMes: 100,
-  salarioFixo: 2200,
+  salarioFixo: 2800,
   vigenciaInicio: new Date().toISOString().split('T')[0],
   createdAt: new Date().toISOString(),
 };
@@ -281,7 +285,7 @@ function mapPromocao(r: any): PromocaoRH {
   return { id: r.id, colaboradoraId: r.colaboradora_id, cargoAnterior: r.cargo_anterior as CargoRH, cargoNovo: r.cargo_novo as CargoRH, dataPromocao: r.data_promocao, observacoes: r.observacoes, aprovadaPor: r.aprovada_por, createdAt: r.created_at };
 }
 function mapConfigBonus(r: any): ConfiguracaoBonusLider {
-  return { id: r.id, multiplicadorFaxina: parseFloat(r.multiplicador_faxina), bonusAvaliacao: parseFloat(r.bonus_avaliacao), metaAvaliacao: parseFloat(r.meta_avaliacao), metaFaxinasMes: r.meta_faxinas_mes, salarioFixo: parseFloat(r.salario_fixo), vigenciaInicio: r.vigencia_inicio, vigenciaFim: r.vigencia_fim, alteradoPor: r.alterado_por, createdAt: r.created_at };
+  return { id: r.id, multiplicadorFaxina: parseFloat(r.multiplicador_faxina), bonusAvaliacao: parseFloat(r.bonus_avaliacao), bonusAvaliacao5estrelas: r.bonus_avaliacao_5estrelas ? parseFloat(r.bonus_avaliacao_5estrelas) : undefined, metaAvaliacao: parseFloat(r.meta_avaliacao), metaFaxinasMes: r.meta_faxinas_mes, salarioFixo: parseFloat(r.salario_fixo), vigenciaInicio: r.vigencia_inicio, vigenciaFim: r.vigencia_fim, alteradoPor: r.alterado_por, createdAt: r.created_at };
 }
 function mapBonusMensal(r: any): BonusMensalRH {
   return { id: r.id, colaboradoraId: r.colaboradora_id, mes: r.mes, ano: r.ano, totalFaxinasEquipe: r.total_faxinas_equipe, mediaAvaliacaoEquipe: parseFloat(r.media_avaliacao_equipe), valorBonusFaxinas: parseFloat(r.valor_bonus_faxinas), valorBonusAvaliacao: parseFloat(r.valor_bonus_avaliacao), totalBonus: parseFloat(r.total_bonus), totalReceber: parseFloat(r.total_receber), configuracaoId: r.configuracao_id, createdAt: r.created_at };
@@ -546,14 +550,23 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
   // ── Bônus ──────────────────────────────────────────────────────────────────
 
-  const calcularBonus = useCallback((totalFaxinasEquipe: number, mediaAvaliacaoEquipe: number): BonusCalculo => {
+  const calcularBonus = useCallback((totalFaxinas: number, mediaAvaliacao: number): BonusCalculo => {
     const cfg = configBonusLider ?? DEFAULT_CONFIG_BONUS;
-    const valorBonusFaxinas = totalFaxinasEquipe * cfg.multiplicadorFaxina;
-    const atingiuMetaAvaliacao = mediaAvaliacaoEquipe >= cfg.metaAvaliacao;
-    const valorBonusAvaliacao = atingiuMetaAvaliacao ? cfg.bonusAvaliacao : 0;
+    // Bônus de faxinas: só ativa se SUPERAR a meta (> metaFaxinasMes)
+    const metaAtingida = totalFaxinas > cfg.metaFaxinasMes;
+    const valorBonusFaxinas = metaAtingida ? totalFaxinas * cfg.multiplicadorFaxina : 0;
+    // Bônus de avaliação: 5 estrelas (≥4.9) dobra; ≥meta normal; abaixo = 0
+    const atingiu5estrelas = mediaAvaliacao >= 4.9;
+    const atingiuMetaAvaliacao = mediaAvaliacao >= cfg.metaAvaliacao;
+    const bonus5 = cfg.bonusAvaliacao5estrelas ?? cfg.bonusAvaliacao * 2;
+    const valorBonusAvaliacao = atingiu5estrelas
+      ? bonus5
+      : atingiuMetaAvaliacao
+        ? cfg.bonusAvaliacao
+        : 0;
     const totalBonus = valorBonusFaxinas + valorBonusAvaliacao;
     const totalReceber = cfg.salarioFixo + totalBonus;
-    return { valorBonusFaxinas, valorBonusAvaliacao, totalBonus, totalReceber, atingiuMetaAvaliacao };
+    return { valorBonusFaxinas, valorBonusAvaliacao, totalBonus, totalReceber, metaAtingida, atingiuMetaAvaliacao, atingiu5estrelas };
   }, [configBonusLider]);
 
   const addBonusMensal = useCallback(async (data: Omit<BonusMensalRH, 'id' | 'createdAt'>) => {
@@ -664,6 +677,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       }
       await supabase.from('configuracao_bonus_lider').insert({
         multiplicador_faxina: data.multiplicadorFaxina, bonus_avaliacao: data.bonusAvaliacao,
+        bonus_avaliacao_5estrelas: data.bonusAvaliacao5estrelas ?? null,
         meta_avaliacao: data.metaAvaliacao, meta_faxinas_mes: data.metaFaxinasMes,
         salario_fixo: data.salarioFixo, vigencia_inicio: data.vigenciaInicio,
         alterado_por: data.alteradoPor,

@@ -43,10 +43,17 @@ export const AdminRHConfiguracoes: React.FC = () => {
 
   // ── Bônus state ─────────────────────────────────────────────────────────────
   const [bonusCfg, setBonusCfg] = useState({
-    salarioFixo: 2200, multiplicadorFaxina: 3, bonusAvaliacao: 150, metaAvaliacao: 4.5, metaFaxinasMes: 100,
+    salarioFixo: 2800, multiplicadorFaxina: 3, bonusAvaliacao: 150, bonusAvaliacao5estrelas: 300, metaAvaliacao: 4.5, metaFaxinasMes: 100,
   });
   useEffect(() => {
-    if (configBonusLider) setBonusCfg({ salarioFixo: configBonusLider.salarioFixo, multiplicadorFaxina: configBonusLider.multiplicadorFaxina, bonusAvaliacao: configBonusLider.bonusAvaliacao, metaAvaliacao: configBonusLider.metaAvaliacao, metaFaxinasMes: configBonusLider.metaFaxinasMes });
+    if (configBonusLider) setBonusCfg({
+      salarioFixo: configBonusLider.salarioFixo,
+      multiplicadorFaxina: configBonusLider.multiplicadorFaxina,
+      bonusAvaliacao: configBonusLider.bonusAvaliacao,
+      bonusAvaliacao5estrelas: configBonusLider.bonusAvaliacao5estrelas ?? configBonusLider.bonusAvaliacao * 2,
+      metaAvaliacao: configBonusLider.metaAvaliacao,
+      metaFaxinasMes: configBonusLider.metaFaxinasMes,
+    });
   }, [configBonusLider?.id]);
 
   // ── Critérios state ─────────────────────────────────────────────────────────
@@ -85,7 +92,12 @@ export const AdminRHConfiguracoes: React.FC = () => {
 
   const saveBonus = () => askConfirm(async () => {
     await updateConfigBonusLider({
-      ...bonusCfg,
+      salarioFixo: bonusCfg.salarioFixo,
+      multiplicadorFaxina: bonusCfg.multiplicadorFaxina,
+      bonusAvaliacao: bonusCfg.bonusAvaliacao,
+      bonusAvaliacao5estrelas: bonusCfg.bonusAvaliacao5estrelas,
+      metaAvaliacao: bonusCfg.metaAvaliacao,
+      metaFaxinasMes: bonusCfg.metaFaxinasMes,
       vigenciaInicio: new Date().toISOString().split('T')[0],
       alteradoPor,
     });
@@ -201,19 +213,20 @@ export const AdminRHConfiguracoes: React.FC = () => {
             <Section title="Líder de Equipe — Cálculo de Bônus" icon={<Award size={16}/>}>
               <div className="grid grid-cols-2 gap-3">
                 <NumInput label="Salário fixo" value={bonusCfg.salarioFixo} onChange={v => setBonusCfg(p => ({...p, salarioFixo: v}))} prefix="R$" />
-                <NumInput label="Multiplicador por faxina" value={bonusCfg.multiplicadorFaxina} onChange={v => setBonusCfg(p => ({...p, multiplicadorFaxina: v}))} prefix="R$" />
-                <NumInput label="Bônus de avaliação" value={bonusCfg.bonusAvaliacao} onChange={v => setBonusCfg(p => ({...p, bonusAvaliacao: v}))} prefix="R$" />
-                <NumInput label="Meta de avaliação mínima" value={bonusCfg.metaAvaliacao} onChange={v => setBonusCfg(p => ({...p, metaAvaliacao: v}))} />
                 <NumInput label="Meta de faxinas/mês (equipe)" value={bonusCfg.metaFaxinasMes} onChange={v => setBonusCfg(p => ({...p, metaFaxinasMes: Math.round(v)}))} />
+                <NumInput label="Multiplicador por faxina" value={bonusCfg.multiplicadorFaxina} onChange={v => setBonusCfg(p => ({...p, multiplicadorFaxina: v}))} prefix="R$" />
+                <NumInput label="Meta de avaliação mínima (estrelas)" value={bonusCfg.metaAvaliacao} onChange={v => setBonusCfg(p => ({...p, metaAvaliacao: v}))} />
+                <NumInput label={`Bônus avaliação ≥ ${bonusCfg.metaAvaliacao.toFixed(1)}⭐`} value={bonusCfg.bonusAvaliacao} onChange={v => setBonusCfg(p => ({...p, bonusAvaliacao: v}))} prefix="R$" />
+                <NumInput label="Bônus avaliação 5⭐ (≥4.9)" value={bonusCfg.bonusAvaliacao5estrelas} onChange={v => setBonusCfg(p => ({...p, bonusAvaliacao5estrelas: v}))} prefix="R$" />
               </div>
 
-              {/* Preview do cálculo */}
-              <div className="mt-3 bg-gray-50 dark:bg-darkBg rounded-xl p-3 text-xs space-y-1">
-                <p className="font-bold text-darkText dark:text-darkTextPrimary mb-2">Preview do cálculo (com {bonusCfg.metaFaxinasMes} faxinas e avaliação ≥ meta):</p>
-                <p className="text-lightText">Bônus faxinas: {bonusCfg.metaFaxinasMes} × {fmt(bonusCfg.multiplicadorFaxina)} = <span className="font-bold text-darkText dark:text-darkTextPrimary">{fmt(bonusCfg.metaFaxinasMes * bonusCfg.multiplicadorFaxina)}</span></p>
+              {/* Preview */}
+              <div className="mt-3 bg-gray-50 dark:bg-darkBg rounded-xl p-3 text-xs space-y-1.5">
+                <p className="font-bold text-darkText dark:text-darkTextPrimary mb-1">Preview — meta batida + avaliação ≥{bonusCfg.metaAvaliacao.toFixed(1)}⭐:</p>
+                <p className="text-lightText">{bonusCfg.metaFaxinasMes + 1} faxinas × {fmt(bonusCfg.multiplicadorFaxina)} = <span className="font-bold text-darkText dark:text-darkTextPrimary">{fmt((bonusCfg.metaFaxinasMes + 1) * bonusCfg.multiplicadorFaxina)}</span></p>
                 <p className="text-lightText">+ Bônus avaliação: <span className="font-bold text-darkText dark:text-darkTextPrimary">{fmt(bonusCfg.bonusAvaliacao)}</span></p>
-                <p className="text-lightText">= Total bônus: <span className="font-bold text-darkText dark:text-darkTextPrimary">{fmt(bonusCfg.metaFaxinasMes * bonusCfg.multiplicadorFaxina + bonusCfg.bonusAvaliacao)}</span></p>
-                <p className="text-lightText font-bold border-t border-gray-200 dark:border-darkBorder pt-1 mt-1">Total a receber: <span className="text-primary">{fmt(bonusCfg.salarioFixo + bonusCfg.metaFaxinasMes * bonusCfg.multiplicadorFaxina + bonusCfg.bonusAvaliacao)}</span></p>
+                <p className="text-lightText border-t border-gray-200 dark:border-darkBorder pt-1 mt-1">Total a receber: <span className="font-bold text-primary">{fmt(bonusCfg.salarioFixo + (bonusCfg.metaFaxinasMes + 1) * bonusCfg.multiplicadorFaxina + bonusCfg.bonusAvaliacao)}</span></p>
+                <p className="text-lightText">Com 5⭐: <span className="font-bold text-yellow-600">{fmt(bonusCfg.salarioFixo + (bonusCfg.metaFaxinasMes + 1) * bonusCfg.multiplicadorFaxina + bonusCfg.bonusAvaliacao5estrelas)}</span></p>
               </div>
             </Section>
 

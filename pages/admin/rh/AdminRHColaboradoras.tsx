@@ -10,7 +10,7 @@ import {
   Search, UserPlus, Edit, Trash2, Camera, Clock, Copy, Check,
   Star, MessageSquare, BookOpen, User, ChevronRight, X, Plus,
   TrendingUp, AlertCircle, ThumbsUp, Minus, ExternalLink,
-  Phone, MapPin, FileText, Upload, Download,
+  Phone, MapPin, FileText, Upload, Download, Award, DollarSign,
 } from 'lucide-react';
 
 // ─── Labels & helpers ────────────────────────────────────────────────────────
@@ -78,7 +78,7 @@ export const AdminRHColaboradoras: React.FC = () => {
     colaboradoras, addColaboradora, updateColaboradora, deleteColaboradora,
     getElegibilidade, getMesesNaEmpresa, rhLoading,
     avaliacoes, observacoes, addObservacao, deleteObservacao,
-    promocoes, configRemuneracao,
+    promocoes, configRemuneracao, bonusMensal,
   } = useRH();
 
   const getRemuneracao = (cargo: CargoRH) =>
@@ -548,6 +548,39 @@ export const AdminRHColaboradoras: React.FC = () => {
                         <p className="text-sm text-lightText dark:text-darkTextSecondary bg-gray-50 dark:bg-darkBg rounded-xl p-3 leading-relaxed">{perfilAberto.observacoes}</p>
                       </div>
                     )}
+
+                    {/* Bônus (só para Líder) */}
+                    {perfilAberto.cargoAtual === CargoRH.LIDER && (() => {
+                      const bonusLider = bonusMensal
+                        .filter(b => b.colaboradoraId === perfilAberto.id)
+                        .sort((a, b) => b.ano - a.ano || b.mes - a.mes)
+                        .slice(0, 4);
+                      const fmtCurrency = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                      const MESES_ABBR = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+                      return (
+                        <div>
+                          <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary mb-2 flex items-center gap-1.5">
+                            <Award size={13} className="text-primary" /> Histórico de Bônus
+                          </p>
+                          {bonusLider.length === 0 ? (
+                            <p className="text-xs text-lightText dark:text-darkTextSecondary bg-gray-50 dark:bg-darkBg rounded-xl p-3">
+                              Nenhum bônus registrado ainda. Use a página <strong>Bônus / Líder</strong> para calcular e registrar.
+                            </p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {bonusLider.map(b => (
+                                <div key={b.id} className="flex items-center gap-3 bg-primary/5 rounded-xl px-3 py-2">
+                                  <span className="text-xs text-lightText dark:text-darkTextSecondary w-12 shrink-0">{MESES_ABBR[b.mes-1]}/{b.ano}</span>
+                                  <span className="text-xs text-lightText dark:text-darkTextSecondary flex-1">{b.totalFaxinasEquipe} fax · {b.mediaAvaliacaoEquipe.toFixed(1)}⭐</span>
+                                  <span className="text-xs font-bold text-green-600 dark:text-green-400">{fmtCurrency(b.totalBonus)}</span>
+                                  <span className="text-xs font-bold text-primary">{fmtCurrency(b.totalReceber)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Histórico de promoções */}
                     {colProms.length > 0 && (

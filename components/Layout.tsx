@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
-import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen } from 'lucide-react';
+import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, Award } from 'lucide-react';
 import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
 import { useData } from './DataContext';
@@ -173,7 +173,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           { icon: <UserPlus size={16} />,        label: 'Contratação',  path: '/admin/rh/contratacao',      group: 'RH' },
           { icon: <Users size={16} />,           label: 'Colaboradoras',path: '/admin/rh/colaboradoras',    group: 'RH' },
           { icon: <MessageSquare size={16} />,   label: 'Avaliações',   path: '/admin/rh/avaliacoes',       group: 'RH' },
-          { icon: <BarChart2 size={16} />,       label: 'Desempenho',   path: '/admin/rh/desempenho',       group: 'RH' },
+          { icon: <BarChart2 size={16} />,       label: 'Desempenho',       path: '/admin/rh/desempenho',       group: 'RH' },
+          { icon: <Award size={16} />,           label: 'Bônus / Líder',    path: '/admin/rh/bonus',            group: 'RH' },
           { icon: <BookOpen size={16} />,        label: 'Plano de Carreira', path: '/admin/rh/plano-carreira', group: 'RH' },
           { icon: <Settings size={16} />,        label: 'Config. RH',   path: '/admin/rh/configuracoes',    group: 'RH' },
           { icon: <Megaphone size={20} />,       label: 'Marketing',    path: '/admin/marketing',           group: 'VENDAS' },
