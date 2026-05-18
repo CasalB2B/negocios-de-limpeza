@@ -10,7 +10,7 @@ import {
 import { Users, TrendingUp, Star, AlertTriangle, ChevronRight, Award, UserCheck } from 'lucide-react';
 
 const CARGO_LABEL: Record<CargoRH, string> = {
-  JUNIOR: 'Júnior', SENIOR: 'Sênior', PROFISSIONAL: 'Profissional', LIDER: 'Líder', GERENTE: 'Gerente',
+  JUNIOR: 'Auxiliar de Limpeza', SENIOR: 'Faxineira', PROFISSIONAL: 'Faxineira Profissional', LIDER: 'Líder de Equipe', GERENTE: 'Gerente de Equipe',
 };
 
 const MESES_ABBR = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];

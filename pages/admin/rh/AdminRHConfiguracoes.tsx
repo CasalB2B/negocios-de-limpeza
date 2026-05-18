@@ -241,8 +241,8 @@ export const AdminRHConfiguracoes: React.FC = () => {
                   <thead>
                     <tr className="bg-gray-50 dark:bg-darkBg">
                       <th className="text-left px-4 py-2.5 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide w-28">Campo</th>
-                      <th className="px-3 py-2.5 text-center text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Júnior</th>
-                      <th className="px-3 py-2.5 text-center text-xs font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wide">Sênior</th>
+                      <th className="px-3 py-2.5 text-center text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Auxiliar</th>
+                      <th className="px-3 py-2.5 text-center text-xs font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wide">Faxineira</th>
                       <th className="px-3 py-2.5 text-center text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Profissional</th>
                     </tr>
                   </thead>
@@ -583,8 +583,8 @@ export const AdminRHConfiguracoes: React.FC = () => {
                   <thead>
                     <tr className="bg-gray-50 dark:bg-darkBg">
                       <th className="text-left px-4 py-2.5 text-xs font-bold text-lightText uppercase tracking-wide">Campo</th>
-                      <th className="px-3 py-2.5 text-center text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Júnior→Sênior</th>
-                      <th className="px-3 py-2.5 text-center text-xs font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wide">Sênior→Prof.</th>
+                      <th className="px-3 py-2.5 text-center text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Aux.→Faxineira</th>
+                      <th className="px-3 py-2.5 text-center text-xs font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wide">Fax.→Prof.</th>
                       <th className="px-3 py-2.5 text-center text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Prof.→Líder</th>
                       <th className="px-3 py-2.5 text-center text-xs font-bold text-yellow-600 dark:text-yellow-400 uppercase tracking-wide">Líder→Gerente</th>
                     </tr>

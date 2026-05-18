@@ -4,8 +4,8 @@ import { useRH } from '../components/RHContext';
 import { Star, CheckCircle, AlertCircle } from 'lucide-react';
 
 const CARGO_LABEL: Record<string, string> = {
-  JUNIOR: 'Faxineira Júnior',
-  SENIOR: 'Faxineira Sênior',
+  JUNIOR: 'Auxiliar de Limpeza',
+  SENIOR: 'Faxineira',
   PROFISSIONAL: 'Faxineira Profissional',
   LIDER: 'Líder de Equipe',
   GERENTE: 'Gerente de Equipe',
