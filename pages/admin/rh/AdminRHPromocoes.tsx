@@ -7,17 +7,19 @@ import { Modal } from '../../../components/Modal';
 import { Award, ChevronRight, CheckCircle, XCircle, Clock, FileText, Printer } from 'lucide-react';
 
 const CARGO_LABEL: Record<CargoRH, string> = {
-  JUNIOR: 'Faxineira Júnior', PROFISSIONAL: 'Faxineira Profissional', LIDER: 'Líder de Equipe', GERENTE: 'Gerente de Equipe',
+  JUNIOR: 'Faxineira Júnior', SENIOR: 'Faxineira Sênior', PROFISSIONAL: 'Faxineira Profissional', LIDER: 'Líder de Equipe', GERENTE: 'Gerente de Equipe',
 };
 
 const CARGO_NEXT: Partial<Record<CargoRH, CargoRH>> = {
-  JUNIOR: CargoRH.PROFISSIONAL,
+  JUNIOR: CargoRH.SENIOR,
+  SENIOR: CargoRH.PROFISSIONAL,
   PROFISSIONAL: CargoRH.LIDER,
   LIDER: CargoRH.GERENTE,
 };
 
 const CRITERIOS_LABEL: Record<CargoRH, string[]> = {
   JUNIOR: ['Mínimo 6 meses na empresa','Zero reclamações nos últimos 3 meses','Domínio do checklist padrão','Pontualidade consistente','Avaliação positiva da Líder de Equipe'],
+  SENIOR: ['Mínimo 12 meses na empresa','Ao menos 3 avaliações 5 estrelas de clientes','Autonomia total em limpeza completa','Referência de qualidade para a equipe','Aprovação das sócias'],
   PROFISSIONAL: ['Mínimo 18 meses na empresa','Ao menos 1 avaliação escrita positiva de cliente','Domínio de passadoria e limpeza pós-obra','Demonstrar iniciativa e liderança natural','Aprovação das sócias'],
   LIDER: ['Mínimo 36 meses na empresa','Equipe batendo metas por 3 meses consecutivos','Histórico de liderança sem conflitos','Aprovação formal das 3 sócias'],
   GERENTE: [],

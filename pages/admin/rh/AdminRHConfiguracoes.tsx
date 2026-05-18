@@ -24,14 +24,19 @@ export const AdminRHConfiguracoes: React.FC = () => {
 
   // ── Remuneração state ───────────────────────────────────────────────────────
   const remJunior = configRemuneracao.find(r => r.cargo === 'JUNIOR');
+  const remSenior = configRemuneracao.find(r => r.cargo === 'SENIOR');
   const remProf = configRemuneracao.find(r => r.cargo === 'PROFISSIONAL');
 
   const [remJ, setRemJ] = useState({ diaria4h: 80, diaria6h: 120, diaria8h: 140, passagem: 10.20 });
+  const [remS, setRemS] = useState({ diaria4h: 85, diaria6h: 130, diaria8h: 150, passagem: 10.20 });
   const [remP, setRemP] = useState({ diaria4h: 90, diaria6h: 140, diaria8h: 160, passagem: 10.20 });
 
   useEffect(() => {
     if (remJunior) setRemJ({ diaria4h: remJunior.diaria4h, diaria6h: remJunior.diaria6h, diaria8h: remJunior.diaria8h, passagem: remJunior.passagem });
   }, [remJunior?.id]);
+  useEffect(() => {
+    if (remSenior) setRemS({ diaria4h: remSenior.diaria4h, diaria6h: remSenior.diaria6h, diaria8h: remSenior.diaria8h, passagem: remSenior.passagem });
+  }, [remSenior?.id]);
   useEffect(() => {
     if (remProf) setRemP({ diaria4h: remProf.diaria4h, diaria6h: remProf.diaria6h, diaria8h: remProf.diaria8h, passagem: remProf.passagem });
   }, [remProf?.id]);
@@ -47,11 +52,13 @@ export const AdminRHConfiguracoes: React.FC = () => {
   // ── Critérios state ─────────────────────────────────────────────────────────
   const getCrit = (cargo: CargoRH) => configCriterios.find(c => c.cargoOrigem === cargo);
   const [critJ, setCritJ] = useState({ tempoMinimoMeses: 6, mesesSemReclamacoes: 3, mesesConsecutivosMetaBatida: 1 });
+  const [critS, setCritS] = useState({ tempoMinimoMeses: 12, mesesSemReclamacoes: 3, mesesConsecutivosMetaBatida: 1 });
   const [critP, setCritP] = useState({ tempoMinimoMeses: 18, mesesSemReclamacoes: 3, mesesConsecutivosMetaBatida: 1 });
   const [critL, setCritL] = useState({ tempoMinimoMeses: 36, mesesSemReclamacoes: 6, mesesConsecutivosMetaBatida: 3 });
 
   useEffect(() => {
     const j = getCrit(CargoRH.JUNIOR); if (j) setCritJ({ tempoMinimoMeses: j.tempoMinimoMeses, mesesSemReclamacoes: j.mesesSemReclamacoes, mesesConsecutivosMetaBatida: j.mesesConsecutivosMetaBatida });
+    const s = getCrit(CargoRH.SENIOR); if (s) setCritS({ tempoMinimoMeses: s.tempoMinimoMeses, mesesSemReclamacoes: s.mesesSemReclamacoes, mesesConsecutivosMetaBatida: s.mesesConsecutivosMetaBatida });
     const p = getCrit(CargoRH.PROFISSIONAL); if (p) setCritP({ tempoMinimoMeses: p.tempoMinimoMeses, mesesSemReclamacoes: p.mesesSemReclamacoes, mesesConsecutivosMetaBatida: p.mesesConsecutivosMetaBatida });
     const l = getCrit(CargoRH.LIDER); if (l) setCritL({ tempoMinimoMeses: l.tempoMinimoMeses, mesesSemReclamacoes: l.mesesSemReclamacoes, mesesConsecutivosMetaBatida: l.mesesConsecutivosMetaBatida });
   }, [configCriterios.length]);
@@ -71,6 +78,7 @@ export const AdminRHConfiguracoes: React.FC = () => {
     const hoje = new Date().toISOString().split('T')[0];
     await updateConfigRemuneracao([
       { cargo: 'JUNIOR', ...remJ, vigenciaInicio: hoje, alteradoPor },
+      { cargo: 'SENIOR', ...remS, vigenciaInicio: hoje, alteradoPor },
       { cargo: 'PROFISSIONAL', ...remP, vigenciaInicio: hoje, alteradoPor },
     ]);
   });
@@ -87,6 +95,7 @@ export const AdminRHConfiguracoes: React.FC = () => {
     const hoje = new Date().toISOString().split('T')[0];
     await updateConfigCriterios([
       { cargoOrigem: CargoRH.JUNIOR,       ...critJ, vigenciaInicio: hoje, alteradoPor },
+      { cargoOrigem: CargoRH.SENIOR,       ...critS, vigenciaInicio: hoje, alteradoPor },
       { cargoOrigem: CargoRH.PROFISSIONAL, ...critP, vigenciaInicio: hoje, alteradoPor },
       { cargoOrigem: CargoRH.LIDER,        ...critL, vigenciaInicio: hoje, alteradoPor },
     ]);
@@ -143,6 +152,16 @@ export const AdminRHConfiguracoes: React.FC = () => {
                 <NumInput label="Diária 6h" value={remJ.diaria6h} onChange={v => setRemJ(p => ({...p, diaria6h: v}))} prefix="R$" />
                 <NumInput label="Diária 8h" value={remJ.diaria8h} onChange={v => setRemJ(p => ({...p, diaria8h: v}))} prefix="R$" />
                 <NumInput label="Passagem" value={remJ.passagem} onChange={v => setRemJ(p => ({...p, passagem: v}))} prefix="R$" />
+              </div>
+            </Section>
+
+            {/* Sênior */}
+            <Section title="Faxineira Sênior" icon={<DollarSign size={16}/>}>
+              <div className="grid grid-cols-2 gap-3">
+                <NumInput label="Diária 4h" value={remS.diaria4h} onChange={v => setRemS(p => ({...p, diaria4h: v}))} prefix="R$" />
+                <NumInput label="Diária 6h" value={remS.diaria6h} onChange={v => setRemS(p => ({...p, diaria6h: v}))} prefix="R$" />
+                <NumInput label="Diária 8h" value={remS.diaria8h} onChange={v => setRemS(p => ({...p, diaria8h: v}))} prefix="R$" />
+                <NumInput label="Passagem" value={remS.passagem} onChange={v => setRemS(p => ({...p, passagem: v}))} prefix="R$" />
               </div>
             </Section>
 
@@ -221,7 +240,8 @@ export const AdminRHConfiguracoes: React.FC = () => {
         {tab === 'criterios' && (
           <div className="space-y-4">
             {([
-              { label: 'Júnior → Profissional', state: critJ, setter: setCritJ },
+              { label: 'Júnior → Sênior', state: critJ, setter: setCritJ },
+              { label: 'Sênior → Profissional', state: critS, setter: setCritS },
               { label: 'Profissional → Líder', state: critP, setter: setCritP },
               { label: 'Líder → Gerente', state: critL, setter: setCritL },
             ] as const).map(({ label, state, setter }) => (

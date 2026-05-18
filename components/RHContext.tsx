@@ -13,8 +13,23 @@ export interface ColaboradoraRH {
   cargoAtual: CargoRH;
   status: StatusColaboradoraRH;
   observacoes?: string;
+  // Perfil comportamental
+  pontosFortes?: string;
+  areasDesenvolvimento?: string;
+  perfilComportamental?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ObservacaoColaboradora {
+  id: string;
+  colaboradoraId: string;
+  data: string;
+  tipo: 'POSITIVA' | 'NEGATIVA' | 'NEUTRA' | 'OCORRENCIA';
+  titulo: string;
+  descricao: string;
+  registradoPor?: string;
+  createdAt: string;
 }
 
 export interface DesempenhoMensalRH {
@@ -71,7 +86,7 @@ export interface BonusMensalRH {
 
 export interface ConfiguracaoRemuneracaoRH {
   id: string;
-  cargo: 'JUNIOR' | 'PROFISSIONAL';
+  cargo: 'JUNIOR' | 'SENIOR' | 'PROFISSIONAL';
   diaria4h: number;
   diaria6h: number;
   diaria8h: number;
@@ -146,6 +161,10 @@ interface RHContextType {
   addAvaliacao: (data: Omit<AvaliacaoCliente, 'id' | 'createdAt'>) => Promise<void>;
   getMediaAvaliacoesMes: (colaboradoraId: string, mes: number, ano: number) => number | null;
 
+  observacoes: ObservacaoColaboradora[];
+  addObservacao: (data: Omit<ObservacaoColaboradora, 'id' | 'createdAt'>) => Promise<void>;
+  deleteObservacao: (id: string) => Promise<void>;
+
   getElegibilidade: (colaboradora: ColaboradoraRH) => ElegibilidadeRH;
   getMesesNaEmpresa: (dataAdmissao: string) => number;
 }
@@ -165,11 +184,13 @@ const DEFAULT_CONFIG_BONUS: ConfiguracaoBonusLider = {
 
 const DEFAULT_CONFIG_REMUNERACAO: ConfiguracaoRemuneracaoRH[] = [
   { id: 'rem_j', cargo: 'JUNIOR',       diaria4h: 80,  diaria6h: 120, diaria8h: 140, passagem: 10.20, vigenciaInicio: new Date().toISOString().split('T')[0], createdAt: new Date().toISOString() },
+  { id: 'rem_s', cargo: 'SENIOR',       diaria4h: 85,  diaria6h: 130, diaria8h: 150, passagem: 10.20, vigenciaInicio: new Date().toISOString().split('T')[0], createdAt: new Date().toISOString() },
   { id: 'rem_p', cargo: 'PROFISSIONAL', diaria4h: 90,  diaria6h: 140, diaria8h: 160, passagem: 10.20, vigenciaInicio: new Date().toISOString().split('T')[0], createdAt: new Date().toISOString() },
 ];
 
 const DEFAULT_CONFIG_CRITERIOS: ConfiguracaoCriteriosRH[] = [
   { id: 'crit_j', cargoOrigem: CargoRH.JUNIOR,       tempoMinimoMeses: 6,  mesesSemReclamacoes: 3, mesesConsecutivosMetaBatida: 1, vigenciaInicio: new Date().toISOString().split('T')[0], createdAt: new Date().toISOString() },
+  { id: 'crit_s', cargoOrigem: CargoRH.SENIOR,       tempoMinimoMeses: 12, mesesSemReclamacoes: 3, mesesConsecutivosMetaBatida: 1, vigenciaInicio: new Date().toISOString().split('T')[0], createdAt: new Date().toISOString() },
   { id: 'crit_p', cargoOrigem: CargoRH.PROFISSIONAL, tempoMinimoMeses: 18, mesesSemReclamacoes: 3, mesesConsecutivosMetaBatida: 1, vigenciaInicio: new Date().toISOString().split('T')[0], createdAt: new Date().toISOString() },
   { id: 'crit_l', cargoOrigem: CargoRH.LIDER,        tempoMinimoMeses: 36, mesesSemReclamacoes: 6, mesesConsecutivosMetaBatida: 3, vigenciaInicio: new Date().toISOString().split('T')[0], createdAt: new Date().toISOString() },
 ];
@@ -222,7 +243,10 @@ const SEED_COLABORADORAS: ColaboradoraRH[] = [
 // ─── Supabase ↔ camelCase mappers ─────────────────────────────────────────────
 
 function mapColaboradora(r: any): ColaboradoraRH {
-  return { id: r.id, nome: r.nome, telefone: r.telefone, foto: r.foto, dataAdmissao: r.data_admissao, cargoAtual: r.cargo_atual as CargoRH, status: r.status as StatusColaboradoraRH, observacoes: r.observacoes, createdAt: r.created_at, updatedAt: r.updated_at };
+  return { id: r.id, nome: r.nome, telefone: r.telefone, foto: r.foto, dataAdmissao: r.data_admissao, cargoAtual: r.cargo_atual as CargoRH, status: r.status as StatusColaboradoraRH, observacoes: r.observacoes, pontosFortes: r.pontos_fortes, areasDesenvolvimento: r.areas_desenvolvimento, perfilComportamental: r.perfil_comportamental, createdAt: r.created_at, updatedAt: r.updated_at };
+}
+function mapObservacao(r: any): ObservacaoColaboradora {
+  return { id: r.id, colaboradoraId: r.colaboradora_id, data: r.data, tipo: r.tipo, titulo: r.titulo, descricao: r.descricao, registradoPor: r.registrado_por, createdAt: r.created_at };
 }
 function mapDesempenho(r: any): DesempenhoMensalRH {
   return { id: r.id, colaboradoraId: r.colaboradora_id, mes: r.mes, ano: r.ano, totalFaxinas: r.total_faxinas, mediaAvaliacao: parseFloat(r.media_avaliacao), totalOcorrencias: r.total_ocorrencias, observacoes: r.observacoes, registradoPor: r.registrado_por, createdAt: r.created_at };
@@ -275,6 +299,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [configRemuneracao, setConfigRemuneracao] = useState<ConfiguracaoRemuneracaoRH[]>([]);
   const [configCriterios, setConfigCriterios] = useState<ConfiguracaoCriteriosRH[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoCliente[]>([]);
+  const [obsColaboradoras, setObsColaboradoras] = useState<ObservacaoColaboradora[]>([]);
   const [rhLoading, setRhLoading] = useState(true);
 
   // ── Load ────────────────────────────────────────────────────────────────────
@@ -285,7 +310,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const loadAll = async () => {
     setRhLoading(true);
     try {
-      const [colRes, desRes, proRes, bonRes, cfgBonRes, cfgRemRes, cfgCriRes, avalRes] = await Promise.all([
+      const [colRes, desRes, proRes, bonRes, cfgBonRes, cfgRemRes, cfgCriRes, avalRes, obsRes] = await Promise.all([
         supabase.from('colaboradoras_rh').select('*').order('nome'),
         supabase.from('desempenho_mensal').select('*').order('ano,mes'),
         supabase.from('promocoes_rh').select('*').order('data_promocao', { ascending: false }),
@@ -294,6 +319,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         supabase.from('configuracao_remuneracao').select('*').order('created_at', { ascending: false }),
         supabase.from('configuracao_criterios_promocao').select('*').order('created_at', { ascending: false }),
         supabase.from('avaliacoes_clientes').select('*').order('created_at', { ascending: false }),
+        supabase.from('observacoes_colaboradoras').select('*').order('data', { ascending: false }),
       ]);
 
       if (colRes.error) throw colRes.error;
@@ -306,6 +332,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const cfgRems = (cfgRemRes.data || []).map(mapRemuneracao);
       const cfgCris = (cfgCriRes.data || []).map(mapCriterios);
       const avals = (avalRes.data || []).map(mapAvaliacao);
+      const obs = (obsRes.data || []).map(mapObservacao);
 
       // Active config: no vigenciaFim
       const activeBonus = cfgBons.find(c => !c.vigenciaFim) ?? cfgBons[0] ?? DEFAULT_CONFIG_BONUS;
@@ -321,6 +348,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       setConfigRemuneracao(activeRems.length ? activeRems : DEFAULT_CONFIG_REMUNERACAO);
       setConfigCriterios(activeCris.length ? activeCris : DEFAULT_CONFIG_CRITERIOS);
       setAvaliacoes(avals);
+      setObsColaboradoras(obs);
 
       lsSet('rh_colaboradoras', cols);
       lsSet('rh_desempenho', des);
@@ -330,6 +358,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       lsSet('rh_config_remuneracao', activeRems.length ? activeRems : DEFAULT_CONFIG_REMUNERACAO);
       lsSet('rh_config_criterios', activeCris.length ? activeCris : DEFAULT_CONFIG_CRITERIOS);
       lsSet('rh_avaliacoes', avals);
+      lsSet('rh_obs_colaboradoras', obs);
     } catch {
       // Fallback to localStorage + seed
       const cols = lsGet<ColaboradoraRH[]>('rh_colaboradoras', SEED_COLABORADORAS);
@@ -339,8 +368,8 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const cfg = lsGet<ConfiguracaoBonusLider>('rh_config_bonus', DEFAULT_CONFIG_BONUS);
       const rems = lsGet<ConfiguracaoRemuneracaoRH[]>('rh_config_remuneracao', DEFAULT_CONFIG_REMUNERACAO);
       const cris = lsGet<ConfiguracaoCriteriosRH[]>('rh_config_criterios', DEFAULT_CONFIG_CRITERIOS);
-
       const avals = lsGet<AvaliacaoCliente[]>('rh_avaliacoes', []);
+      const obs = lsGet<ObservacaoColaboradora[]>('rh_obs_colaboradoras', []);
 
       setColaboradoras(cols);
       setDesempenhoMensal(des);
@@ -351,6 +380,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       setConfigRemuneracao(rems);
       setConfigCriterios(cris);
       setAvaliacoes(avals);
+      setObsColaboradoras(obs);
 
       if (!localStorage.getItem('rh_colaboradoras')) {
         lsSet('rh_colaboradoras', cols);
@@ -506,6 +536,24 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     setAvaliacoes(prev => { const next = [item, ...prev]; lsSet('rh_avaliacoes', next); return next; });
   }, []);
 
+  // ── Observações de Colaboradoras ───────────────────────────────────────────
+
+  const addObservacao = useCallback(async (data: Omit<ObservacaoColaboradora, 'id' | 'createdAt'>) => {
+    const item: ObservacaoColaboradora = { ...data, id: `obs_${Date.now()}`, createdAt: new Date().toISOString() };
+    try {
+      await supabase.from('observacoes_colaboradoras').insert({
+        colaboradora_id: data.colaboradoraId, data: data.data, tipo: data.tipo,
+        titulo: data.titulo, descricao: data.descricao, registrado_por: data.registradoPor || null,
+      });
+    } catch {}
+    setObsColaboradoras(prev => { const next = [item, ...prev]; lsSet('rh_obs_colaboradoras', next); return next; });
+  }, []);
+
+  const deleteObservacao = useCallback(async (id: string) => {
+    try { await supabase.from('observacoes_colaboradoras').delete().eq('id', id); } catch {}
+    setObsColaboradoras(prev => { const next = prev.filter(o => o.id !== id); lsSet('rh_obs_colaboradoras', next); return next; });
+  }, []);
+
   const getMediaAvaliacoesMes = useCallback((colaboradoraId: string, mes: number, ano: number): number | null => {
     const inicio = new Date(ano, mes - 1, 1);
     const fim = new Date(ano, mes, 0, 23, 59, 59);
@@ -620,6 +668,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       addDesempenho, updateDesempenho, deleteDesempenho,
       addPromocao, addBonusMensal, calcularBonus,
       addAvaliacao, getMediaAvaliacoesMes,
+      observacoes: obsColaboradoras, addObservacao, deleteObservacao,
       updateConfigBonusLider, updateConfigRemuneracao, updateConfigCriterios,
       getElegibilidade, getMesesNaEmpresa,
     }}>

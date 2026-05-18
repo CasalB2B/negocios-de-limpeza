@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
-import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog } from 'lucide-react';
+import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone } from 'lucide-react';
 import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
 import { useData } from './DataContext';
@@ -173,13 +173,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           { icon: <Calendar size={20} />,        label: 'Calendário',   path: '/admin/calendar',       group: 'GESTÃO' },
           { icon: <Smile size={20} />,           label: 'Clientes',     path: '/admin/clients',        group: 'GESTÃO' },
           { icon: <Users size={20} />,           label: 'Equipe',       path: '/admin/collaborators',  group: 'GESTÃO' },
-          { icon: <MessageSquare size={20} />,   label: 'Orçamentos',   path: '/admin/quotes',         group: 'VENDAS' },
-          { icon: <Kanban size={20} />,          label: 'CRM',          path: '/admin/crm',            group: 'VENDAS' },
-          { icon: <Inbox size={20} />,            label: 'Conversas',    path: '/admin/inbox',          group: 'VENDAS' },
-          { icon: <MessageCircle size={20} />,   label: 'WhatsApp',     path: '/admin/whatsapp',       group: 'VENDAS' },
+          { icon: <UserCog size={20} />,         label: 'RH',           path: '/admin/rh',             group: 'GESTÃO' },
+          { icon: <Megaphone size={20} />,       label: 'Marketing',    path: '/admin/marketing',      group: 'VENDAS' },
           { icon: <DollarSign size={20} />,      label: 'Financeiro',   path: '/admin/payments',       group: 'FINANCEIRO' },
-          { icon: <BarChart2 size={20} />,       label: 'Analytics',    path: '/admin/analytics',      group: 'FINANCEIRO' },
-          { icon: <UserCog size={20} />,          label: 'RH',           path: '/admin/rh',             group: 'GESTÃO' },
           { icon: <Sparkles size={20} />,        label: 'Serviços',     path: '/admin/services',       group: 'CONFIG' },
           { icon: <Settings size={20} />,        label: 'Configurações',path: '/admin/settings',       group: 'CONFIG' },
         ];
@@ -225,7 +221,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                     const onCRM = location.pathname.startsWith('/admin/crm');
                     const isRH = item.path === '/admin/rh';
                     const onRH = location.pathname.startsWith('/admin/rh');
-                    const isActive = isCRM ? onCRM : isRH ? onRH : location.pathname === item.path;
+                    const isMarketing = item.path === '/admin/marketing';
+                    const MARKETING_PATHS = ['/admin/quotes', '/admin/crm', '/admin/inbox', '/admin/whatsapp', '/admin/analytics'];
+                    const onMarketing = isMarketing && MARKETING_PATHS.some(p => location.pathname.startsWith(p));
+                    const isActive = isCRM ? onCRM : isRH ? onRH : isMarketing ? onMarketing : location.pathname === item.path;
                     return (
                       <div key={item.path}>
                         <button
@@ -265,17 +264,19 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                           </div>
                         )}
 
-                        {/* CRM sub-menu — visible when on any /admin/crm route */}
-                        {isCRM && onCRM && (
+                        {/* Marketing sub-menu */}
+                        {isMarketing && onMarketing && (
                           <div className="ml-4 mb-1 pl-3 border-l-2 border-gray-100 dark:border-darkBorder space-y-0.5">
                             {[
-                              { label: 'Leads',      path: '/admin/crm',           icon: <Grid size={14} /> },
-                              { label: 'Campanhas',  path: '/admin/crm/campanhas', icon: <MessageCircle size={14} /> },
-                              { label: 'Histórico',  path: '/admin/crm/historico', icon: <LayoutDashboard size={14} /> },
+                              { label: 'Orçamentos', path: '/admin/quotes',     icon: <MessageSquare size={14} /> },
+                              { label: 'CRM / Leads', path: '/admin/crm',       icon: <Kanban size={14} /> },
+                              { label: 'Conversas',  path: '/admin/inbox',      icon: <Inbox size={14} /> },
+                              { label: 'WhatsApp',   path: '/admin/whatsapp',   icon: <MessageCircle size={14} /> },
+                              { label: 'Analytics',  path: '/admin/analytics',  icon: <BarChart2 size={14} /> },
                             ].map(sub => (
                               <button key={sub.path} onClick={() => navigate(sub.path)}
                                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg w-full transition-colors text-xs ${
-                                  location.pathname === sub.path
+                                  location.pathname.startsWith(sub.path)
                                     ? 'bg-primary/10 text-primary font-bold'
                                     : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder'
                                 }`}>

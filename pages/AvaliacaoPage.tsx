@@ -5,6 +5,7 @@ import { Star, CheckCircle, AlertCircle } from 'lucide-react';
 
 const CARGO_LABEL: Record<string, string> = {
   JUNIOR: 'Faxineira Júnior',
+  SENIOR: 'Faxineira Sênior',
   PROFISSIONAL: 'Faxineira Profissional',
   LIDER: 'Líder de Equipe',
   GERENTE: 'Gerente de Equipe',

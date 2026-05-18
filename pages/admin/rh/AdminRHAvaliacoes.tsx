@@ -5,7 +5,7 @@ import { useRH } from '../../../components/RHContext';
 import { Star, MessageSquare, Copy, ExternalLink, Check, Filter } from 'lucide-react';
 
 const CARGO_LABEL: Record<CargoRH, string> = {
-  JUNIOR: 'Júnior', PROFISSIONAL: 'Profissional', LIDER: 'Líder', GERENTE: 'Gerente',
+  JUNIOR: 'Júnior', SENIOR: 'Sênior', PROFISSIONAL: 'Profissional', LIDER: 'Líder', GERENTE: 'Gerente',
 };
 
 type Periodo = 'semana' | 'mes' | 'ano' | 'todos';

@@ -72,6 +72,7 @@ export interface Collaborator {
 
 export enum CargoRH {
   JUNIOR = 'JUNIOR',
+  SENIOR = 'SENIOR',
   PROFISSIONAL = 'PROFISSIONAL',
   LIDER = 'LIDER',
   GERENTE = 'GERENTE',
