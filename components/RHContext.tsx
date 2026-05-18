@@ -366,16 +366,21 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const activeRems = cfgRems.filter(c => !c.vigenciaFim);
       const activeCris = cfgCris.filter(c => !c.vigenciaFim);
 
-      setColaboradoras(cols);
-      setDesempenhoMensal(des);
-      setPromocoes(pros);
+      // Se Supabase retornou vazio mas localStorage tem dados, preserva localStorage
+      const finalCols = cols.length > 0 ? cols : lsGet<ColaboradoraRH[]>('rh_colaboradoras', SEED_COLABORADORAS);
+      const finalAvals = avals.length > 0 ? avals : lsGet<AvaliacaoCliente[]>('rh_avaliacoes', []);
+      const finalObs = obs.length > 0 ? obs : lsGet<ObservacaoColaboradora[]>('rh_obs_colaboradoras', []);
+
+      setColaboradoras(finalCols);
+      setDesempenhoMensal(des.length > 0 ? des : lsGet<DesempenhoMensalRH[]>('rh_desempenho', []));
+      setPromocoes(pros.length > 0 ? pros : lsGet<PromocaoRH[]>('rh_promocoes', []));
       setBonusMensal(bons);
       setHistoricoConfigBonus(cfgBons);
       setConfigBonusLider(activeBonus);
       setConfigRemuneracao(activeRems.length ? activeRems : DEFAULT_CONFIG_REMUNERACAO);
       setConfigCriterios(activeCris.length ? activeCris : DEFAULT_CONFIG_CRITERIOS);
-      setAvaliacoes(avals);
-      setObsColaboradoras(obs);
+      setAvaliacoes(finalAvals);
+      setObsColaboradoras(finalObs);
 
       lsSet('rh_colaboradoras', cols);
       lsSet('rh_desempenho', des);
