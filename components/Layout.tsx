@@ -169,15 +169,21 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
     switch (role) {
       case UserRole.ADMIN:
         return [
-          { icon: <LayoutDashboard size={20} />, label: 'Dashboard',    path: '/admin/dashboard',      group: 'GESTÃO' },
-          { icon: <Calendar size={20} />,        label: 'Calendário',   path: '/admin/calendar',       group: 'GESTÃO' },
-          { icon: <Smile size={20} />,           label: 'Clientes',     path: '/admin/clients',        group: 'GESTÃO' },
-          { icon: <Users size={20} />,           label: 'Equipe',       path: '/admin/collaborators',  group: 'GESTÃO' },
-          { icon: <UserCog size={20} />,         label: 'RH',           path: '/admin/rh',             group: 'GESTÃO' },
-          { icon: <Megaphone size={20} />,       label: 'Marketing',    path: '/admin/marketing',      group: 'VENDAS' },
-          { icon: <DollarSign size={20} />,      label: 'Financeiro',   path: '/admin/payments',       group: 'FINANCEIRO' },
-          { icon: <Sparkles size={20} />,        label: 'Serviços',     path: '/admin/services',       group: 'CONFIG' },
-          { icon: <Settings size={20} />,        label: 'Configurações',path: '/admin/settings',       group: 'CONFIG' },
+          { icon: <LayoutDashboard size={20} />, label: 'Dashboard',    path: '/admin/dashboard',           group: 'GESTÃO' },
+          { icon: <Calendar size={20} />,        label: 'Calendário',   path: '/admin/calendar',            group: 'GESTÃO' },
+          { icon: <Smile size={20} />,           label: 'Clientes',     path: '/admin/clients',             group: 'GESTÃO' },
+          { icon: <Users size={20} />,           label: 'Equipe',       path: '/admin/collaborators',       group: 'GESTÃO' },
+          { icon: <LayoutDashboard size={16} />, label: 'Visão Geral',  path: '/admin/rh',                  group: 'RH' },
+          { icon: <Users size={16} />,           label: 'Colaboradoras',path: '/admin/rh/colaboradoras',    group: 'RH' },
+          { icon: <MessageSquare size={16} />,   label: 'Avaliações',   path: '/admin/rh/avaliacoes',       group: 'RH' },
+          { icon: <BarChart2 size={16} />,       label: 'Desempenho',   path: '/admin/rh/desempenho',       group: 'RH' },
+          { icon: <DollarSign size={16} />,      label: 'Bônus',        path: '/admin/rh/bonus',            group: 'RH' },
+          { icon: <Sparkles size={16} />,        label: 'Promoções',    path: '/admin/rh/promocoes',        group: 'RH' },
+          { icon: <Settings size={16} />,        label: 'Config. RH',   path: '/admin/rh/configuracoes',    group: 'RH' },
+          { icon: <Megaphone size={20} />,       label: 'Marketing',    path: '/admin/marketing',           group: 'VENDAS' },
+          { icon: <DollarSign size={20} />,      label: 'Financeiro',   path: '/admin/payments',            group: 'FINANCEIRO' },
+          { icon: <Sparkles size={20} />,        label: 'Serviços',     path: '/admin/services',            group: 'CONFIG' },
+          { icon: <Settings size={20} />,        label: 'Configurações',path: '/admin/settings',            group: 'CONFIG' },
         ];
       case UserRole.COLLABORATOR:
         return [
@@ -208,8 +214,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
 
         <nav className="flex-1 px-4 mt-4 overflow-y-auto">
           {(() => {
-            const groups = ['GESTÃO', 'VENDAS', 'FINANCEIRO', 'CONFIG'] as const;
-            const groupLabels: Record<string, string> = { GESTÃO: 'Gestão', VENDAS: 'Vendas', FINANCEIRO: 'Financeiro', CONFIG: 'Configurações' };
+            const groups = ['GESTÃO', 'RH', 'VENDAS', 'FINANCEIRO', 'CONFIG'] as const;
+            const groupLabels: Record<string, string> = { GESTÃO: 'Gestão', RH: 'Recursos Humanos', VENDAS: 'Vendas', FINANCEIRO: 'Financeiro', CONFIG: 'Configurações' };
             return groups.map(group => {
               const items = menuItems.filter((i: any) => i.group === group);
               if (!items.length) return null;
@@ -219,12 +225,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                   {items.map((item: any) => {
                     const isCRM = item.path === '/admin/crm';
                     const onCRM = location.pathname.startsWith('/admin/crm');
-                    const isRH = item.path === '/admin/rh';
-                    const onRH = location.pathname.startsWith('/admin/rh');
                     const isMarketing = item.path === '/admin/marketing';
                     const MARKETING_PATHS = ['/admin/quotes', '/admin/crm', '/admin/inbox', '/admin/whatsapp', '/admin/analytics'];
                     const onMarketing = isMarketing && MARKETING_PATHS.some(p => location.pathname.startsWith(p));
-                    const isActive = isCRM ? onCRM : isRH ? onRH : isMarketing ? onMarketing : location.pathname === item.path;
+                    const isActive = isCRM ? onCRM : isMarketing ? onMarketing : location.pathname === item.path;
                     return (
                       <div key={item.path}>
                         <button
@@ -238,31 +242,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                           {item.icon}
                           <span className="text-sm">{item.label}</span>
                         </button>
-
-                        {/* RH sub-menu */}
-                        {isRH && onRH && (
-                          <div className="ml-4 mb-1 pl-3 border-l-2 border-gray-100 dark:border-darkBorder space-y-0.5">
-                            {[
-                              { label: 'Dashboard',      path: '/admin/rh',                  icon: <LayoutDashboard size={14}/> },
-                              { label: 'Colaboradoras',  path: '/admin/rh/colaboradoras',    icon: <Users size={14}/> },
-                              { label: 'Avaliações',     path: '/admin/rh/avaliacoes',       icon: <MessageSquare size={14}/> },
-                              { label: 'Desempenho',     path: '/admin/rh/desempenho',       icon: <BarChart2 size={14}/> },
-                              { label: 'Bônus',          path: '/admin/rh/bonus',            icon: <DollarSign size={14}/> },
-                              { label: 'Promoções',      path: '/admin/rh/promocoes',        icon: <Sparkles size={14}/> },
-                              { label: 'Configurações',  path: '/admin/rh/configuracoes',    icon: <Settings size={14}/> },
-                            ].map(sub => (
-                              <button key={sub.path} onClick={() => navigate(sub.path)}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg w-full transition-colors text-xs ${
-                                  location.pathname === sub.path
-                                    ? 'bg-primary/10 text-primary font-bold'
-                                    : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder'
-                                }`}>
-                                {sub.icon}
-                                {sub.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
 
                         {/* Marketing sub-menu */}
                         {isMarketing && onMarketing && (
