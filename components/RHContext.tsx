@@ -367,13 +367,15 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const activeCris = cfgCris.filter(c => !c.vigenciaFim);
 
       // Se Supabase retornou vazio mas localStorage tem dados, preserva localStorage
-      const finalCols = cols.length > 0 ? cols : lsGet<ColaboradoraRH[]>('rh_colaboradoras', SEED_COLABORADORAS);
+      const finalCols  = cols.length > 0  ? cols  : lsGet<ColaboradoraRH[]>('rh_colaboradoras', SEED_COLABORADORAS);
+      const finalDes   = des.length  > 0  ? des   : lsGet<DesempenhoMensalRH[]>('rh_desempenho', []);
+      const finalPros  = pros.length > 0  ? pros  : lsGet<PromocaoRH[]>('rh_promocoes', []);
       const finalAvals = avals.length > 0 ? avals : lsGet<AvaliacaoCliente[]>('rh_avaliacoes', []);
-      const finalObs = obs.length > 0 ? obs : lsGet<ObservacaoColaboradora[]>('rh_obs_colaboradoras', []);
+      const finalObs   = obs.length  > 0  ? obs   : lsGet<ObservacaoColaboradora[]>('rh_obs_colaboradoras', []);
 
       setColaboradoras(finalCols);
-      setDesempenhoMensal(des.length > 0 ? des : lsGet<DesempenhoMensalRH[]>('rh_desempenho', []));
-      setPromocoes(pros.length > 0 ? pros : lsGet<PromocaoRH[]>('rh_promocoes', []));
+      setDesempenhoMensal(finalDes);
+      setPromocoes(finalPros);
       setBonusMensal(bons);
       setHistoricoConfigBonus(cfgBons);
       setConfigBonusLider(activeBonus);
@@ -382,15 +384,16 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       setAvaliacoes(finalAvals);
       setObsColaboradoras(finalObs);
 
-      lsSet('rh_colaboradoras', cols);
-      lsSet('rh_desempenho', des);
-      lsSet('rh_promocoes', pros);
-      lsSet('rh_bonus_mensal', bons);
+      // Só sobrescreve localStorage com dados do Supabase se Supabase retornou algo
+      if (finalCols.length)  lsSet('rh_colaboradoras', finalCols);
+      if (finalDes.length)   lsSet('rh_desempenho', finalDes);
+      if (finalPros.length)  lsSet('rh_promocoes', finalPros);
+      if (bons.length)       lsSet('rh_bonus_mensal', bons);
       lsSet('rh_config_bonus', activeBonus);
       lsSet('rh_config_remuneracao', activeRems.length ? activeRems : DEFAULT_CONFIG_REMUNERACAO);
       lsSet('rh_config_criterios', activeCris.length ? activeCris : DEFAULT_CONFIG_CRITERIOS);
-      lsSet('rh_avaliacoes', avals);
-      lsSet('rh_obs_colaboradoras', obs);
+      if (finalAvals.length) lsSet('rh_avaliacoes', finalAvals);
+      if (finalObs.length)   lsSet('rh_obs_colaboradoras', finalObs);
     } catch {
       // Fallback to localStorage + seed
       const cols = lsGet<ColaboradoraRH[]>('rh_colaboradoras', SEED_COLABORADORAS);
