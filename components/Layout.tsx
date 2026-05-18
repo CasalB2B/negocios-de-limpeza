@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
-import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone } from 'lucide-react';
+import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus } from 'lucide-react';
 import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
 import { useData } from './DataContext';
@@ -170,10 +170,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       case UserRole.ADMIN:
         return [
           { icon: <LayoutDashboard size={16} />, label: 'Visão Geral',  path: '/admin/rh',                  group: 'RH' },
+          { icon: <UserPlus size={16} />,        label: 'Contratação',  path: '/admin/rh/contratacao',      group: 'RH' },
           { icon: <Users size={16} />,           label: 'Colaboradoras',path: '/admin/rh/colaboradoras',    group: 'RH' },
           { icon: <MessageSquare size={16} />,   label: 'Avaliações',   path: '/admin/rh/avaliacoes',       group: 'RH' },
           { icon: <BarChart2 size={16} />,       label: 'Desempenho',   path: '/admin/rh/desempenho',       group: 'RH' },
           { icon: <Settings size={16} />,        label: 'Config. RH',   path: '/admin/rh/configuracoes',    group: 'RH' },
+          { icon: <Megaphone size={20} />,       label: 'Marketing',    path: '/admin/marketing',           group: 'VENDAS' },
           { icon: <Settings size={20} />,        label: 'Configurações',path: '/admin/settings',            group: 'CONFIG' },
         ];
       case UserRole.COLLABORATOR:
@@ -205,8 +207,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
 
         <nav className="flex-1 px-4 mt-4 overflow-y-auto">
           {(() => {
-            const groups = ['GESTÃO', 'RH', 'VENDAS', 'FINANCEIRO', 'CONFIG'] as const;
-            const groupLabels: Record<string, string> = { GESTÃO: 'Gestão', RH: 'Recursos Humanos', VENDAS: 'Vendas', FINANCEIRO: 'Financeiro', CONFIG: 'Configurações' };
+            const groups = ['RH', 'VENDAS', 'CONFIG'] as const;
+            const groupLabels: Record<string, string> = { RH: 'Recursos Humanos', VENDAS: 'Vendas', CONFIG: 'Configurações' };
             return groups.map(group => {
               const items = menuItems.filter((i: any) => i.group === group);
               if (!items.length) return null;

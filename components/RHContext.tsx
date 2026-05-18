@@ -133,6 +133,21 @@ export interface AvaliacaoCliente {
   createdAt: string;
 }
 
+export type StatusCandidataRH = 'NOVA' | 'EM_PROCESSO' | 'APROVADA' | 'REPROVADA' | 'DESISTIU';
+
+export interface CandidataRH {
+  id: string;
+  nome: string;
+  data: string;
+  telefone?: string;
+  status: StatusCandidataRH;
+  dadosFormulario?: string;
+  notasEntrevista?: string;
+  observacoes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ─── Context Type ─────────────────────────────────────────────────────────────
 
 interface RHContextType {
@@ -170,6 +185,11 @@ interface RHContextType {
   observacoes: ObservacaoColaboradora[];
   addObservacao: (data: Omit<ObservacaoColaboradora, 'id' | 'createdAt'>) => Promise<void>;
   deleteObservacao: (id: string) => Promise<void>;
+
+  candidatas: CandidataRH[];
+  addCandidatura: (data: Omit<CandidataRH, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateCandidatura: (id: string, data: Partial<CandidataRH>) => Promise<void>;
+  deleteCandidatura: (id: string) => Promise<void>;
 
   getElegibilidade: (colaboradora: ColaboradoraRH) => ElegibilidadeRH;
   getMesesNaEmpresa: (dataAdmissao: string) => number;
@@ -306,6 +326,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [configCriterios, setConfigCriterios] = useState<ConfiguracaoCriteriosRH[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoCliente[]>([]);
   const [obsColaboradoras, setObsColaboradoras] = useState<ObservacaoColaboradora[]>([]);
+  const [candidatas, setCandidatas] = useState<CandidataRH[]>([]);
   const [rhLoading, setRhLoading] = useState(true);
 
   // ── Load ────────────────────────────────────────────────────────────────────
@@ -376,8 +397,10 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const cris = lsGet<ConfiguracaoCriteriosRH[]>('rh_config_criterios', DEFAULT_CONFIG_CRITERIOS);
       const avals = lsGet<AvaliacaoCliente[]>('rh_avaliacoes', []);
       const obs = lsGet<ObservacaoColaboradora[]>('rh_obs_colaboradoras', []);
+      const cands = lsGet<CandidataRH[]>('rh_candidatas', []);
 
       setColaboradoras(cols);
+      setCandidatas(cands);
       setDesempenhoMensal(des);
       setPromocoes(pros);
       setBonusMensal(bons);
@@ -566,6 +589,42 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     setObsColaboradoras(prev => { const next = prev.filter(o => o.id !== id); lsSet('rh_obs_colaboradoras', next); return next; });
   }, []);
 
+  // ── Candidatas (Contratação) ───────────────────────────────────────────────
+
+  const addCandidatura = useCallback(async (data: Omit<CandidataRH, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const item: CandidataRH = { ...data, id: `cand_${Date.now()}`, createdAt: now, updatedAt: now };
+    try {
+      const { data: r, error } = await supabase.from('candidatas_rh').insert({
+        nome: data.nome, data: data.data, telefone: data.telefone, status: data.status,
+        dados_formulario: data.dadosFormulario, notas_entrevista: data.notasEntrevista, observacoes: data.observacoes,
+      }).select().single();
+      if (!error && r) {
+        const saved: CandidataRH = { id: r.id, nome: r.nome, data: r.data, telefone: r.telefone, status: r.status, dadosFormulario: r.dados_formulario, notasEntrevista: r.notas_entrevista, observacoes: r.observacoes, createdAt: r.created_at, updatedAt: r.updated_at };
+        setCandidatas(prev => { const next = [saved, ...prev]; lsSet('rh_candidatas', next); return next; });
+        return;
+      }
+    } catch {}
+    setCandidatas(prev => { const next = [item, ...prev]; lsSet('rh_candidatas', next); return next; });
+  }, []);
+
+  const updateCandidatura = useCallback(async (id: string, data: Partial<CandidataRH>) => {
+    const upd = (prev: CandidataRH[]) => { const next = prev.map(c => c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c); lsSet('rh_candidatas', next); return next; };
+    try {
+      await supabase.from('candidatas_rh').update({
+        nome: data.nome, data: data.data, telefone: data.telefone, status: data.status,
+        dados_formulario: data.dadosFormulario, notas_entrevista: data.notasEntrevista, observacoes: data.observacoes,
+        updated_at: new Date().toISOString(),
+      }).eq('id', id);
+    } catch {}
+    setCandidatas(upd);
+  }, []);
+
+  const deleteCandidatura = useCallback(async (id: string) => {
+    try { await supabase.from('candidatas_rh').delete().eq('id', id); } catch {}
+    setCandidatas(prev => { const next = prev.filter(c => c.id !== id); lsSet('rh_candidatas', next); return next; });
+  }, []);
+
   const getMediaAvaliacoesMes = useCallback((colaboradoraId: string, mes: number, ano: number): number | null => {
     const inicio = new Date(ano, mes - 1, 1);
     const fim = new Date(ano, mes, 0, 23, 59, 59);
@@ -681,6 +740,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       addPromocao, addBonusMensal, calcularBonus,
       addAvaliacao, getMediaAvaliacoesMes,
       observacoes: obsColaboradoras, addObservacao, deleteObservacao,
+      candidatas, addCandidatura, updateCandidatura, deleteCandidatura,
       updateConfigBonusLider, updateConfigRemuneracao, updateConfigCriterios,
       getElegibilidade, getMesesNaEmpresa,
     }}>
