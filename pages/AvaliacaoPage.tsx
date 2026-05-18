@@ -31,29 +31,32 @@ export const AvaliacaoPage: React.FC = () => {
   useEffect(() => {
     if (!colaboradoraId) { setLoading(false); return; }
 
-    // 1. Try Supabase first (works on any device)
-    supabase
-      .from('colaboradoras_rh')
-      .select('id, nome, cargo_atual, foto')
-      .eq('id', colaboradoraId)
-      .maybeSingle()
-      .then(({ data }) => {
+    const load = async () => {
+      try {
+        // 1. Try Supabase first (works on any device)
+        const { data } = await supabase
+          .from('colaboradoras_rh')
+          .select('id, nome, cargo_atual, foto')
+          .eq('id', colaboradoraId)
+          .maybeSingle();
+
         if (data) {
           setColaboradora({ id: data.id, nome: data.nome, cargoAtual: data.cargo_atual, foto: data.foto });
-          setLoading(false);
         } else {
           // 2. Fallback: context/localStorage (same device)
           const fromCtx = colaboradoras.find(c => c.id === colaboradoraId);
           if (fromCtx) setColaboradora({ id: fromCtx.id, nome: fromCtx.nome, cargoAtual: fromCtx.cargoAtual, foto: fromCtx.foto });
-          setLoading(false);
         }
-      })
-      .catch(() => {
+      } catch {
         // Supabase unavailable — use context
         const fromCtx = colaboradoras.find(c => c.id === colaboradoraId);
         if (fromCtx) setColaboradora({ id: fromCtx.id, nome: fromCtx.nome, cargoAtual: fromCtx.cargoAtual, foto: fromCtx.foto });
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [colaboradoraId, colaboradoras.length]);
 
