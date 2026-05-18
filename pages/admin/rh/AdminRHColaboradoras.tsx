@@ -10,6 +10,7 @@ import {
   Search, UserPlus, Edit, Trash2, Camera, Clock, Copy, Check,
   Star, MessageSquare, BookOpen, User, ChevronRight, X, Plus,
   TrendingUp, AlertCircle, ThumbsUp, Minus, ExternalLink,
+  Phone, MapPin, FileText, Upload, Download,
 } from 'lucide-react';
 
 // ─── Labels & helpers ────────────────────────────────────────────────────────
@@ -48,7 +49,8 @@ type ColaboradoraFormData = Omit<ColaboradoraRH, 'id' | 'createdAt' | 'updatedAt
 const BLANK: ColaboradoraFormData = {
   nome: '', telefone: '', foto: '', dataAdmissao: '',
   cargoAtual: CargoRH.JUNIOR, status: StatusColaboradoraRH.ATIVA,
-  observacoes: '', pontosFortes: '', areasDesenvolvimento: '', perfilComportamental: '',
+  observacoes: '', endereco: '', cep: '', contratoUrl: '', contratoNome: '',
+  pontosFortes: '', areasDesenvolvimento: '', perfilComportamental: '',
 };
 
 function getLinkAvaliacao(id: string) {
@@ -87,6 +89,7 @@ export const AdminRHColaboradoras: React.FC = () => {
   const [perfilAberto, setPerfilAberto] = useState<ColaboradoraRH | null>(null);
   const [perfilTab, setPerfilTab] = useState<'dados' | 'comportamental' | 'diario' | 'avaliacoes'>('dados');
   const photoRef = useRef<HTMLInputElement>(null);
+  const contratoRef = useRef<HTMLInputElement>(null);
 
   // Obs form
   const [obsForm, setObsForm] = useState({ tipo: 'POSITIVA' as ObservacaoColaboradora['tipo'], titulo: '', descricao: '', data: new Date().toISOString().split('T')[0], registradoPor: '' });
@@ -107,9 +110,20 @@ export const AdminRHColaboradoras: React.FC = () => {
       nome: c.nome, telefone: c.telefone || '', foto: c.foto || '',
       dataAdmissao: c.dataAdmissao, cargoAtual: c.cargoAtual,
       status: c.status, observacoes: c.observacoes || '',
+      endereco: c.endereco || '', cep: c.cep || '',
+      contratoUrl: c.contratoUrl || '', contratoNome: c.contratoNome || '',
       pontosFortes: c.pontosFortes || '', areasDesenvolvimento: c.areasDesenvolvimento || '',
       perfilComportamental: c.perfilComportamental || '',
     });
+  };
+
+  const handleContrato = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const url = e.target?.result as string;
+      setForm(prev => ({ ...prev, contratoUrl: url, contratoNome: file.name }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handlePhoto = (file: File, isEdit: boolean) => {
@@ -280,7 +294,7 @@ export const AdminRHColaboradoras: React.FC = () => {
 
         {/* Modal Add */}
         <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Nova Colaboradora">
-          <ColaboradoraForm form={form} setForm={setForm} photoRef={photoRef} onPhotoSelect={file => handlePhoto(file, false)} />
+          <ColaboradoraForm form={form} setForm={setForm} photoRef={photoRef} contratoRef={contratoRef} onPhotoSelect={file => handlePhoto(file, false)} onContratoSelect={handleContrato} />
           <div className="flex gap-3 mt-6">
             <Button variant="outline" fullWidth onClick={() => setShowAdd(false)}>Cancelar</Button>
             <Button fullWidth onClick={handleSave}>Salvar</Button>
@@ -299,7 +313,7 @@ export const AdminRHColaboradoras: React.FC = () => {
               </div>
               <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handlePhoto(e.target.files[0], true)} />
             </div>
-            <ColaboradoraForm form={form} setForm={setForm} photoRef={photoRef} onPhotoSelect={file => handlePhoto(file, true)} hidePhoto />
+            <ColaboradoraForm form={form} setForm={setForm} photoRef={photoRef} contratoRef={contratoRef} onPhotoSelect={file => handlePhoto(file, true)} onContratoSelect={handleContrato} hidePhoto />
             <div className="flex gap-3 mt-6">
               <Button variant="destructive" icon={<Trash2 size={14}/>} onClick={() => handleDelete(editing.id)}>Excluir</Button>
               <Button variant="outline" fullWidth onClick={() => setEditing(null)}>Cancelar</Button>
@@ -434,6 +448,51 @@ export const AdminRHColaboradoras: React.FC = () => {
                         </div>
                       </div>
                     )}
+
+                    {/* Contato & Endereço */}
+                    {(perfilAberto.telefone || perfilAberto.endereco || perfilAberto.cep) && (
+                      <div className="bg-gray-50 dark:bg-darkBg rounded-xl p-4 space-y-2">
+                        <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary mb-2">Contato & Endereço</p>
+                        {perfilAberto.telefone && (
+                          <div className="flex items-center gap-2 text-sm text-darkText dark:text-darkTextPrimary">
+                            <Phone size={13} className="text-primary shrink-0" />
+                            <a href={`tel:${perfilAberto.telefone}`} className="hover:text-primary transition-colors">{perfilAberto.telefone}</a>
+                          </div>
+                        )}
+                        {perfilAberto.endereco && (
+                          <div className="flex items-start gap-2 text-sm text-darkText dark:text-darkTextPrimary">
+                            <MapPin size={13} className="text-primary shrink-0 mt-0.5" />
+                            <span>{perfilAberto.endereco}{perfilAberto.cep ? ` — ${perfilAberto.cep}` : ''}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Contrato */}
+                    <div>
+                      <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary mb-2 flex items-center gap-1.5">
+                        <FileText size={13} className="text-primary" /> Contrato
+                      </p>
+                      {perfilAberto.contratoUrl ? (
+                        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+                          <FileText size={20} className="text-primary shrink-0" />
+                          <span className="text-sm text-darkText dark:text-darkTextPrimary font-bold flex-1 truncate">{perfilAberto.contratoNome || 'Contrato'}</span>
+                          <a href={perfilAberto.contratoUrl} download={perfilAberto.contratoNome || 'contrato.pdf'}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-bold hover:bg-primary/90 transition-colors">
+                            <Download size={12} /> Baixar
+                          </a>
+                        </div>
+                      ) : (
+                        <div className="border-2 border-dashed border-gray-200 dark:border-darkBorder rounded-xl p-4 text-center">
+                          <FileText size={20} className="mx-auto mb-1 text-lightText opacity-40" />
+                          <p className="text-xs text-lightText dark:text-darkTextSecondary">Nenhum contrato anexado.</p>
+                          <button onClick={() => openEdit(perfilAberto)}
+                            className="mt-2 text-xs text-primary font-bold hover:underline">
+                            Editar para adicionar
+                          </button>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Observações gerais */}
                     {perfilAberto.observacoes && (
@@ -679,11 +738,20 @@ interface FormProps {
   form: ColaboradoraFormData;
   setForm: React.Dispatch<React.SetStateAction<ColaboradoraFormData>>;
   photoRef: React.RefObject<HTMLInputElement>;
+  contratoRef: React.RefObject<HTMLInputElement>;
   onPhotoSelect: (file: File) => void;
+  onContratoSelect: (file: File) => void;
   hidePhoto?: boolean;
 }
 
-const ColaboradoraForm: React.FC<FormProps> = ({ form, setForm, photoRef, onPhotoSelect, hidePhoto }) => (
+const SLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">{children}</label>
+);
+const SInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => (
+  <input {...props} className="w-full border border-input bg-background dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+);
+
+const ColaboradoraForm: React.FC<FormProps> = ({ form, setForm, photoRef, contratoRef, onPhotoSelect, onContratoSelect, hidePhoto }) => (
   <div className="space-y-4">
     {!hidePhoto && (
       <div className="flex flex-col items-center mb-2">
@@ -694,31 +762,63 @@ const ColaboradoraForm: React.FC<FormProps> = ({ form, setForm, photoRef, onPhot
         <p className="text-xs text-lightText dark:text-darkTextSecondary mt-1">Clique para adicionar foto</p>
       </div>
     )}
+
+    {/* Dados básicos */}
     <Input label="Nome completo *" value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))} />
-    <Input label="Telefone" value={form.telefone || ''} onChange={e => setForm(p => ({ ...p, telefone: e.target.value }))} />
-    <div>
-      <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Data de Admissão *</label>
-      <input type="date" value={form.dataAdmissao} onChange={e => setForm(p => ({ ...p, dataAdmissao: e.target.value }))}
-        className="w-full border border-input bg-background dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+    <div className="grid grid-cols-2 gap-3">
+      <div><SLabel>Telefone</SLabel><SInput type="tel" value={form.telefone || ''} placeholder="(27) 99999-9999" onChange={e => setForm(p => ({ ...p, telefone: e.target.value }))} /></div>
+      <div>
+        <SLabel>Data de Admissão *</SLabel>
+        <SInput type="date" value={form.dataAdmissao} onChange={e => setForm(p => ({ ...p, dataAdmissao: e.target.value }))} />
+      </div>
     </div>
-    <div>
-      <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Cargo</label>
-      <select value={form.cargoAtual} onChange={e => setForm(p => ({ ...p, cargoAtual: e.target.value as CargoRH }))}
-        className="w-full border border-input bg-background dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30">
-        {Object.values(CargoRH).map(c => <option key={c} value={c}>{CARGO_LABEL[c]}</option>)}
-      </select>
+
+    {/* Endereço */}
+    <div><SLabel>Endereço</SLabel><SInput type="text" value={form.endereco || ''} placeholder="Rua, número, bairro, cidade" onChange={e => setForm(p => ({ ...p, endereco: e.target.value }))} /></div>
+    <div className="w-1/3"><SLabel>CEP</SLabel><SInput type="text" value={form.cep || ''} placeholder="00000-000" onChange={e => setForm(p => ({ ...p, cep: e.target.value }))} /></div>
+
+    {/* Cargo & Status */}
+    <div className="grid grid-cols-2 gap-3">
+      <div>
+        <SLabel>Cargo</SLabel>
+        <select value={form.cargoAtual} onChange={e => setForm(p => ({ ...p, cargoAtual: e.target.value as CargoRH }))}
+          className="w-full border border-input bg-background dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30">
+          {Object.values(CargoRH).map(c => <option key={c} value={c}>{CARGO_LABEL[c]}</option>)}
+        </select>
+      </div>
+      <div>
+        <SLabel>Status</SLabel>
+        <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as StatusColaboradoraRH }))}
+          className="w-full border border-input bg-background dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <option value="ATIVA">Ativa</option>
+          <option value="INATIVA">Inativa</option>
+          <option value="AFASTADA">Afastada</option>
+        </select>
+      </div>
     </div>
+
+    {/* Contrato */}
     <div>
-      <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Status</label>
-      <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as StatusColaboradoraRH }))}
-        className="w-full border border-input bg-background dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30">
-        <option value="ATIVA">Ativa</option>
-        <option value="INATIVA">Inativa</option>
-        <option value="AFASTADA">Afastada</option>
-      </select>
+      <SLabel>Contrato (PDF)</SLabel>
+      <input ref={contratoRef} type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={e => e.target.files?.[0] && onContratoSelect(e.target.files[0])} />
+      {form.contratoUrl ? (
+        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+          <FileText size={18} className="text-primary shrink-0" />
+          <span className="text-sm text-darkText dark:text-darkTextPrimary font-bold flex-1 truncate">{form.contratoNome}</span>
+          <button type="button" onClick={() => setForm(p => ({ ...p, contratoUrl: '', contratoNome: '' }))}
+            className="text-xs text-red-500 hover:underline font-bold">Remover</button>
+        </div>
+      ) : (
+        <button type="button" onClick={() => contratoRef.current?.click()}
+          className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 dark:border-darkBorder rounded-xl py-3 text-sm text-lightText dark:text-darkTextSecondary hover:border-primary hover:text-primary transition-colors font-bold">
+          <Upload size={16} /> Fazer upload do contrato
+        </button>
+      )}
     </div>
+
+    {/* Observações */}
     <div>
-      <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Observações</label>
+      <SLabel>Observações</SLabel>
       <textarea value={form.observacoes || ''} onChange={e => setForm(p => ({ ...p, observacoes: e.target.value }))} rows={2}
         className="w-full border border-input bg-background dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" />
     </div>

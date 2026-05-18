@@ -169,20 +169,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
     switch (role) {
       case UserRole.ADMIN:
         return [
-          { icon: <LayoutDashboard size={20} />, label: 'Dashboard',    path: '/admin/dashboard',           group: 'GESTÃO' },
-          { icon: <Calendar size={20} />,        label: 'Calendário',   path: '/admin/calendar',            group: 'GESTÃO' },
-          { icon: <Smile size={20} />,           label: 'Clientes',     path: '/admin/clients',             group: 'GESTÃO' },
-          { icon: <Users size={20} />,           label: 'Equipe',       path: '/admin/collaborators',       group: 'GESTÃO' },
           { icon: <LayoutDashboard size={16} />, label: 'Visão Geral',  path: '/admin/rh',                  group: 'RH' },
           { icon: <Users size={16} />,           label: 'Colaboradoras',path: '/admin/rh/colaboradoras',    group: 'RH' },
           { icon: <MessageSquare size={16} />,   label: 'Avaliações',   path: '/admin/rh/avaliacoes',       group: 'RH' },
           { icon: <BarChart2 size={16} />,       label: 'Desempenho',   path: '/admin/rh/desempenho',       group: 'RH' },
-          { icon: <DollarSign size={16} />,      label: 'Bônus',        path: '/admin/rh/bonus',            group: 'RH' },
-          { icon: <Sparkles size={16} />,        label: 'Promoções',    path: '/admin/rh/promocoes',        group: 'RH' },
           { icon: <Settings size={16} />,        label: 'Config. RH',   path: '/admin/rh/configuracoes',    group: 'RH' },
-          { icon: <Megaphone size={20} />,       label: 'Marketing',    path: '/admin/marketing',           group: 'VENDAS' },
-          { icon: <DollarSign size={20} />,      label: 'Financeiro',   path: '/admin/payments',            group: 'FINANCEIRO' },
-          { icon: <Sparkles size={20} />,        label: 'Serviços',     path: '/admin/services',            group: 'CONFIG' },
           { icon: <Settings size={20} />,        label: 'Configurações',path: '/admin/settings',            group: 'CONFIG' },
         ];
       case UserRole.COLLABORATOR:

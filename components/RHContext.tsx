@@ -13,6 +13,12 @@ export interface ColaboradoraRH {
   cargoAtual: CargoRH;
   status: StatusColaboradoraRH;
   observacoes?: string;
+  // Localização
+  endereco?: string;
+  cep?: string;
+  // Contrato
+  contratoUrl?: string;
+  contratoNome?: string;
   // Perfil comportamental
   pontosFortes?: string;
   areasDesenvolvimento?: string;
@@ -243,7 +249,7 @@ const SEED_COLABORADORAS: ColaboradoraRH[] = [
 // ─── Supabase ↔ camelCase mappers ─────────────────────────────────────────────
 
 function mapColaboradora(r: any): ColaboradoraRH {
-  return { id: r.id, nome: r.nome, telefone: r.telefone, foto: r.foto, dataAdmissao: r.data_admissao, cargoAtual: r.cargo_atual as CargoRH, status: r.status as StatusColaboradoraRH, observacoes: r.observacoes, pontosFortes: r.pontos_fortes, areasDesenvolvimento: r.areas_desenvolvimento, perfilComportamental: r.perfil_comportamental, createdAt: r.created_at, updatedAt: r.updated_at };
+  return { id: r.id, nome: r.nome, telefone: r.telefone, foto: r.foto, dataAdmissao: r.data_admissao, cargoAtual: r.cargo_atual as CargoRH, status: r.status as StatusColaboradoraRH, observacoes: r.observacoes, endereco: r.endereco, cep: r.cep, contratoUrl: r.contrato_url, contratoNome: r.contrato_nome, pontosFortes: r.pontos_fortes, areasDesenvolvimento: r.areas_desenvolvimento, perfilComportamental: r.perfil_comportamental, createdAt: r.created_at, updatedAt: r.updated_at };
 }
 function mapObservacao(r: any): ObservacaoColaboradora {
   return { id: r.id, colaboradoraId: r.colaboradora_id, data: r.data, tipo: r.tipo, titulo: r.titulo, descricao: r.descricao, registradoPor: r.registrado_por, createdAt: r.created_at };
@@ -405,6 +411,8 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         nome: data.nome, telefone: data.telefone, foto: data.foto,
         data_admissao: data.dataAdmissao, cargo_atual: data.cargoAtual,
         status: data.status, observacoes: data.observacoes,
+        endereco: data.endereco, cep: data.cep,
+        contrato_url: data.contratoUrl, contrato_nome: data.contratoNome,
       }).select().single();
       if (!error && r) {
         const saved = mapColaboradora(r);
@@ -425,6 +433,10 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         nome: data.nome, telefone: data.telefone, foto: data.foto,
         data_admissao: data.dataAdmissao, cargo_atual: data.cargoAtual,
         status: data.status, observacoes: data.observacoes,
+        endereco: data.endereco, cep: data.cep,
+        contrato_url: data.contratoUrl, contrato_nome: data.contratoNome,
+        pontos_fortes: data.pontosFortes, areas_desenvolvimento: data.areasDesenvolvimento,
+        perfil_comportamental: data.perfilComportamental,
         updated_at: new Date().toISOString(),
       }).eq('id', id);
     } catch {}
