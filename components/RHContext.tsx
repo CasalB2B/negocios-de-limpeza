@@ -295,6 +295,9 @@ function mapCriterios(r: any): ConfiguracaoCriteriosRH {
 function mapAvaliacao(r: any): AvaliacaoCliente {
   return { id: r.id, colaboradoraId: r.colaboradora_id, nomeCliente: r.nome_cliente, dataFaxina: r.data_faxina, estrelas: r.estrelas, comentario: r.comentario, createdAt: r.created_at };
 }
+function mapCandidatura(r: any): CandidataRH {
+  return { id: r.id, nome: r.nome, data: r.data, telefone: r.telefone, status: r.status, dadosFormulario: r.dados_formulario, notasEntrevista: r.notas_entrevista, observacoes: r.observacoes, createdAt: r.created_at, updatedAt: r.updated_at };
+}
 
 // ─── LS helpers ───────────────────────────────────────────────────────────────
 
@@ -337,7 +340,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const loadAll = async () => {
     setRhLoading(true);
     try {
-      const [colRes, desRes, proRes, bonRes, cfgBonRes, cfgRemRes, cfgCriRes, avalRes, obsRes] = await Promise.all([
+      const [colRes, desRes, proRes, bonRes, cfgBonRes, cfgRemRes, cfgCriRes, avalRes, obsRes, candRes] = await Promise.all([
         supabase.from('colaboradoras_rh').select('*').order('nome'),
         supabase.from('desempenho_mensal').select('*').order('ano,mes'),
         supabase.from('promocoes_rh').select('*').order('data_promocao', { ascending: false }),
@@ -347,6 +350,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         supabase.from('configuracao_criterios_promocao').select('*').order('created_at', { ascending: false }),
         supabase.from('avaliacoes_clientes').select('*').order('created_at', { ascending: false }),
         supabase.from('observacoes_colaboradoras').select('*').order('data', { ascending: false }),
+        supabase.from('candidatas_rh').select('*').order('created_at', { ascending: false }),
       ]);
 
       if (colRes.error) throw colRes.error;
@@ -360,6 +364,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const cfgCris = (cfgCriRes.data || []).map(mapCriterios);
       const avals = (avalRes.data || []).map(mapAvaliacao);
       const obs = (obsRes.data || []).map(mapObservacao);
+      const cands = (!candRes.error && candRes.data?.length) ? (candRes.data || []).map(mapCandidatura) : lsGet<CandidataRH[]>('rh_candidatas', []);
 
       // Active config: no vigenciaFim
       const activeBonus = cfgBons.find(c => !c.vigenciaFim) ?? cfgBons[0] ?? DEFAULT_CONFIG_BONUS;
@@ -383,6 +388,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       setConfigCriterios(activeCris.length ? activeCris : DEFAULT_CONFIG_CRITERIOS);
       setAvaliacoes(finalAvals);
       setObsColaboradoras(finalObs);
+      setCandidatas(cands);
 
       // Só sobrescreve localStorage com dados do Supabase se Supabase retornou algo
       if (finalCols.length)  lsSet('rh_colaboradoras', finalCols);
@@ -394,6 +400,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       lsSet('rh_config_criterios', activeCris.length ? activeCris : DEFAULT_CONFIG_CRITERIOS);
       if (finalAvals.length) lsSet('rh_avaliacoes', finalAvals);
       if (finalObs.length)   lsSet('rh_obs_colaboradoras', finalObs);
+      if (cands.length)      lsSet('rh_candidatas', cands);
     } catch {
       // Fallback to localStorage + seed
       const cols = lsGet<ColaboradoraRH[]>('rh_colaboradoras', SEED_COLABORADORAS);

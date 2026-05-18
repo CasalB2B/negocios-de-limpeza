@@ -7,7 +7,7 @@ import { Input } from '../../../components/Input';
 import { Modal } from '../../../components/Modal';
 import {
   UserPlus, Search, X, Trash2, Phone, Calendar,
-  FileText, ClipboardList, ChevronRight, Edit,
+  FileText, ClipboardList, ChevronRight, Edit, CheckCircle,
 } from 'lucide-react';
 
 // ─── Status config ────────────────────────────────────────────────────────────
@@ -42,6 +42,7 @@ export const AdminRHContratacao: React.FC = () => {
   const [aberta, setAberta] = useState<CandidataRH | null>(null);
   const [editando, setEditando] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savedOk, setSavedOk] = useState(false);
 
   // Local editable state for the open drawer
   const [docForm, setDocForm] = useState<Partial<CandidataRH>>({});
@@ -77,6 +78,9 @@ export const AdminRHContratacao: React.FC = () => {
     await updateCandidatura(aberta.id, docForm);
     setAberta(prev => prev ? { ...prev, ...docForm } : prev);
     setSaving(false);
+    setEditando(false);
+    setSavedOk(true);
+    setTimeout(() => setSavedOk(false), 2500);
   };
 
   const handleDelete = async (id: string) => {
@@ -319,9 +323,14 @@ Impressão geral:
               </div>
 
               {/* Footer com botão salvar */}
-              <div className="shrink-0 p-4 border-t border-gray-100 dark:border-darkBorder bg-white dark:bg-darkSurface">
-                <Button fullWidth onClick={handleSaveDoc}>
-                  {saving ? 'Salvando...' : 'Salvar alterações'}
+              <div className="shrink-0 p-4 border-t border-gray-100 dark:border-darkBorder bg-white dark:bg-darkSurface space-y-2">
+                {savedOk && (
+                  <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-3 py-2 text-green-700 dark:text-green-400 text-sm font-bold">
+                    <CheckCircle size={15} /> Alterações salvas com sucesso!
+                  </div>
+                )}
+                <Button fullWidth onClick={handleSaveDoc} icon={savedOk ? <CheckCircle size={15}/> : undefined} variant={savedOk ? 'outline' : 'primary'}>
+                  {saving ? 'Salvando...' : savedOk ? 'Salvo!' : 'Salvar alterações'}
                 </Button>
               </div>
             </div>
