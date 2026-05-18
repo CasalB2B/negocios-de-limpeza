@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useRH } from '../components/RHContext';
+import { supabase } from '../lib/supabase';
 import { Star, CheckCircle, AlertCircle } from 'lucide-react';
 
 const CARGO_LABEL: Record<string, string> = {
@@ -11,12 +12,50 @@ const CARGO_LABEL: Record<string, string> = {
   GERENTE: 'Gerente de Equipe',
 };
 
+interface ColabMin {
+  id: string;
+  nome: string;
+  cargoAtual: string;
+  foto?: string;
+}
+
 export const AvaliacaoPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const colaboradoraId = searchParams.get('c') || '';
-  const { colaboradoras, addAvaliacao, rhLoading } = useRH();
 
-  const colaboradora = colaboradoras.find(c => c.id === colaboradoraId);
+  // Try to find the colaboradora from Supabase directly (device-independent)
+  const { colaboradoras, addAvaliacao } = useRH();
+  const [colaboradora, setColaboradora] = useState<ColabMin | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!colaboradoraId) { setLoading(false); return; }
+
+    // 1. Try Supabase first (works on any device)
+    supabase
+      .from('colaboradoras_rh')
+      .select('id, nome, cargo_atual, foto')
+      .eq('id', colaboradoraId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setColaboradora({ id: data.id, nome: data.nome, cargoAtual: data.cargo_atual, foto: data.foto });
+          setLoading(false);
+        } else {
+          // 2. Fallback: context/localStorage (same device)
+          const fromCtx = colaboradoras.find(c => c.id === colaboradoraId);
+          if (fromCtx) setColaboradora({ id: fromCtx.id, nome: fromCtx.nome, cargoAtual: fromCtx.cargoAtual, foto: fromCtx.foto });
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        // Supabase unavailable — use context
+        const fromCtx = colaboradoras.find(c => c.id === colaboradoraId);
+        if (fromCtx) setColaboradora({ id: fromCtx.id, nome: fromCtx.nome, cargoAtual: fromCtx.cargoAtual, foto: fromCtx.foto });
+        setLoading(false);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [colaboradoraId, colaboradoras.length]);
 
   const [estrelas, setEstrelas] = useState(0);
   const [hoverEstrela, setHoverEstrela] = useState(0);
@@ -43,7 +82,7 @@ export const AvaliacaoPage: React.FC = () => {
     setEnviando(false);
   };
 
-  if (rhLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
@@ -57,7 +96,9 @@ export const AvaliacaoPage: React.FC = () => {
         <div className="text-center space-y-3 max-w-sm">
           <AlertCircle size={48} className="text-red-400 mx-auto" />
           <h2 className="font-bold text-xl text-darkText dark:text-darkTextPrimary">Link inválido</h2>
-          <p className="text-lightText dark:text-darkTextSecondary text-sm">Este link de avaliação não é válido ou expirou. Por favor, solicite um novo link à equipe Negócios de Limpeza.</p>
+          <p className="text-lightText dark:text-darkTextSecondary text-sm">
+            Este link de avaliação não é válido. Por favor, solicite um novo link à equipe Negócios de Limpeza.
+          </p>
         </div>
       </div>
     );
@@ -84,7 +125,9 @@ export const AvaliacaoPage: React.FC = () => {
           </div>
           <div className="bg-white dark:bg-darkSurface rounded-2xl p-4 flex items-center gap-3 border border-gray-100 dark:border-darkBorder">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center font-bold text-primary text-lg overflow-hidden shrink-0">
-              {colaboradora.foto ? <img src={colaboradora.foto} alt={colaboradora.nome} className="w-full h-full object-cover" /> : colaboradora.nome[0]}
+              {colaboradora.foto
+                ? <img src={colaboradora.foto} alt={colaboradora.nome} className="w-full h-full object-cover" />
+                : colaboradora.nome[0]}
             </div>
             <div className="text-left">
               <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">{colaboradora.nome}</p>
