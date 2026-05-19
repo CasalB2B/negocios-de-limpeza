@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
   // Busca configurações
   const { data: cfg } = await supabase
     .from('platform_settings')
-    .select('follow_up_enabled, follow_up_hours, follow_up_steps')
+    .select('follow_up_enabled, follow_up_hours, follow_up_hours_2, follow_up_steps')
     .eq('id', 1)
     .single();
 
@@ -138,8 +138,9 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Cenário 1: horas para re-engajar quem parou no meio do fluxo
-  const chatHours: number = cfg?.follow_up_hours ?? 2;
+  // Cenário 1: horas para re-engajar quem parou no meio do fluxo (até 2 tentativas)
+  const chatHours: number  = cfg?.follow_up_hours ?? 2;
+  const chatHours2: number = cfg?.follow_up_hours_2 ?? (chatHours + 24);
 
   // Cenário 2: delays (em horas) para follow-up pós-orçamento
   let humanDelays: number[] = [24, 48];
@@ -170,31 +171,42 @@ Deno.serve(async (req) => {
     if (phone.includes('@lid')) continue;       // não envia para @lid
     if (meta.adminReplied)       continue;       // admin no controle — Nina não interfere
 
-    const step         = (meta.step as string) || 'chat';
-    const lastUserAt   = meta.lastUserMessageAt;
+    const step       = (meta.step as string) || 'chat';
+    // Usa lastUserMessageAt do meta; fallback para updated_at da sessão (sessões antigas)
+    const lastUserAt = meta.lastUserMessageAt || session.updated_at;
     if (!lastUserAt) continue;
 
     const hoursElapsed = (now - new Date(lastUserAt).getTime()) / (1000 * 60 * 60);
     const pushName     = (meta.pushName as string) || '';
     const history      = session.history || [];
 
-    // ── CENÁRIO 1: parou no meio do fluxo ──────────────────────────────────
+    // ── CENÁRIO 1: parou no meio do fluxo — até 2 tentativas ─────────────────
     if (step === 'chat') {
-      const reengageSent = meta.reengageSent === true;
-      if (!reengageSent && hoursElapsed >= chatHours) {
-        console.log(`[FOLLOWUP] gerando re-engajamento para ${phone} (${hoursElapsed.toFixed(1)}h)`);
+      // Tentativa 1: após chatHours (ex: 2h)
+      // Tentativa 2: após chatHours + 24h
+      const reengageSteps: number[] = Array.isArray(meta.reengageSentSteps) ? meta.reengageSentSteps : [];
+      const chatDelays = [chatHours, chatHours2];
+
+      for (let i = 0; i < chatDelays.length; i++) {
+        if (reengageSteps.includes(i)) continue; // já enviou esta tentativa
+        if (hoursElapsed < chatDelays[i]) break;  // ainda não chegou na hora
+
+        console.log(`[FOLLOWUP] re-engajamento tentativa ${i + 1} para ${phone} (${hoursElapsed.toFixed(1)}h)`);
         const msg = await generateFollowUp(history, 'chat', hoursElapsed, pushName);
-        if (!msg) { console.warn('[FOLLOWUP] Gemini não gerou mensagem para', phone); continue; }
+        if (!msg) { console.warn('[FOLLOWUP] Gemini não gerou mensagem para', phone); break; }
 
         const ok = await sendWhatsApp(phone, msg);
         if (ok) {
-          // Salva a mensagem no histórico e marca como enviado
           const newHistory = [...history, { role: 'model', parts: [{ text: msg }] }];
           await supabase.from('whatsapp_sessions')
-            .update({ history: newHistory, meta: { ...meta, reengageSent: true, lastBotMessageAt: new Date().toISOString() } })
+            .update({
+              history: newHistory,
+              meta: { ...meta, reengageSentSteps: [...reengageSteps, i], lastBotMessageAt: new Date().toISOString() },
+            })
             .eq('phone', phone);
           sent++;
         }
+        break; // uma tentativa por ciclo de 30 min
       }
       continue; // follow-up pós-orçamento não se aplica aqui
     }

@@ -194,6 +194,15 @@ export const AdminRHConfiguracoes: React.FC = () => {
         );
         if (match) setFaxinas(String(match.count));
       }
+      // Show debug hint if 0 results
+      if (data.totalAgendamentos === 0) {
+        setGendoError(`Nenhum agendamento encontrado para ${MESES[calcMes-1]}/${calcAno} no Gendo. Verifique se há serviços nesse período.`);
+      } else if (data.totalFinalizados === 0 && data.debug?.statusBreakdown) {
+        const statuses = Object.entries(data.debug.statusBreakdown)
+          .map(([s, n]) => `status ${s}: ${n}`)
+          .join(', ');
+        setGendoError(`${data.totalAgendamentos} agendamentos encontrados, mas nenhum Finalizado (status=3). Statuses encontrados: ${statuses}`);
+      }
     } catch (e: any) {
       setGendoError(e.message || 'Erro ao conectar ao Gendo');
     } finally {

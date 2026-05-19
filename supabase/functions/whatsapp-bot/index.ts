@@ -54,19 +54,30 @@ WHATSAPP DO CLIENTE:
 O número de WhatsApp do cliente é: {{PHONE}}. NUNCA peça o WhatsApp — você já tem. Use diretamente no campo "whatsapp" do QUOTE_DATA.
 
 COLETA DE ORÇAMENTO (em ordem natural, conversando — não mecânica):
+
+→ Se o serviço for PASSADORIA:
 1. Nome do cliente
-2. Tipo de serviço (primeira limpeza, manutenção, pós-obra, passadoria...)
-3. Tipo de imóvel (casa, apartamento, escritório...)
-4. Número de cômodos (quartos, banheiros, sala, cozinha, varanda...)
-5. Prioridades / o que está mais incomodando
-6. Limpeza interna de eletrodomésticos? (geladeira, fogão, armários — custo extra)
-7. Passou por reforma ou pintura recente?
-8. Endereço: rua, número e bairro (pergunte de forma leve: "E qual o endereço? Rua, número e bairro já tá ótimo!")
+2. Quantidade aproximada de peças
+3. Tipos de roupa (camisas sociais, calças, roupas de cama, etc.)
+4. Endereço: rua, número e bairro
+5. E-mail (pergunte de forma leve: "Tem um e-mail pra a gente enviar a confirmação?" — se não tiver ou não quiser, tudo bem, siga sem ele)
+6. Confirme o número de WhatsApp: "Vou usar o {{PHONE}} para entrar em contato, tá bom?"
+
+→ Para TODOS os outros serviços:
+1. Nome do cliente
+2. Tipo de imóvel (casa, apartamento, escritório...)
+3. Número de cômodos (quartos, banheiros, sala, cozinha, varanda...)
+4. Prioridades / o que está mais incomodando
+5. Limpeza interna de eletrodomésticos? (geladeira, fogão, armários — custo extra)
+6. Passou por reforma ou pintura recente?
+7. Endereço: rua, número e bairro (pergunte de forma leve: "E qual o endereço? Rua, número e bairro já tá ótimo!")
+8. E-mail (pergunte de forma leve: "Tem um e-mail pra a gente enviar a confirmação?" — se não tiver ou não quiser, tudo bem, siga sem ele)
+9. Confirme o número de WhatsApp: "Vou usar o {{PHONE}} para entrar em contato, tá bom?"
 
 REGRAS:
 - Não limpamos guarda-roupas. Se pedirem, informe com educação e siga normalmente
-- NÃO pergunte e-mail. Não precisamos de e-mail para o orçamento
 - Se o cliente já disse o tipo de serviço, não volte a esse ponto
+- O WhatsApp já está no sistema. Só confirme de forma natural, não peça como se não soubesse
 
 PÓS-OBRA:
 Se mencionar pós-obra/reforma: "Como é pós-obra, a gente faz uma visita técnica gratuita antes pra avaliar certinho e passar um valor justo. Me passa o endereço que nossa equipe entra em contato pra agendar, sem compromisso!"
@@ -90,20 +101,29 @@ const supabase = createClient(
 
 // Cache do prompt para evitar query a cada mensagem (expira a cada 5 minutos)
 let cachedPrompt: string | null = null;
+let cachedTone: string | null = null;
 let cacheTime = 0;
+
+const TONE_INSTRUCTIONS: Record<string, string> = {
+  casual: '\n\nTOM ATUAL: Casual e próxima. Seja descontraída, use linguagem do dia a dia, transmita calor humano. Pode usar expressões naturais como "Boa!", "Legal!", "Com certeza!". Nunca seja fria ou distante.',
+  formal: '\n\nTOM ATUAL: Formal e profissional. Use linguagem respeitosa e direta. Evite gírias e expressões muito informais. Prefira "senhor/senhora" se souber o gênero. Mantenha postura profissional sem ser robótica.',
+  commercial: '\n\nTOM ATUAL: Comercial e orientado à conversão. Foque em resolver o problema do cliente rapidamente, destaque valor e benefícios do serviço, crie senso de urgência natural (ex: "agenda lotando para esta semana"). Direcione para fechar o orçamento.',
+};
 
 async function getSystemPrompt(): Promise<string> {
   const now = Date.now();
   if (cachedPrompt && now - cacheTime < 5 * 60 * 1000) return cachedPrompt;
   try {
-    const { data } = await supabase.from('platform_settings').select('bot_prompt').eq('id', 1).single();
+    const { data } = await supabase.from('platform_settings').select('bot_prompt, nina_tone').eq('id', 1).single();
+    cachedTone = data?.nina_tone || 'casual';
     if (data?.bot_prompt) {
-      cachedPrompt = data.bot_prompt;
+      const toneInstr = TONE_INSTRUCTIONS[cachedTone] || TONE_INSTRUCTIONS.casual;
+      cachedPrompt = data.bot_prompt + toneInstr;
       cacheTime = now;
       return cachedPrompt;
     }
   } catch { /* usa o padrão */ }
-  return SYSTEM_PROMPT;
+  return SYSTEM_PROMPT + (TONE_INSTRUCTIONS[cachedTone || 'casual'] || TONE_INSTRUCTIONS.casual);
 }
 
 // Injeta o número do cliente no prompt, substituindo {{PHONE}}
@@ -483,13 +503,14 @@ Deno.serve(async (req) => {
   // --- Busca sessão ---
   const { history, meta: sessionMeta } = await getSession(phone);
 
-  // ── Primeiro contato → cria lead na pipeline imediatamente ──
-  if (history.length === 0 && !phone.includes('@lid')) {
+  // ── Primeiro contato → cria lead na pipeline SE tiver nome (pushName) ──
+  // Sem nome não vale o card — o orçamento completo cria com dados reais
+  if (history.length === 0 && !phone.includes('@lid') && pushName) {
     const { data: existingQ } = await supabase
       .from('quotes').select('id').eq('whatsapp', phone).limit(1).maybeSingle();
     if (!existingQ) {
       await supabase.from('quotes').insert({
-        name: pushName || '',
+        name: pushName,
         whatsapp: phone,
         status: 'NEW',
         source: 'whatsapp',
@@ -688,6 +709,28 @@ Deno.serve(async (req) => {
   if (history.length > 2) {
     activePrompt += `\n\nCONTEXTO: Você já está em conversa com este cliente. NÃO se reapresente, NÃO diga "Olá, sou a Nina". Continue a conversa de onde parou, de forma natural, como se fosse uma resposta normal.`;
   }
+
+  // Se é primeira mensagem (histórico vazio), verifica se cliente já tem dados no CRM
+  if (history.length === 1 && !phone.includes('@lid')) {
+    try {
+      const { data: priorQuote } = await supabase
+        .from('quotes')
+        .select('name, rooms, property_type, address_street, address_number, address_district, address_city, service_option, whatsapp')
+        .eq('whatsapp', phone)
+        .not('name', 'eq', '')
+        .not('name', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (priorQuote?.name) {
+        const addr = [priorQuote.address_street, priorQuote.address_number, priorQuote.address_district, priorQuote.address_city]
+          .filter(Boolean).join(', ');
+        activePrompt += `\n\nCONTEXTO IMPORTANTE: Este cliente já nos contatou antes. Dados que já temos:\n- Nome: ${priorQuote.name}\n${priorQuote.property_type ? `- Tipo de imóvel: ${priorQuote.property_type}\n` : ''}${priorQuote.rooms ? `- Cômodos: ${priorQuote.rooms}\n` : ''}${addr ? `- Endereço: ${addr}\n` : ''}${priorQuote.service_option ? `- Serviço anterior: ${priorQuote.service_option}\n` : ''}\nNÃO peça esses dados novamente. Cumprimente pelo nome, confirme se o endereço é o mesmo e pergunte sobre o novo serviço.`;
+        console.log('[BOT] Cliente retornante detectado:', phone, '| nome anterior:', priorQuote.name);
+      }
+    } catch { /* segue sem contexto */ }
+  }
   const rawResponse = await callGemini(geminiHistory, activePrompt);
   const cleanedText = cleanResponse(rawResponse);
   const quoteData = extractQuoteData(rawResponse);
@@ -739,6 +782,11 @@ Deno.serve(async (req) => {
       internal_cleaning: quoteData.internalCleaning || '',
       renovation: quoteData.renovation || '',
       service_option: quoteData.serviceOption || '',
+      address_street: quoteData.addressStreet || '',
+      address_number: quoteData.addressNumber || '',
+      address_district: quoteData.addressDistrict || '',
+      address_city: quoteData.addressCity || 'Guarapari',
+      address_state: quoteData.addressState || 'ES',
       status: 'NEW',
       chat_summary: history
         .filter(m => m.role === 'user')
@@ -810,8 +858,13 @@ Deno.serve(async (req) => {
     ].filter(Boolean).join('\n');
     await sendWhatsApp(adminPhone, adminMsg).catch(() => {});
 
-    // Encerra sessão (humano assume)
-    await saveSession(phone, [], { step: 'human' });
+    // Encerra sessão (humano assume) — preserva lastUserMessageAt e pushName para o follow-up
+    await saveSession(phone, history, {
+      step: 'human',
+      pushName: sessionMeta.pushName || pushName || '',
+      lastUserMessageAt: new Date().toISOString(),
+      followUpSentSteps: [],
+    });
   }
 
   return new Response(JSON.stringify({ ok: true }), {
