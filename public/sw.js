@@ -1,5 +1,6 @@
 // ─── Negócios de Limpeza — Service Worker ───────────────────────────────────
-const CACHE_NAME = 'nl-limpeza-v1';
+// Bump this version on every deploy to purge stale cached files
+const CACHE_NAME = 'nl-limpeza-v3';
 const APP_SHELL = ['/', '/index.html'];
 
 // ── Install: cache app shell ─────────────────────────────────────────────────

@@ -119,7 +119,7 @@ export const AdminRHColaboradoras: React.FC = () => {
   const {
     colaboradoras, addColaboradora, updateColaboradora, deleteColaboradora,
     syncToSupabase,
-    getElegibilidade, getMesesNaEmpresa, rhLoading,
+    getElegibilidade, getMesesNaEmpresa, rhLoading, rhSyncing,
     avaliacoes, observacoes, addObservacao, deleteObservacao,
     promocoes, configRemuneracao, bonusMensal,
   } = useRH();
@@ -310,6 +310,12 @@ export const AdminRHColaboradoras: React.FC = () => {
               </button>
               <Button icon={<UserPlus size={16} />} onClick={openAdd}>Nova</Button>
             </div>
+            {rhSyncing && !syncMsg && (
+              <span className="flex items-center gap-1 text-[11px] text-primary/70 font-medium animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                Atualizando dados...
+              </span>
+            )}
             {syncMsg && (
               <span className="text-[11px] text-gray-500 dark:text-gray-400 text-right leading-tight max-w-[200px]">
                 {syncMsg}

@@ -166,6 +166,7 @@ interface RHContextType {
   configCriterios: ConfiguracaoCriteriosRH[];
   avaliacoes: AvaliacaoCliente[];
   rhLoading: boolean;
+  rhSyncing: boolean; // true while background-syncing from Supabase after initial LS load
 
   addColaboradora: (data: Omit<ColaboradoraRH, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateColaboradora: (id: string, data: Partial<ColaboradoraRH>) => Promise<void>;
@@ -338,6 +339,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [obsColaboradoras, setObsColaboradoras] = useState<ObservacaoColaboradora[]>([]);
   const [candidatas, setCandidatas] = useState<CandidataRH[]>([]);
   const [rhLoading, setRhLoading] = useState(true);
+  const [rhSyncing, setRhSyncing] = useState(false); // background refresh indicator
 
   // ── Load ────────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -345,7 +347,33 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   }, []);
 
   const loadAll = async () => {
-    setRhLoading(true);
+    // ── Phase 1: instant load from localStorage ──────────────────────────────
+    // Populate state immediately so the UI is never blank while the edge function loads
+    const lsCols   = lsGet<ColaboradoraRH[]>('rh_colaboradoras', SEED_COLABORADORAS);
+    const lsDes    = lsGet<DesempenhoMensalRH[]>('rh_desempenho', buildVanielenDesempenho());
+    const lsPros   = lsGet<PromocaoRH[]>('rh_promocoes', []);
+    const lsBons   = lsGet<BonusMensalRH[]>('rh_bonus_mensal', []);
+    const lsCfg    = lsGet<ConfiguracaoBonusLider>('rh_config_bonus', DEFAULT_CONFIG_BONUS);
+    const lsRems   = lsGet<ConfiguracaoRemuneracaoRH[]>('rh_config_remuneracao', DEFAULT_CONFIG_REMUNERACAO);
+    const lsCris   = lsGet<ConfiguracaoCriteriosRH[]>('rh_config_criterios', DEFAULT_CONFIG_CRITERIOS);
+    const lsAvals  = lsGet<AvaliacaoCliente[]>('rh_avaliacoes', []);
+    const lsObs    = lsGet<ObservacaoColaboradora[]>('rh_obs_colaboradoras', []);
+    const lsCands  = lsGet<CandidataRH[]>('rh_candidatas', []);
+    setColaboradoras(lsCols);
+    setDesempenhoMensal(lsDes);
+    setPromocoes(lsPros);
+    setBonusMensal(lsBons);
+    setConfigBonusLider(lsCfg);
+    setHistoricoConfigBonus([lsCfg]);
+    setConfigRemuneracao(lsRems);
+    setConfigCriterios(lsCris);
+    setAvaliacoes(lsAvals);
+    setObsColaboradoras(lsObs);
+    setCandidatas(lsCands);
+    setRhLoading(false); // UI unlocked after Phase 1
+
+    // ── Phase 2: background sync from Supabase ──────────────────────────────
+    setRhSyncing(true);
     try {
       // Primary: use rh-write/get_admin_data which bypasses RLS with SERVICE_ROLE_KEY
       // This ensures mobile/new devices always see all data without needing localStorage
@@ -429,39 +457,9 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       if (finalObs.length)   lsSet('rh_obs_colaboradoras', finalObs);
       if (cands.length)      lsSet('rh_candidatas', cands);
     } catch {
-      // Fallback to localStorage + seed
-      const cols = lsGet<ColaboradoraRH[]>('rh_colaboradoras', SEED_COLABORADORAS);
-      const des = lsGet<DesempenhoMensalRH[]>('rh_desempenho', buildVanielenDesempenho());
-      const pros = lsGet<PromocaoRH[]>('rh_promocoes', []);
-      const bons = lsGet<BonusMensalRH[]>('rh_bonus_mensal', []);
-      const cfg = lsGet<ConfiguracaoBonusLider>('rh_config_bonus', DEFAULT_CONFIG_BONUS);
-      const rems = lsGet<ConfiguracaoRemuneracaoRH[]>('rh_config_remuneracao', DEFAULT_CONFIG_REMUNERACAO);
-      const cris = lsGet<ConfiguracaoCriteriosRH[]>('rh_config_criterios', DEFAULT_CONFIG_CRITERIOS);
-      const avals = lsGet<AvaliacaoCliente[]>('rh_avaliacoes', []);
-      const obs = lsGet<ObservacaoColaboradora[]>('rh_obs_colaboradoras', []);
-      const cands = lsGet<CandidataRH[]>('rh_candidatas', []);
-
-      setColaboradoras(cols);
-      setCandidatas(cands);
-      setDesempenhoMensal(des);
-      setPromocoes(pros);
-      setBonusMensal(bons);
-      setHistoricoConfigBonus([cfg]);
-      setConfigBonusLider(cfg);
-      setConfigRemuneracao(rems);
-      setConfigCriterios(cris);
-      setAvaliacoes(avals);
-      setObsColaboradoras(obs);
-
-      if (!localStorage.getItem('rh_colaboradoras')) {
-        lsSet('rh_colaboradoras', cols);
-        lsSet('rh_desempenho', des);
-        lsSet('rh_config_bonus', cfg);
-        lsSet('rh_config_remuneracao', rems);
-        lsSet('rh_config_criterios', cris);
-      }
+      // Supabase offline — Phase 1 localStorage data is already showing in the UI, nothing to do
     } finally {
-      setRhLoading(false);
+      setRhSyncing(false);
     }
   };
 
@@ -855,7 +853,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     <RHContext.Provider value={{
       colaboradoras, desempenhoMensal, promocoes, bonusMensal,
       configBonusLider, historicoConfigBonus, configRemuneracao, configCriterios,
-      avaliacoes, rhLoading,
+      avaliacoes, rhLoading, rhSyncing,
       addColaboradora, updateColaboradora, deleteColaboradora, syncToSupabase,
       addDesempenho, updateDesempenho, deleteDesempenho,
       addPromocao, addBonusMensal, calcularBonus,

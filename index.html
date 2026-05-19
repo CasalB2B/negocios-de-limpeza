@@ -162,6 +162,18 @@
       }
     </style>
   <script>
+    // Aplica o tema salvo ANTES do React renderizar — evita flash de tela errada
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        // Se não há tema salvo, usar 'light' como padrão
+        if (!t) { t = 'light'; localStorage.setItem('theme', 'light'); }
+        document.documentElement.classList.remove('dark', 'light');
+        document.documentElement.classList.add(t);
+      } catch (e) {}
+    })();
+  </script>
+  <script>
     // Redirect automático antes do React — resolve PWA iOS abrindo na home
     (function () {
       try {
