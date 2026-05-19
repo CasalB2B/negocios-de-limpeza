@@ -81,24 +81,36 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Collect all statuses found (for debugging when 0 results)
+    // Collect all statuses found (for debugging)
     const statusBreakdown: Record<string, number> = {};
     for (const a of agendamentos) {
-      const s = String(a.status ?? 'sem_status');
+      const s = String(a.status_agendamento ?? a.status ?? 'sem_status');
       statusBreakdown[s] = (statusBreakdown[s] || 0) + 1;
     }
 
-    // Count all ACTIVE appointments (exclude cancelled=7, no-show=9, deleted=10)
-    const EXCLUIDOS = new Set([7, 9, 10]);
-    const finalList = agendamentos.filter((a) => !EXCLUIDOS.has(Number(a.status)));
+    // Status field: Gendo uses 'status_agendamento' (not 'status')
+    // Exclude: Cancelado (7), Faltou (9), Excluído (10)
+    // Also exclude text equivalents in case Gendo returns strings
+    const EXCLUIDOS_NUM = new Set([7, 9, 10]);
+    const EXCLUIDOS_STR = new Set(['cancelado','faltou','excluido','excluído','nao_compareceu','não_compareceu']);
+
+    const getStatus = (a: any): string | number => a.status_agendamento ?? a.status ?? '';
+
+    const finalList = agendamentos.filter((a) => {
+      const s = getStatus(a);
+      const n = Number(s);
+      if (!isNaN(n) && EXCLUIDOS_NUM.has(n)) return false;
+      if (typeof s === 'string' && EXCLUIDOS_STR.has(s.toLowerCase())) return false;
+      return true;
+    });
 
     // Try to find the professional name/id from the first record
     // Gendo may use different field names depending on account config
     const sample = finalList[0] ?? agendamentos[0] ?? {};
     const allKeys = Object.keys(sample);
 
-    // Pick the best name field
-    const NAME_CANDIDATES = ['nome_responsavel','nome_profissional','responsavel','profissional','nome_colaborador','colaborador','nome_funcionario','funcionario'];
+    // Pick the best name field — Gendo uses 'resp' for responsável
+    const NAME_CANDIDATES = ['resp','atendente','nome_responsavel','nome_profissional','responsavel','profissional','nome_colaborador','colaborador','nome_funcionario','funcionario'];
     const ID_CANDIDATES   = ['id_responsavel','id_profissional','id_colaborador','id_funcionario','responsavel_id','profissional_id'];
 
     const nameField = NAME_CANDIDATES.find(k => k in sample && sample[k]) ?? null;
