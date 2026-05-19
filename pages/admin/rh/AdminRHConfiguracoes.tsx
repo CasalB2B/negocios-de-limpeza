@@ -196,12 +196,7 @@ export const AdminRHConfiguracoes: React.FC = () => {
       }
       // Show debug hint if 0 results
       if (data.totalAgendamentos === 0) {
-        setGendoError(`Nenhum agendamento encontrado para ${MESES[calcMes-1]}/${calcAno} no Gendo. Verifique se há serviços nesse período.`);
-      } else if (data.totalFinalizados === 0 && data.debug?.statusBreakdown) {
-        const statuses = Object.entries(data.debug.statusBreakdown)
-          .map(([s, n]) => `status ${s}: ${n}`)
-          .join(', ');
-        setGendoError(`${data.totalAgendamentos} agendamentos encontrados, mas nenhum Finalizado (status=3). Statuses encontrados: ${statuses}`);
+        setGendoError(`Nenhum agendamento encontrado para ${MESES[calcMes-1]}/${calcAno} no Gendo. Verifique se há serviços cadastrados nesse período.`);
       }
     } catch (e: any) {
       setGendoError(e.message || 'Erro ao conectar ao Gendo');
@@ -577,7 +572,7 @@ export const AdminRHConfiguracoes: React.FC = () => {
                       {gendoResult && (
                         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 space-y-1">
                           <p className="text-[10px] font-bold text-blue-700 dark:text-blue-400">
-                            Gendo: {gendoResult.totalFinalizados} faxinas finalizadas ({gendoResult.periodo})
+                            Gendo: {gendoResult.totalFinalizados} faxinas agendadas ({gendoResult.periodo})
                           </p>
                           {gendoResult.professionals.map(p => (
                             <button key={p.id_responsavel}

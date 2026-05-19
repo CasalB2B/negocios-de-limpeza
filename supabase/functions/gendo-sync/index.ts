@@ -88,12 +88,9 @@ Deno.serve(async (req) => {
       statusBreakdown[s] = (statusBreakdown[s] || 0) + 1;
     }
 
-    // Status 3 = Finalizado
-    const finalizados = agendamentos.filter((a) => Number(a.status) === 3);
-
-    // Also try string "3" just in case
-    const finalizadosStr = agendamentos.filter((a) => String(a.status) === '3');
-    const finalList = finalizados.length > 0 ? finalizados : finalizadosStr;
+    // Count all ACTIVE appointments (exclude cancelled=7, no-show=9, deleted=10)
+    const EXCLUIDOS = new Set([7, 9, 10]);
+    const finalList = agendamentos.filter((a) => !EXCLUIDOS.has(Number(a.status)));
 
     // Aggregate by professional
     const map: Record<string, { id_responsavel: number; nome_responsavel: string; count: number }> = {};
@@ -122,8 +119,6 @@ Deno.serve(async (req) => {
       // debug info — helps diagnose mismatches
       debug: agendamentos.length === 0
         ? { msg: 'Gendo não retornou agendamentos para esse período', usedUrl, rawKeys: rawDebug ? Object.keys(rawDebug) : [] }
-        : finalList.length === 0
-        ? { msg: 'Agendamentos encontrados mas nenhum com status=3 (Finalizado)', statusBreakdown, sampleRecord }
         : null,
     });
 
