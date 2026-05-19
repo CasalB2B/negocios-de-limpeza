@@ -319,9 +319,9 @@ export const AdminRHConfiguracoes: React.FC = () => {
                   <thead>
                     <tr className="bg-gray-50 dark:bg-darkBg">
                       <th className="text-left px-4 py-2.5 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide w-28">Campo</th>
-                      <th className="px-3 py-2.5 text-center text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Auxiliar</th>
+                      <th className="px-3 py-2.5 text-center text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Auxiliar de Limpeza</th>
                       <th className="px-3 py-2.5 text-center text-xs font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wide">Faxineira</th>
-                      <th className="px-3 py-2.5 text-center text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Profissional</th>
+                      <th className="px-3 py-2.5 text-center text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Faxineira Profissional</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 dark:divide-darkBorder">

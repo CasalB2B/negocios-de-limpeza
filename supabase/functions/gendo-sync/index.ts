@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     if (!username || !token || !mes || !ano) {
       return new Response(
         JSON.stringify({ ok: false, error: 'username, token, mes e ano são obrigatórios' }),
-        { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } },
+        { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } },
       );
     }
 
@@ -54,9 +54,14 @@ Deno.serve(async (req) => {
 
     if (!gendoRes.ok) {
       const detail = await gendoRes.text().catch(() => '');
+      const msg = gendoRes.status === 401
+        ? 'Token inválido ou expirado. Gere um novo token no Gendo.'
+        : gendoRes.status === 404
+        ? 'Usuário Gendo não encontrado. Verifique o subdomínio.'
+        : `Gendo retornou status ${gendoRes.status}.`;
       return new Response(
-        JSON.stringify({ ok: false, error: `Gendo retornou ${gendoRes.status}`, detail }),
-        { status: 502, headers: { ...cors, 'Content-Type': 'application/json' } },
+        JSON.stringify({ ok: false, error: msg, detail }),
+        { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } },
       );
     }
 
@@ -101,7 +106,7 @@ Deno.serve(async (req) => {
   } catch (e) {
     return new Response(
       JSON.stringify({ ok: false, error: String(e) }),
-      { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } },
+      { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } },
     );
   }
 });
