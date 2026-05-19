@@ -145,8 +145,11 @@ export const AdminRHConfiguracoes: React.FC = () => {
   const [gendoSyncing,  setGendoSyncing]  = useState(false);
   const [gendoResult,   setGendoResult]   = useState<null | {
     periodo: string;
+    totalAgendamentos: number;
     totalFinalizados: number;
     professionals: { id_responsavel: number; nome_responsavel: string; count: number }[];
+    sampleKeys?: string[];
+    debug?: { msg: string } | null;
   }>(null);
   const [gendoError,    setGendoError]    = useState('');
   const [copied,        setCopied]        = useState(false);
