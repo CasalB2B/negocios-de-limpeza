@@ -120,7 +120,7 @@ export const AdminRHColaboradoras: React.FC = () => {
     colaboradoras, addColaboradora, updateColaboradora, deleteColaboradora,
     syncToSupabase,
     getElegibilidade, getMesesNaEmpresa, rhLoading, rhSyncing,
-    avaliacoes, observacoes, addObservacao, deleteObservacao,
+    avaliacoes, observacoes, addObservacao, deleteObservacao, deleteAvaliacao,
     promocoes, configRemuneracao, bonusMensal,
   } = useRH();
 
@@ -958,7 +958,7 @@ export const AdminRHColaboradoras: React.FC = () => {
                         {colAvals.map(a => (
                           <div key={a.id} className="bg-white dark:bg-darkSurface rounded-xl border border-gray-100 dark:border-darkBorder p-4 space-y-2">
                             <div className="flex items-start justify-between gap-2">
-                              <div>
+                              <div className="flex-1 min-w-0">
                                 <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">{a.nomeCliente}</p>
                                 {a.dataFaxina && (
                                   <p className="text-[10px] text-lightText dark:text-darkTextSecondary">
@@ -966,11 +966,24 @@ export const AdminRHColaboradoras: React.FC = () => {
                                   </p>
                                 )}
                               </div>
-                              <div className="text-right shrink-0">
-                                <StarRow value={a.estrelas} size={13} />
-                                <p className="text-[10px] text-lightText dark:text-darkTextSecondary mt-0.5">
-                                  {new Date(a.createdAt).toLocaleDateString('pt-BR')}
-                                </p>
+                              <div className="flex items-start gap-2 shrink-0">
+                                <div className="text-right">
+                                  <StarRow value={a.estrelas} size={13} />
+                                  <p className="text-[10px] text-lightText dark:text-darkTextSecondary mt-0.5">
+                                    {new Date(a.createdAt).toLocaleDateString('pt-BR')}
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm('Remover esta avaliação? Esta ação não pode ser desfeita.')) {
+                                      deleteAvaliacao(a.id);
+                                    }
+                                  }}
+                                  title="Remover avaliação"
+                                  className="p-1 text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 transition-colors mt-0.5"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
                               </div>
                             </div>
                             {a.comentario && (

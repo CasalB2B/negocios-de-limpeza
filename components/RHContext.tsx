@@ -192,6 +192,7 @@ interface RHContextType {
   observacoes: ObservacaoColaboradora[];
   addObservacao: (data: Omit<ObservacaoColaboradora, 'id' | 'createdAt'>) => Promise<void>;
   deleteObservacao: (id: string) => Promise<void>;
+  deleteAvaliacao: (id: string) => Promise<void>;
 
   candidatas: CandidataRH[];
   addCandidatura: (data: Omit<CandidataRH, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
@@ -647,6 +648,11 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     setObsColaboradoras(prev => { const next = prev.filter(o => o.id !== id); lsSet('rh_obs_colaboradoras', next); return next; });
   }, []);
 
+  const deleteAvaliacao = useCallback(async (id: string) => {
+    try { await supabase.from('avaliacoes').delete().eq('id', id); } catch {}
+    setAvaliacoes(prev => { const next = prev.filter(a => a.id !== id); lsSet('rh_avaliacoes', next); return next; });
+  }, []);
+
   // ── Candidatas (Contratação) ───────────────────────────────────────────────
 
   const addCandidatura = useCallback(async (data: Omit<CandidataRH, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -857,7 +863,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       addColaboradora, updateColaboradora, deleteColaboradora, syncToSupabase,
       addDesempenho, updateDesempenho, deleteDesempenho,
       addPromocao, addBonusMensal, calcularBonus,
-      addAvaliacao, getMediaAvaliacoesMes,
+      addAvaliacao, getMediaAvaliacoesMes, deleteAvaliacao,
       observacoes: obsColaboradoras, addObservacao, deleteObservacao,
       candidatas, addCandidatura, updateCandidatura, deleteCandidatura,
       updateConfigBonusLider, updateConfigRemuneracao, updateConfigCriterios,
