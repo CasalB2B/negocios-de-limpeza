@@ -755,6 +755,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const syncToSupabase = useCallback(async (): Promise<{ synced: number; errors: number }> => {
     // Only sync user-created (col_) — never seed_ records
     const localColabs = colaboradoras.filter(c => c.id.startsWith('col_'));
+    const localAvals  = avaliacoes.filter(a => a.id.startsWith('aval_'));
     let errors = 0;
     const mapping: Record<string, string> = {};
 
@@ -776,32 +777,29 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       } catch {
         errors += localColabs.length;
       }
-    }
 
-    // Update colaboradoras in state/LS with new Supabase UUIDs
-    if (Object.keys(mapping).length > 0) {
-      setColaboradoras(prev => {
-        const next = prev.map(c => {
-          const newId = mapping[c.id];
-          return newId ? { ...c, id: newId } : c;
+      // Update colaboradoras in state/LS with new Supabase UUIDs
+      if (Object.keys(mapping).length > 0) {
+        setColaboradoras(prev => {
+          const next = prev.map(c => {
+            const newId = mapping[c.id];
+            return newId ? { ...c, id: newId } : c;
+          });
+          lsSet('rh_colaboradoras', next);
+          return next;
         });
-        lsSet('rh_colaboradoras', next);
-        return next;
-      });
+      }
     }
 
     // ── Step 2: sync local evaluations ────────────────────────────────────
-    // Rebuild mapping with new IDs; also include already-Supabase IDs as identity
-    const allColabIds = new Set(colaboradoras.map(c => mapping[c.id] ?? c.id));
-    const localAvals  = avaliacoes.filter(a => a.id.startsWith('aval_'));
-
+    // For each local aval, resolve colaboradora ID (mapped UUID or existing UUID)
+    const pushedAvalIds: string[] = [];
     for (const aval of localAvals) {
-      // Use new Supabase ID for the colaboradora if it was just synced
       const colabId = mapping[aval.colaboradoraId] ?? aval.colaboradoraId;
-      // Skip if colaboradora is still local (not synced)
-      if (colabId.startsWith('col_') || colabId.startsWith('seed_')) continue;
+      // Skip if colaboradora is still local (not yet synced)
+      if (colabId.startsWith('col_') || colabId.startsWith('seed_')) { errors++; continue; }
       try {
-        await supabase.functions.invoke('rh-write', {
+        const res = await supabase.functions.invoke('rh-write', {
           body: {
             action: 'upsert_avaliacao',
             data: {
@@ -813,22 +811,25 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
             },
           },
         });
+        if (res.data?.ok) pushedAvalIds.push(aval.id);
+        else errors++;
       } catch { errors++; }
     }
 
-    // Update avals in state/LS with new colaboradora IDs
-    if (Object.keys(mapping).length > 0) {
+    // Remove successfully pushed local avals from state/LS (they're now in Supabase)
+    if (pushedAvalIds.length > 0) {
+      const pushedSet = new Set(pushedAvalIds);
       setAvaliacoes(prev => {
-        const next = prev.map(a => {
-          const newId = mapping[a.colaboradoraId];
-          return newId ? { ...a, colaboradoraId: newId } : a;
-        });
+        const next = prev.filter(a => !pushedSet.has(a.id));
         lsSet('rh_avaliacoes', next);
         return next;
       });
     }
 
-    return { synced: Object.keys(mapping).length + localAvals.length, errors };
+    // Reload fresh data from Supabase so public page reflects correctly
+    await loadAll();
+
+    return { synced: Object.keys(mapping).length + pushedAvalIds.length, errors };
   }, [colaboradoras, avaliacoes]);
 
   // ── Utils ──────────────────────────────────────────────────────────────────

@@ -83,6 +83,10 @@ export const AdminRHColaboradoras: React.FC = () => {
     promocoes, configRemuneracao, bonusMensal,
   } = useRH();
 
+  // Show sync button whenever there are unsynced collaborators OR local evaluations
+  const hasPending = colaboradoras.some(c => c.id.startsWith('col_') || c.id.startsWith('seed_'))
+    || avaliacoes.some(a => a.id.startsWith('aval_'));
+
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
 
@@ -96,8 +100,6 @@ export const AdminRHColaboradoras: React.FC = () => {
     else setSyncMsg('✅ Tudo já está no banco!');
     setTimeout(() => setSyncMsg(''), 4000);
   };
-
-  const hasPending = colaboradoras.some(c => c.id.startsWith('col_') || c.id.startsWith('seed_'));
 
   const getRemuneracao = (cargo: CargoRH) =>
     configRemuneracao.find(r => r.cargo === cargo) ?? null;
@@ -234,17 +236,19 @@ export const AdminRHColaboradoras: React.FC = () => {
             <p className="text-sm text-lightText dark:text-darkTextSecondary mt-0.5">{colaboradoras.length} cadastradas</p>
           </div>
           <div className="flex items-center gap-2">
-            {hasPending && (
-              <button
-                onClick={handleSync}
-                disabled={syncing}
-                title="Salvar colaboradoras locais no banco de dados"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 disabled:opacity-60 transition-colors dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800"
-              >
-                <CloudUpload size={14} className={syncing ? 'animate-pulse' : ''} />
-                {syncing ? 'Sincronizando…' : 'Sincronizar'}
-              </button>
-            )}
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              title={hasPending ? 'Enviar dados locais para o banco' : 'Forçar sincronização com o banco'}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors disabled:opacity-60 ${
+                hasPending
+                  ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'
+                  : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100 dark:bg-darkBg dark:text-darkTextSecondary dark:border-darkBorder'
+              }`}
+            >
+              <CloudUpload size={14} className={syncing ? 'animate-pulse' : ''} />
+              {syncing ? 'Sincronizando…' : hasPending ? '⚠ Sincronizar' : 'Sincronizar'}
+            </button>
             {syncMsg && <span className="text-xs text-gray-500 dark:text-gray-400">{syncMsg}</span>}
             <Button icon={<UserPlus size={16} />} onClick={openAdd}>Nova</Button>
           </div>
