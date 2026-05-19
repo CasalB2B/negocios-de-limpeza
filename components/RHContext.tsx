@@ -376,15 +376,22 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const activeRems = cfgRems.filter(c => !c.vigenciaFim);
       const activeCris = cfgCris.filter(c => !c.vigenciaFim);
 
-      // Merge Supabase + local-only (col_XXX prefix = never synced to Supabase yet)
-      const supabaseIds = new Set(cols.map((c: ColaboradoraRH) => c.id));
-      const lsCols = lsGet<ColaboradoraRH[]>('rh_colaboradoras', SEED_COLABORADORAS);
-      const localOnly = lsCols.filter(c => !supabaseIds.has(c.id));
-      const finalCols  = cols.length > 0  ? [...cols, ...localOnly] : lsCols;
+      // Merge Supabase + local-only (only col_XXX — never seeds, they're just fallback)
+      const supabaseIds  = new Set(cols.map((c: ColaboradoraRH) => c.id));
+      const lsCols       = lsGet<ColaboradoraRH[]>('rh_colaboradoras', SEED_COLABORADORAS);
+      // Only include user-created (col_) that haven't been synced yet — never seeds
+      const localOnly    = lsCols.filter(c => c.id.startsWith('col_') && !supabaseIds.has(c.id));
+      const finalCols    = cols.length > 0 ? [...cols, ...localOnly] : lsCols;
 
-      const supabaseAvalIds = new Set(avals.map((a: AvaliacaoCliente) => a.colaboradoraId));
+      // Build set of all colaboradora IDs present in Supabase avaliacoes
+      const supabaseColabsInAvals = new Set(avals.map((a: AvaliacaoCliente) => a.colaboradoraId));
+      // Get all Supabase colaboradora IDs
+      const supabaseColabIds = new Set(cols.map((c: ColaboradoraRH) => c.id));
       const lsAvals = lsGet<AvaliacaoCliente[]>('rh_avaliacoes', []);
-      const localOnlyAvals = lsAvals.filter(a => !supabaseAvalIds.has(a.colaboradoraId) && a.id.startsWith('aval_'));
+      // Include local avals whose colaboradora is NOT yet in Supabase (still local col_)
+      const localOnlyAvals = lsAvals.filter(a =>
+        a.id.startsWith('aval_') && !supabaseColabsInAvals.has(a.colaboradoraId)
+      );
       const finalAvals = avals.length > 0 ? [...avals, ...localOnlyAvals] : lsAvals;
 
       const finalDes   = des.length  > 0  ? des   : lsGet<DesempenhoMensalRH[]>('rh_desempenho', []);
@@ -746,54 +753,83 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   // ── Sync local collaborators to Supabase ───────────────────────────────────
 
   const syncToSupabase = useCallback(async (): Promise<{ synced: number; errors: number }> => {
-    const localOnly = colaboradoras.filter(c => c.id.startsWith('col_') || c.id.startsWith('seed_'));
-    if (localOnly.length === 0) return { synced: 0, errors: 0 };
+    // Only sync user-created (col_) — never seed_ records
+    const localColabs = colaboradoras.filter(c => c.id.startsWith('col_'));
+    let errors = 0;
+    const mapping: Record<string, string> = {};
 
-    try {
-      const res = await supabase.functions.invoke('rh-write', {
-        body: { action: 'sync_colaboradoras', data: localOnly },
-      });
-      const result = res.data;
-      if (!result?.ok) return { synced: 0, errors: localOnly.length };
-
-      // Build mapping: localId → supabaseId
-      const mapping: Record<string, string> = {};
-      let errors = 0;
-      for (const r of (result.results ?? [])) {
-        if (r.supabaseId && !r.error) {
-          mapping[r.localId] = r.supabaseId;
+    // ── Step 1: sync collaborators ─────────────────────────────────────────
+    if (localColabs.length > 0) {
+      try {
+        const res = await supabase.functions.invoke('rh-write', {
+          body: { action: 'sync_colaboradoras', data: localColabs },
+        });
+        const result = res.data;
+        if (result?.ok) {
+          for (const r of (result.results ?? [])) {
+            if (r.supabaseId && !r.error) mapping[r.localId] = r.supabaseId;
+            else errors++;
+          }
         } else {
-          errors++;
+          errors += localColabs.length;
         }
+      } catch {
+        errors += localColabs.length;
       }
+    }
 
-      // Update colaboradoras: replace local IDs with Supabase UUIDs
+    // Update colaboradoras in state/LS with new Supabase UUIDs
+    if (Object.keys(mapping).length > 0) {
       setColaboradoras(prev => {
         const next = prev.map(c => {
           const newId = mapping[c.id];
-          if (!newId) return c;
-          return { ...c, id: newId };
+          return newId ? { ...c, id: newId } : c;
         });
         lsSet('rh_colaboradoras', next);
         return next;
       });
+    }
 
-      // Update avaliacoes: fix colaboradora_id references
+    // ── Step 2: sync local evaluations ────────────────────────────────────
+    // Rebuild mapping with new IDs; also include already-Supabase IDs as identity
+    const allColabIds = new Set(colaboradoras.map(c => mapping[c.id] ?? c.id));
+    const localAvals  = avaliacoes.filter(a => a.id.startsWith('aval_'));
+
+    for (const aval of localAvals) {
+      // Use new Supabase ID for the colaboradora if it was just synced
+      const colabId = mapping[aval.colaboradoraId] ?? aval.colaboradoraId;
+      // Skip if colaboradora is still local (not synced)
+      if (colabId.startsWith('col_') || colabId.startsWith('seed_')) continue;
+      try {
+        await supabase.functions.invoke('rh-write', {
+          body: {
+            action: 'upsert_avaliacao',
+            data: {
+              colaboradoraId: colabId,
+              nomeCliente:    aval.nomeCliente,
+              dataFaxina:     aval.dataFaxina  || null,
+              estrelas:       aval.estrelas,
+              comentario:     aval.comentario  || null,
+            },
+          },
+        });
+      } catch { errors++; }
+    }
+
+    // Update avals in state/LS with new colaboradora IDs
+    if (Object.keys(mapping).length > 0) {
       setAvaliacoes(prev => {
         const next = prev.map(a => {
           const newId = mapping[a.colaboradoraId];
-          if (!newId) return a;
-          return { ...a, colaboradoraId: newId };
+          return newId ? { ...a, colaboradoraId: newId } : a;
         });
         lsSet('rh_avaliacoes', next);
         return next;
       });
-
-      return { synced: Object.keys(mapping).length, errors };
-    } catch {
-      return { synced: 0, errors: localOnly.length };
     }
-  }, [colaboradoras]);
+
+    return { synced: Object.keys(mapping).length + localAvals.length, errors };
+  }, [colaboradoras, avaliacoes]);
 
   // ── Utils ──────────────────────────────────────────────────────────────────
 

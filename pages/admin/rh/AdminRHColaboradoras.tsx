@@ -91,9 +91,9 @@ export const AdminRHColaboradoras: React.FC = () => {
     setSyncMsg('');
     const { synced, errors } = await syncToSupabase();
     setSyncing(false);
-    if (synced > 0) setSyncMsg(`✅ ${synced} colaboradora${synced > 1 ? 's' : ''} sincronizada${synced > 1 ? 's' : ''}!`);
+    if (synced > 0) setSyncMsg(`✅ Sincronizado! Colaboradoras + avaliações enviadas.`);
     else if (errors > 0) setSyncMsg(`⚠️ ${errors} erro(s) ao sincronizar.`);
-    else setSyncMsg('Todas já estão no banco!');
+    else setSyncMsg('✅ Tudo já está no banco!');
     setTimeout(() => setSyncMsg(''), 4000);
   };
 

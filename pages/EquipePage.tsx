@@ -135,6 +135,19 @@ export const EquipePage: React.FC = () => {
     return hash.includes('embed=1');
   }, []);
 
+  // In embed mode: make html/body transparent so iframe blends with host site
+  useEffect(() => {
+    if (!isEmbed) return;
+    const prev = document.body.style.background;
+    const prevHtml = document.documentElement.style.background;
+    document.body.style.background = 'transparent';
+    document.documentElement.style.background = 'transparent';
+    return () => {
+      document.body.style.background = prev;
+      document.documentElement.style.background = prevHtml;
+    };
+  }, [isEmbed]);
+
   useEffect(() => {
     fetch(`${SUPABASE_URL}/functions/v1/get-public-team`, {
       headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` },
