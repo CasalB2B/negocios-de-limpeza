@@ -151,6 +151,40 @@ export const AdminRHConfiguracoes: React.FC = () => {
   const [gendoError,    setGendoError]    = useState('');
   const [copied,        setCopied]        = useState(false);
 
+  // ── Relatório Gendo ──────────────────────────────────────────────────────────
+  const [relMes,     setRelMes]     = useState(now.getMonth() + 1);
+  const [relAno,     setRelAno]     = useState(now.getFullYear());
+  const [relLoading, setRelLoading] = useState(false);
+  const [relError,   setRelError]   = useState('');
+  const [relData,    setRelData]    = useState<null | {
+    periodo: string;
+    totalAgendamentos: number;
+    totalFinalizados: number;
+    professionals: { id_responsavel: number; nome_responsavel: string; count: number }[];
+  }>(null);
+
+  const fetchRelatorio = useCallback(async () => {
+    if (!gendoUsername || !gendoToken) {
+      setRelError('Configure o usuário e token do Gendo acima primeiro.');
+      return;
+    }
+    setRelLoading(true);
+    setRelError('');
+    setRelData(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('gendo-sync', {
+        body: { username: gendoUsername, token: gendoToken, mes: relMes, ano: relAno },
+      });
+      if (error) throw new Error(error.message);
+      if (!data?.ok) throw new Error(data?.error || 'Erro desconhecido');
+      setRelData(data);
+    } catch (e: any) {
+      setRelError(e.message || 'Erro ao conectar ao Gendo');
+    } finally {
+      setRelLoading(false);
+    }
+  }, [gendoUsername, gendoToken, relMes, relAno]);
+
   const saveGendoConfig = () => {
     localStorage.setItem(LS_GENDO_USER,  gendoUsername.trim());
     localStorage.setItem(LS_GENDO_TOKEN, gendoToken.trim());
@@ -847,19 +881,125 @@ export const AdminRHConfiguracoes: React.FC = () => {
               </div>
             </div>
 
-            {/* Como usar */}
-            <div className="bg-gray-50 dark:bg-darkBg rounded-2xl border border-gray-100 dark:border-darkBorder p-5 space-y-3">
-              <h4 className="font-bold text-sm text-darkText dark:text-darkTextPrimary flex items-center gap-2">
-                <Info size={14} className="text-primary"/> Como usar a integração
-              </h4>
-              <ol className="text-xs text-lightText dark:text-darkTextSecondary space-y-2 list-decimal pl-4">
-                <li>Configure o usuário e token Gendo acima e salve.</li>
-                <li>Na aba <strong>Bônus / Líder</strong>, selecione a Líder e o mês desejado.</li>
-                <li>Clique no botão <strong>Gendo</strong> (ao lado de "Faxinas da equipe").</li>
-                <li>O sistema busca todos os atendimentos finalizados no Gendo para o período e exibe a contagem por profissional.</li>
-                <li>Clique no nome da colaboradora para pré-preencher o campo de faxinas.</li>
-                <li>Confira a avaliação e clique em <strong>Calcular e Salvar</strong>.</li>
-              </ol>
+            {/* Relatório de Faxinas por Colaboradora */}
+            <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-100 dark:border-darkBorder overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-50 dark:border-darkBorder flex items-center gap-2">
+                <TrendingUp size={15} className="text-primary"/>
+                <h3 className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Relatório de Faxinas por Colaboradora</h3>
+              </div>
+              <div className="p-5 space-y-4">
+                <p className="text-xs text-lightText dark:text-darkTextSecondary">
+                  Veja quantas faxinas cada colaboradora tem agendada no Gendo em um determinado mês.
+                </p>
+
+                {/* Seletor mês/ano + botão */}
+                <div className="flex items-end gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-darkText dark:text-darkTextPrimary mb-1">Mês</label>
+                    <select value={relMes} onChange={e => setRelMes(Number(e.target.value))}
+                      className="border border-input bg-background dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30">
+                      {MESES.map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-darkText dark:text-darkTextPrimary mb-1">Ano</label>
+                    <input type="number" value={relAno} onChange={e => setRelAno(Number(e.target.value))}
+                      className="w-24 border border-input bg-background dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 text-center"/>
+                  </div>
+                  <Button onClick={fetchRelatorio} disabled={relLoading}>
+                    <RefreshCw size={14} className={`mr-2 ${relLoading ? 'animate-spin' : ''}`}/>
+                    {relLoading ? 'Buscando...' : 'Buscar do Gendo'}
+                  </Button>
+                </div>
+
+                {relError && (
+                  <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-xl px-4 py-3">
+                    <AlertTriangle size={14} className="shrink-0"/> {relError}
+                  </div>
+                )}
+
+                {relData && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-lightText dark:text-darkTextSecondary">
+                        Período: <strong>{relData.periodo}</strong> · Total no Gendo: <strong>{relData.totalAgendamentos}</strong> agendamentos · Contados: <strong>{relData.totalFinalizados}</strong>
+                      </p>
+                    </div>
+
+                    {relData.professionals.length === 0 ? (
+                      <div className="text-center py-8 text-sm text-lightText dark:text-darkTextSecondary">
+                        Nenhuma faxina encontrada para esse período no Gendo.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-darkBorder">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="bg-gray-50 dark:bg-darkBg">
+                              <th className="text-left px-4 py-3 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">#</th>
+                              <th className="text-left px-4 py-3 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Colaboradora</th>
+                              <th className="text-left px-4 py-3 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Cargo (Sistema)</th>
+                              <th className="text-center px-4 py-3 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Faxinas</th>
+                              <th className="text-center px-4 py-3 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Meta</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50 dark:divide-darkBorder">
+                            {[...relData.professionals]
+                              .sort((a, b) => b.count - a.count)
+                              .map((p, i) => {
+                                // Try to match with a colaboradora in the system
+                                const colabMatch = colaboradoras.find(c =>
+                                  c.nome.toLowerCase().includes(p.nome_responsavel.split(' ')[0].toLowerCase()) ||
+                                  p.nome_responsavel.toLowerCase().includes(c.nome.split(' ')[0].toLowerCase())
+                                );
+                                const metaQtd = bonusCfg.metaFaxinasMes;
+                                const bateu = p.count > metaQtd;
+                                return (
+                                  <tr key={p.id_responsavel} className="hover:bg-gray-50/50 dark:hover:bg-darkBg/50">
+                                    <td className="px-4 py-3 text-sm font-bold text-lightText">{i + 1}</td>
+                                    <td className="px-4 py-3">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                                          {p.nome_responsavel[0]}
+                                        </div>
+                                        <span className="text-sm font-bold text-darkText dark:text-darkTextPrimary">{p.nome_responsavel}</span>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-xs text-lightText dark:text-darkTextSecondary">
+                                      {colabMatch
+                                        ? <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-full font-bold">{
+                                            {JUNIOR:'Auxiliar de Limpeza',SENIOR:'Faxineira',PROFISSIONAL:'Faxineira Profissional',LIDER:'Líder de Equipe',GERENTE:'Gerente de Equipe'}[colabMatch.cargoAtual] || colabMatch.cargoAtual
+                                          }</span>
+                                        : <span className="text-gray-400 italic">não encontrada</span>}
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      <span className={`text-lg font-bold ${bateu ? 'text-green-600 dark:text-green-400' : 'text-darkText dark:text-darkTextPrimary'}`}>
+                                        {p.count}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      {bateu
+                                        ? <span className="text-xs font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">✅ Bateu</span>
+                                        : <span className="text-xs text-orange-500 font-bold bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded-full">⚠ Faltam {metaQtd - p.count + 1}</span>}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                          </tbody>
+                          <tfoot>
+                            <tr className="bg-gray-50 dark:bg-darkBg border-t border-gray-100 dark:border-darkBorder">
+                              <td colSpan={3} className="px-4 py-2 text-xs font-bold text-lightText dark:text-darkTextSecondary text-right">Total</td>
+                              <td className="px-4 py-2 text-center text-sm font-bold text-primary">
+                                {relData.professionals.reduce((s, p) => s + p.count, 0)}
+                              </td>
+                              <td/>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
           </div>
