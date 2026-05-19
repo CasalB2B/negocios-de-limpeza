@@ -88,6 +88,23 @@ Deno.serve(async (req) => {
       statusBreakdown[s] = (statusBreakdown[s] || 0) + 1;
     }
 
+    // Secondary date filter — in case Gendo ignores query params and returns everything
+    // Fields that might hold the date: weekdate, start, data
+    const mesStr  = pad(mes);
+    const anoStr  = String(ano);
+    const inRange = (a: any): boolean => {
+      const raw = a.weekdate ?? a.start ?? a.data ?? '';
+      if (!raw) return true; // can't determine, include
+      const s = String(raw);
+      // Format "2026-04-15" or "15/04/2026" or "2026-04-15T..."
+      if (s.startsWith(anoStr + '-' + mesStr)) return true;          // YYYY-MM
+      if (s.includes('/' + mesStr + '/' + anoStr)) return true;      // DD/MM/YYYY
+      if (s.startsWith(anoStr) && s.includes('-' + mesStr + '-')) return true;
+      return false;
+    };
+    const agendamentosDoMes = agendamentos.filter(inRange);
+    const totalFiltradosPorData = agendamentosDoMes.length;
+
     // Status field: Gendo uses 'status_agendamento' (not 'status')
     // Exclude: Cancelado (7), Faltou (9), Excluído (10)
     // Also exclude text equivalents in case Gendo returns strings
@@ -96,7 +113,7 @@ Deno.serve(async (req) => {
 
     const getStatus = (a: any): string | number => a.status_agendamento ?? a.status ?? '';
 
-    const finalList = agendamentos.filter((a) => {
+    const finalList = agendamentosDoMes.filter((a) => {
       const s = getStatus(a);
       const n = Number(s);
       if (!isNaN(n) && EXCLUIDOS_NUM.has(n)) return false;
@@ -109,9 +126,9 @@ Deno.serve(async (req) => {
     const sample = finalList[0] ?? agendamentos[0] ?? {};
     const allKeys = Object.keys(sample);
 
-    // Pick the best name field — Gendo uses 'resp' for responsável
-    const NAME_CANDIDATES = ['resp','atendente','nome_responsavel','nome_profissional','responsavel','profissional','nome_colaborador','colaborador','nome_funcionario','funcionario'];
-    const ID_CANDIDATES   = ['id_responsavel','id_profissional','id_colaborador','id_funcionario','responsavel_id','profissional_id'];
+    // Gendo uses 'atendente' for the professional name, 'resp' is a numeric ID
+    const NAME_CANDIDATES = ['atendente','nome_responsavel','nome_profissional','responsavel','profissional','nome_colaborador','colaborador','nome_funcionario','funcionario'];
+    const ID_CANDIDATES   = ['resp','id_responsavel','id_profissional','id_colaborador','id_funcionario','responsavel_id','profissional_id'];
 
     const nameField = NAME_CANDIDATES.find(k => k in sample && sample[k]) ?? null;
     const idField   = ID_CANDIDATES.find(k => k in sample && sample[k]) ?? null;
@@ -136,6 +153,7 @@ Deno.serve(async (req) => {
       ok: true,
       periodo: `${inicio} → ${fim}`,
       totalAgendamentos: agendamentos.length,
+      totalNoMes: totalFiltradosPorData,
       totalFinalizados: finalList.length,
       statusBreakdown,
       professionals,
