@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Layout } from '../../../components/Layout';
 import { UserRole, CargoRH } from '../../../types';
 import { useRH } from '../../../components/RHContext';
-import { Star, MessageSquare, Copy, ExternalLink, Check, Filter } from 'lucide-react';
+import { Star, MessageSquare, Copy, ExternalLink, Check, Filter, QrCode, Globe, Code2 } from 'lucide-react';
 
 const CARGO_LABEL: Record<CargoRH, string> = {
   JUNIOR: 'Auxiliar de Limpeza', SENIOR: 'Faxineira', PROFISSIONAL: 'Faxineira Profissional', LIDER: 'Líder de Equipe', GERENTE: 'Gerente de Equipe',
@@ -39,7 +39,8 @@ export const AdminRHAvaliacoes: React.FC = () => {
   const { colaboradoras, avaliacoes } = useRH();
   const [periodo, setPeriodo] = useState<Periodo>('mes');
   const [colabFiltro, setColabFiltro] = useState('');
-  const [copiedId, setCopiedId] = useState('');
+  const [copiedId,    setCopiedId]    = useState('');
+  const [copiedEmbed, setCopiedEmbed] = useState<'link' | 'iframe' | ''>('');
 
   const now = new Date();
 
@@ -82,6 +83,24 @@ export const AdminRHAvaliacoes: React.FC = () => {
     navigator.clipboard.writeText(link).catch(() => {});
     setCopiedId(id);
     setTimeout(() => setCopiedId(''), 2000);
+  };
+
+  const equipeUrl   = `${getBaseUrl()}#/equipe`;
+  const equipeEmbedUrl = `${getBaseUrl()}#/equipe?embed=1`;
+  const iframeCode  = `<iframe src="${equipeEmbedUrl}" width="100%" height="650" frameborder="0" style="border-radius:16px;border:none;overflow:hidden;" loading="lazy" title="Equipe Negócios de Limpeza"></iframe>`;
+  const qrUrl       = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(equipeUrl)}&color=7c3aed&bgcolor=ffffff&margin=8`;
+
+  // Platform-specific embed formats
+  const embedFormats: { key: 'link' | 'iframe'; label: string; desc: string; code: string }[] = [
+    { key: 'link',   label: 'Link direto',    desc: 'WhatsApp, Instagram, e-mail, Google Meu Negócio', code: equipeUrl },
+    { key: 'iframe', label: 'HTML / iframe',  desc: 'Wix, Squarespace, Webflow, site próprio',         code: iframeCode },
+  ];
+
+  const handleCopyEmbed = (type: 'link' | 'iframe') => {
+    const code = type === 'link' ? equipeUrl : iframeCode;
+    navigator.clipboard.writeText(code).catch(() => {});
+    setCopiedEmbed(type);
+    setTimeout(() => setCopiedEmbed(''), 2500);
   };
 
   const PERIODOS: { key: Periodo; label: string }[] = [
@@ -140,6 +159,73 @@ export const AdminRHAvaliacoes: React.FC = () => {
                 <p className="text-xs text-lightText dark:text-darkTextSecondary mt-0.5">Sem avaliações</p>
               </>
             )}
+          </div>
+        </div>
+
+        {/* ── Página pública da equipe + embed ── */}
+        <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-100 dark:border-darkBorder overflow-hidden">
+          <div className="px-5 py-3 border-b border-gray-50 dark:border-darkBorder flex items-center gap-2">
+            <Globe size={15} className="text-primary"/>
+            <h2 className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Página Pública da Equipe</h2>
+            <span className="ml-2 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-bold rounded-full">Pública · sem login</span>
+            <a href={equipeUrl} target="_blank" rel="noopener noreferrer"
+              className="ml-auto flex items-center gap-1 text-xs font-bold text-primary hover:underline">
+              <ExternalLink size={12}/> Abrir
+            </a>
+          </div>
+
+          <div className="p-5 space-y-5">
+            <p className="text-xs text-lightText dark:text-darkTextSecondary">
+              Mostre sua equipe e as avaliações dos clientes no seu site, redes sociais ou cartão de visita.
+              Atualiza automaticamente quando novas avaliações chegam.
+            </p>
+
+            {/* QR + formatos lado a lado */}
+            <div className="flex flex-col sm:flex-row gap-5">
+
+              {/* QR Code */}
+              <div className="flex flex-col items-center gap-2 shrink-0">
+                <div className="bg-white rounded-2xl p-2.5 border border-gray-100 shadow-sm">
+                  <img src={qrUrl} alt="QR Code" className="w-[120px] h-[120px]" />
+                </div>
+                <p className="text-[10px] text-lightText dark:text-darkTextSecondary text-center">
+                  Aponte a câmera<br/>para acessar
+                </p>
+                <p className="text-[9px] text-lightText/70 text-center">
+                  Ideal para panfletos<br/>e cartões de visita
+                </p>
+              </div>
+
+              {/* Embed formats */}
+              <div className="flex-1 space-y-3">
+                {embedFormats.map(f => (
+                  <div key={f.key}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div>
+                        <span className="text-xs font-bold text-darkText dark:text-darkTextPrimary">{f.label}</span>
+                        <span className="ml-2 text-[10px] text-lightText dark:text-darkTextSecondary">{f.desc}</span>
+                      </div>
+                      <button onClick={() => handleCopyEmbed(f.key)}
+                        className={`shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-colors ${copiedEmbed === f.key ? 'bg-green-100 text-green-700 border-green-200' : 'border-input text-primary hover:bg-primary/10'}`}>
+                        {copiedEmbed === f.key ? <Check size={10}/> : <Copy size={10}/>}
+                        {copiedEmbed === f.key ? 'Copiado!' : 'Copiar'}
+                      </button>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl px-3 py-2 text-[11px] font-mono text-gray-600 dark:text-gray-400 break-all leading-relaxed max-h-16 overflow-hidden">
+                      {f.code}
+                    </div>
+                  </div>
+                ))}
+
+                {/* WordPress note */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-[10px] text-blue-700 dark:text-blue-300 space-y-1">
+                  <p className="font-bold">WordPress:</p>
+                  <p>Use o bloco <strong>HTML Personalizado</strong> (no editor Gutenberg) e cole o código iframe acima.</p>
+                  <p className="font-bold mt-1">Wix / Squarespace:</p>
+                  <p>Adicione um widget <strong>"HTML"</strong> ou <strong>"Incorporar código"</strong> e cole o iframe.</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

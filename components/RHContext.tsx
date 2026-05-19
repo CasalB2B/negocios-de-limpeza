@@ -168,6 +168,7 @@ interface RHContextType {
   addColaboradora: (data: Omit<ColaboradoraRH, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateColaboradora: (id: string, data: Partial<ColaboradoraRH>) => Promise<void>;
   deleteColaboradora: (id: string) => Promise<void>;
+  syncToSupabase: () => Promise<{ synced: number; errors: number }>;
 
   addDesempenho: (data: Omit<DesempenhoMensalRH, 'id' | 'createdAt'>) => Promise<void>;
   updateDesempenho: (id: string, data: Partial<DesempenhoMensalRH>) => Promise<void>;
@@ -375,11 +376,19 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const activeRems = cfgRems.filter(c => !c.vigenciaFim);
       const activeCris = cfgCris.filter(c => !c.vigenciaFim);
 
-      // Se Supabase retornou vazio mas localStorage tem dados, preserva localStorage
-      const finalCols  = cols.length > 0  ? cols  : lsGet<ColaboradoraRH[]>('rh_colaboradoras', SEED_COLABORADORAS);
+      // Merge Supabase + local-only (col_XXX prefix = never synced to Supabase yet)
+      const supabaseIds = new Set(cols.map((c: ColaboradoraRH) => c.id));
+      const lsCols = lsGet<ColaboradoraRH[]>('rh_colaboradoras', SEED_COLABORADORAS);
+      const localOnly = lsCols.filter(c => !supabaseIds.has(c.id));
+      const finalCols  = cols.length > 0  ? [...cols, ...localOnly] : lsCols;
+
+      const supabaseAvalIds = new Set(avals.map((a: AvaliacaoCliente) => a.colaboradoraId));
+      const lsAvals = lsGet<AvaliacaoCliente[]>('rh_avaliacoes', []);
+      const localOnlyAvals = lsAvals.filter(a => !supabaseAvalIds.has(a.colaboradoraId) && a.id.startsWith('aval_'));
+      const finalAvals = avals.length > 0 ? [...avals, ...localOnlyAvals] : lsAvals;
+
       const finalDes   = des.length  > 0  ? des   : lsGet<DesempenhoMensalRH[]>('rh_desempenho', []);
       const finalPros  = pros.length > 0  ? pros  : lsGet<PromocaoRH[]>('rh_promocoes', []);
-      const finalAvals = avals.length > 0 ? avals : lsGet<AvaliacaoCliente[]>('rh_avaliacoes', []);
       const finalObs   = obs.length  > 0  ? obs   : lsGet<ObservacaoColaboradora[]>('rh_obs_colaboradoras', []);
 
       setColaboradoras(finalCols);
@@ -449,19 +458,17 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const now = new Date().toISOString();
     const item: ColaboradoraRH = { ...data, id: newId, createdAt: now, updatedAt: now };
     try {
-      const { data: r, error } = await supabase.from('colaboradoras_rh').insert({
-        nome: data.nome, telefone: data.telefone, foto: data.foto,
-        data_admissao: data.dataAdmissao, cargo_atual: data.cargoAtual,
-        status: data.status, observacoes: data.observacoes,
-        endereco: data.endereco, cep: data.cep,
-        contrato_url: data.contratoUrl, contrato_nome: data.contratoNome,
-      }).select().single();
-      if (!error && r) {
-        const saved = mapColaboradora(r);
+      const res = await supabase.functions.invoke('rh-write', {
+        body: { action: 'upsert_colaboradora', data: { ...data, id: newId } },
+      });
+      const result = res.data;
+      if (result?.ok) {
+        const saved: ColaboradoraRH = { ...item, id: result.id };
         setColaboradoras(prev => { const next = [...prev, saved]; lsSet('rh_colaboradoras', next); return next; });
         return;
       }
     } catch {}
+    // Fallback: save locally with col_ prefix (will show in admin, sync later)
     setColaboradoras(prev => { const next = [...prev, item]; lsSet('rh_colaboradoras', next); return next; });
   }, []);
 
@@ -471,22 +478,25 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       lsSet('rh_colaboradoras', next); return next;
     };
     try {
-      await supabase.from('colaboradoras_rh').update({
-        nome: data.nome, telefone: data.telefone, foto: data.foto,
-        data_admissao: data.dataAdmissao, cargo_atual: data.cargoAtual,
-        status: data.status, observacoes: data.observacoes,
-        endereco: data.endereco, cep: data.cep,
-        contrato_url: data.contratoUrl, contrato_nome: data.contratoNome,
-        pontos_fortes: data.pontosFortes, areas_desenvolvimento: data.areasDesenvolvimento,
-        perfil_comportamental: data.perfilComportamental,
-        updated_at: new Date().toISOString(),
-      }).eq('id', id);
+      // For UUID ids (Supabase), upsert via rh-write; for local col_ ids, just update locally
+      if (!id.startsWith('col_')) {
+        const current = colaboradoras.find(c => c.id === id);
+        if (current) {
+          await supabase.functions.invoke('rh-write', {
+            body: { action: 'upsert_colaboradora', data: { ...current, ...data, id } },
+          });
+        }
+      }
     } catch {}
     setColaboradoras(update);
-  }, []);
+  }, [colaboradoras]);
 
   const deleteColaboradora = useCallback(async (id: string) => {
-    try { await supabase.from('colaboradoras_rh').delete().eq('id', id); } catch {}
+    try {
+      if (!id.startsWith('col_')) {
+        await supabase.functions.invoke('rh-write', { body: { action: 'delete_colaboradora', data: { id } } });
+      }
+    } catch {}
     setColaboradoras(prev => { const next = prev.filter(c => c.id !== id); lsSet('rh_colaboradoras', next); return next; });
   }, []);
 
@@ -591,9 +601,17 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const addAvaliacao = useCallback(async (data: Omit<AvaliacaoCliente, 'id' | 'createdAt'>) => {
     const item: AvaliacaoCliente = { ...data, id: `aval_${Date.now()}`, createdAt: new Date().toISOString() };
     try {
-      await supabase.from('avaliacoes_clientes').insert({
-        colaboradora_id: data.colaboradoraId, nome_cliente: data.nomeCliente,
-        data_faxina: data.dataFaxina || null, estrelas: data.estrelas, comentario: data.comentario || null,
+      await supabase.functions.invoke('rh-write', {
+        body: {
+          action: 'upsert_avaliacao',
+          data: {
+            colaboradoraId: data.colaboradoraId,
+            nomeCliente: data.nomeCliente,
+            dataFaxina: data.dataFaxina || null,
+            estrelas: data.estrelas,
+            comentario: data.comentario || null,
+          },
+        },
       });
     } catch {}
     setAvaliacoes(prev => { const next = [item, ...prev]; lsSet('rh_avaliacoes', next); return next; });
@@ -725,6 +743,58 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     lsSet('rh_config_criterios', saved);
   }, [configCriterios]);
 
+  // ── Sync local collaborators to Supabase ───────────────────────────────────
+
+  const syncToSupabase = useCallback(async (): Promise<{ synced: number; errors: number }> => {
+    const localOnly = colaboradoras.filter(c => c.id.startsWith('col_') || c.id.startsWith('seed_'));
+    if (localOnly.length === 0) return { synced: 0, errors: 0 };
+
+    try {
+      const res = await supabase.functions.invoke('rh-write', {
+        body: { action: 'sync_colaboradoras', data: localOnly },
+      });
+      const result = res.data;
+      if (!result?.ok) return { synced: 0, errors: localOnly.length };
+
+      // Build mapping: localId → supabaseId
+      const mapping: Record<string, string> = {};
+      let errors = 0;
+      for (const r of (result.results ?? [])) {
+        if (r.supabaseId && !r.error) {
+          mapping[r.localId] = r.supabaseId;
+        } else {
+          errors++;
+        }
+      }
+
+      // Update colaboradoras: replace local IDs with Supabase UUIDs
+      setColaboradoras(prev => {
+        const next = prev.map(c => {
+          const newId = mapping[c.id];
+          if (!newId) return c;
+          return { ...c, id: newId };
+        });
+        lsSet('rh_colaboradoras', next);
+        return next;
+      });
+
+      // Update avaliacoes: fix colaboradora_id references
+      setAvaliacoes(prev => {
+        const next = prev.map(a => {
+          const newId = mapping[a.colaboradoraId];
+          if (!newId) return a;
+          return { ...a, colaboradoraId: newId };
+        });
+        lsSet('rh_avaliacoes', next);
+        return next;
+      });
+
+      return { synced: Object.keys(mapping).length, errors };
+    } catch {
+      return { synced: 0, errors: localOnly.length };
+    }
+  }, [colaboradoras]);
+
   // ── Utils ──────────────────────────────────────────────────────────────────
 
   const getMesesNaEmpresa = useCallback((dataAdmissao: string): number => {
@@ -764,7 +834,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       colaboradoras, desempenhoMensal, promocoes, bonusMensal,
       configBonusLider, historicoConfigBonus, configRemuneracao, configCriterios,
       avaliacoes, rhLoading,
-      addColaboradora, updateColaboradora, deleteColaboradora,
+      addColaboradora, updateColaboradora, deleteColaboradora, syncToSupabase,
       addDesempenho, updateDesempenho, deleteDesempenho,
       addPromocao, addBonusMensal, calcularBonus,
       addAvaliacao, getMediaAvaliacoesMes,

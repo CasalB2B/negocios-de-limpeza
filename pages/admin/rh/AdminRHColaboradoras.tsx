@@ -11,6 +11,7 @@ import {
   Star, MessageSquare, BookOpen, User, ChevronRight, X, Plus,
   TrendingUp, AlertCircle, ThumbsUp, Minus, ExternalLink,
   Phone, MapPin, FileText, Upload, Download, Award, DollarSign,
+  CloudUpload,
 } from 'lucide-react';
 
 // ─── Labels & helpers ────────────────────────────────────────────────────────
@@ -76,10 +77,27 @@ function StarRow({ value, size = 14 }: { value: number; size?: number }) {
 export const AdminRHColaboradoras: React.FC = () => {
   const {
     colaboradoras, addColaboradora, updateColaboradora, deleteColaboradora,
+    syncToSupabase,
     getElegibilidade, getMesesNaEmpresa, rhLoading,
     avaliacoes, observacoes, addObservacao, deleteObservacao,
     promocoes, configRemuneracao, bonusMensal,
   } = useRH();
+
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState('');
+
+  const handleSync = async () => {
+    setSyncing(true);
+    setSyncMsg('');
+    const { synced, errors } = await syncToSupabase();
+    setSyncing(false);
+    if (synced > 0) setSyncMsg(`✅ ${synced} colaboradora${synced > 1 ? 's' : ''} sincronizada${synced > 1 ? 's' : ''}!`);
+    else if (errors > 0) setSyncMsg(`⚠️ ${errors} erro(s) ao sincronizar.`);
+    else setSyncMsg('Todas já estão no banco!');
+    setTimeout(() => setSyncMsg(''), 4000);
+  };
+
+  const hasPending = colaboradoras.some(c => c.id.startsWith('col_') || c.id.startsWith('seed_'));
 
   const getRemuneracao = (cargo: CargoRH) =>
     configRemuneracao.find(r => r.cargo === cargo) ?? null;
@@ -202,7 +220,21 @@ export const AdminRHColaboradoras: React.FC = () => {
             <h1 className="text-2xl font-bold text-darkText dark:text-darkTextPrimary">Colaboradoras</h1>
             <p className="text-sm text-lightText dark:text-darkTextSecondary mt-0.5">{colaboradoras.length} cadastradas</p>
           </div>
-          <Button icon={<UserPlus size={16} />} onClick={openAdd}>Nova</Button>
+          <div className="flex items-center gap-2">
+            {hasPending && (
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                title="Salvar colaboradoras locais no banco de dados"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 disabled:opacity-60 transition-colors dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800"
+              >
+                <CloudUpload size={14} className={syncing ? 'animate-pulse' : ''} />
+                {syncing ? 'Sincronizando…' : 'Sincronizar'}
+              </button>
+            )}
+            {syncMsg && <span className="text-xs text-gray-500 dark:text-gray-400">{syncMsg}</span>}
+            <Button icon={<UserPlus size={16} />} onClick={openAdd}>Nova</Button>
+          </div>
         </div>
 
         {/* Search */}

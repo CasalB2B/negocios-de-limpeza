@@ -71,15 +71,23 @@ export const AdminRHConfiguracoes: React.FC = () => {
     salarioFixo: 2800, multiplicadorFaxina: 3, bonusAvaliacao: 150,
     bonusAvaliacao5estrelas: 300, metaAvaliacao: 4.5, metaFaxinasMes: 100,
   });
+  // calcMeta = meta do bônus da líder (total da equipe)
+  // relMeta  = meta INDIVIDUAL por colaboradora no relatório Gendo
+  const [calcMeta, setCalcMeta] = useState(100);
+  const [relMeta,  setRelMeta]  = useState(20);   // padrão: 20 faxinas/mês (seg–sex)
   useEffect(() => {
-    if (configBonusLider) setBonusCfg({
-      salarioFixo:             configBonusLider.salarioFixo,
-      multiplicadorFaxina:     configBonusLider.multiplicadorFaxina,
-      bonusAvaliacao:          configBonusLider.bonusAvaliacao,
-      bonusAvaliacao5estrelas: configBonusLider.bonusAvaliacao5estrelas ?? configBonusLider.bonusAvaliacao * 2,
-      metaAvaliacao:           configBonusLider.metaAvaliacao,
-      metaFaxinasMes:          configBonusLider.metaFaxinasMes,
-    });
+    if (configBonusLider) {
+      setBonusCfg({
+        salarioFixo:             configBonusLider.salarioFixo,
+        multiplicadorFaxina:     configBonusLider.multiplicadorFaxina,
+        bonusAvaliacao:          configBonusLider.bonusAvaliacao,
+        bonusAvaliacao5estrelas: configBonusLider.bonusAvaliacao5estrelas ?? configBonusLider.bonusAvaliacao * 2,
+        metaAvaliacao:           configBonusLider.metaAvaliacao,
+        metaFaxinasMes:          configBonusLider.metaFaxinasMes,
+      });
+      setCalcMeta(configBonusLider.metaFaxinasMes || 100);
+      // relMeta não sincroniza com o total da equipe — é individual, fica em 20
+    }
   }, [configBonusLider?.id]);
 
   // ── Bônus calculator state ──────────────────────────────────────────────────
@@ -114,7 +122,7 @@ export const AdminRHConfiguracoes: React.FC = () => {
 
   const mediaEfetiva = usarManual || mediaDoSistema === null ? parseFloat(mediaManual) : mediaDoSistema;
   const totalFaxinas = parseFloat(faxinas);
-  const meta         = bonusCfg.metaFaxinasMes;
+  const meta         = calcMeta;
   const metaAtingida = !isNaN(totalFaxinas) && totalFaxinas > meta;
   const progressoPct = isNaN(totalFaxinas) ? 0 : Math.min(100, (totalFaxinas / meta) * 100);
 
@@ -602,7 +610,20 @@ export const AdminRHConfiguracoes: React.FC = () => {
                           <span className="text-[10px] text-lightText italic">Configure Gendo na aba Integrações</span>
                         )}
                       </div>
-                      <Input type="number" placeholder={`Meta: >${meta}`} value={faxinas} onChange={e => setFaxinas(e.target.value)}/>
+                      <Input type="number" placeholder={`Ex: ${meta + 1}`} value={faxinas} onChange={e => setFaxinas(e.target.value)}/>
+                      {/* Meta inline edit */}
+                      <div className="flex items-center gap-2 bg-gray-50 dark:bg-darkBg rounded-lg px-2.5 py-1.5">
+                        <Target size={10} className="text-primary shrink-0"/>
+                        <span className="text-[10px] text-lightText shrink-0">Meta:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          value={calcMeta}
+                          onChange={e => setCalcMeta(Math.max(1, Math.round(Number(e.target.value) || 1)))}
+                          className="w-16 text-xs font-bold text-center text-primary bg-transparent border-b border-primary/40 focus:outline-none focus:border-primary"
+                        />
+                        <span className="text-[10px] text-lightText">faxinas/mês</span>
+                      </div>
                       {gendoError && (
                         <p className="text-[10px] text-red-500 font-bold">{gendoError}</p>
                       )}
@@ -901,8 +922,8 @@ export const AdminRHConfiguracoes: React.FC = () => {
                   Veja quantas faxinas cada colaboradora tem agendada no Gendo em um determinado mês.
                 </p>
 
-                {/* Seletor mês/ano + botão */}
-                <div className="flex items-end gap-3">
+                {/* Seletor mês/ano + meta + botão */}
+                <div className="flex flex-wrap items-end gap-3">
                   <div>
                     <label className="block text-xs font-bold text-darkText dark:text-darkTextPrimary mb-1">Mês</label>
                     <select value={relMes} onChange={e => setRelMes(Number(e.target.value))}
@@ -914,6 +935,18 @@ export const AdminRHConfiguracoes: React.FC = () => {
                     <label className="block text-xs font-bold text-darkText dark:text-darkTextPrimary mb-1">Ano</label>
                     <input type="number" value={relAno} onChange={e => setRelAno(Number(e.target.value))}
                       className="w-24 border border-input bg-background dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 text-center"/>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-darkText dark:text-darkTextPrimary mb-1 flex items-center gap-1">
+                      <Target size={11} className="text-primary"/> Meta individual
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={relMeta}
+                      onChange={e => setRelMeta(Math.max(1, Math.round(Number(e.target.value) || 1)))}
+                      className="w-24 border border-primary/50 bg-primary/5 dark:bg-primary/10 rounded-xl px-3 py-2 text-sm font-bold text-primary text-center focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
                   </div>
                   <Button onClick={fetchRelatorio} disabled={relLoading}>
                     <RefreshCw size={14} className={`mr-2 ${relLoading ? 'animate-spin' : ''}`}/>
@@ -929,10 +962,26 @@ export const AdminRHConfiguracoes: React.FC = () => {
 
                 {relData && (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
+                    <div className="space-y-2">
                       <p className="text-xs text-lightText dark:text-darkTextSecondary">
-                        Período: <strong>{relData.periodo}</strong> · Total no Gendo: <strong>{relData.totalAgendamentos}</strong> agendamentos · Contados: <strong>{relData.totalFinalizados}</strong>
+                        Período contado: <strong>{(relData as any).periodoContado ?? relData.periodo}</strong>
+                        {' '}· Retornados pelo Gendo: <strong>{relData.totalAgendamentos}</strong>
+                        {' '}· No mês: <strong>{(relData as any).totalNoMes ?? '—'}</strong>
+                        {' '}· Até hoje: <strong>{(relData as any).totalAteHoje ?? relData.totalFinalizados}</strong>
+                        {' '}· Contados: <strong className="text-primary">{relData.totalFinalizados}</strong>
                       </p>
+                      {/* Diagnostic strip */}
+                      {(relData as any).detectedFields && (
+                        <p className="text-[10px] text-lightText dark:text-darkTextSecondary italic bg-gray-50 dark:bg-darkBg rounded-lg px-2 py-1">
+                          Campo nome: <strong>{(relData as any).detectedFields.nameField ?? '⚠ não detectado'}</strong>
+                          {(relData as any).fieldSamples?.[(relData as any).detectedFields.nameField]?.length > 0 && (
+                            <> · Ex: {(relData as any).fieldSamples[(relData as any).detectedFields.nameField].slice(0, 4).join(', ')}</>
+                          )}
+                          {!(relData as any).detectedFields.nameField && (relData as any).fieldSamples && (
+                            <> · Campos disponíveis: {Object.entries((relData as any).fieldSamples).map(([k,v]: any) => `${k}=${JSON.stringify(v[0])}`).join(' | ')}</>
+                          )}
+                        </p>
+                      )}
                     </div>
 
                     {relData.professionals.length === 0 ? (
@@ -960,8 +1009,8 @@ export const AdminRHConfiguracoes: React.FC = () => {
                                   c.nome.toLowerCase().includes(p.nome_responsavel.split(' ')[0].toLowerCase()) ||
                                   p.nome_responsavel.toLowerCase().includes(c.nome.split(' ')[0].toLowerCase())
                                 );
-                                const metaQtd = bonusCfg.metaFaxinasMes;
-                                const bateu = p.count > metaQtd;
+                                const metaQtd = relMeta;
+                                const bateu = p.count >= metaQtd;
                                 return (
                                   <tr key={p.id_responsavel} className="hover:bg-gray-50/50 dark:hover:bg-darkBg/50">
                                     <td className="px-4 py-3 text-sm font-bold text-lightText">{i + 1}</td>
@@ -988,7 +1037,7 @@ export const AdminRHConfiguracoes: React.FC = () => {
                                     <td className="px-4 py-3 text-center">
                                       {bateu
                                         ? <span className="text-xs font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">✅ Bateu</span>
-                                        : <span className="text-xs text-orange-500 font-bold bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded-full">⚠ Faltam {metaQtd - p.count + 1}</span>}
+                                        : <span className="text-xs text-orange-500 font-bold bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded-full">⚠ Faltam {metaQtd - p.count}</span>}
                                     </td>
                                   </tr>
                                 );

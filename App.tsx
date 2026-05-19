@@ -51,6 +51,7 @@ import { AdminRHConfiguracoes } from './pages/admin/rh/AdminRHConfiguracoes';
 import { AdminRHAvaliacoes } from './pages/admin/rh/AdminRHAvaliacoes';
 import { AdminRHContratacao } from './pages/admin/rh/AdminRHContratacao';
 import { AvaliacaoPage } from './pages/AvaliacaoPage';
+import { EquipePage } from './pages/EquipePage';
 import { AdminMarketing } from './pages/admin/AdminMarketing';
 import { AdminRHPlanoCarreira } from './pages/admin/rh/AdminRHPlanoCarreira';
 
@@ -89,6 +90,8 @@ const App: React.FC = () => {
             
             {/* Avaliação pública — sem login */}
             <Route path="/avaliar" element={<AvaliacaoPage />} />
+            {/* Página pública da equipe + avaliações — embeddable */}
+            <Route path="/equipe" element={<EquipePage />} />
 
             {/* Rota pública para fazer orçamento (pode ser acessada sem login, mas exige no final) */}
             <Route path="/client/new-request" element={<ClientRequest />} />

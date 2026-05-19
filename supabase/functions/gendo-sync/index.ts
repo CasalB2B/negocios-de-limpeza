@@ -25,6 +25,19 @@ function json200(body: unknown) {
   });
 }
 
+/** Parse a date string from Gendo into a Date object (returns null if unparseable) */
+function parseGendoDate(raw: any): Date | null {
+  if (!raw) return null;
+  const s = String(raw).trim();
+  // "2026-05-18" or "2026-05-18T10:00:00"
+  const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) return new Date(isoMatch[1] + '-' + isoMatch[2] + '-' + isoMatch[3]);
+  // "18/05/2026" or "18/05/2026 10:00:00"
+  const brMatch = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (brMatch) return new Date(brMatch[3] + '-' + brMatch[2] + '-' + brMatch[1]);
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
@@ -43,14 +56,17 @@ Deno.serve(async (req) => {
     const inicio = `${ano}-${pad(mes)}-01`;
     const fim    = `${ano}-${pad(mes)}-${lastDayOfMonth(ano, mes)}`;
 
-    // Try both date formats: YYYY-MM-DD (documented) and DD/MM/YYYY (Brazilian)
+    // Today — used to exclude future appointments
+    const hoje = new Date();
+    hoje.setHours(23, 59, 59, 999);
+
+    // Try both date formats
     const urls = [
       `https://${username}.adm.gendo.app/api/agendamentos?Inicio=${inicio}&Fim=${fim}&order=data-desc`,
-      `https://${username}.adm.gendo.app/api/agendamentos?Inicio=${pad(Number(inicio.split('-')[2]))!}/${pad(mes)}/${ano}&Fim=${lastDayOfMonth(ano, mes)}/${pad(mes)}/${ano}&order=data-desc`,
+      `https://${username}.adm.gendo.app/api/agendamentos?Inicio=${pad(1)}/${pad(mes)}/${ano}&Fim=${lastDayOfMonth(ano, mes)}/${pad(mes)}/${ano}&order=data-desc`,
     ];
 
     let agendamentos: any[] = [];
-    let rawDebug: any = null;
     let usedUrl = '';
 
     for (const url of urls) {
@@ -66,7 +82,6 @@ Deno.serve(async (req) => {
       }
 
       const raw = await res.json();
-      rawDebug = raw;
       usedUrl = url;
 
       const list: any[] = Array.isArray(raw)
@@ -81,39 +96,38 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Collect all statuses found (for debugging)
-    const statusBreakdown: Record<string, number> = {};
-    for (const a of agendamentos) {
-      const s = String(a.status_agendamento ?? a.status ?? 'sem_status');
-      statusBreakdown[s] = (statusBreakdown[s] || 0) + 1;
-    }
+    // ── 1. Filter by MONTH ────────────────────────────────────────────────────
+    const mesStr = pad(mes);
+    const anoStr = String(ano);
 
-    // Secondary date filter — in case Gendo ignores query params and returns everything
-    // Fields that might hold the date: weekdate, start, data
-    const mesStr  = pad(mes);
-    const anoStr  = String(ano);
     const inRange = (a: any): boolean => {
       const raw = a.weekdate ?? a.start ?? a.data ?? '';
-      if (!raw) return true; // can't determine, include
+      if (!raw) return true;
       const s = String(raw);
-      // Format "2026-04-15" or "15/04/2026" or "2026-04-15T..."
-      if (s.startsWith(anoStr + '-' + mesStr)) return true;          // YYYY-MM
-      if (s.includes('/' + mesStr + '/' + anoStr)) return true;      // DD/MM/YYYY
+      if (s.startsWith(anoStr + '-' + mesStr)) return true;
+      if (s.includes('/' + mesStr + '/' + anoStr)) return true;
       if (s.startsWith(anoStr) && s.includes('-' + mesStr + '-')) return true;
       return false;
     };
     const agendamentosDoMes = agendamentos.filter(inRange);
-    const totalFiltradosPorData = agendamentosDoMes.length;
 
-    // Status field: Gendo uses 'status_agendamento' (not 'status')
-    // Exclude: Cancelado (7), Faltou (9), Excluído (10)
-    // Also exclude text equivalents in case Gendo returns strings
+    // ── 2. Filter out FUTURE appointments (only count up to today) ─────────────
+    const notFuture = (a: any): boolean => {
+      const raw = a.weekdate ?? a.start ?? a.data ?? '';
+      if (!raw) return true; // can't determine → include
+      const d = parseGendoDate(raw);
+      if (!d) return true;
+      return d <= hoje;
+    };
+    const agendamentosAteHoje = agendamentosDoMes.filter(notFuture);
+
+    // ── 3. Filter out cancelled / no-show / deleted ────────────────────────────
     const EXCLUIDOS_NUM = new Set([7, 9, 10]);
-    const EXCLUIDOS_STR = new Set(['cancelado','faltou','excluido','excluído','nao_compareceu','não_compareceu']);
+    const EXCLUIDOS_STR = new Set(['cancelado', 'faltou', 'excluido', 'excluído', 'nao_compareceu', 'não_compareceu']);
 
     const getStatus = (a: any): string | number => a.status_agendamento ?? a.status ?? '';
 
-    const finalList = agendamentosDoMes.filter((a) => {
+    const finalList = agendamentosAteHoje.filter((a) => {
       const s = getStatus(a);
       const n = Number(s);
       if (!isNaN(n) && EXCLUIDOS_NUM.has(n)) return false;
@@ -121,50 +135,87 @@ Deno.serve(async (req) => {
       return true;
     });
 
-    // Try to find the professional name/id from the first record
-    // Gendo may use different field names depending on account config
-    const sample = finalList[0] ?? agendamentos[0] ?? {};
-    const allKeys = Object.keys(sample);
+    // ── 4. Smart field detection (scan 50 records) ─────────────────────────────
+    const scanList = (finalList.length > 0 ? finalList : agendamentos).slice(0, 50);
+    const sample   = scanList[0] ?? {};
+    const allKeys  = Object.keys(sample);
 
-    // Gendo uses 'atendente' for the professional name, 'resp' is a numeric ID
-    const NAME_CANDIDATES = ['atendente','nome_responsavel','nome_profissional','responsavel','profissional','nome_colaborador','colaborador','nome_funcionario','funcionario'];
-    const ID_CANDIDATES   = ['resp','id_responsavel','id_profissional','id_colaborador','id_funcionario','responsavel_id','profissional_id'];
+    // "Real name" = non-empty string that is NOT a pure number
+    const isRealName = (v: any) =>
+      v !== null && v !== undefined &&
+      typeof v === 'string' &&
+      v.trim().length > 1 &&
+      isNaN(Number(v.trim()));
 
-    const nameField = NAME_CANDIDATES.find(k => k in sample && sample[k]) ?? null;
-    const idField   = ID_CANDIDATES.find(k => k in sample && sample[k]) ?? null;
+    // Candidates in priority order
+    const NAME_CANDIDATES = [
+      'atendente', 'nome_responsavel', 'nome_profissional', 'responsavel',
+      'profissional', 'nome_colaborador', 'colaborador', 'nome_funcionario',
+      'funcionario', 'nome',
+    ];
+    const ID_CANDIDATES = [
+      'resp', 'id_responsavel', 'id_profissional', 'id_colaborador',
+      'id_funcionario', 'responsavel_id', 'profissional_id',
+    ];
 
-    // Aggregate by professional
+    const nameField = NAME_CANDIDATES.find(k =>
+      scanList.some(r => isRealName(r[k]))
+    ) ?? null;
+
+    const idField = ID_CANDIDATES.find(k =>
+      scanList.some(r => r[k] != null && String(r[k]).trim() !== '' && String(r[k]) !== '0')
+    ) ?? null;
+
+    // Collect sample values for every candidate field (for diagnosis)
+    const fieldSamples: Record<string, any[]> = {};
+    for (const k of [...NAME_CANDIDATES, ...ID_CANDIDATES]) {
+      const vals = [...new Set(scanList.map(r => r[k]).filter(v => v != null && String(v).trim() !== ''))].slice(0, 5);
+      if (vals.length > 0) fieldSamples[k] = vals;
+    }
+
+    // ── 5. Aggregate by professional (only named ones) ────────────────────────
     const map: Record<string, { id_responsavel: number; nome_responsavel: string; count: number }> = {};
     for (const a of finalList) {
-      const nome = nameField ? String(a[nameField] ?? '') : '';
-      const id   = idField   ? Number(a[idField]   ?? 0)  : 0;
-      // Skip records with no identifiable professional
-      const key  = nome || String(id);
-      if (!key || key === '0') continue;
-      if (!map[key]) map[key] = { id_responsavel: id, nome_responsavel: nome || `ID ${id}`, count: 0 };
-      map[key].count++;
+      const nome = nameField ? String(a[nameField] ?? '').trim() : '';
+      // Skip records where we can't resolve a real name — don't show "ID X" entries
+      if (!isRealName(nome)) continue;
+      const id  = idField ? Number(a[idField] ?? 0) : 0;
+      if (!map[nome]) map[nome] = { id_responsavel: id, nome_responsavel: nome, count: 0 };
+      map[nome].count++;
     }
 
     const professionals = Object.values(map).sort((a, b) =>
-      a.nome_responsavel.localeCompare(b.nome_responsavel),
+      b.count - a.count
     );
+
+    // Status breakdown for debugging
+    const statusBreakdown: Record<string, number> = {};
+    for (const a of agendamentosDoMes) {
+      const s = String(a.status_agendamento ?? a.status ?? 'sem_status');
+      statusBreakdown[s] = (statusBreakdown[s] || 0) + 1;
+    }
 
     return json200({
       ok: true,
       periodo: `${inicio} → ${fim}`,
+      periodoContado: `${inicio} → ${hoje.toISOString().split('T')[0]}`,
       totalAgendamentos: agendamentos.length,
-      totalNoMes: totalFiltradosPorData,
+      totalNoMes: agendamentosDoMes.length,
+      totalAteHoje: agendamentosAteHoje.length,
       totalFinalizados: finalList.length,
       statusBreakdown,
       professionals,
-      // Always send sample so UI can diagnose field name issues
-      sampleKeys: allKeys,
+      // Diagnostics
       sampleRecord: sample,
+      sampleKeys: allKeys,
       detectedFields: { nameField, idField },
+      fieldSamples,
       debug: agendamentos.length === 0
         ? { msg: 'Gendo não retornou agendamentos para esse período', usedUrl }
         : professionals.length === 0
-        ? { msg: `Não foi possível identificar o campo do profissional. Campos disponíveis: ${allKeys.join(', ')}` }
+        ? { msg: `Não identificou profissional. Campos com dados: ${Object.keys(fieldSamples).join(', ')}` }
+        : nameField === null
+        ? { msg: `Nome não detectado. Valores por campo: ${JSON.stringify(fieldSamples)}` }
         : null,
     });
 
