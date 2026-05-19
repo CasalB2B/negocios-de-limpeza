@@ -4,7 +4,7 @@
  * URL: app.negociosdelimpeza.com.br/#/equipe?embed=1  → só os cards (para iframe/shortcode)
  */
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Star, X, Sparkles, MessageSquare } from 'lucide-react';
 
 interface Colab {
@@ -235,6 +235,7 @@ export const EquipePage: React.FC = () => {
   const [colabs,     setColabs]     = useState<Colab[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
   const [loading,    setLoading]    = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Detect embed mode (?embed=1)
   const isEmbed = useMemo(() => {
@@ -247,18 +248,26 @@ export const EquipePage: React.FC = () => {
     if (!isEmbed) return;
     document.body.style.background = 'transparent';
     document.documentElement.style.background = 'transparent';
+    // Collapse min-heights so document height == content height
+    document.body.style.minHeight = '0';
+    document.documentElement.style.minHeight = '0';
+    const root = document.getElementById('root');
+    if (root) root.style.minHeight = '0';
 
     // Auto-resize: tell parent iframe the real content height
     const sendHeight = () => {
-      const h = document.documentElement.scrollHeight || document.body.scrollHeight;
+      // Use the container's own height — avoids counting empty document space
+      const h = containerRef.current
+        ? Math.ceil(containerRef.current.getBoundingClientRect().height)
+        : Math.ceil(document.body.scrollHeight);
       window.parent.postMessage({ type: 'ndl-iframe-height', height: h }, '*');
     };
 
     // Send after content loads and on resize
-    const timer = setTimeout(sendHeight, 300);
+    const timer = setTimeout(sendHeight, 150);
     window.addEventListener('resize', sendHeight);
     const ro = new ResizeObserver(sendHeight);
-    ro.observe(document.body);
+    if (containerRef.current) ro.observe(containerRef.current);
 
     return () => {
       clearTimeout(timer);
@@ -266,6 +275,9 @@ export const EquipePage: React.FC = () => {
       ro.disconnect();
       document.body.style.background = '';
       document.documentElement.style.background = '';
+      document.body.style.minHeight = '';
+      document.documentElement.style.minHeight = '';
+      if (root) root.style.minHeight = '';
     };
   }, [isEmbed, loading]);
 
@@ -289,7 +301,7 @@ export const EquipePage: React.FC = () => {
   if (isEmbed) {
     if (loading) return spinner;
     return (
-      <div className="font-sans p-4" style={{ background: 'transparent' }}>
+      <div ref={containerRef} className="font-sans p-4" style={{ background: 'transparent' }}>
         <TeamCards colabs={colabs} avaliacoes={avaliacoes} />
       </div>
     );
