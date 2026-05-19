@@ -770,7 +770,13 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
     // ── Step 2: sync local evaluations ────────────────────────────────────
     // For each local aval, resolve colaboradora ID (mapped UUID or existing UUID)
-    const pushedAvalIds: string[] = [];
+    let syncedAvals = 0;
+    const updatedAvals = avaliacoes.map(a => {
+      // Update colaboradoraId to the new Supabase UUID if it was just mapped
+      const newColabId = mapping[a.colaboradoraId];
+      return newColabId ? { ...a, colaboradoraId: newColabId } : a;
+    });
+
     for (const aval of localAvals) {
       const colabId = mapping[aval.colaboradoraId] ?? aval.colaboradoraId;
       // Skip if colaboradora is still local (not yet synced)
@@ -788,25 +794,20 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
             },
           },
         });
-        if (res.data?.ok) pushedAvalIds.push(aval.id);
+        if (res.data?.ok) syncedAvals++;
         else errors++;
       } catch { errors++; }
     }
 
-    // Remove successfully pushed local avals from state/LS (they're now in Supabase)
-    if (pushedAvalIds.length > 0) {
-      const pushedSet = new Set(pushedAvalIds);
-      setAvaliacoes(prev => {
-        const next = prev.filter(a => !pushedSet.has(a.id));
-        lsSet('rh_avaliacoes', next);
-        return next;
-      });
-    }
+    // Update state/LS with new colaboradora IDs — keep aval_ items as fallback
+    // (RLS blocks reading avaliacoes from Supabase with anon key, so we keep
+    //  them in localStorage as the source of truth for the admin UI)
+    setAvaliacoes(() => {
+      lsSet('rh_avaliacoes', updatedAvals);
+      return updatedAvals;
+    });
 
-    // Reload fresh data from Supabase so public page reflects correctly
-    await loadAll();
-
-    return { synced: Object.keys(mapping).length + pushedAvalIds.length, errors };
+    return { synced: Object.keys(mapping).length + syncedAvals, errors };
   }, [colaboradoras, avaliacoes]);
 
   // ── Utils ──────────────────────────────────────────────────────────────────

@@ -115,6 +115,18 @@ Deno.serve(async (req) => {
       return json200({ ok: true });
     }
 
+    // ── Delete colaboradora by exact name (for removing seed/duplicate records) ─
+    if (action === 'delete_by_name') {
+      const { data: rows } = await supabase
+        .from('colaboradoras_rh')
+        .select('id')
+        .eq('nome', data.nome);
+      for (const row of (rows ?? [])) {
+        await supabase.from('colaboradoras_rh').delete().eq('id', row.id);
+      }
+      return json200({ ok: true, deleted: (rows ?? []).length });
+    }
+
     // ── Save config remuneração ───────────────────────────────────────────────
     if (action === 'upsert_config_remuneracao') {
       // Close previous active configs
