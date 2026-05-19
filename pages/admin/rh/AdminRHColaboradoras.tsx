@@ -11,8 +11,49 @@ import {
   Star, MessageSquare, BookOpen, User, ChevronRight, X, Plus,
   TrendingUp, AlertCircle, ThumbsUp, Minus, ExternalLink,
   Phone, MapPin, FileText, Upload, Download, Award, DollarSign,
-  CloudUpload,
+  CloudUpload, Target, CheckSquare, Square, PartyPopper,
 } from 'lucide-react';
+
+// ─── Onboarding Checklist ────────────────────────────────────────────────────
+
+const ONBOARDING_KEY = 'rh_onboarding';
+
+interface OnboardingItem { id: string; categoria: string; label: string; }
+
+const ONBOARDING_ITEMS: OnboardingItem[] = [
+  // Boas-vindas
+  { id: 'bvindas_apresentacao', categoria: 'Boas-vindas',    label: 'Apresentação da empresa, missão e valores' },
+  { id: 'bvindas_equipe',       categoria: 'Boas-vindas',    label: 'Apresentação para a equipe' },
+  // Documentação
+  { id: 'doc_contrato',         categoria: 'Documentação',   label: 'Contrato assinado' },
+  { id: 'doc_foto',             categoria: 'Documentação',   label: 'Foto de perfil cadastrada' },
+  { id: 'doc_docs',             categoria: 'Documentação',   label: 'Documentos entregues (RG, CPF, comprovante)' },
+  // Sistemas
+  { id: 'sis_gendo',            categoria: 'Sistemas',       label: 'Cadastrada no Gendo' },
+  { id: 'sis_whatsapp',         categoria: 'Sistemas',       label: 'Adicionada ao grupo do WhatsApp' },
+  { id: 'sis_link_aval',        categoria: 'Sistemas',       label: 'Link de avaliação enviado' },
+  // Treinamento
+  { id: 'trei_regras',          categoria: 'Treinamento',    label: 'Regras de atendimento explicadas' },
+  { id: 'trei_epi',             categoria: 'Treinamento',    label: 'Uniforme e EPI entregues' },
+  { id: 'trei_faxina',          categoria: 'Treinamento',    label: 'Primeira faxina acompanhada (treinamento)' },
+  // Acompanhamento
+  { id: 'acomp_15d',            categoria: 'Acompanhamento', label: 'Avaliação com 15 dias realizada' },
+  { id: 'acomp_30d',            categoria: 'Acompanhamento', label: 'Avaliação com 30 dias realizada' },
+];
+
+function getOnboarding(id: string): Record<string, boolean> {
+  try {
+    const all = JSON.parse(localStorage.getItem(ONBOARDING_KEY) || '{}');
+    return all[id] ?? {};
+  } catch { return {}; }
+}
+function saveOnboarding(id: string, checks: Record<string, boolean>) {
+  try {
+    const all = JSON.parse(localStorage.getItem(ONBOARDING_KEY) || '{}');
+    all[id] = checks;
+    localStorage.setItem(ONBOARDING_KEY, JSON.stringify(all));
+  } catch {}
+}
 
 // ─── Labels & helpers ────────────────────────────────────────────────────────
 
@@ -114,7 +155,8 @@ export const AdminRHColaboradoras: React.FC = () => {
   const [form, setForm] = useState<ColaboradoraFormData>({ ...BLANK });
   const [copiedId, setCopiedId] = useState('');
   const [perfilAberto, setPerfilAberto] = useState<ColaboradoraRH | null>(null);
-  const [perfilTab, setPerfilTab] = useState<'dados' | 'comportamental' | 'diario' | 'avaliacoes'>('dados');
+  const [perfilTab, setPerfilTab] = useState<'dados' | 'comportamental' | 'diario' | 'avaliacoes' | 'onboarding'>('dados');
+  const [onboarding, setOnboarding] = useState<Record<string, boolean>>({});
   const photoRef = useRef<HTMLInputElement>(null);
   const contratoRef = useRef<HTMLInputElement>(null);
 
@@ -212,6 +254,14 @@ export const AdminRHColaboradoras: React.FC = () => {
   const abrirPerfil = (col: ColaboradoraRH) => {
     setPerfilAberto(col);
     setPerfilTab('dados');
+    setOnboarding(getOnboarding(col.id));
+  };
+
+  const toggleOnboarding = (itemId: string) => {
+    if (!perfilAberto) return;
+    const updated = { ...onboarding, [itemId]: !onboarding[itemId] };
+    setOnboarding(updated);
+    saveOnboarding(perfilAberto.id, updated);
   };
 
   const CargoBadge = ({ cargo }: { cargo: CargoRH }) => (
@@ -483,27 +533,32 @@ export const AdminRHColaboradoras: React.FC = () => {
 
               {/* Tabs */}
               <div className="flex border-b border-gray-100 dark:border-darkBorder shrink-0 overflow-x-auto">
-                {([
-                  { key: 'dados',          label: 'Dados',          icon: <User size={14}/> },
-                  { key: 'comportamental', label: 'Comportamental', icon: <BookOpen size={14}/> },
-                  { key: 'diario',         label: 'Diário',         icon: <MessageSquare size={14}/> },
-                  { key: 'avaliacoes',     label: 'Avaliações',     icon: <Star size={14}/> },
-                ] as const).map(tab => (
-                  <button key={tab.key} onClick={() => setPerfilTab(tab.key)}
-                    className={`flex items-center gap-1.5 px-4 py-3 text-xs font-bold whitespace-nowrap border-b-2 transition-colors ${
-                      perfilTab === tab.key
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-lightText dark:text-darkTextSecondary hover:text-darkText dark:hover:text-darkTextPrimary'
-                    }`}>
-                    {tab.icon} {tab.label}
-                    {tab.key === 'diario' && colObs.length > 0 && (
-                      <span className="ml-0.5 bg-primary text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{colObs.length}</span>
-                    )}
-                    {tab.key === 'avaliacoes' && colAvals.length > 0 && (
-                      <span className="ml-0.5 bg-yellow-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{colAvals.length}</span>
-                    )}
-                  </button>
-                ))}
+                {(() => {
+                  const onbDone = ONBOARDING_ITEMS.filter(i => onboarding[i.id]).length;
+                  const onbTotal = ONBOARDING_ITEMS.length;
+                  const onbPct = Math.round((onbDone / onbTotal) * 100);
+                  return ([
+                    { key: 'dados',          label: 'Dados',          icon: <User size={14}/>, badge: null },
+                    { key: 'comportamental', label: 'Comportamental', icon: <BookOpen size={14}/>, badge: null },
+                    { key: 'diario',         label: 'Diário',         icon: <MessageSquare size={14}/>, badge: colObs.length > 0 ? { count: colObs.length, color: 'bg-primary' } : null },
+                    { key: 'avaliacoes',     label: 'Avaliações',     icon: <Star size={14}/>, badge: colAvals.length > 0 ? { count: colAvals.length, color: 'bg-yellow-500' } : null },
+                    { key: 'onboarding',     label: 'Onboarding',     icon: <CheckSquare size={14}/>, badge: onbDone < onbTotal ? { count: `${onbPct}%`, color: onbPct === 100 ? 'bg-green-500' : 'bg-orange-400' } : { count: '✓', color: 'bg-green-500' } },
+                  ] as const).map(tab => (
+                    <button key={tab.key} onClick={() => setPerfilTab(tab.key)}
+                      className={`flex items-center gap-1.5 px-4 py-3 text-xs font-bold whitespace-nowrap border-b-2 transition-colors ${
+                        perfilTab === tab.key
+                          ? 'border-primary text-primary'
+                          : 'border-transparent text-lightText dark:text-darkTextSecondary hover:text-darkText dark:hover:text-darkTextPrimary'
+                      }`}>
+                      {tab.icon} {tab.label}
+                      {tab.badge && (
+                        <span className={`ml-0.5 ${tab.badge.color} text-white text-[9px] font-bold px-1.5 h-4 rounded-full flex items-center justify-center min-w-[1rem]`}>
+                          {tab.badge.count}
+                        </span>
+                      )}
+                    </button>
+                  ));
+                })()}
               </div>
 
               {/* Tab content */}
@@ -646,6 +701,28 @@ export const AdminRHColaboradoras: React.FC = () => {
                         <p className="text-sm text-lightText dark:text-darkTextSecondary bg-gray-50 dark:bg-darkBg rounded-xl p-3 leading-relaxed">{perfilAberto.observacoes}</p>
                       </div>
                     )}
+
+                    {/* Meta individual de faxinas */}
+                    <div className="bg-primary/5 border border-primary/15 rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary flex items-center gap-1.5">
+                          <Target size={13} className="text-primary" /> Meta mensal de faxinas
+                        </p>
+                        <button onClick={() => openEdit(perfilAberto)}
+                          className="text-[10px] text-primary font-bold hover:underline">
+                          Editar
+                        </button>
+                      </div>
+                      {perfilAberto.metaMensalFaxinas ? (
+                        <p className="text-2xl font-extrabold text-primary">{perfilAberto.metaMensalFaxinas}
+                          <span className="text-sm font-normal text-lightText dark:text-darkTextSecondary ml-1">faxinas/mês</span>
+                        </p>
+                      ) : (
+                        <p className="text-xs text-lightText dark:text-darkTextSecondary italic">
+                          Não definida — clique em Editar para configurar
+                        </p>
+                      )}
+                    </div>
 
                     {/* Bônus (só para Líder) */}
                     {perfilAberto.cargoAtual === CargoRH.LIDER && (() => {
@@ -901,6 +978,67 @@ export const AdminRHColaboradoras: React.FC = () => {
                     )}
                   </div>
                 )}
+
+                {/* ── Onboarding ── */}
+                {perfilTab === 'onboarding' && (() => {
+                  const done = ONBOARDING_ITEMS.filter(i => onboarding[i.id]).length;
+                  const total = ONBOARDING_ITEMS.length;
+                  const pct = Math.round((done / total) * 100);
+                  const categorias = [...new Set(ONBOARDING_ITEMS.map(i => i.categoria))];
+                  return (
+                    <div className="space-y-5">
+                      {/* Progress */}
+                      <div className={`rounded-2xl p-4 ${pct === 100 ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' : 'bg-primary/5 border border-primary/15'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <p className={`text-sm font-bold ${pct === 100 ? 'text-green-700 dark:text-green-400' : 'text-darkText dark:text-darkTextPrimary'}`}>
+                            {pct === 100 ? '🎉 Onboarding completo!' : `Progresso do onboarding`}
+                          </p>
+                          <span className={`text-sm font-extrabold ${pct === 100 ? 'text-green-600' : 'text-primary'}`}>{done}/{total}</span>
+                        </div>
+                        <div className="h-2.5 bg-gray-200 dark:bg-darkBorder rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all duration-500 ${pct === 100 ? 'bg-green-500' : 'bg-primary'}`} style={{ width: `${pct}%` }} />
+                        </div>
+                        {pct === 100 && (
+                          <p className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium">
+                            Todos os itens concluídos! {perfilAberto.nome.split(' ')[0]} está pronta para atuar. 💜
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Checklist por categoria */}
+                      {categorias.map(cat => {
+                        const items = ONBOARDING_ITEMS.filter(i => i.categoria === cat);
+                        const catDone = items.filter(i => onboarding[i.id]).length;
+                        return (
+                          <div key={cat} className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[11px] font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">{cat}</p>
+                              <span className="text-[10px] text-lightText">{catDone}/{items.length}</span>
+                            </div>
+                            <div className="space-y-1.5">
+                              {items.map(item => (
+                                <button key={item.id} onClick={() => toggleOnboarding(item.id)}
+                                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all ${
+                                    onboarding[item.id]
+                                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                                      : 'bg-gray-50 dark:bg-darkBg border-gray-200 dark:border-darkBorder hover:border-primary/40'
+                                  }`}>
+                                  {onboarding[item.id]
+                                    ? <CheckSquare size={16} className="text-green-500 shrink-0" />
+                                    : <Square size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />}
+                                  <span className={`text-sm flex-1 ${onboarding[item.id] ? 'line-through text-lightText dark:text-darkTextSecondary' : 'text-darkText dark:text-darkTextPrimary'}`}>
+                                    {item.label}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
               </div>
             </div>
           </div>
@@ -992,6 +1130,19 @@ const ColaboradoraForm: React.FC<FormProps> = ({ form, setForm, photoRef, contra
           <Upload size={16} /> Fazer upload do contrato
         </button>
       )}
+    </div>
+
+    {/* Meta individual */}
+    <div>
+      <SLabel>Meta mensal de faxinas <span className="font-normal text-lightText">(opcional)</span></SLabel>
+      <div className="flex items-center gap-2">
+        <SInput type="number" min="1" max="200"
+          value={(form as any).metaMensalFaxinas || ''}
+          placeholder="Ex: 25"
+          onChange={e => setForm(p => ({ ...p, metaMensalFaxinas: parseInt(e.target.value) || undefined } as any))} />
+        <span className="text-sm text-lightText dark:text-darkTextSecondary whitespace-nowrap">faxinas/mês</span>
+      </div>
+      <p className="text-[10px] text-lightText dark:text-darkTextSecondary mt-1">Usado no relatório Gendo para mostrar o progresso individual.</p>
     </div>
 
     {/* Observações */}

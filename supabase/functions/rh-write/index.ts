@@ -51,6 +51,7 @@ Deno.serve(async (req) => {
         pontos_fortes:           c.pontosFortes ?? null,
         areas_desenvolvimento:   c.areasDesenvolvimento ?? null,
         perfil_comportamental:   c.perfilComportamental ?? null,
+        meta_mensal_faxinas:     c.metaMensalFaxinas ?? null,
       };
 
       // If local ID (col_XXXX), insert fresh; if UUID, upsert by id
@@ -82,6 +83,7 @@ Deno.serve(async (req) => {
           cep:           c.cep ?? null,
           contrato_url:  c.contratoUrl ?? null,
           contrato_nome: c.contratoNome ?? null,
+          meta_mensal_faxinas: c.metaMensalFaxinas ?? null,
         };
         const isLocalId = c.id && c.id.startsWith('col_');
         if (isLocalId) {

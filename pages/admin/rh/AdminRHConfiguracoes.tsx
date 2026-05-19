@@ -955,6 +955,9 @@ export const AdminRHConfiguracoes: React.FC = () => {
                       onChange={e => setRelMeta(Math.max(1, Math.round(Number(e.target.value) || 1)))}
                       className="w-24 border border-primary/50 bg-primary/5 dark:bg-primary/10 rounded-xl px-3 py-2 text-sm font-bold text-primary text-center focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
+                    <p className="text-[10px] text-lightText dark:text-darkTextSecondary mt-1 leading-tight">
+                      Padrão global. Colaboradoras com meta individual cadastrada no perfil usam o valor próprio.
+                    </p>
                   </div>
                   <Button onClick={fetchRelatorio} disabled={relLoading}>
                     <RefreshCw size={14} className={`mr-2 ${relLoading ? 'animate-spin' : ''}`}/>
@@ -1017,7 +1020,8 @@ export const AdminRHConfiguracoes: React.FC = () => {
                                   c.nome.toLowerCase().includes(p.nome_responsavel.split(' ')[0].toLowerCase()) ||
                                   p.nome_responsavel.toLowerCase().includes(c.nome.split(' ')[0].toLowerCase())
                                 );
-                                const metaQtd = relMeta;
+                                // Use individual meta if the colaboradora has one; else fall back to global relMeta
+                                const metaQtd = colabMatch?.metaMensalFaxinas ?? relMeta;
                                 const bateu = p.count >= metaQtd;
                                 return (
                                   <tr key={p.id_responsavel} className="hover:bg-gray-50/50 dark:hover:bg-darkBg/50">
@@ -1043,9 +1047,14 @@ export const AdminRHConfiguracoes: React.FC = () => {
                                       </span>
                                     </td>
                                     <td className="px-4 py-3 text-center">
-                                      {bateu
-                                        ? <span className="text-xs font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">✅ Bateu</span>
-                                        : <span className="text-xs text-orange-500 font-bold bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded-full">⚠ Faltam {metaQtd - p.count}</span>}
+                                      <div className="flex flex-col items-center gap-0.5">
+                                        {bateu
+                                          ? <span className="text-xs font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">✅ Bateu</span>
+                                          : <span className="text-xs text-orange-500 font-bold bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded-full">⚠ Faltam {metaQtd - p.count}</span>}
+                                        {colabMatch?.metaMensalFaxinas
+                                          ? <span className="text-[9px] text-primary font-bold">meta individual: {metaQtd}</span>
+                                          : <span className="text-[9px] text-lightText">meta: {metaQtd}</span>}
+                                      </div>
                                     </td>
                                   </tr>
                                 );

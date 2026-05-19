@@ -15,10 +15,12 @@ import {
 // ─── Pipeline ─────────────────────────────────────────────────────────────────
 
 export type EtapaCandidatura =
+  | 'CONTATO_INICIAL'
   | 'TRIAGEM'
   | 'ENTREVISTA_AGENDADA'
   | 'ENTREVISTADA'
   | 'AVALIACAO'
+  | 'DOCUMENTACAO'
   | 'ABRINDO_MEI'
   | 'CONTRATADA';
 
@@ -29,19 +31,31 @@ interface PipelineExtra {
   demandasRealizadas: number; // 0-3
   anotacoes: Array<{ id: string; texto: string; criadoEm: string }>;
   dadosFormulario?: string; // respostas do formulário de triagem
+  documentosChecklist?: Record<string, boolean>; // DOCUMENTACAO stage checklist
 }
 
 const ETAPA_CONFIG: Record<EtapaCandidatura, { label: string; short: string; color: string; icon: string }> = {
+  CONTATO_INICIAL:     { label: 'Contato Inicial',     short: 'Contato',      color: 'bg-indigo-500', icon: '📱' },
   TRIAGEM:             { label: 'Triagem',             short: 'Triagem',      color: 'bg-gray-400',   icon: '📋' },
   ENTREVISTA_AGENDADA: { label: 'Entrevista Agendada', short: 'Entrevista',   color: 'bg-blue-500',   icon: '📅' },
   ENTREVISTADA:        { label: 'Entrevistada',        short: 'Entrevistada', color: 'bg-cyan-500',   icon: '✅' },
   AVALIACAO:           { label: 'Em Avaliação',        short: 'Avaliação',    color: 'bg-amber-500',  icon: '⭐' },
+  DOCUMENTACAO:        { label: 'Documentação',        short: 'Docs',         color: 'bg-teal-500',   icon: '📄' },
   ABRINDO_MEI:         { label: 'Abrindo MEI',         short: 'MEI',          color: 'bg-orange-500', icon: '📝' },
   CONTRATADA:          { label: 'Contratada!',         short: 'Contratada',   color: 'bg-green-500',  icon: '🎉' },
 };
 
 const ETAPA_ORDER: EtapaCandidatura[] = [
-  'TRIAGEM', 'ENTREVISTA_AGENDADA', 'ENTREVISTADA', 'AVALIACAO', 'ABRINDO_MEI', 'CONTRATADA',
+  'CONTATO_INICIAL', 'TRIAGEM', 'ENTREVISTA_AGENDADA', 'ENTREVISTADA', 'AVALIACAO', 'DOCUMENTACAO', 'ABRINDO_MEI', 'CONTRATADA',
+];
+
+const DOCS_CHECKLIST: { id: string; label: string; required: boolean }[] = [
+  { id: 'rg_cnh',        label: 'RG ou CNH',                  required: true },
+  { id: 'cpf',           label: 'CPF',                        required: true },
+  { id: 'comprovante',   label: 'Comprovante de residência',   required: true },
+  { id: 'foto',          label: 'Foto de perfil',             required: true },
+  { id: 'dados_banco',   label: 'Dados bancários (PIX/conta)', required: true },
+  { id: 'cert_nasc',     label: 'Certidão de nasc./casamento', required: false },
 ];
 
 const PIPELINE_KEY = 'rh_candidata_pipeline';
@@ -49,8 +63,8 @@ const PIPELINE_KEY = 'rh_candidata_pipeline';
 function getPipeline(id: string): PipelineExtra {
   try {
     const all = JSON.parse(localStorage.getItem(PIPELINE_KEY) || '{}');
-    return all[id] ?? { etapa: 'TRIAGEM', demandasRealizadas: 0, anotacoes: [] };
-  } catch { return { etapa: 'TRIAGEM', demandasRealizadas: 0, anotacoes: [] }; }
+    return all[id] ?? { etapa: 'CONTATO_INICIAL', demandasRealizadas: 0, anotacoes: [], documentosChecklist: {} };
+  } catch { return { etapa: 'CONTATO_INICIAL', demandasRealizadas: 0, anotacoes: [], documentosChecklist: {} }; }
 }
 
 function savePipeline(id: string, data: PipelineExtra) {
@@ -165,7 +179,7 @@ export const AdminRHContratacao: React.FC = () => {
   const [savedOk, setSavedOk] = useState(false);
 
   // Pipeline state for the open drawer
-  const [pipeline, setPipeline] = useState<PipelineExtra>({ etapa: 'TRIAGEM', demandasRealizadas: 0, anotacoes: [] });
+  const [pipeline, setPipeline] = useState<PipelineExtra>({ etapa: 'CONTATO_INICIAL', demandasRealizadas: 0, anotacoes: [], documentosChecklist: {} });
   const [novaAnotacao, setNovaAnotacao] = useState('');
   const [showAnotacoes, setShowAnotacoes] = useState(false);
 
@@ -200,9 +214,10 @@ export const AdminRHContratacao: React.FC = () => {
     })();
     const lsPipeline = getPipeline(c.id);
     // Merge: supabase wins for pipeline state, but preserve dadosFormulario text
+    const defaultExtra: Partial<PipelineExtra> = { documentosChecklist: {} };
     const merged: PipelineExtra = fromSupabase
-      ? { ...lsPipeline, ...fromSupabase }
-      : { ...lsPipeline, dadosFormulario: c.dadosFormulario || '' };
+      ? { ...defaultExtra, ...lsPipeline, ...fromSupabase }
+      : { ...defaultExtra, ...lsPipeline, dadosFormulario: c.dadosFormulario || '' };
     setPipeline(merged);
     setEditando(false);
     setNovaAnotacao('');
@@ -436,6 +451,36 @@ export const AdminRHContratacao: React.FC = () => {
                   {/* Pipeline stages */}
                   <PipelineBar etapa={pipeline.etapa} onChange={updateEtapa} />
 
+                  {/* Contato inicial */}
+                  {pipeline.etapa === 'CONTATO_INICIAL' && (
+                    <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">📱</span>
+                        <p className="text-sm font-bold text-indigo-800 dark:text-indigo-300">Contato Inicial</p>
+                      </div>
+                      <div className="space-y-2 text-xs text-indigo-700 dark:text-indigo-300">
+                        <p className="font-bold">Checklist de primeiro contato:</p>
+                        <ul className="space-y-1.5 pl-1">
+                          {[
+                            'Apresentar a empresa e modelo de trabalho (MEI)',
+                            'Explicar a remuneração (diária + passagem)',
+                            'Verificar disponibilidade de horários',
+                            'Confirmar interesse na vaga',
+                            'Agendar entrevista presencial',
+                          ].map((item, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <span className="mt-0.5 shrink-0">✦</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <p className="text-[10px] text-indigo-500 dark:text-indigo-400 italic">
+                        Após confirmar interesse, avance para Triagem e preencha o formulário abaixo.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Agendamento de entrevista */}
                   {(pipeline.etapa === 'ENTREVISTA_AGENDADA' || pipeline.etapa === 'ENTREVISTADA') && (
                     <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-4 space-y-3">
@@ -496,6 +541,48 @@ export const AdminRHContratacao: React.FC = () => {
                         <div className="flex items-center gap-2 bg-green-100 dark:bg-green-900/30 rounded-xl px-3 py-2 text-green-700 dark:text-green-400 text-xs font-bold">
                           <CheckCircle size={13} />
                           3 demandas concluídas! Avançar para abertura do MEI.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Documentação */}
+                  {pipeline.etapa === 'DOCUMENTACAO' && (
+                    <div className="bg-teal-50 dark:bg-teal-900/20 rounded-2xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">📄</span>
+                          <p className="text-sm font-bold text-teal-800 dark:text-teal-300">Documentação</p>
+                        </div>
+                        <span className="text-xs font-bold text-teal-700 dark:text-teal-400">
+                          {Object.values(pipeline.documentosChecklist || {}).filter(Boolean).length}/{DOCS_CHECKLIST.length}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {DOCS_CHECKLIST.map(doc => {
+                          const checked = !!(pipeline.documentosChecklist || {})[doc.id];
+                          return (
+                            <button key={doc.id}
+                              onClick={() => setPipeline(prev => ({
+                                ...prev,
+                                documentosChecklist: { ...(prev.documentosChecklist || {}), [doc.id]: !checked },
+                              }))}
+                              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 transition-all text-left ${
+                                checked
+                                  ? 'bg-teal-500 border-teal-500 text-white'
+                                  : 'bg-white dark:bg-darkBg border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 hover:border-teal-400'
+                              }`}>
+                              <span className="text-base shrink-0">{checked ? '✅' : '⬜'}</span>
+                              <span className="text-xs font-bold flex-1">{doc.label}</span>
+                              {!doc.required && <span className="text-[9px] opacity-70 font-normal">(opcional)</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {Object.values(pipeline.documentosChecklist || {}).filter(Boolean).length === DOCS_CHECKLIST.length && (
+                        <div className="flex items-center gap-2 bg-teal-100 dark:bg-teal-900/30 rounded-xl px-3 py-2 text-teal-700 dark:text-teal-400 text-xs font-bold">
+                          <CheckCircle size={13} />
+                          Todos os documentos coletados! Avançar para abertura do MEI.
                         </div>
                       )}
                     </div>
@@ -674,6 +761,7 @@ export const AdminRHContratacao: React.FC = () => {
           </Button>
         </div>
       </Modal>
+      </div>{/* /space-y-5 */}
     </Layout>
   );
 };
