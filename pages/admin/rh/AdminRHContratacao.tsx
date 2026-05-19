@@ -28,6 +28,7 @@ interface PipelineExtra {
   entrevistaHorario?: string;
   demandasRealizadas: number; // 0-3
   anotacoes: Array<{ id: string; texto: string; criadoEm: string }>;
+  dadosFormulario?: string; // respostas do formulário de triagem
 }
 
 const ETAPA_CONFIG: Record<EtapaCandidatura, { label: string; short: string; color: string; icon: string }> = {
@@ -75,7 +76,7 @@ const STATUS_ORDER: StatusCandidataRH[] = ['NOVA', 'EM_PROCESSO', 'APROVADA', 'R
 type FormData = Omit<CandidataRH, 'id' | 'createdAt' | 'updatedAt'>;
 
 const BLANK: FormData = {
-  nome: '', data: new Date().toISOString().split('T')[0],
+  nome: '', data: new Date().toLocaleDateString('sv-SE'),
   telefone: '', status: 'NOVA',
   dadosFormulario: '', notasEntrevista: '', observacoes: '',
 };
@@ -188,14 +189,32 @@ export const AdminRHContratacao: React.FC = () => {
 
   const openAberta = (c: CandidataRH) => {
     setAberta(c);
-    setDocForm({ dadosFormulario: c.dadosFormulario || '', notasEntrevista: c.notasEntrevista || '', status: c.status, observacoes: c.observacoes || '' });
-    setPipeline(getPipeline(c.id));
+    setDocForm({ notasEntrevista: c.notasEntrevista || '', status: c.status, observacoes: c.observacoes || '' });
+    // Restore pipeline: try Supabase (dados_formulario as JSON) → localStorage → default
+    const fromSupabase = (() => {
+      try {
+        const p = JSON.parse(c.dadosFormulario || '');
+        if (p && p.etapa) return p as PipelineExtra;
+      } catch {}
+      return null;
+    })();
+    const lsPipeline = getPipeline(c.id);
+    // Merge: supabase wins for pipeline state, but preserve dadosFormulario text
+    const merged: PipelineExtra = fromSupabase
+      ? { ...lsPipeline, ...fromSupabase }
+      : { ...lsPipeline, dadosFormulario: c.dadosFormulario || '' };
+    setPipeline(merged);
     setEditando(false);
     setNovaAnotacao('');
   };
 
+  const [formError, setFormError] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
   const handleAdd = async () => {
-    if (!form.nome || !form.data) { alert('Nome e data são obrigatórios.'); return; }
+    if (!form.nome.trim()) { setFormError('Nome é obrigatório.'); return; }
+    if (!form.data) { setFormError('Data é obrigatória.'); return; }
+    setFormError('');
     await addCandidatura(form);
     setForm({ ...BLANK });
     setShowAdd(false);
@@ -204,9 +223,11 @@ export const AdminRHContratacao: React.FC = () => {
   const handleSaveDoc = async () => {
     if (!aberta) return;
     setSaving(true);
-    await updateCandidatura(aberta.id, docForm);
-    savePipeline(aberta.id, pipeline);
-    setAberta(prev => prev ? { ...prev, ...docForm } : prev);
+    // Serialize pipeline to dados_formulario so it persists in Supabase (survives cache clear)
+    const withPipeline = { ...docForm, dadosFormulario: JSON.stringify(pipeline) };
+    await updateCandidatura(aberta.id, withPipeline);
+    savePipeline(aberta.id, pipeline); // keep localStorage copy as fast-read cache
+    setAberta(prev => prev ? { ...prev, ...withPipeline } : prev);
     setSaving(false);
     setEditando(false);
     setSavedOk(true);
@@ -214,9 +235,9 @@ export const AdminRHContratacao: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Excluir esta candidatura? Esta ação não pode ser desfeita.')) return;
     await deleteCandidatura(id);
     setAberta(null);
+    setConfirmDelete(null);
   };
 
   const updateEtapa = (etapa: EtapaCandidatura) => {
@@ -337,8 +358,9 @@ export const AdminRHContratacao: React.FC = () => {
               <Input label="Telefone" value={form.telefone || ''} onChange={e => setForm(p => ({ ...p, telefone: e.target.value }))} />
             </div>
           </div>
-          <div className="flex gap-3 mt-6">
-            <Button variant="outline" fullWidth onClick={() => setShowAdd(false)}>Cancelar</Button>
+          {formError && <p className="mt-2 text-xs font-bold text-red-500">{formError}</p>}
+          <div className="flex gap-3 mt-4">
+            <Button variant="outline" fullWidth onClick={() => { setShowAdd(false); setFormError(''); }}>Cancelar</Button>
             <Button fullWidth onClick={handleAdd}>Criar</Button>
           </div>
         </Modal>
@@ -393,7 +415,7 @@ export const AdminRHContratacao: React.FC = () => {
                       className={`p-2 rounded-xl transition-colors ${editando ? 'bg-white/30' : 'hover:bg-white/20'}`}>
                       <Edit size={16} />
                     </button>
-                    <button onClick={() => handleDelete(aberta.id)}
+                    <button onClick={() => setConfirmDelete(aberta.id)}
                       className="p-2 hover:bg-red-500/30 rounded-xl transition-colors">
                       <Trash2 size={16} />
                     </button>
@@ -583,8 +605,8 @@ export const AdminRHContratacao: React.FC = () => {
                       Cole aqui as respostas do Google Forms ou qualquer outro questionário de triagem.
                     </p>
                     <textarea
-                      value={docForm.dadosFormulario ?? ''}
-                      onChange={e => setDocForm(p => ({ ...p, dadosFormulario: e.target.value }))}
+                      value={pipeline.dadosFormulario ?? ''}
+                      onChange={e => setPipeline(p => ({ ...p, dadosFormulario: e.target.value }))}
                       rows={8}
                       placeholder={"Respostas do formulário de candidatura...\n\nEx:\nNome: Maria Silva\nIdade: 28\nExperiência: 3 anos como diarista\nDisponibilidade: Segunda a sexta\nComo conheceu: Instagram\n..."}
                       className="w-full border border-input bg-gray-50 dark:bg-darkBg rounded-xl px-4 py-3 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none font-mono leading-relaxed"
@@ -637,7 +659,21 @@ export const AdminRHContratacao: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
+      {/* Modal confirmação de exclusão */}
+      <Modal isOpen={!!confirmDelete} onClose={() => setConfirmDelete(null)} title="Excluir candidatura?">
+        <div className="flex items-start gap-3 mb-5">
+          <AlertCircle size={20} className="text-red-500 shrink-0 mt-0.5" />
+          <p className="text-sm text-darkText dark:text-darkTextPrimary">
+            Esta ação não pode ser desfeita. Todas as anotações e dados do pipeline serão perdidos.
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline" fullWidth onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+          <Button variant="destructive" fullWidth onClick={() => confirmDelete && handleDelete(confirmDelete)}>
+            Sim, excluir
+          </Button>
+        </div>
+      </Modal>
     </Layout>
   );
 };

@@ -119,7 +119,7 @@ export const AdminRHColaboradoras: React.FC = () => {
   const contratoRef = useRef<HTMLInputElement>(null);
 
   // Obs form
-  const [obsForm, setObsForm] = useState({ tipo: 'POSITIVA' as ObservacaoColaboradora['tipo'], titulo: '', descricao: '', data: new Date().toISOString().split('T')[0], registradoPor: '' });
+  const [obsForm, setObsForm] = useState({ tipo: 'POSITIVA' as ObservacaoColaboradora['tipo'], titulo: '', descricao: '', data: new Date().toLocaleDateString('sv-SE'), registradoPor: '' });
   const [showObsForm, setShowObsForm] = useState(false);
 
   const handleCopy = (id: string) => {
@@ -174,16 +174,24 @@ export const AdminRHColaboradoras: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
+  const [formError, setFormError] = useState('');
+
   const handleSave = async () => {
-    if (!form.nome || !form.dataAdmissao) { alert('Nome e data de admissão são obrigatórios.'); return; }
+    if (!form.nome.trim()) { setFormError('Nome é obrigatório.'); return; }
+    if (!form.dataAdmissao) { setFormError('Data de admissão é obrigatória.'); return; }
+    setFormError('');
     await addColaboradora(form);
     setShowAdd(false);
   };
 
   const handleUpdate = async () => {
     if (!editing) return;
-    await updateColaboradora(editing.id, { ...form, foto: editing.foto });
-    if (perfilAberto?.id === editing.id) setPerfilAberto(prev => prev ? { ...prev, ...form, foto: editing.foto } : prev);
+    const updated = { ...form, foto: editing.foto ?? form.foto };
+    await updateColaboradora(editing.id, updated);
+    // Sync drawer immediately so user sees the change without re-opening
+    if (perfilAberto?.id === editing.id) {
+      setPerfilAberto(prev => prev ? { ...prev, ...updated, id: editing.id, createdAt: prev.createdAt, updatedAt: new Date().toISOString() } : prev);
+    }
     setEditing(null);
   };
 
@@ -197,7 +205,7 @@ export const AdminRHColaboradoras: React.FC = () => {
   const handleAddObs = async () => {
     if (!perfilAberto || !obsForm.titulo) return;
     await addObservacao({ ...obsForm, colaboradoraId: perfilAberto.id });
-    setObsForm({ tipo: 'POSITIVA', titulo: '', descricao: '', data: new Date().toISOString().split('T')[0], registradoPor: '' });
+    setObsForm({ tipo: 'POSITIVA', titulo: '', descricao: '', data: new Date().toLocaleDateString('sv-SE'), registradoPor: '' });
     setShowObsForm(false);
   };
 
@@ -403,8 +411,9 @@ export const AdminRHColaboradoras: React.FC = () => {
         {/* Modal Add */}
         <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Nova Colaboradora">
           <ColaboradoraForm form={form} setForm={setForm} photoRef={photoRef} contratoRef={contratoRef} onPhotoSelect={file => handlePhoto(file, false)} onContratoSelect={handleContrato} />
-          <div className="flex gap-3 mt-6">
-            <Button variant="outline" fullWidth onClick={() => setShowAdd(false)}>Cancelar</Button>
+          {formError && <p className="mt-2 text-xs font-bold text-red-500">{formError}</p>}
+          <div className="flex gap-3 mt-4">
+            <Button variant="outline" fullWidth onClick={() => { setShowAdd(false); setFormError(''); }}>Cancelar</Button>
             <Button fullWidth onClick={handleSave}>Salvar</Button>
           </div>
         </Modal>
