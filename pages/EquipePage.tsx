@@ -153,9 +153,13 @@ export const EquipePage: React.FC = () => {
 
   // ── EMBED mode: only cards, no chrome ─────────────────────────────────────
   if (isEmbed) {
-    if (loading) return spinner;
+    if (loading) return (
+      <div className="flex items-center justify-center p-8">
+        <div className="w-8 h-8 border-3 border-purple-100 border-t-purple-600 rounded-full animate-spin" />
+      </div>
+    );
     return (
-      <div className="bg-gray-50 font-sans p-4">
+      <div className="font-sans p-4" style={{ background: 'transparent' }}>
         <TeamCards colabs={colabs} avaliacoes={avaliacoes} />
       </div>
     );

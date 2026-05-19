@@ -105,6 +105,8 @@ export const AdminRHColaboradoras: React.FC = () => {
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const [search, setSearch] = useState('');
+  const [filterCargo, setFilterCargo] = useState<CargoRH | 'TODOS'>('TODOS');
+  const [filterTempo, setFilterTempo] = useState<'TODOS' | 'lt6' | '6a12' | '1a2a' | 'gt2a'>('TODOS');
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<ColaboradoraRH | null>(null);
   const [form, setForm] = useState<ColaboradoraFormData>({ ...BLANK });
@@ -124,7 +126,18 @@ export const AdminRHColaboradoras: React.FC = () => {
     setTimeout(() => setCopiedId(''), 2000);
   };
 
-  const filtered = colaboradoras.filter(c => c.nome.toLowerCase().includes(search.toLowerCase()));
+  const filtered = colaboradoras.filter(c => {
+    if (!c.nome.toLowerCase().includes(search.toLowerCase())) return false;
+    if (filterCargo !== 'TODOS' && c.cargoAtual !== filterCargo) return false;
+    if (filterTempo !== 'TODOS') {
+      const m = getMesesNaEmpresa(c.dataAdmissao);
+      if (filterTempo === 'lt6'  && m >= 6)   return false;
+      if (filterTempo === '6a12' && (m < 6 || m >= 12))  return false;
+      if (filterTempo === '1a2a' && (m < 12 || m >= 24)) return false;
+      if (filterTempo === 'gt2a' && m < 24)   return false;
+    }
+    return true;
+  });
 
   const openAdd = () => { setForm({ ...BLANK }); setShowAdd(true); };
   const openEdit = (c: ColaboradoraRH) => {
@@ -239,6 +252,40 @@ export const AdminRHColaboradoras: React.FC = () => {
 
         {/* Search */}
         <Input placeholder="Buscar por nome..." value={search} onChange={e => setSearch(e.target.value)} icon={<Search size={16} />} />
+
+        {/* Filtro por cargo */}
+        <div className="space-y-2">
+          <p className="text-[11px] font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Cargo</p>
+          <div className="flex flex-wrap gap-2">
+            {(['TODOS', 'JUNIOR', 'SENIOR', 'PROFISSIONAL', 'LIDER', 'GERENTE'] as const).map(c => (
+              <button key={c}
+                onClick={() => setFilterCargo(c as CargoRH | 'TODOS')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterCargo === c ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-gray-200 dark:hover:bg-darkBorder'}`}>
+                {c === 'TODOS' ? 'Todos' : c === 'JUNIOR' ? 'Auxiliar' : c === 'SENIOR' ? 'Faxineira' : c === 'PROFISSIONAL' ? 'Profissional' : c === 'LIDER' ? 'Líder' : 'Gerente'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Filtro por tempo na empresa */}
+        <div className="space-y-2">
+          <p className="text-[11px] font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Tempo na empresa</p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: 'TODOS', label: 'Todos' },
+              { key: 'lt6',   label: '< 6 meses' },
+              { key: '6a12',  label: '6 – 12 meses' },
+              { key: '1a2a',  label: '1 – 2 anos' },
+              { key: 'gt2a',  label: '+ 2 anos' },
+            ].map(({ key, label }) => (
+              <button key={key}
+                onClick={() => setFilterTempo(key as any)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterTempo === key ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-gray-200 dark:hover:bg-darkBorder'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* List */}
         {rhLoading ? (
