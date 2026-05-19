@@ -205,6 +205,35 @@ Deno.serve(async (req) => {
       return json200({ ok: true });
     }
 
+    // ── Read all admin data (bypasses RLS with SERVICE_ROLE_KEY) ─────────────
+    if (action === 'get_admin_data') {
+      const [colRes, desRes, proRes, bonRes, cfgBonRes, cfgRemRes, cfgCriRes, avalRes, obsRes, candRes] = await Promise.all([
+        supabase.from('colaboradoras_rh').select('*').order('nome'),
+        supabase.from('desempenho_mensal').select('*').order('ano').order('mes'),
+        supabase.from('promocoes_rh').select('*').order('data_promocao', { ascending: false }),
+        supabase.from('bonus_mensal').select('*').order('ano').order('mes'),
+        supabase.from('configuracao_bonus_lider').select('*').order('created_at', { ascending: false }),
+        supabase.from('configuracao_remuneracao').select('*').order('created_at', { ascending: false }),
+        supabase.from('configuracao_criterios_promocao').select('*').order('created_at', { ascending: false }),
+        supabase.from('avaliacoes_clientes').select('*').order('created_at', { ascending: false }),
+        supabase.from('observacoes_colaboradoras').select('*').order('data', { ascending: false }),
+        supabase.from('candidatas_rh').select('*').order('created_at', { ascending: false }),
+      ]);
+      return json200({
+        ok: true,
+        colaboradoras:     colRes.data    || [],
+        desempenho:        desRes.data    || [],
+        promocoes:         proRes.data    || [],
+        bonus:             bonRes.data    || [],
+        configBonus:       cfgBonRes.data || [],
+        configRemuneracao: cfgRemRes.data || [],
+        configCriterios:   cfgCriRes.data || [],
+        avaliacoes:        avalRes.data   || [],
+        observacoes:       obsRes.data    || [],
+        candidatas:        candRes.data   || [],
+      });
+    }
+
     return json200({ ok: false, error: 'Unknown action: ' + action });
   } catch (e) {
     return json200({ ok: false, error: String(e) });

@@ -345,31 +345,25 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const loadAll = async () => {
     setRhLoading(true);
     try {
-      const [colRes, desRes, proRes, bonRes, cfgBonRes, cfgRemRes, cfgCriRes, avalRes, obsRes, candRes] = await Promise.all([
-        supabase.from('colaboradoras_rh').select('*').order('nome'),
-        supabase.from('desempenho_mensal').select('*').order('ano,mes'),
-        supabase.from('promocoes_rh').select('*').order('data_promocao', { ascending: false }),
-        supabase.from('bonus_mensal').select('*').order('ano,mes'),
-        supabase.from('configuracao_bonus_lider').select('*').order('created_at', { ascending: false }),
-        supabase.from('configuracao_remuneracao').select('*').order('created_at', { ascending: false }),
-        supabase.from('configuracao_criterios_promocao').select('*').order('created_at', { ascending: false }),
-        supabase.from('avaliacoes_clientes').select('*').order('created_at', { ascending: false }),
-        supabase.from('observacoes_colaboradoras').select('*').order('data', { ascending: false }),
-        supabase.from('candidatas_rh').select('*').order('created_at', { ascending: false }),
-      ]);
+      // Primary: use rh-write/get_admin_data which bypasses RLS with SERVICE_ROLE_KEY
+      // This ensures mobile/new devices always see all data without needing localStorage
+      const adminRes = await supabase.functions.invoke('rh-write', {
+        body: { action: 'get_admin_data' },
+      });
 
-      if (colRes.error) throw colRes.error;
+      if (!adminRes.data?.ok) throw new Error('get_admin_data failed');
 
-      const cols = (colRes.data || []).map(mapColaboradora);
-      const des = (desRes.data || []).map(mapDesempenho);
-      const pros = (proRes.data || []).map(mapPromocao);
-      const bons = (bonRes.data || []).map(mapBonusMensal);
-      const cfgBons = (cfgBonRes.data || []).map(mapConfigBonus);
-      const cfgRems = (cfgRemRes.data || []).map(mapRemuneracao);
-      const cfgCris = (cfgCriRes.data || []).map(mapCriterios);
-      const avals = (avalRes.data || []).map(mapAvaliacao);
-      const obs = (obsRes.data || []).map(mapObservacao);
-      const cands = (!candRes.error && candRes.data?.length) ? (candRes.data || []).map(mapCandidatura) : lsGet<CandidataRH[]>('rh_candidatas', []);
+      const d = adminRes.data;
+      const cols     = (d.colaboradoras    || []).map(mapColaboradora);
+      const des      = (d.desempenho       || []).map(mapDesempenho);
+      const pros     = (d.promocoes        || []).map(mapPromocao);
+      const bons     = (d.bonus            || []).map(mapBonusMensal);
+      const cfgBons  = (d.configBonus      || []).map(mapConfigBonus);
+      const cfgRems  = (d.configRemuneracao|| []).map(mapRemuneracao);
+      const cfgCris  = (d.configCriterios  || []).map(mapCriterios);
+      const avals    = (d.avaliacoes       || []).map(mapAvaliacao);
+      const obs      = (d.observacoes      || []).map(mapObservacao);
+      const cands    = (d.candidatas       || []).map(mapCandidatura);
 
       // Active config: no vigenciaFim
       // Read LS first — used as fallback when Supabase returns empty (RLS blocks anon reads)

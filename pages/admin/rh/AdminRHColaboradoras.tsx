@@ -230,27 +230,33 @@ export const AdminRHColaboradoras: React.FC = () => {
     <Layout role={UserRole.ADMIN}>
       <div className="space-y-5">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-darkText dark:text-darkTextPrimary">Colaboradoras</h1>
             <p className="text-sm text-lightText dark:text-darkTextSecondary mt-0.5">{colaboradoras.length} cadastradas</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              title={hasPending ? 'Enviar dados locais para o banco' : 'Forçar sincronização com o banco'}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors disabled:opacity-60 ${
-                hasPending
-                  ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'
-                  : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100 dark:bg-darkBg dark:text-darkTextSecondary dark:border-darkBorder'
-              }`}
-            >
-              <CloudUpload size={14} className={syncing ? 'animate-pulse' : ''} />
-              {syncing ? 'Sincronizando…' : hasPending ? '⚠ Sincronizar' : 'Sincronizar'}
-            </button>
-            {syncMsg && <span className="text-xs text-gray-500 dark:text-gray-400">{syncMsg}</span>}
-            <Button icon={<UserPlus size={16} />} onClick={openAdd}>Nova</Button>
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                title={hasPending ? 'Enviar dados locais para o banco' : 'Forçar sincronização com o banco'}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors disabled:opacity-60 ${
+                  hasPending
+                    ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'
+                    : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100 dark:bg-darkBg dark:text-darkTextSecondary dark:border-darkBorder'
+                }`}
+              >
+                <CloudUpload size={14} className={syncing ? 'animate-pulse' : ''} />
+                {syncing ? 'Sincronizando…' : hasPending ? '⚠ Sincronizar' : 'Sincronizar'}
+              </button>
+              <Button icon={<UserPlus size={16} />} onClick={openAdd}>Nova</Button>
+            </div>
+            {syncMsg && (
+              <span className="text-[11px] text-gray-500 dark:text-gray-400 text-right leading-tight max-w-[200px]">
+                {syncMsg}
+              </span>
+            )}
           </div>
         </div>
 
