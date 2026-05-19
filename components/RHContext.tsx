@@ -372,9 +372,19 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const cands = (!candRes.error && candRes.data?.length) ? (candRes.data || []).map(mapCandidatura) : lsGet<CandidataRH[]>('rh_candidatas', []);
 
       // Active config: no vigenciaFim
-      const activeBonus = cfgBons.find(c => !c.vigenciaFim) ?? cfgBons[0] ?? DEFAULT_CONFIG_BONUS;
+      // Read LS first — used as fallback when Supabase returns empty (RLS blocks anon reads)
+      const lsBonusConfig = lsGet<ConfiguracaoBonusLider>('rh_config_bonus', DEFAULT_CONFIG_BONUS);
+      const lsRemConfig   = lsGet<ConfiguracaoRemuneracaoRH[]>('rh_config_remuneracao', DEFAULT_CONFIG_REMUNERACAO);
+      const lsCriConfig   = lsGet<ConfiguracaoCriteriosRH[]>('rh_config_criterios', DEFAULT_CONFIG_CRITERIOS);
+
+      const activeBonus = cfgBons.find(c => !c.vigenciaFim) ?? cfgBons[0] ?? lsBonusConfig;
       const activeRems = cfgRems.filter(c => !c.vigenciaFim);
       const activeCris = cfgCris.filter(c => !c.vigenciaFim);
+
+      // Use LS values when Supabase returned nothing (RLS blocked)
+      const finalBonus = activeBonus;
+      const finalRems  = activeRems.length  ? activeRems  : lsRemConfig;
+      const finalCris  = activeCris.length  ? activeCris  : lsCriConfig;
 
       // Merge Supabase + local-only (only col_XXX — never seeds, they're just fallback)
       const supabaseIds  = new Set(cols.map((c: ColaboradoraRH) => c.id));
@@ -402,10 +412,10 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       setDesempenhoMensal(finalDes);
       setPromocoes(finalPros);
       setBonusMensal(bons);
-      setHistoricoConfigBonus(cfgBons);
-      setConfigBonusLider(activeBonus);
-      setConfigRemuneracao(activeRems.length ? activeRems : DEFAULT_CONFIG_REMUNERACAO);
-      setConfigCriterios(activeCris.length ? activeCris : DEFAULT_CONFIG_CRITERIOS);
+      setHistoricoConfigBonus(cfgBons.length ? cfgBons : [finalBonus]);
+      setConfigBonusLider(finalBonus);
+      setConfigRemuneracao(finalRems);
+      setConfigCriterios(finalCris);
       setAvaliacoes(finalAvals);
       setObsColaboradoras(finalObs);
       setCandidatas(cands);
@@ -415,9 +425,10 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       if (finalDes.length)   lsSet('rh_desempenho', finalDes);
       if (finalPros.length)  lsSet('rh_promocoes', finalPros);
       if (bons.length)       lsSet('rh_bonus_mensal', bons);
-      lsSet('rh_config_bonus', activeBonus);
-      lsSet('rh_config_remuneracao', activeRems.length ? activeRems : DEFAULT_CONFIG_REMUNERACAO);
-      lsSet('rh_config_criterios', activeCris.length ? activeCris : DEFAULT_CONFIG_CRITERIOS);
+      // Only update LS config if Supabase returned real data (avoid overwriting saved values with defaults)
+      lsSet('rh_config_bonus', finalBonus);
+      if (activeRems.length) lsSet('rh_config_remuneracao', activeRems);
+      if (activeCris.length) lsSet('rh_config_criterios', activeCris);
       if (finalAvals.length) lsSet('rh_avaliacoes', finalAvals);
       if (finalObs.length)   lsSet('rh_obs_colaboradoras', finalObs);
       if (cands.length)      lsSet('rh_candidatas', cands);

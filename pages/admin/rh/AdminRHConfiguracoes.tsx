@@ -14,6 +14,14 @@ import {
 } from 'lucide-react';
 
 const TAB_KEYS = ['remuneracao', 'bonus', 'criterios', 'integracoes'] as const;
+
+const CARGO_LABEL: Record<string, string> = {
+  JUNIOR:       'Auxiliar de Limpeza',
+  SENIOR:       'Faxineira',
+  PROFISSIONAL: 'Faxineira Profissional',
+  LIDER:        'Líder de Equipe',
+  GERENTE:      'Gerente de Equipe',
+};
 type Tab = typeof TAB_KEYS[number];
 const TAB_LABELS: Record<Tab, string> = {
   remuneracao:  'Remuneração',
@@ -418,7 +426,7 @@ export const AdminRHConfiguracoes: React.FC = () => {
               <HistoricoSection>
                 {configRemuneracao.map(r => (
                   <div key={r.id} className="flex justify-between text-xs text-lightText dark:text-darkTextSecondary py-1.5 border-b border-gray-50 dark:border-darkBorder last:border-0">
-                    <span>{r.cargo} · vigência: {fmtDate(r.vigenciaInicio)}{r.vigenciaFim ? ` → ${fmtDate(r.vigenciaFim)}` : ' (atual)'}</span>
+                    <span>{CARGO_LABEL[r.cargo] ?? r.cargo} · vigência: {fmtDate(r.vigenciaInicio)}{r.vigenciaFim ? ` → ${fmtDate(r.vigenciaFim)}` : ' (atual)'}</span>
                     <span>4h={fmt(r.diaria4h)} · 6h={fmt(r.diaria6h)} · 8h={fmt(r.diaria8h)}</span>
                   </div>
                 ))}
@@ -811,7 +819,7 @@ export const AdminRHConfiguracoes: React.FC = () => {
               <HistoricoSection>
                 {configCriterios.map(c => (
                   <div key={c.id} className="text-xs text-lightText dark:text-darkTextSecondary py-1.5 border-b border-gray-50 dark:border-darkBorder last:border-0">
-                    {c.cargoOrigem}: min {c.tempoMinimoMeses} meses, {c.mesesSemReclamacoes} sem recl. · vigência: {fmtDate(c.vigenciaInicio)}{c.vigenciaFim ? ` → ${fmtDate(c.vigenciaFim)}` : ' (atual)'}
+                    {CARGO_LABEL[c.cargoOrigem] ?? c.cargoOrigem}: min {c.tempoMinimoMeses} meses, {c.mesesSemReclamacoes} sem recl. · vigência: {fmtDate(c.vigenciaInicio)}{c.vigenciaFim ? ` → ${fmtDate(c.vigenciaFim)}` : ' (atual)'}
                   </div>
                 ))}
               </HistoricoSection>
