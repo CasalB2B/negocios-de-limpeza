@@ -346,7 +346,7 @@ export const AdminRHContratacao: React.FC = () => {
         {/* Drawer de candidata */}
         {aberta && (
           <div className="fixed inset-0 z-50 flex items-stretch justify-end">
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleSaveDoc} />
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setAberta(null)} />
             <div className="relative w-full max-w-2xl bg-white dark:bg-darkSurface shadow-2xl flex flex-col h-full overflow-hidden animate-in slide-in-from-right-10">
 
               {/* Header */}
@@ -397,7 +397,7 @@ export const AdminRHContratacao: React.FC = () => {
                       className="p-2 hover:bg-red-500/30 rounded-xl transition-colors">
                       <Trash2 size={16} />
                     </button>
-                    <button onClick={handleSaveDoc}
+                    <button onClick={() => setAberta(null)}
                       className="p-2 hover:bg-white/20 rounded-xl transition-colors">
                       <X size={18} />
                     </button>
