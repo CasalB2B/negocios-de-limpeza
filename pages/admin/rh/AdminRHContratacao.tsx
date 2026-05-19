@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Layout } from '../../../components/Layout';
 import { UserRole } from '../../../types';
 import { useRH, CandidataRH, StatusCandidataRH } from '../../../components/RHContext';
@@ -9,8 +9,80 @@ import {
   UserPlus, Search, X, Trash2, Phone, Calendar,
   FileText, ClipboardList, ChevronRight, Edit, CheckCircle,
   Clock, StickyNote, Plus, ChevronDown, ChevronUp, Briefcase,
-  AlertCircle,
+  AlertCircle, Sparkles, ImageIcon, Upload,
 } from 'lucide-react';
+
+// ─── Gemini AI extraction ─────────────────────────────────────────────────────
+
+const GEMINI_KEY = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
+
+const EXTRACTION_PROMPT = `Você é um assistente de RH de uma empresa de limpeza doméstica.
+Analise este documento ou imagem e extraia TODOS os dados da candidata.
+
+Formate a resposta assim (inclua apenas campos que existem no documento):
+
+Nome:
+Idade:
+E-mail:
+WhatsApp/Telefone:
+Bairro/Cidade:
+CEP:
+Estado civil:
+Tem filhos:
+Escolaridade:
+Experiência profissional:
+Disponibilidade de horários:
+Tem transporte próprio:
+Como conheceu a empresa:
+Pretensão salarial:
+Observações:
+
+Não invente informações. Omita campos que não aparecem no documento.
+Se houver outras informações relevantes, adicione livremente ao final.`;
+
+async function extractWithGemini(file: File): Promise<string> {
+  if (!GEMINI_KEY) throw new Error('VITE_GEMINI_API_KEY não configurada.');
+
+  // Convert file to base64
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(',')[1]); // remove "data:...;base64," prefix
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const mimeType = file.type || 'image/jpeg';
+
+  const body = {
+    contents: [{
+      parts: [
+        { inline_data: { mime_type: mimeType, data: base64 } },
+        { text: EXTRACTION_PROMPT },
+      ],
+    }],
+    generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
+  };
+
+  const res = await fetch(GEMINI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `Gemini error ${res.status}`);
+  }
+
+  const json = await res.json();
+  const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('Resposta vazia do Gemini.');
+  return text.trim();
+}
 
 // ─── Pipeline ─────────────────────────────────────────────────────────────────
 
@@ -186,6 +258,12 @@ export const AdminRHContratacao: React.FC = () => {
   // Local editable state for the open drawer
   const [docForm, setDocForm] = useState<Partial<CandidataRH>>({});
 
+  // IA extraction
+  const [aiExtracting, setAiExtracting] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [aiSuccess, setAiSuccess] = useState(false);
+  const aiFileRef = useRef<HTMLInputElement>(null);
+
   const filtered = useMemo(() => {
     return candidatas
       .filter(c => filterStatus === 'TODAS' || c.status === filterStatus)
@@ -272,6 +350,31 @@ export const AdminRHContratacao: React.FC = () => {
 
   const toggleDemanda = (n: number) => {
     setPipeline(prev => ({ ...prev, demandasRealizadas: prev.demandasRealizadas === n ? n - 1 : n }));
+  };
+
+  // IA: extract data from image/PDF
+  const handleAiExtract = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = ''; // reset so same file can be picked again
+    setAiExtracting(true);
+    setAiError('');
+    setAiSuccess(false);
+    try {
+      const extracted = await extractWithGemini(file);
+      // Append to existing content (don't overwrite what the user already typed)
+      const current = pipeline.dadosFormulario?.trim() || '';
+      const newContent = current
+        ? `${current}\n\n─── Extraído com IA (${file.name}) ───\n${extracted}`
+        : `─── Extraído com IA (${file.name}) ───\n${extracted}`;
+      setPipeline(p => ({ ...p, dadosFormulario: newContent }));
+      setAiSuccess(true);
+      setTimeout(() => setAiSuccess(false), 3000);
+    } catch (err: any) {
+      setAiError(err.message || 'Erro ao processar com IA.');
+    } finally {
+      setAiExtracting(false);
+    }
   };
 
   // Auto-save pipeline on changes (debounced)
@@ -684,13 +787,52 @@ export const AdminRHContratacao: React.FC = () => {
 
                   {/* Dados do Formulário */}
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <ClipboardList size={15} className="text-primary" />
-                      <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">Dados do Formulário</p>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <ClipboardList size={15} className="text-primary" />
+                        <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">Dados do Formulário</p>
+                      </div>
+                      {/* IA extraction button */}
+                      <div className="flex items-center gap-2">
+                        <input
+                          ref={aiFileRef}
+                          type="file"
+                          accept="image/*,application/pdf"
+                          className="hidden"
+                          onChange={handleAiExtract}
+                        />
+                        <button
+                          onClick={() => { setAiError(''); aiFileRef.current?.click(); }}
+                          disabled={aiExtracting}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                            aiSuccess
+                              ? 'bg-green-50 text-green-600 border-green-200 dark:bg-green-900/20 dark:border-green-800'
+                              : 'bg-gradient-to-r from-primary/10 to-violet-500/10 text-primary border-primary/20 hover:from-primary/20 hover:to-violet-500/20'
+                          } disabled:opacity-60`}
+                          title="Envie uma foto, print ou PDF do formulário preenchido — a IA extrai os dados automaticamente"
+                        >
+                          {aiExtracting ? (
+                            <>
+                              <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                              Extraindo...
+                            </>
+                          ) : aiSuccess ? (
+                            <><CheckCircle size={12} /> Extraído!</>
+                          ) : (
+                            <><Sparkles size={12} /> Extrair com IA</>
+                          )}
+                        </button>
+                      </div>
                     </div>
                     <p className="text-xs text-lightText dark:text-darkTextSecondary">
-                      Cole aqui as respostas do Google Forms ou qualquer outro questionário de triagem.
+                      Cole o texto manualmente ou use o botão <strong className="text-primary">Extrair com IA</strong> para enviar uma foto/print/PDF do formulário.
                     </p>
+                    {aiError && (
+                      <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2 text-xs text-red-600 dark:text-red-400">
+                        <AlertCircle size={13} className="shrink-0 mt-0.5" />
+                        <span>{aiError}</span>
+                      </div>
+                    )}
                     <textarea
                       value={pipeline.dadosFormulario ?? ''}
                       onChange={e => setPipeline(p => ({ ...p, dadosFormulario: e.target.value }))}
@@ -698,6 +840,15 @@ export const AdminRHContratacao: React.FC = () => {
                       placeholder={"Respostas do formulário de candidatura...\n\nEx:\nNome: Maria Silva\nIdade: 28\nExperiência: 3 anos como diarista\nDisponibilidade: Segunda a sexta\nComo conheceu: Instagram\n..."}
                       className="w-full border border-input bg-gray-50 dark:bg-darkBg rounded-xl px-4 py-3 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none font-mono leading-relaxed"
                     />
+                    {/* Drop zone hint for images */}
+                    <button
+                      onClick={() => { setAiError(''); aiFileRef.current?.click(); }}
+                      disabled={aiExtracting}
+                      className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-primary/20 dark:border-primary/30 rounded-xl py-3 text-xs text-primary/60 hover:text-primary hover:border-primary/40 transition-colors font-bold disabled:opacity-50"
+                    >
+                      <ImageIcon size={14} />
+                      Arraste ou clique para enviar foto / print / PDF do formulário
+                    </button>
                   </div>
 
                   {/* Notas da Entrevista */}
