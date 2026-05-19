@@ -115,6 +115,84 @@ Deno.serve(async (req) => {
       return json200({ ok: true });
     }
 
+    // ── Save config remuneração ───────────────────────────────────────────────
+    if (action === 'upsert_config_remuneracao') {
+      // Close previous active configs
+      const { data: prevs } = await supabase
+        .from('configuracao_remuneracao')
+        .select('id')
+        .is('vigencia_fim', null);
+      for (const p of (prevs ?? [])) {
+        await supabase.from('configuracao_remuneracao')
+          .update({ vigencia_fim: new Date().toISOString().split('T')[0] })
+          .eq('id', p.id);
+      }
+      // Insert new items
+      for (const item of (data as any[])) {
+        await supabase.from('configuracao_remuneracao').insert({
+          cargo:           item.cargo,
+          diaria_4h:       item.diaria4h,
+          diaria_6h:       item.diaria6h,
+          diaria_8h:       item.diaria8h,
+          passagem:        item.passagem,
+          vigencia_inicio: item.vigenciaInicio,
+          alterado_por:    item.alteradoPor ?? null,
+        });
+      }
+      return json200({ ok: true });
+    }
+
+    // ── Save config bônus líder ───────────────────────────────────────────────
+    if (action === 'upsert_config_bonus') {
+      const d = data;
+      // Close previous active config
+      const { data: prevs } = await supabase
+        .from('configuracao_bonus_lider')
+        .select('id')
+        .is('vigencia_fim', null);
+      for (const p of (prevs ?? [])) {
+        await supabase.from('configuracao_bonus_lider')
+          .update({ vigencia_fim: new Date().toISOString().split('T')[0] })
+          .eq('id', p.id);
+      }
+      const { error } = await supabase.from('configuracao_bonus_lider').insert({
+        multiplicador_faxina:       d.multiplicadorFaxina,
+        bonus_avaliacao:            d.bonusAvaliacao,
+        bonus_avaliacao_5estrelas:  d.bonusAvaliacao5estrelas ?? null,
+        meta_avaliacao:             d.metaAvaliacao,
+        meta_faxinas_mes:           d.metaFaxinasMes,
+        salario_fixo:               d.salarioFixo,
+        vigencia_inicio:            d.vigenciaInicio,
+        alterado_por:               d.alteradoPor ?? null,
+      });
+      if (error) return json200({ ok: false, error: error.message });
+      return json200({ ok: true });
+    }
+
+    // ── Save config critérios de promoção ─────────────────────────────────────
+    if (action === 'upsert_config_criterios') {
+      const { data: prevs } = await supabase
+        .from('configuracao_criterios_promocao')
+        .select('id')
+        .is('vigencia_fim', null);
+      for (const p of (prevs ?? [])) {
+        await supabase.from('configuracao_criterios_promocao')
+          .update({ vigencia_fim: new Date().toISOString().split('T')[0] })
+          .eq('id', p.id);
+      }
+      for (const item of (data as any[])) {
+        await supabase.from('configuracao_criterios_promocao').insert({
+          cargo_origem:                 item.cargoOrigem,
+          tempo_minimo_meses:           item.tempoMinimoMeses,
+          meses_sem_reclamacoes:        item.mesesSemReclamacoes,
+          meses_consecutivos_meta:      item.mesesConsecutivosMetaBatida,
+          vigencia_inicio:              item.vigenciaInicio,
+          alterado_por:                 item.alteradoPor ?? null,
+        });
+      }
+      return json200({ ok: true });
+    }
+
     return json200({ ok: false, error: 'Unknown action: ' + action });
   } catch (e) {
     return json200({ ok: false, error: String(e) });

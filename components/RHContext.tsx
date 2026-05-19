@@ -696,16 +696,8 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const newId = `cfg_${Date.now()}`;
     const item: ConfiguracaoBonusLider = { ...data, id: newId, createdAt: new Date().toISOString() };
     try {
-      // Close previous config
-      if (configBonusLider && configBonusLider.id !== 'default') {
-        await supabase.from('configuracao_bonus_lider').update({ vigencia_fim: new Date().toISOString().split('T')[0] }).eq('id', configBonusLider.id);
-      }
-      await supabase.from('configuracao_bonus_lider').insert({
-        multiplicador_faxina: data.multiplicadorFaxina, bonus_avaliacao: data.bonusAvaliacao,
-        bonus_avaliacao_5estrelas: data.bonusAvaliacao5estrelas ?? null,
-        meta_avaliacao: data.metaAvaliacao, meta_faxinas_mes: data.metaFaxinasMes,
-        salario_fixo: data.salarioFixo, vigencia_inicio: data.vigenciaInicio,
-        alterado_por: data.alteradoPor,
+      await supabase.functions.invoke('rh-write', {
+        body: { action: 'upsert_config_bonus', data },
       });
     } catch {}
     setConfigBonusLider(item);
@@ -716,39 +708,24 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const updateConfigRemuneracao = useCallback(async (items: Omit<ConfiguracaoRemuneracaoRH, 'id' | 'createdAt'>[]) => {
     const saved = items.map((item, i) => ({ ...item, id: `rem_${Date.now()}_${i}`, createdAt: new Date().toISOString() }));
     try {
-      for (const prev of configRemuneracao) {
-        await supabase.from('configuracao_remuneracao').update({ vigencia_fim: new Date().toISOString().split('T')[0] }).eq('id', prev.id);
-      }
-      for (const item of items) {
-        await supabase.from('configuracao_remuneracao').insert({
-          cargo: item.cargo, diaria_4h: item.diaria4h, diaria_6h: item.diaria6h,
-          diaria_8h: item.diaria8h, passagem: item.passagem,
-          vigencia_inicio: item.vigenciaInicio, alterado_por: item.alteradoPor,
-        });
-      }
+      await supabase.functions.invoke('rh-write', {
+        body: { action: 'upsert_config_remuneracao', data: items },
+      });
     } catch {}
     setConfigRemuneracao(saved);
     lsSet('rh_config_remuneracao', saved);
-  }, [configRemuneracao]);
+  }, []);
 
   const updateConfigCriterios = useCallback(async (items: Omit<ConfiguracaoCriteriosRH, 'id' | 'createdAt'>[]) => {
     const saved = items.map((item, i) => ({ ...item, id: `crit_${Date.now()}_${i}`, createdAt: new Date().toISOString() }));
     try {
-      for (const prev of configCriterios) {
-        await supabase.from('configuracao_criterios_promocao').update({ vigencia_fim: new Date().toISOString().split('T')[0] }).eq('id', prev.id);
-      }
-      for (const item of items) {
-        await supabase.from('configuracao_criterios_promocao').insert({
-          cargo_origem: item.cargoOrigem, tempo_minimo_meses: item.tempoMinimoMeses,
-          meses_sem_reclamacoes: item.mesesSemReclamacoes,
-          meses_consecutivos_meta: item.mesesConsecutivosMetaBatida,
-          vigencia_inicio: item.vigenciaInicio, alterado_por: item.alteradoPor,
-        });
-      }
+      await supabase.functions.invoke('rh-write', {
+        body: { action: 'upsert_config_criterios', data: items },
+      });
     } catch {}
     setConfigCriterios(saved);
     lsSet('rh_config_criterios', saved);
-  }, [configCriterios]);
+  }, []);
 
   // ── Sync local collaborators to Supabase ───────────────────────────────────
 
