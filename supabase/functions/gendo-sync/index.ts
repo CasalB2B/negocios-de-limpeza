@@ -92,22 +92,33 @@ Deno.serve(async (req) => {
     const EXCLUIDOS = new Set([7, 9, 10]);
     const finalList = agendamentos.filter((a) => !EXCLUIDOS.has(Number(a.status)));
 
+    // Try to find the professional name/id from the first record
+    // Gendo may use different field names depending on account config
+    const sample = finalList[0] ?? agendamentos[0] ?? {};
+    const allKeys = Object.keys(sample);
+
+    // Pick the best name field
+    const NAME_CANDIDATES = ['nome_responsavel','nome_profissional','responsavel','profissional','nome_colaborador','colaborador','nome_funcionario','funcionario'];
+    const ID_CANDIDATES   = ['id_responsavel','id_profissional','id_colaborador','id_funcionario','responsavel_id','profissional_id'];
+
+    const nameField = NAME_CANDIDATES.find(k => k in sample && sample[k]) ?? null;
+    const idField   = ID_CANDIDATES.find(k => k in sample && sample[k]) ?? null;
+
     // Aggregate by professional
     const map: Record<string, { id_responsavel: number; nome_responsavel: string; count: number }> = {};
     for (const a of finalList) {
-      const id   = Number(a.id_responsavel ?? a.id_profissional ?? 0);
-      const nome = String(a.nome_responsavel ?? a.nome_profissional ?? `ID ${id}`);
-      const key  = String(id);
-      if (!map[key]) map[key] = { id_responsavel: id, nome_responsavel: nome, count: 0 };
+      const nome = nameField ? String(a[nameField] ?? '') : '';
+      const id   = idField   ? Number(a[idField]   ?? 0)  : 0;
+      // Skip records with no identifiable professional
+      const key  = nome || String(id);
+      if (!key || key === '0') continue;
+      if (!map[key]) map[key] = { id_responsavel: id, nome_responsavel: nome || `ID ${id}`, count: 0 };
       map[key].count++;
     }
 
     const professionals = Object.values(map).sort((a, b) =>
       a.nome_responsavel.localeCompare(b.nome_responsavel),
     );
-
-    // Sample first record for debugging when 0 results
-    const sampleRecord = agendamentos.length > 0 ? agendamentos[0] : null;
 
     return json200({
       ok: true,
@@ -116,9 +127,14 @@ Deno.serve(async (req) => {
       totalFinalizados: finalList.length,
       statusBreakdown,
       professionals,
-      // debug info — helps diagnose mismatches
+      // Always send sample so UI can diagnose field name issues
+      sampleKeys: allKeys,
+      sampleRecord: sample,
+      detectedFields: { nameField, idField },
       debug: agendamentos.length === 0
-        ? { msg: 'Gendo não retornou agendamentos para esse período', usedUrl, rawKeys: rawDebug ? Object.keys(rawDebug) : [] }
+        ? { msg: 'Gendo não retornou agendamentos para esse período', usedUrl }
+        : professionals.length === 0
+        ? { msg: `Não foi possível identificar o campo do profissional. Campos disponíveis: ${allKeys.join(', ')}` }
         : null,
     });
 

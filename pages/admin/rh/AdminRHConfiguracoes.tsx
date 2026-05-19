@@ -606,16 +606,22 @@ export const AdminRHConfiguracoes: React.FC = () => {
                       {gendoResult && (
                         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 space-y-1">
                           <p className="text-[10px] font-bold text-blue-700 dark:text-blue-400">
-                            Gendo: {gendoResult.totalFinalizados} faxinas agendadas ({gendoResult.periodo})
+                            {gendoResult.totalAgendamentos} agendamentos · {gendoResult.periodo}
                           </p>
-                          {gendoResult.professionals.map(p => (
-                            <button key={p.id_responsavel}
-                              onClick={() => setFaxinas(String(p.count))}
-                              className="w-full flex justify-between items-center text-[10px] px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
-                              <span className="text-blue-800 dark:text-blue-300 font-bold">{p.nome_responsavel}</span>
-                              <span className="text-blue-600 dark:text-blue-400 font-bold">{p.count} faxinas →</span>
-                            </button>
-                          ))}
+                          {(gendoResult as any).debug && (
+                            <p className="text-[10px] text-orange-600 font-bold">{(gendoResult as any).debug.msg}</p>
+                          )}
+                          {gendoResult.professionals.length > 0
+                            ? gendoResult.professionals.map(p => (
+                                <button key={p.id_responsavel || p.nome_responsavel}
+                                  onClick={() => setFaxinas(String(p.count))}
+                                  className="w-full flex justify-between items-center text-[10px] px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
+                                  <span className="text-blue-800 dark:text-blue-300 font-bold">{p.nome_responsavel}</span>
+                                  <span className="text-blue-600 dark:text-blue-400 font-bold">{p.count} →</span>
+                                </button>
+                              ))
+                            : <p className="text-[10px] text-orange-500 italic">Não encontrou profissionais. Campos Gendo: {((gendoResult as any).sampleKeys || []).join(', ')}</p>
+                          }
                         </div>
                       )}
                       {faxinas !== '' && !isNaN(totalFaxinas) && (
