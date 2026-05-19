@@ -242,18 +242,32 @@ export const EquipePage: React.FC = () => {
     return hash.includes('embed=1');
   }, []);
 
-  // In embed mode: transparent background + no overflow/scrollbar
+  // In embed mode: transparent background + communicate height to parent
   useEffect(() => {
     if (!isEmbed) return;
     document.body.style.background = 'transparent';
     document.documentElement.style.background = 'transparent';
-    document.body.style.overflow = 'hidden';
+
+    // Auto-resize: tell parent iframe the real content height
+    const sendHeight = () => {
+      const h = document.documentElement.scrollHeight || document.body.scrollHeight;
+      window.parent.postMessage({ type: 'ndl-iframe-height', height: h }, '*');
+    };
+
+    // Send after content loads and on resize
+    const timer = setTimeout(sendHeight, 300);
+    window.addEventListener('resize', sendHeight);
+    const ro = new ResizeObserver(sendHeight);
+    ro.observe(document.body);
+
     return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', sendHeight);
+      ro.disconnect();
       document.body.style.background = '';
       document.documentElement.style.background = '';
-      document.body.style.overflow = '';
     };
-  }, [isEmbed]);
+  }, [isEmbed, loading]);
 
   useEffect(() => {
     fetch(`${SUPABASE_URL}/functions/v1/get-public-team`, {

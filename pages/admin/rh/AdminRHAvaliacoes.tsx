@@ -87,7 +87,7 @@ export const AdminRHAvaliacoes: React.FC = () => {
 
   const equipeUrl   = `${getBaseUrl()}#/equipe`;
   const equipeEmbedUrl = `${getBaseUrl()}#/equipe?embed=1`;
-  const iframeCode  = `<iframe src="${equipeEmbedUrl}" width="100%" height="520" frameborder="0" allowtransparency="true" scrolling="no" style="border:none;overflow:hidden;" loading="lazy" title="Equipe Negócios de Limpeza"></iframe>`;
+  const iframeCode  = `<iframe id="ndl-equipe" src="${equipeEmbedUrl}" width="100%" height="800" frameborder="0" allowtransparency="true" style="border:none;display:block;" loading="lazy" title="Equipe Negócios de Limpeza"></iframe>\n<script>window.addEventListener('message',function(e){if(e.data&&e.data.type==='ndl-iframe-height'){var f=document.getElementById('ndl-equipe');if(f)f.style.height=(e.data.height+20)+'px';}});<\/script>`;
   const qrUrl       = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(equipeUrl)}&color=7c3aed&bgcolor=ffffff&margin=8`;
 
   // Platform-specific embed formats
