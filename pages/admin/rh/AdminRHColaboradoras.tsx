@@ -93,7 +93,36 @@ const BLANK: ColaboradoraFormData = {
   cargoAtual: CargoRH.JUNIOR, status: StatusColaboradoraRH.ATIVA,
   observacoes: '', endereco: '', cep: '', contratoUrl: '', contratoNome: '',
   pontosFortes: '', areasDesenvolvimento: '', perfilComportamental: '',
+  dataNascimento: '',
 };
+
+// ─── Birthday helpers ─────────────────────────────────────────────────────────
+
+function diasAteAniversario(dataNascimento: string): number {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const nasc = new Date(dataNascimento + 'T12:00:00');
+  let aniv = new Date(hoje.getFullYear(), nasc.getMonth(), nasc.getDate());
+  if (aniv < hoje) aniv = new Date(hoje.getFullYear() + 1, nasc.getMonth(), nasc.getDate());
+  return Math.round((aniv.getTime() - hoje.getTime()) / 86400000);
+}
+
+function formatDataNascimento(dataNascimento: string): string {
+  try {
+    const d = new Date(dataNascimento + 'T12:00:00');
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  } catch { return ''; }
+}
+
+interface AniversarioProximo { col: ColaboradoraRH; dias: number; }
+
+function getAniversariosProximos(cols: ColaboradoraRH[], janela = 30): AniversarioProximo[] {
+  return cols
+    .filter(c => c.dataNascimento && c.status === StatusColaboradoraRH.ATIVA)
+    .map(c => ({ col: c, dias: diasAteAniversario(c.dataNascimento!) }))
+    .filter(({ dias }) => dias <= janela)
+    .sort((a, b) => a.dias - b.dias);
+}
 
 function getLinkAvaliacao(id: string) {
   const { origin, pathname } = window.location;
@@ -195,6 +224,7 @@ export const AdminRHColaboradoras: React.FC = () => {
       contratoUrl: c.contratoUrl || '', contratoNome: c.contratoNome || '',
       pontosFortes: c.pontosFortes || '', areasDesenvolvimento: c.areasDesenvolvimento || '',
       perfilComportamental: c.perfilComportamental || '',
+      dataNascimento: c.dataNascimento || '',
     });
   };
 
@@ -362,6 +392,39 @@ export const AdminRHColaboradoras: React.FC = () => {
           </div>
         </div>
 
+        {/* ── Aniversários próximos ──────────────────────────────────────────── */}
+        {(() => {
+          const anivs = getAniversariosProximos(colaboradoras, 30);
+          if (anivs.length === 0) return null;
+          return (
+            <div className="bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-900/10 dark:to-purple-900/10 border border-pink-200 dark:border-pink-800/40 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">🎂</span>
+                <p className="text-sm font-bold text-pink-700 dark:text-pink-400">Aniversários próximos</p>
+                <span className="ml-auto text-[10px] text-pink-500 dark:text-pink-400 font-semibold">próximos 30 dias</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {anivs.map(({ col, dias }) => (
+                  <button key={col.id}
+                    onClick={() => abrirPerfil(col)}
+                    className="flex items-center gap-2 bg-white dark:bg-darkSurface border border-pink-200 dark:border-pink-800/40 rounded-xl px-3 py-2 hover:border-pink-400 hover:shadow-sm transition-all">
+                    <div className="w-7 h-7 rounded-full bg-pink-100 dark:bg-pink-900/30 overflow-hidden flex items-center justify-center text-sm font-bold text-pink-600 shrink-0">
+                      {col.foto ? <img src={col.foto} alt={col.nome} className="w-full h-full object-cover" /> : col.nome[0]}
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary leading-none">{col.nome.split(' ')[0]}</p>
+                      <p className="text-[10px] text-pink-600 dark:text-pink-400 font-semibold mt-0.5">
+                        {dias === 0 ? '🎉 Hoje!' : dias === 1 ? 'Amanhã!' : `em ${dias} dias`}
+                        {' · '}{formatDataNascimento(col.dataNascimento!)}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* List */}
         {rhLoading ? (
           <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
@@ -378,15 +441,22 @@ export const AdminRHColaboradoras: React.FC = () => {
               const meses = getMesesNaEmpresa(col.dataAdmissao);
               const avalsCol = avaliacoes.filter(a => a.colaboradoraId === col.id);
               const media = avalsCol.length ? avalsCol.reduce((s, a) => s + a.estrelas, 0) / avalsCol.length : null;
+              const anivDias = col.dataNascimento ? diasAteAniversario(col.dataNascimento) : null;
+              const anivHoje = anivDias === 0;
+              const anivBreve = anivDias !== null && anivDias <= 7;
               return (
-                <div key={col.id} className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-100 dark:border-darkBorder p-4 flex items-start gap-4">
+                <div key={col.id} className={`bg-white dark:bg-darkSurface rounded-2xl border p-4 flex items-start gap-4 ${anivHoje ? 'border-pink-300 dark:border-pink-700 shadow-pink-100 dark:shadow-none shadow-sm' : 'border-gray-100 dark:border-darkBorder'}`}>
                   <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-darkBg flex items-center justify-center text-2xl font-bold text-lightText overflow-hidden shrink-0">
                     {col.foto ? <img src={col.foto} alt={col.nome} className="w-full h-full object-cover rounded-2xl" /> : col.nome[0]}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="font-bold text-darkText dark:text-darkTextPrimary">{col.nome}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-darkText dark:text-darkTextPrimary">{col.nome}</p>
+                          {anivHoje && <span className="text-base">🎉</span>}
+                          {!anivHoje && anivBreve && <span className="text-xs font-bold text-pink-600 dark:text-pink-400">🎂 {anivDias}d</span>}
+                        </div>
                         <div className="flex flex-wrap gap-1.5 mt-1">
                           <CargoBadge cargo={col.cargoAtual} />
                           {getStatusBadge(col.status)}
@@ -586,6 +656,24 @@ export const AdminRHColaboradoras: React.FC = () => {
                           {new Date(perfilAberto.dataAdmissao + 'T12:00:00').toLocaleDateString('pt-BR')}
                         </p>
                       </div>
+                      {perfilAberto.dataNascimento && (() => {
+                        const dias = diasAteAniversario(perfilAberto.dataNascimento);
+                        const isHoje = dias === 0;
+                        const isBreve = dias <= 30;
+                        return (
+                          <div className={`rounded-xl p-3 col-span-2 ${isHoje ? 'bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800/40' : isBreve ? 'bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800/30' : 'bg-gray-50 dark:bg-darkBg'}`}>
+                            <p className="text-[10px] text-lightText dark:text-darkTextSecondary uppercase font-bold tracking-wide">🎂 Aniversário</p>
+                            <div className="flex items-center justify-between mt-0.5">
+                              <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">
+                                {new Date(perfilAberto.dataNascimento + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
+                              </p>
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isHoje ? 'bg-pink-200 text-pink-800' : isBreve ? 'bg-orange-100 text-orange-700' : 'bg-gray-200 text-gray-600 dark:bg-darkBorder dark:text-darkTextSecondary'}`}>
+                                {isHoje ? '🎉 Hoje!' : dias === 1 ? 'Amanhã!' : `em ${dias} dias`}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
                       {mediaAvals != null && (
                         <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl p-3">
                           <p className="text-[10px] text-yellow-700 dark:text-yellow-400 uppercase font-bold tracking-wide">Avaliação média</p>
@@ -1107,6 +1195,12 @@ const ColaboradoraForm: React.FC<FormProps> = ({ form, setForm, photoRef, contra
         <SLabel>Data de Admissão *</SLabel>
         <SInput type="date" value={form.dataAdmissao} onChange={e => setForm(p => ({ ...p, dataAdmissao: e.target.value }))} />
       </div>
+    </div>
+
+    {/* Data de nascimento */}
+    <div>
+      <SLabel>🎂 Data de Nascimento <span className="font-normal text-lightText">(para lembrete de aniversário)</span></SLabel>
+      <SInput type="date" value={(form as any).dataNascimento || ''} onChange={e => setForm(p => ({ ...p, dataNascimento: e.target.value } as any))} />
     </div>
 
     {/* Endereço */}

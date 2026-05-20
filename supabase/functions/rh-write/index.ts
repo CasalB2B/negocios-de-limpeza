@@ -49,6 +49,7 @@ Deno.serve(async (req) => {
         areas_desenvolvimento:   c.areasDesenvolvimento ?? null,
         perfil_comportamental:   c.perfilComportamental ?? null,
         meta_mensal_faxinas:     c.metaMensalFaxinas ?? null,
+        data_nascimento:         c.dataNascimento ?? null,
       };
 
       const isLocalId = c.id && c.id.startsWith('col_');
@@ -83,6 +84,7 @@ Deno.serve(async (req) => {
           areas_desenvolvimento:   c.areasDesenvolvimento ?? null,
           perfil_comportamental:   c.perfilComportamental ?? null,
           meta_mensal_faxinas:     c.metaMensalFaxinas ?? null,
+          data_nascimento:         c.dataNascimento ?? null,
         };
         const isLocalId = c.id && c.id.startsWith('col_');
         if (isLocalId) {

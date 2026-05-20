@@ -25,6 +25,8 @@ export interface ColaboradoraRH {
   perfilComportamental?: string;
   // Metas individuais
   metaMensalFaxinas?: number;
+  // Dados pessoais
+  dataNascimento?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -278,7 +280,7 @@ const SEED_COLABORADORAS: ColaboradoraRH[] = [
 // ─── Supabase ↔ camelCase mappers ─────────────────────────────────────────────
 
 function mapColaboradora(r: any): ColaboradoraRH {
-  return { id: r.id, nome: r.nome, telefone: r.telefone, foto: r.foto, dataAdmissao: r.data_admissao, cargoAtual: r.cargo_atual as CargoRH, status: r.status as StatusColaboradoraRH, observacoes: r.observacoes, endereco: r.endereco, cep: r.cep, contratoUrl: r.contrato_url, contratoNome: r.contrato_nome, pontosFortes: r.pontos_fortes, areasDesenvolvimento: r.areas_desenvolvimento, perfilComportamental: r.perfil_comportamental, metaMensalFaxinas: r.meta_mensal_faxinas ?? undefined, createdAt: r.created_at, updatedAt: r.updated_at };
+  return { id: r.id, nome: r.nome, telefone: r.telefone, foto: r.foto, dataAdmissao: r.data_admissao, cargoAtual: r.cargo_atual as CargoRH, status: r.status as StatusColaboradoraRH, observacoes: r.observacoes, endereco: r.endereco, cep: r.cep, contratoUrl: r.contrato_url, contratoNome: r.contrato_nome, pontosFortes: r.pontos_fortes, areasDesenvolvimento: r.areas_desenvolvimento, perfilComportamental: r.perfil_comportamental, metaMensalFaxinas: r.meta_mensal_faxinas ?? undefined, dataNascimento: r.data_nascimento ?? undefined, createdAt: r.created_at, updatedAt: r.updated_at };
 }
 function mapObservacao(r: any): ObservacaoColaboradora {
   return { id: r.id, colaboradoraId: r.colaboradora_id, data: r.data, tipo: r.tipo, titulo: r.titulo, descricao: r.descricao, registradoPor: r.registrado_por, createdAt: r.created_at };
@@ -436,16 +438,21 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       });
       const finalCols = cols.length > 0 ? [...mergedCols, ...localOnly] : lsCols;
 
+      // Tombstone: IDs of avaliacoes the user has deliberately deleted
+      // This prevents Phase 2 from restoring reviews that were deleted locally
+      const tombstone = new Set(lsGet<string[]>('rh_deleted_avals', []));
+
+      // Filter out tombstoned reviews from Supabase data
+      const avalsFiltered = avals.filter((a: AvaliacaoCliente) => !tombstone.has(a.id));
+
       // Build set of all colaboradora IDs present in Supabase avaliacoes
-      const supabaseColabsInAvals = new Set(avals.map((a: AvaliacaoCliente) => a.colaboradoraId));
-      // Get all Supabase colaboradora IDs
-      const supabaseColabIds = new Set(cols.map((c: ColaboradoraRH) => c.id));
+      const supabaseColabsInAvals = new Set(avalsFiltered.map((a: AvaliacaoCliente) => a.colaboradoraId));
       const lsAvals = lsGet<AvaliacaoCliente[]>('rh_avaliacoes', []);
       // Include local avals whose colaboradora is NOT yet in Supabase (still local col_)
       const localOnlyAvals = lsAvals.filter(a =>
-        a.id.startsWith('aval_') && !supabaseColabsInAvals.has(a.colaboradoraId)
+        a.id.startsWith('aval_') && !supabaseColabsInAvals.has(a.colaboradoraId) && !tombstone.has(a.id)
       );
-      const finalAvals = avals.length > 0 ? [...avals, ...localOnlyAvals] : lsAvals;
+      const finalAvals = avalsFiltered.length > 0 ? [...avalsFiltered, ...localOnlyAvals] : lsAvals.filter(a => !tombstone.has(a.id));
 
       const finalDes   = des.length  > 0  ? des   : lsGet<DesempenhoMensalRH[]>('rh_desempenho', []);
       const finalPros  = pros.length > 0  ? pros  : lsGet<PromocaoRH[]>('rh_promocoes', []);
@@ -677,10 +684,15 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   }, []);
 
   const deleteAvaliacao = useCallback(async (id: string) => {
+    // Add to tombstone FIRST — prevents Phase 2 from restoring the review even if Supabase delete is slow
+    const tombstone = lsGet<string[]>('rh_deleted_avals', []);
+    if (!tombstone.includes(id)) lsSet('rh_deleted_avals', [...tombstone, id]);
+    // Remove from local state immediately
+    setAvaliacoes(prev => { const next = prev.filter(a => a.id !== id); lsSet('rh_avaliacoes', next); return next; });
+    // Delete from Supabase in background
     try {
       await supabase.functions.invoke('rh-write', { body: { action: 'delete_avaliacao', data: { id } } });
     } catch {}
-    setAvaliacoes(prev => { const next = prev.filter(a => a.id !== id); lsSet('rh_avaliacoes', next); return next; });
   }, []);
 
   // ── Candidatas (Contratação) ───────────────────────────────────────────────
