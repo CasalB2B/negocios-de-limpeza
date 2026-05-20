@@ -430,24 +430,33 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
       // For each Supabase colaboradora, prefer LS version if it has a newer updatedAt
       // (this happens when an edit was saved locally but Supabase write failed silently)
-      const lsColsMap = new Map(lsCols.map(c => [c.id, c]));
+      // We match by exact ID first, then fall back to name — this handles the case where
+      // LS still stores a seed_ ID (e.g. seed_vanielen) that maps to a real Supabase UUID.
+      const lsColsMap     = new Map(lsCols.map(c => [c.id, c]));
+      const lsColsNameMap = new Map(lsCols.map(c => [c.nome?.trim().toLowerCase(), c]));
       const staleInSupabase: ColaboradoraRH[] = []; // LS version is newer → Supabase is stale
       const mergedCols = cols.map((c: ColaboradoraRH) => {
-        const lsVersion = lsColsMap.get(c.id);
+        // Try exact ID match first, then name match (handles seed_ → UUID transitions)
+        const lsVersion = lsColsMap.get(c.id)
+          ?? lsColsNameMap.get(c.nome?.trim().toLowerCase());
         if (lsVersion && (lsVersion.updatedAt ?? '') > (c.updatedAt ?? '')) {
-          staleInSupabase.push(lsVersion); // LS won — needs to be pushed to Supabase
-          return lsVersion;
+          // LS won — use LS data but replace the ID with the real Supabase UUID
+          const merged = { ...lsVersion, id: c.id };
+          staleInSupabase.push(merged); // needs to be pushed to Supabase with correct UUID
+          return merged;
         }
         return c;
       });
       const finalCols = cols.length > 0 ? [...mergedCols, ...localOnly] : lsCols;
 
       // ── Auto-push: if LS has edits newer than Supabase, push them silently ──
-      // Also push seed_ records — rh-write resolves them by name so seed_vanielen
-      // correctly finds and updates the real Vaniele record in Supabase
-      const seedColabs = lsCols.filter(c => c.id.startsWith('seed_'));
+      // staleInSupabase already contains seed_ records (matched by name, ID corrected to UUID)
+      // Also include remaining seed_ that weren't matched above (truly new records)
+      const seedColobsUnmatched = lsCols.filter(
+        c => c.id.startsWith('seed_') && !staleInSupabase.some(s => s.nome?.trim().toLowerCase() === c.nome?.trim().toLowerCase())
+      );
       const colsToPush = [...new Map(
-        [...staleInSupabase, ...localOnly, ...seedColabs].map(c => [c.id, c])
+        [...staleInSupabase, ...localOnly, ...seedColobsUnmatched].map(c => [c.id, c])
       ).values()];
       if (colsToPush.length > 0) {
         supabase.functions.invoke('rh-write', {
