@@ -537,14 +537,11 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const newId = `des_${Date.now()}`;
     const item: DesempenhoMensalRH = { ...data, id: newId, createdAt: new Date().toISOString() };
     try {
-      const { data: r, error } = await supabase.from('desempenho_mensal').insert({
-        colaboradora_id: data.colaboradoraId, mes: data.mes, ano: data.ano,
-        total_faxinas: data.totalFaxinas, media_avaliacao: data.mediaAvaliacao,
-        total_ocorrencias: data.totalOcorrencias, observacoes: data.observacoes,
-        registrado_por: data.registradoPor,
-      }).select().single();
-      if (!error && r) {
-        const saved = mapDesempenho(r);
+      const res = await supabase.functions.invoke('rh-write', {
+        body: { action: 'upsert_desempenho', data: { ...data, id: newId } },
+      });
+      if (res.data?.ok && res.data.id) {
+        const saved: DesempenhoMensalRH = { ...item, id: res.data.id };
         setDesempenhoMensal(prev => { const next = [...prev, saved]; lsSet('rh_desempenho', next); return next; });
         return;
       }
@@ -558,17 +555,20 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       lsSet('rh_desempenho', next); return next;
     };
     try {
-      await supabase.from('desempenho_mensal').update({
-        total_faxinas: data.totalFaxinas, media_avaliacao: data.mediaAvaliacao,
-        total_ocorrencias: data.totalOcorrencias, observacoes: data.observacoes,
-        registrado_por: data.registradoPor,
-      }).eq('id', id);
+      const current = desempenhoMensal.find(d => d.id === id);
+      if (current) {
+        await supabase.functions.invoke('rh-write', {
+          body: { action: 'upsert_desempenho', data: { ...current, ...data, id } },
+        });
+      }
     } catch {}
     setDesempenhoMensal(update);
-  }, []);
+  }, [desempenhoMensal]);
 
   const deleteDesempenho = useCallback(async (id: string) => {
-    try { await supabase.from('desempenho_mensal').delete().eq('id', id); } catch {}
+    try {
+      await supabase.functions.invoke('rh-write', { body: { action: 'delete_desempenho', data: { id } } });
+    } catch {}
     setDesempenhoMensal(prev => { const next = prev.filter(d => d.id !== id); lsSet('rh_desempenho', next); return next; });
   }, []);
 
@@ -578,11 +578,15 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const newId = `prom_${Date.now()}`;
     const item: PromocaoRH = { ...data, id: newId, createdAt: new Date().toISOString() };
     try {
-      await supabase.from('promocoes_rh').insert({
-        colaboradora_id: data.colaboradoraId, cargo_anterior: data.cargoAnterior,
-        cargo_novo: data.cargoNovo, data_promocao: data.dataPromocao,
-        observacoes: data.observacoes, aprovada_por: data.aprovadaPor,
+      const res = await supabase.functions.invoke('rh-write', {
+        body: { action: 'upsert_promocao', data: { ...data, id: newId } },
       });
+      if (res.data?.ok && res.data.id) {
+        const saved: PromocaoRH = { ...item, id: res.data.id };
+        setPromocoes(prev => { const next = [saved, ...prev]; lsSet('rh_promocoes', next); return next; });
+        await updateColaboradora(data.colaboradoraId, { cargoAtual: data.cargoNovo });
+        return;
+      }
     } catch {}
     setPromocoes(prev => { const next = [item, ...prev]; lsSet('rh_promocoes', next); return next; });
     // Also update collaborator's cargo
@@ -614,15 +618,14 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const newId = `bon_${Date.now()}`;
     const item: BonusMensalRH = { ...data, id: newId, createdAt: new Date().toISOString() };
     try {
-      await supabase.from('bonus_mensal').insert({
-        colaboradora_id: data.colaboradoraId, mes: data.mes, ano: data.ano,
-        total_faxinas_equipe: data.totalFaxinasEquipe,
-        media_avaliacao_equipe: data.mediaAvaliacaoEquipe,
-        valor_bonus_faxinas: data.valorBonusFaxinas,
-        valor_bonus_avaliacao: data.valorBonusAvaliacao,
-        total_bonus: data.totalBonus, total_receber: data.totalReceber,
-        configuracao_id: data.configuracaoId,
+      const res = await supabase.functions.invoke('rh-write', {
+        body: { action: 'upsert_bonus_mensal', data: { ...data, id: newId } },
       });
+      if (res.data?.ok && res.data.id) {
+        const saved: BonusMensalRH = { ...item, id: res.data.id };
+        setBonusMensal(prev => { const next = [...prev, saved]; lsSet('rh_bonus_mensal', next); return next; });
+        return;
+      }
     } catch {}
     setBonusMensal(prev => { const next = [...prev, item]; lsSet('rh_bonus_mensal', next); return next; });
   }, []);
@@ -651,23 +654,32 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   // ── Observações de Colaboradoras ───────────────────────────────────────────
 
   const addObservacao = useCallback(async (data: Omit<ObservacaoColaboradora, 'id' | 'createdAt'>) => {
-    const item: ObservacaoColaboradora = { ...data, id: `obs_${Date.now()}`, createdAt: new Date().toISOString() };
+    const newId = `obs_${Date.now()}`;
+    const item: ObservacaoColaboradora = { ...data, id: newId, createdAt: new Date().toISOString() };
     try {
-      await supabase.from('observacoes_colaboradoras').insert({
-        colaboradora_id: data.colaboradoraId, data: data.data, tipo: data.tipo,
-        titulo: data.titulo, descricao: data.descricao, registrado_por: data.registradoPor || null,
+      const res = await supabase.functions.invoke('rh-write', {
+        body: { action: 'upsert_observacao', data: { ...data, id: newId } },
       });
+      if (res.data?.ok && res.data.id) {
+        const saved: ObservacaoColaboradora = { ...item, id: res.data.id };
+        setObsColaboradoras(prev => { const next = [saved, ...prev]; lsSet('rh_obs_colaboradoras', next); return next; });
+        return;
+      }
     } catch {}
     setObsColaboradoras(prev => { const next = [item, ...prev]; lsSet('rh_obs_colaboradoras', next); return next; });
   }, []);
 
   const deleteObservacao = useCallback(async (id: string) => {
-    try { await supabase.from('observacoes_colaboradoras').delete().eq('id', id); } catch {}
+    try {
+      await supabase.functions.invoke('rh-write', { body: { action: 'delete_observacao', data: { id } } });
+    } catch {}
     setObsColaboradoras(prev => { const next = prev.filter(o => o.id !== id); lsSet('rh_obs_colaboradoras', next); return next; });
   }, []);
 
   const deleteAvaliacao = useCallback(async (id: string) => {
-    try { await supabase.from('avaliacoes').delete().eq('id', id); } catch {}
+    try {
+      await supabase.functions.invoke('rh-write', { body: { action: 'delete_avaliacao', data: { id } } });
+    } catch {}
     setAvaliacoes(prev => { const next = prev.filter(a => a.id !== id); lsSet('rh_avaliacoes', next); return next; });
   }, []);
 
@@ -675,14 +687,17 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const addCandidatura = useCallback(async (data: Omit<CandidataRH, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date().toISOString();
-    const item: CandidataRH = { ...data, id: `cand_${Date.now()}`, createdAt: now, updatedAt: now };
+    const newId = `cand_${Date.now()}`;
+    const item: CandidataRH = { ...data, id: newId, createdAt: now, updatedAt: now };
     try {
-      const { data: r, error } = await supabase.from('candidatas_rh').insert({
-        nome: data.nome, data: data.data, telefone: data.telefone, status: data.status,
-        dados_formulario: data.dadosFormulario, notas_entrevista: data.notasEntrevista, observacoes: data.observacoes,
-      }).select().single();
-      if (!error && r) {
-        const saved: CandidataRH = { id: r.id, nome: r.nome, data: r.data, telefone: r.telefone, status: r.status, dadosFormulario: r.dados_formulario, notasEntrevista: r.notas_entrevista, observacoes: r.observacoes, createdAt: r.created_at, updatedAt: r.updated_at };
+      const res = await supabase.functions.invoke('rh-write', {
+        body: { action: 'upsert_candidatura', data: { ...data, id: newId } },
+      });
+      if (res.data?.ok && res.data.id) {
+        const r = res.data.row;
+        const saved: CandidataRH = r
+          ? { id: r.id, nome: r.nome, data: r.data, telefone: r.telefone, status: r.status, dadosFormulario: r.dados_formulario, notasEntrevista: r.notas_entrevista, observacoes: r.observacoes, createdAt: r.created_at, updatedAt: r.updated_at }
+          : { ...item, id: res.data.id };
         setCandidatas(prev => { const next = [saved, ...prev]; lsSet('rh_candidatas', next); return next; });
         return;
       }
@@ -693,17 +708,20 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const updateCandidatura = useCallback(async (id: string, data: Partial<CandidataRH>) => {
     const upd = (prev: CandidataRH[]) => { const next = prev.map(c => c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c); lsSet('rh_candidatas', next); return next; };
     try {
-      await supabase.from('candidatas_rh').update({
-        nome: data.nome, data: data.data, telefone: data.telefone, status: data.status,
-        dados_formulario: data.dadosFormulario, notas_entrevista: data.notasEntrevista, observacoes: data.observacoes,
-        updated_at: new Date().toISOString(),
-      }).eq('id', id);
+      const current = candidatas.find(c => c.id === id);
+      if (current) {
+        await supabase.functions.invoke('rh-write', {
+          body: { action: 'upsert_candidatura', data: { ...current, ...data, id } },
+        });
+      }
     } catch {}
     setCandidatas(upd);
-  }, []);
+  }, [candidatas]);
 
   const deleteCandidatura = useCallback(async (id: string) => {
-    try { await supabase.from('candidatas_rh').delete().eq('id', id); } catch {}
+    try {
+      await supabase.functions.invoke('rh-write', { body: { action: 'delete_candidatura', data: { id } } });
+    } catch {}
     setCandidatas(prev => { const next = prev.filter(c => c.id !== id); lsSet('rh_candidatas', next); return next; });
   }, []);
 

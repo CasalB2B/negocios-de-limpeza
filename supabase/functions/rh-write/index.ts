@@ -1,9 +1,6 @@
 /**
  * rh-write — Supabase Edge Function
- * Accepts RH data writes (colaboradoras, avaliacoes) using SERVICE_ROLE_KEY
- * so it bypasses RLS completely.
- *
- * Body: { action: 'upsert_colaboradoras' | 'upsert_avaliacao' | 'sync_all', data: any }
+ * Accepts RH data writes using SERVICE_ROLE_KEY so it bypasses RLS completely.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -37,24 +34,23 @@ Deno.serve(async (req) => {
     if (action === 'upsert_colaboradora') {
       const c = data;
       const row = {
-        nome:          c.nome,
-        telefone:      c.telefone ?? null,
-        foto:          c.foto ?? null,
-        data_admissao: c.dataAdmissao,
-        cargo_atual:   c.cargoAtual,
-        status:        c.status,
-        observacoes:   c.observacoes ?? null,
-        endereco:      c.endereco ?? null,
-        cep:           c.cep ?? null,
-        contrato_url:  c.contratoUrl ?? null,
-        contrato_nome: c.contratoNome ?? null,
+        nome:                    c.nome,
+        telefone:                c.telefone ?? null,
+        foto:                    c.foto ?? null,
+        data_admissao:           c.dataAdmissao,
+        cargo_atual:             c.cargoAtual,
+        status:                  c.status,
+        observacoes:             c.observacoes ?? null,
+        endereco:                c.endereco ?? null,
+        cep:                     c.cep ?? null,
+        contrato_url:            c.contratoUrl ?? null,
+        contrato_nome:           c.contratoNome ?? null,
         pontos_fortes:           c.pontosFortes ?? null,
         areas_desenvolvimento:   c.areasDesenvolvimento ?? null,
         perfil_comportamental:   c.perfilComportamental ?? null,
         meta_mensal_faxinas:     c.metaMensalFaxinas ?? null,
       };
 
-      // If local ID (col_XXXX), insert fresh; if UUID, upsert by id
       const isLocalId = c.id && c.id.startsWith('col_');
       if (isLocalId) {
         const { data: r, error } = await supabase.from('colaboradoras_rh').insert(row).select().single();
@@ -72,18 +68,21 @@ Deno.serve(async (req) => {
       const results = [];
       for (const c of (data as any[])) {
         const row = {
-          nome:          c.nome,
-          telefone:      c.telefone ?? null,
-          foto:          c.foto ?? null,
-          data_admissao: c.dataAdmissao,
-          cargo_atual:   c.cargoAtual,
-          status:        c.status,
-          observacoes:   c.observacoes ?? null,
-          endereco:      c.endereco ?? null,
-          cep:           c.cep ?? null,
-          contrato_url:  c.contratoUrl ?? null,
-          contrato_nome: c.contratoNome ?? null,
-          meta_mensal_faxinas: c.metaMensalFaxinas ?? null,
+          nome:                    c.nome,
+          telefone:                c.telefone ?? null,
+          foto:                    c.foto ?? null,
+          data_admissao:           c.dataAdmissao,
+          cargo_atual:             c.cargoAtual,
+          status:                  c.status,
+          observacoes:             c.observacoes ?? null,
+          endereco:                c.endereco ?? null,
+          cep:                     c.cep ?? null,
+          contrato_url:            c.contratoUrl ?? null,
+          contrato_nome:           c.contratoNome ?? null,
+          pontos_fortes:           c.pontosFortes ?? null,
+          areas_desenvolvimento:   c.areasDesenvolvimento ?? null,
+          perfil_comportamental:   c.perfilComportamental ?? null,
+          meta_mensal_faxinas:     c.metaMensalFaxinas ?? null,
         };
         const isLocalId = c.id && c.id.startsWith('col_');
         if (isLocalId) {
@@ -111,13 +110,20 @@ Deno.serve(async (req) => {
       return json200({ ok: true });
     }
 
+    // ── Delete avaliação ──────────────────────────────────────────────────────
+    if (action === 'delete_avaliacao') {
+      const { error } = await supabase.from('avaliacoes_clientes').delete().eq('id', data.id);
+      if (error) return json200({ ok: false, error: error.message });
+      return json200({ ok: true });
+    }
+
     // ── Delete colaboradora ───────────────────────────────────────────────────
     if (action === 'delete_colaboradora') {
       await supabase.from('colaboradoras_rh').delete().eq('id', data.id);
       return json200({ ok: true });
     }
 
-    // ── Delete colaboradora by exact name (for removing seed/duplicate records) ─
+    // ── Delete colaboradora by exact name ─────────────────────────────────────
     if (action === 'delete_by_name') {
       const { data: rows } = await supabase
         .from('colaboradoras_rh')
@@ -129,9 +135,149 @@ Deno.serve(async (req) => {
       return json200({ ok: true, deleted: (rows ?? []).length });
     }
 
+    // ── Upsert desempenho mensal ───────────────────────────────────────────────
+    if (action === 'upsert_desempenho') {
+      const d = data;
+      const row = {
+        colaboradora_id:    d.colaboradoraId,
+        mes:                d.mes,
+        ano:                d.ano,
+        total_faxinas:      d.totalFaxinas,
+        media_avaliacao:    d.mediaAvaliacao,
+        total_ocorrencias:  d.totalOcorrencias,
+        observacoes:        d.observacoes ?? null,
+        registrado_por:     d.registradoPor ?? null,
+      };
+      const isLocal = d.id && d.id.startsWith('des_');
+      if (isLocal) {
+        const { data: r, error } = await supabase.from('desempenho_mensal').insert(row).select().single();
+        if (error) return json200({ ok: false, error: error.message });
+        return json200({ ok: true, id: r.id, created: true });
+      } else {
+        const { data: r, error } = await supabase.from('desempenho_mensal').upsert({ id: d.id, ...row }).select().single();
+        if (error) return json200({ ok: false, error: error.message });
+        return json200({ ok: true, id: r.id, created: false });
+      }
+    }
+
+    // ── Delete desempenho mensal ───────────────────────────────────────────────
+    if (action === 'delete_desempenho') {
+      await supabase.from('desempenho_mensal').delete().eq('id', data.id);
+      return json200({ ok: true });
+    }
+
+    // ── Upsert promoção ───────────────────────────────────────────────────────
+    if (action === 'upsert_promocao') {
+      const p = data;
+      const row = {
+        colaboradora_id: p.colaboradoraId,
+        cargo_anterior:  p.cargoAnterior,
+        cargo_novo:      p.cargoNovo,
+        data_promocao:   p.dataPromocao,
+        observacoes:     p.observacoes ?? null,
+        aprovada_por:    p.aprovadaPor ?? null,
+      };
+      const isLocal = p.id && p.id.startsWith('prom_');
+      if (isLocal) {
+        const { data: r, error } = await supabase.from('promocoes_rh').insert(row).select().single();
+        if (error) return json200({ ok: false, error: error.message });
+        return json200({ ok: true, id: r.id });
+      } else {
+        const { data: r, error } = await supabase.from('promocoes_rh').upsert({ id: p.id, ...row }).select().single();
+        if (error) return json200({ ok: false, error: error.message });
+        return json200({ ok: true, id: r.id });
+      }
+    }
+
+    // ── Upsert bônus mensal ───────────────────────────────────────────────────
+    if (action === 'upsert_bonus_mensal') {
+      const b = data;
+      const row = {
+        colaboradora_id:         b.colaboradoraId,
+        mes:                     b.mes,
+        ano:                     b.ano,
+        total_faxinas_equipe:    b.totalFaxinasEquipe,
+        media_avaliacao_equipe:  b.mediaAvaliacaoEquipe,
+        valor_bonus_faxinas:     b.valorBonusFaxinas,
+        valor_bonus_avaliacao:   b.valorBonusAvaliacao,
+        total_bonus:             b.totalBonus,
+        total_receber:           b.totalReceber,
+        configuracao_id:         b.configuracaoId,
+      };
+      const isLocal = b.id && b.id.startsWith('bon_');
+      if (isLocal) {
+        const { data: r, error } = await supabase.from('bonus_mensal').insert(row).select().single();
+        if (error) return json200({ ok: false, error: error.message });
+        return json200({ ok: true, id: r.id });
+      } else {
+        const { data: r, error } = await supabase.from('bonus_mensal').upsert({ id: b.id, ...row }).select().single();
+        if (error) return json200({ ok: false, error: error.message });
+        return json200({ ok: true, id: r.id });
+      }
+    }
+
+    // ── Upsert observação de colaboradora ─────────────────────────────────────
+    if (action === 'upsert_observacao') {
+      const o = data;
+      const row = {
+        colaboradora_id: o.colaboradoraId,
+        data:            o.data,
+        tipo:            o.tipo,
+        titulo:          o.titulo,
+        descricao:       o.descricao,
+        registrado_por:  o.registradoPor ?? null,
+      };
+      const isLocal = o.id && o.id.startsWith('obs_');
+      if (isLocal) {
+        const { data: r, error } = await supabase.from('observacoes_colaboradoras').insert(row).select().single();
+        if (error) return json200({ ok: false, error: error.message });
+        return json200({ ok: true, id: r.id });
+      } else {
+        const { data: r, error } = await supabase.from('observacoes_colaboradoras').upsert({ id: o.id, ...row }).select().single();
+        if (error) return json200({ ok: false, error: error.message });
+        return json200({ ok: true, id: r.id });
+      }
+    }
+
+    // ── Delete observação ─────────────────────────────────────────────────────
+    if (action === 'delete_observacao') {
+      await supabase.from('observacoes_colaboradoras').delete().eq('id', data.id);
+      return json200({ ok: true });
+    }
+
+    // ── Upsert candidatura ────────────────────────────────────────────────────
+    if (action === 'upsert_candidatura') {
+      const c = data;
+      const row = {
+        nome:              c.nome,
+        data:              c.data,
+        telefone:          c.telefone ?? null,
+        status:            c.status,
+        dados_formulario:  c.dadosFormulario ?? null,
+        notas_entrevista:  c.notasEntrevista ?? null,
+        observacoes:       c.observacoes ?? null,
+        updated_at:        new Date().toISOString(),
+      };
+      const isLocal = c.id && c.id.startsWith('cand_');
+      if (isLocal) {
+        const { data: r, error } = await supabase.from('candidatas_rh').insert(row).select().single();
+        if (error) return json200({ ok: false, error: error.message });
+        return json200({ ok: true, id: r.id, created: true, row: r });
+      } else {
+        const { data: r, error } = await supabase.from('candidatas_rh').upsert({ id: c.id, ...row }).select().single();
+        if (error) return json200({ ok: false, error: error.message });
+        return json200({ ok: true, id: r.id, created: false, row: r });
+      }
+    }
+
+    // ── Delete candidatura ────────────────────────────────────────────────────
+    if (action === 'delete_candidatura') {
+      await supabase.from('candidatas_rh').delete().eq('id', data.id);
+      return json200({ ok: true });
+    }
+
     // ── Save config remuneração ───────────────────────────────────────────────
     if (action === 'upsert_config_remuneracao') {
-      // Close previous active configs
       const { data: prevs } = await supabase
         .from('configuracao_remuneracao')
         .select('id')
@@ -141,7 +287,6 @@ Deno.serve(async (req) => {
           .update({ vigencia_fim: new Date().toISOString().split('T')[0] })
           .eq('id', p.id);
       }
-      // Insert new items
       for (const item of (data as any[])) {
         await supabase.from('configuracao_remuneracao').insert({
           cargo:           item.cargo,
@@ -159,7 +304,6 @@ Deno.serve(async (req) => {
     // ── Save config bônus líder ───────────────────────────────────────────────
     if (action === 'upsert_config_bonus') {
       const d = data;
-      // Close previous active config
       const { data: prevs } = await supabase
         .from('configuracao_bonus_lider')
         .select('id')
@@ -196,12 +340,12 @@ Deno.serve(async (req) => {
       }
       for (const item of (data as any[])) {
         await supabase.from('configuracao_criterios_promocao').insert({
-          cargo_origem:                 item.cargoOrigem,
-          tempo_minimo_meses:           item.tempoMinimoMeses,
-          meses_sem_reclamacoes:        item.mesesSemReclamacoes,
-          meses_consecutivos_meta:      item.mesesConsecutivosMetaBatida,
-          vigencia_inicio:              item.vigenciaInicio,
-          alterado_por:                 item.alteradoPor ?? null,
+          cargo_origem:            item.cargoOrigem,
+          tempo_minimo_meses:      item.tempoMinimoMeses,
+          meses_sem_reclamacoes:   item.mesesSemReclamacoes,
+          meses_consecutivos_meta: item.mesesConsecutivosMetaBatida,
+          vigencia_inicio:         item.vigenciaInicio,
+          alterado_por:            item.alteradoPor ?? null,
         });
       }
       return json200({ ok: true });
