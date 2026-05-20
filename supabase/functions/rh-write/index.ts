@@ -114,15 +114,17 @@ Deno.serve(async (req) => {
     // ── Upsert a single avaliação ─────────────────────────────────────────────
     if (action === 'upsert_avaliacao') {
       const a = data;
-      const { error } = await supabase.from('avaliacoes_clientes').insert({
+      const { data: r, error } = await supabase.from('avaliacoes_clientes').insert({
         colaboradora_id: a.colaboradoraId,
         nome_cliente:    a.nomeCliente,
         data_faxina:     a.dataFaxina ?? null,
         estrelas:        a.estrelas,
         comentario:      a.comentario ?? null,
-      });
+      }).select('id').single();
       if (error) return json200({ ok: false, error: error.message });
-      return json200({ ok: true });
+      // Return real UUID so the client can replace the local aval_ ID.
+      // This ensures deleteAvaliacao tombstones the correct ID (prevents Phase-2 restore).
+      return json200({ ok: true, id: r?.id ?? null });
     }
 
     // ── Delete avaliação ──────────────────────────────────────────────────────

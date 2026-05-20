@@ -232,7 +232,8 @@ const DEFAULT_CONFIG_CRITERIOS: ConfiguracaoCriteriosRH[] = [
   { id: 'crit_l', cargoOrigem: CargoRH.LIDER,        tempoMinimoMeses: 36, mesesSemReclamacoes: 6, mesesConsecutivosMetaBatida: 3, vigenciaInicio: new Date().toISOString().split('T')[0], createdAt: new Date().toISOString() },
 ];
 
-// Seed: Vanielen — Líder de Equipe, 3 anos de empresa
+// Seed: Vaniele — Líder de Equipe, 3 anos de empresa
+// IMPORTANT: nome must match exactly what's in the DB so Phase-2 name-based merge works.
 const now = new Date();
 const admissaoVanielen = new Date(now);
 admissaoVanielen.setMonth(admissaoVanielen.getMonth() - 36);
@@ -267,7 +268,7 @@ function buildVanielenDesempenho(): DesempenhoMensalRH[] {
 const SEED_COLABORADORAS: ColaboradoraRH[] = [
   {
     id: 'seed_vanielen',
-    nome: 'Vanielen',
+    nome: 'Vaniele',  // matches DB exactly — fixes name-based Phase-2 merge
     dataAdmissao: admissaoVanielen.toISOString().split('T')[0],
     cargoAtual: CargoRH.LIDER,
     status: StatusColaboradoraRH.ATIVA,
@@ -703,9 +704,12 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   // ── Avaliações ─────────────────────────────────────────────────────────────
 
   const addAvaliacao = useCallback(async (data: Omit<AvaliacaoCliente, 'id' | 'createdAt'>) => {
-    const item: AvaliacaoCliente = { ...data, id: `aval_${Date.now()}`, createdAt: new Date().toISOString() };
+    const localId = `aval_${Date.now()}`;
+    const item: AvaliacaoCliente = { ...data, id: localId, createdAt: new Date().toISOString() };
+    // Optimistic: add with local ID immediately so the UI updates right away
+    setAvaliacoes(prev => { const next = [item, ...prev]; lsSet('rh_avaliacoes', next); return next; });
     try {
-      await supabase.functions.invoke('rh-write', {
+      const res = await supabase.functions.invoke('rh-write', {
         body: {
           action: 'upsert_avaliacao',
           data: {
@@ -717,8 +721,17 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
           },
         },
       });
+      // If Supabase returned the real UUID, replace the local aval_ ID so that
+      // deleteAvaliacao can tombstone the real UUID (prevents Phase-2 from restoring it).
+      const realId: string | undefined = res.data?.id;
+      if (realId && realId !== localId) {
+        setAvaliacoes(prev => {
+          const next = prev.map(a => a.id === localId ? { ...a, id: realId } : a);
+          lsSet('rh_avaliacoes', next);
+          return next;
+        });
+      }
     } catch {}
-    setAvaliacoes(prev => { const next = [item, ...prev]; lsSet('rh_avaliacoes', next); return next; });
   }, []);
 
   // ── Observações de Colaboradoras ───────────────────────────────────────────
