@@ -425,7 +425,16 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const lsCols       = lsGet<ColaboradoraRH[]>('rh_colaboradoras', SEED_COLABORADORAS);
       // Only include user-created (col_) that haven't been synced yet — never seeds
       const localOnly    = lsCols.filter(c => c.id.startsWith('col_') && !supabaseIds.has(c.id));
-      const finalCols    = cols.length > 0 ? [...cols, ...localOnly] : lsCols;
+
+      // For each Supabase colaboradora, prefer LS version if it has a newer updatedAt
+      // (this happens when an edit was saved locally but Supabase write failed silently)
+      const lsColsMap = new Map(lsCols.map(c => [c.id, c]));
+      const mergedCols = cols.map((c: ColaboradoraRH) => {
+        const lsVersion = lsColsMap.get(c.id);
+        if (lsVersion && (lsVersion.updatedAt ?? '') > (c.updatedAt ?? '')) return lsVersion;
+        return c;
+      });
+      const finalCols = cols.length > 0 ? [...mergedCols, ...localOnly] : lsCols;
 
       // Build set of all colaboradora IDs present in Supabase avaliacoes
       const supabaseColabsInAvals = new Set(avals.map((a: AvaliacaoCliente) => a.colaboradoraId));
