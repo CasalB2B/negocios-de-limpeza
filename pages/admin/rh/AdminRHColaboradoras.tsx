@@ -183,6 +183,8 @@ export const AdminRHColaboradoras: React.FC = () => {
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<ColaboradoraRH | null>(null);
   const [form, setForm] = useState<ColaboradoraFormData>({ ...BLANK });
+  const [photoChanged, setPhotoChanged] = useState(false); // true only when user explicitly uploads new photo
+  const [saveError, setSaveError] = useState('');   // feedback when server save fails
   const [copiedId, setCopiedId] = useState('');
   const [perfilAberto, setPerfilAberto] = useState<ColaboradoraRH | null>(null);
   const [perfilTab, setPerfilTab] = useState<'dados' | 'comportamental' | 'diario' | 'avaliacoes' | 'onboarding'>('dados');
@@ -216,6 +218,8 @@ export const AdminRHColaboradoras: React.FC = () => {
   const openAdd = () => { setForm({ ...BLANK }); setShowAdd(true); };
   const openEdit = (c: ColaboradoraRH) => {
     setEditing(c);
+    setPhotoChanged(false); // reset — user hasn't changed photo yet
+    setSaveError('');
     setForm({
       nome: c.nome, telefone: c.telefone || '', foto: c.foto || '',
       dataAdmissao: c.dataAdmissao, cargoAtual: c.cargoAtual,
@@ -241,8 +245,12 @@ export const AdminRHColaboradoras: React.FC = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const url = e.target?.result as string;
-      if (isEdit) setEditing(prev => prev ? { ...prev, foto: url } : prev);
-      else setForm(prev => ({ ...prev, foto: url }));
+      if (isEdit) {
+        setEditing(prev => prev ? { ...prev, foto: url } : prev);
+        setPhotoChanged(true); // user explicitly uploaded a new photo
+      } else {
+        setForm(prev => ({ ...prev, foto: url }));
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -259,13 +267,33 @@ export const AdminRHColaboradoras: React.FC = () => {
 
   const handleUpdate = async () => {
     if (!editing) return;
-    const updated = { ...form, foto: editing.foto ?? form.foto };
-    await updateColaboradora(editing.id, updated);
+    setSaveError('');
+
+    // Build update — foto ONLY if user explicitly uploaded a new one.
+    // Omitting foto means the server keeps whatever is already stored (patch semantics).
+    const updated: Partial<ColaboradoraRH> = { ...form };
+    if (photoChanged) {
+      // Use the new photo from editing state (set by handlePhoto)
+      updated.foto = editing.foto ?? form.foto;
+    } else {
+      // Don't touch foto — delete it from the payload so server ignores it
+      delete (updated as any).foto;
+    }
+
+    const result = await updateColaboradora(editing.id, updated);
+
+    if (!result.ok) {
+      setSaveError('Salvo localmente, mas falhou no servidor. Tente Sincronizar.');
+      // Keep modal open so user sees the error
+      return;
+    }
+
     // Sync drawer immediately so user sees the change without re-opening
     if (perfilAberto?.id === editing.id) {
       setPerfilAberto(prev => prev ? { ...prev, ...updated, id: editing.id, createdAt: prev.createdAt, updatedAt: new Date().toISOString() } : prev);
     }
     setEditing(null);
+    setPhotoChanged(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -558,9 +586,14 @@ export const AdminRHColaboradoras: React.FC = () => {
               <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handlePhoto(e.target.files[0], true)} />
             </div>
             <ColaboradoraForm form={form} setForm={setForm} photoRef={photoRef} contratoRef={contratoRef} onPhotoSelect={file => handlePhoto(file, true)} onContratoSelect={handleContrato} hidePhoto />
-            <div className="flex gap-3 mt-6">
+            {saveError && (
+              <p className="mt-3 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                ⚠️ {saveError}
+              </p>
+            )}
+            <div className="flex gap-3 mt-4">
               <Button variant="destructive" icon={<Trash2 size={14}/>} onClick={() => handleDelete(editing.id)}>Excluir</Button>
-              <Button variant="outline" fullWidth onClick={() => setEditing(null)}>Cancelar</Button>
+              <Button variant="outline" fullWidth onClick={() => { setEditing(null); setSaveError(''); }}>Cancelar</Button>
               <Button fullWidth onClick={handleUpdate}>Salvar</Button>
             </div>
           </Modal>

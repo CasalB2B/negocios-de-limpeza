@@ -23,27 +23,31 @@ function isUUID(id: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 
-// Build a colaboradora row — use || null so empty strings don't break DATE columns
+// Build a colaboradora row — use || null so empty strings don't break DATE columns.
+// IMPORTANT: foto is ONLY included when non-empty so we never accidentally overwrite
+// an existing photo with null (patch semantics for the foto field).
 function buildColRow(c: any) {
-  return {
+  const row: Record<string, unknown> = {
     nome:                    c.nome,
-    telefone:                c.telefone       || null,
-    foto:                    c.foto           || null,
+    telefone:                c.telefone            || null,
     data_admissao:           c.dataAdmissao,
     cargo_atual:             c.cargoAtual,
     status:                  c.status,
-    observacoes:             c.observacoes    || null,
-    endereco:                c.endereco       || null,
-    cep:                     c.cep            || null,
-    contrato_url:            c.contratoUrl    || null,
-    contrato_nome:           c.contratoNome   || null,
-    pontos_fortes:           c.pontosFortes   || null,
+    observacoes:             c.observacoes         || null,
+    endereco:                c.endereco            || null,
+    cep:                     c.cep                 || null,
+    contrato_url:            c.contratoUrl         || null,
+    contrato_nome:           c.contratoNome        || null,
+    pontos_fortes:           c.pontosFortes        || null,
     areas_desenvolvimento:   c.areasDesenvolvimento || null,
     perfil_comportamental:   c.perfilComportamental || null,
-    meta_mensal_faxinas:     c.metaMensalFaxinas || null,
-    data_nascimento:         c.dataNascimento || null,
+    meta_mensal_faxinas:     c.metaMensalFaxinas    || null,
+    data_nascimento:         c.dataNascimento       || null,
     updated_at:              new Date().toISOString(),
   };
+  // Only include foto when it's a real value — never overwrite DB foto with null/empty
+  if (c.foto) row.foto = c.foto;
+  return row;
 }
 
 Deno.serve(async (req) => {

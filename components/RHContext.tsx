@@ -171,7 +171,7 @@ interface RHContextType {
   rhSyncing: boolean; // true while background-syncing from Supabase after initial LS load
 
   addColaboradora: (data: Omit<ColaboradoraRH, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateColaboradora: (id: string, data: Partial<ColaboradoraRH>) => Promise<void>;
+  updateColaboradora: (id: string, data: Partial<ColaboradoraRH>) => Promise<{ ok: boolean; error?: string }>;
   deleteColaboradora: (id: string) => Promise<void>;
   syncToSupabase: () => Promise<{ synced: number; errors: number }>;
 
@@ -550,23 +550,35 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     setColaboradoras(prev => { const next = [...prev, item]; lsSet('rh_colaboradoras', next); return next; });
   }, []);
 
-  const updateColaboradora = useCallback(async (id: string, data: Partial<ColaboradoraRH>) => {
+  const updateColaboradora = useCallback(async (id: string, data: Partial<ColaboradoraRH>): Promise<{ ok: boolean; error?: string }> => {
     const update = (prev: ColaboradoraRH[]) => {
       const next = prev.map(c => c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c);
       lsSet('rh_colaboradoras', next); return next;
     };
-    try {
-      // For UUID ids (Supabase), upsert via rh-write; for local col_ ids, just update locally
-      if (!id.startsWith('col_')) {
-        const current = colaboradoras.find(c => c.id === id);
-        if (current) {
-          await supabase.functions.invoke('rh-write', {
-            body: { action: 'upsert_colaboradora', data: { ...current, ...data, id } },
-          });
-        }
-      }
-    } catch {}
+    // Always update localStorage immediately (optimistic)
     setColaboradoras(update);
+
+    // For col_ prefix IDs (new, not yet synced) just keep local — will sync on Sincronizar
+    if (id.startsWith('col_')) return { ok: true };
+
+    const current = colaboradoras.find(c => c.id === id);
+    if (!current) return { ok: true };
+
+    try {
+      const res = await supabase.functions.invoke('rh-write', {
+        body: { action: 'upsert_colaboradora', data: { ...current, ...data, id } },
+      });
+      if (!res.data?.ok) {
+        const errMsg = res.data?.error ?? 'Erro desconhecido';
+        console.error('[RH] updateColaboradora failed:', errMsg);
+        return { ok: false, error: errMsg };
+      }
+      return { ok: true };
+    } catch (e) {
+      const errMsg = String(e);
+      console.error('[RH] updateColaboradora exception:', errMsg);
+      return { ok: false, error: errMsg };
+    }
   }, [colaboradoras]);
 
   const deleteColaboradora = useCallback(async (id: string) => {
