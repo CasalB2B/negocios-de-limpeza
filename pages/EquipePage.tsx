@@ -68,13 +68,13 @@ function ReviewsModal({
   const cargoColor = CARGO_COLOR[colab.cargo_atual] ?? 'bg-gray-100 text-gray-600';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       onClick={onClose}>
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
       {/* Panel */}
-      <div className="relative w-full sm:max-w-md max-h-[85vh] bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+      <div className="relative w-full max-w-md max-h-[85vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden"
         onClick={e => e.stopPropagation()}>
 
         {/* Header */}
@@ -165,7 +165,7 @@ function TeamCards({ colabs, avaliacoes }: { colabs: Colab[]; avaliacoes: Avalia
 
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         {colabs.map(col => {
           const s = stats[col.id] ?? { media: 0, total: 0 };
           const cargo = CARGO_LABEL[col.cargo_atual] ?? col.cargo_atual;
@@ -173,10 +173,10 @@ function TeamCards({ colabs, avaliacoes }: { colabs: Colab[]; avaliacoes: Avalia
 
           return (
             <div key={col.id}
-              className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:border-purple-200 hover:-translate-y-1 transition-all duration-300 p-5 flex flex-col items-center text-center gap-3 cursor-default">
+              className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:border-purple-200 hover:-translate-y-1 transition-all duration-300 p-3 sm:p-5 flex flex-col items-center text-center gap-2 sm:gap-3 cursor-default">
 
               {/* Avatar */}
-              <div className="w-16 h-16 rounded-2xl bg-purple-100 flex items-center justify-center font-bold text-purple-600 text-2xl overflow-hidden shrink-0 group-hover:scale-110 group-hover:rounded-full transition-all duration-300 shadow-sm group-hover:shadow-purple-200 group-hover:shadow-md">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-purple-100 flex items-center justify-center font-bold text-purple-600 text-xl sm:text-2xl overflow-hidden shrink-0 group-hover:scale-110 group-hover:rounded-full transition-all duration-300 shadow-sm group-hover:shadow-purple-200 group-hover:shadow-md">
                 {col.foto
                   ? <img src={col.foto} alt={col.nome} className="w-full h-full object-cover" />
                   : col.nome[0]?.toUpperCase()}
@@ -184,32 +184,33 @@ function TeamCards({ colabs, avaliacoes }: { colabs: Colab[]; avaliacoes: Avalia
 
               {/* Name + cargo */}
               <div>
-                <p className="font-bold text-gray-800 text-base leading-tight group-hover:text-purple-700 transition-colors duration-200">{col.nome}</p>
-                <span className={`inline-block mt-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${cargoColor}`}>
+                <p className="font-bold text-gray-800 text-sm sm:text-base leading-tight group-hover:text-purple-700 transition-colors duration-200">{col.nome}</p>
+                <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold ${cargoColor}`}>
                   {cargo}
                 </span>
               </div>
 
               {/* Rating */}
               {s.total > 0 ? (
-                <div className="flex flex-col items-center gap-1">
-                  <Stars value={s.media} size={15} />
-                  <span className="text-xs text-gray-500">
-                    {s.media.toFixed(1)} · {s.total} {s.total === 1 ? 'avaliação' : 'avaliações'}
+                <div className="flex flex-col items-center gap-0.5">
+                  <Stars value={s.media} size={13} />
+                  <span className="text-[10px] sm:text-xs text-gray-500">
+                    {s.media.toFixed(1)} · {s.total} {s.total === 1 ? 'aval.' : 'avals.'}
                   </span>
                 </div>
               ) : (
-                <p className="text-xs text-gray-400 italic">Ainda sem avaliações</p>
+                <p className="text-[10px] sm:text-xs text-gray-400 italic">Sem avaliações</p>
               )}
 
               {/* Ver avaliações button */}
               {s.total > 0 && (
                 <button
                   onClick={() => setSelected(col)}
-                  className="mt-1 flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors border border-purple-100 group-hover:bg-purple-600 group-hover:text-white group-hover:border-purple-600 transition-all duration-200"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-100 group-hover:bg-purple-600 group-hover:text-white group-hover:border-purple-600 transition-all duration-200"
                 >
-                  <MessageSquare size={11} />
-                  Ver avaliações
+                  <MessageSquare size={10} />
+                  <span className="hidden sm:inline">Ver avaliações</span>
+                  <span className="sm:hidden">Ver</span>
                 </button>
               )}
             </div>
