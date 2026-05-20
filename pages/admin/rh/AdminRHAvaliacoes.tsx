@@ -21,7 +21,7 @@ function getLinkAvaliacao(colaboradoraId: string) {
 
 function getMsgWhatsApp(nomeColaboradora: string, link: string) {
   return encodeURIComponent(
-    `Olá! 😊 Gostaríamos muito de saber sua opinião sobre a faxina realizada por *${nomeColaboradora}* da Negócios de Limpeza.\n\nAvalie agora em apenas 1 minutinho clicando no link abaixo:\n👉 ${link}\n\nSua opinião faz toda a diferença para nós! 💜`
+    `Olá! ✨ Gostaríamos muito de saber sua opinião sobre a faxina realizada por *${nomeColaboradora}* da Negócios de Limpeza.\n\nAvalie agora em apenas 1 minutinho clicando no link abaixo:\n🔗 ${link}\n\nSua opinião faz toda a diferença para nós! 💜`
   );
 }
 

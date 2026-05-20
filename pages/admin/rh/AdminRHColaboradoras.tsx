@@ -129,7 +129,7 @@ function getLinkAvaliacao(id: string) {
   return `${origin}${pathname}#/avaliar?c=${id}`;
 }
 function getMsgWhatsApp(nome: string, link: string) {
-  return encodeURIComponent(`Olá! 😊 Gostaríamos de saber sua opinião sobre a faxina realizada por *${nome}* da Negócios de Limpeza.\n\nAvalie agora clicando no link:\n👉 ${link}\n\nSua opinião faz toda a diferença! 💜`);
+  return encodeURIComponent(`Olá! ✨ Gostaríamos de saber sua opinião sobre a faxina realizada por *${nome}* da Negócios de Limpeza.\n\nAvalie agora clicando no link:\n🔗 ${link}\n\nSua opinião faz toda a diferença! 💜`);
 }
 
 function StarRow({ value, size = 14 }: { value: number; size?: number }) {
