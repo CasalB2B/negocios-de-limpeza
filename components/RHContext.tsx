@@ -431,12 +431,28 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       // For each Supabase colaboradora, prefer LS version if it has a newer updatedAt
       // (this happens when an edit was saved locally but Supabase write failed silently)
       const lsColsMap = new Map(lsCols.map(c => [c.id, c]));
+      const staleInSupabase: ColaboradoraRH[] = []; // LS version is newer → Supabase is stale
       const mergedCols = cols.map((c: ColaboradoraRH) => {
         const lsVersion = lsColsMap.get(c.id);
-        if (lsVersion && (lsVersion.updatedAt ?? '') > (c.updatedAt ?? '')) return lsVersion;
+        if (lsVersion && (lsVersion.updatedAt ?? '') > (c.updatedAt ?? '')) {
+          staleInSupabase.push(lsVersion); // LS won — needs to be pushed to Supabase
+          return lsVersion;
+        }
         return c;
       });
       const finalCols = cols.length > 0 ? [...mergedCols, ...localOnly] : lsCols;
+
+      // ── Auto-push: if LS has edits newer than Supabase, push them silently ──
+      // This fixes the case where updateColaboradora saved to LS but Supabase write failed
+      const colsToPush = [
+        ...staleInSupabase,
+        ...localOnly, // local col_ not yet in Supabase
+      ].filter(c => !c.id.startsWith('seed_'));
+      if (colsToPush.length > 0) {
+        supabase.functions.invoke('rh-write', {
+          body: { action: 'sync_colaboradoras', data: colsToPush },
+        }).catch(() => {});
+      }
 
       // Tombstone: IDs of avaliacoes the user has deliberately deleted
       // This prevents Phase 2 from restoring reviews that were deleted locally
