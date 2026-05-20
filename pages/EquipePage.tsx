@@ -39,6 +39,15 @@ const CARGO_COLOR: Record<string, string> = {
   GERENTE:      'bg-green-100 text-green-700',
 };
 
+// Hierarchy order: lower number = shown first (higher rank)
+const CARGO_ORDER: Record<string, number> = {
+  GERENTE:      1,
+  LIDER:        2,
+  PROFISSIONAL: 3,
+  SENIOR:       4,
+  JUNIOR:       5,
+};
+
 const SUPABASE_URL  = (import.meta as any).env?.VITE_SUPABASE_URL ?? '';
 const SUPABASE_ANON = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY ?? '';
 
@@ -155,7 +164,16 @@ function TeamCards({ colabs, avaliacoes }: { colabs: Colab[]; avaliacoes: Avalia
     return map;
   }, [colabs, avaliacoes]);
 
-  if (colabs.length === 0) {
+  // Sort by cargo hierarchy (highest first), then alphabetically within the same rank
+  const sortedColabs = useMemo(() =>
+    [...colabs].sort((a, b) => {
+      const rankDiff = (CARGO_ORDER[a.cargo_atual] ?? 99) - (CARGO_ORDER[b.cargo_atual] ?? 99);
+      if (rankDiff !== 0) return rankDiff;
+      return a.nome.localeCompare(b.nome, 'pt-BR');
+    }),
+  [colabs]);
+
+  if (sortedColabs.length === 0) {
     return (
       <div className="text-center py-12 text-gray-400 text-sm">
         Nenhuma colaboradora cadastrada ainda.
@@ -166,7 +184,7 @@ function TeamCards({ colabs, avaliacoes }: { colabs: Colab[]; avaliacoes: Avalia
   return (
     <>
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        {colabs.map(col => {
+        {sortedColabs.map(col => {
           const s = stats[col.id] ?? { media: 0, total: 0 };
           const cargo = CARGO_LABEL[col.cargo_atual] ?? col.cargo_atual;
           const cargoColor = CARGO_COLOR[col.cargo_atual] ?? 'bg-gray-100 text-gray-600';
