@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useRH } from '../components/RHContext';
-import { supabase } from '../lib/supabase';
 import { Star, CheckCircle, AlertCircle } from 'lucide-react';
+
+const SUPABASE_URL  = (import.meta as any).env?.VITE_SUPABASE_URL ?? '';
+const SUPABASE_ANON = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY ?? '';
 
 const CARGO_LABEL: Record<string, string> = {
   JUNIOR: 'Auxiliar de Limpeza',
@@ -33,30 +35,27 @@ export const AvaliacaoPage: React.FC = () => {
 
     const load = async () => {
       try {
-        // 1. Try Supabase first (works on any device)
-        const { data } = await supabase
-          .from('colaboradoras_rh')
-          .select('id, nome, cargo_atual, foto')
-          .eq('id', colaboradoraId)
-          .maybeSingle();
-
-        if (data) {
-          setColaboradora({ id: data.id, nome: data.nome, cargoAtual: data.cargo_atual, foto: data.foto });
-        } else {
-          // 2. Fallback: context/localStorage (same device)
-          const fromCtx = colaboradoras.find(c => c.id === colaboradoraId);
-          if (fromCtx) setColaboradora({ id: fromCtx.id, nome: fromCtx.nome, cargoAtual: fromCtx.cargoAtual, foto: fromCtx.foto });
+        // 1. get-public-team bypasses RLS with SERVICE_ROLE_KEY — works on any device/client
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/get-public-team`, {
+          headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const found = (json.colaboradoras ?? []).find((c: any) => c.id === colaboradoraId);
+          if (found) {
+            setColaboradora({ id: found.id, nome: found.nome, cargoAtual: found.cargo_atual, foto: found.foto });
+            return;
+          }
         }
-      } catch {
-        // Supabase unavailable — use context
-        const fromCtx = colaboradoras.find(c => c.id === colaboradoraId);
-        if (fromCtx) setColaboradora({ id: fromCtx.id, nome: fromCtx.nome, cargoAtual: fromCtx.cargoAtual, foto: fromCtx.foto });
-      } finally {
-        setLoading(false);
-      }
+      } catch {}
+
+      // 2. Fallback: context/localStorage (same device as admin)
+      const fromCtx = colaboradoras.find(c => c.id === colaboradoraId);
+      if (fromCtx) setColaboradora({ id: fromCtx.id, nome: fromCtx.nome, cargoAtual: fromCtx.cargoAtual, foto: fromCtx.foto });
+      setLoading(false);
     };
 
-    load();
+    load().finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [colaboradoraId, colaboradoras.length]);
 
