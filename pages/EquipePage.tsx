@@ -20,6 +20,7 @@ interface Avaliacao {
   nome_cliente: string;
   estrelas: number;
   comentario?: string | null;
+  data_faxina?: string | null;
   created_at: string;
 }
 
@@ -134,7 +135,9 @@ function ReviewsModal({
                     </div>
                     <p className="font-bold text-gray-800 text-sm">{av.nome_cliente}</p>
                   </div>
-                  <span className="text-[11px] text-gray-400">{formatDate(av.created_at)}</span>
+                  <span className="text-[11px] text-gray-400">
+                    {av.data_faxina ? formatDate(av.data_faxina) : formatDate(av.created_at)}
+                  </span>
                 </div>
                 <Stars value={av.estrelas} size={13} />
                 {av.comentario?.trim() && (
