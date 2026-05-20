@@ -451,13 +451,13 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const finalCols = cols.length > 0 ? [...mergedCols, ...localOnly] : lsCols;
 
       // ── Auto-push: if LS has edits newer than Supabase, push them silently ──
-      // staleInSupabase already contains seed_ records (matched by name, ID corrected to UUID)
-      // Also include remaining seed_ that weren't matched above (truly new records)
-      const seedColobsUnmatched = lsCols.filter(
-        c => c.id.startsWith('seed_') && !staleInSupabase.some(s => s.nome?.trim().toLowerCase() === c.nome?.trim().toLowerCase())
-      );
+      // staleInSupabase: seed_ records matched by name to a real Supabase UUID — push the edit back.
+      // localOnly: col_ records not yet in Supabase — push to create them.
+      // NOTE: unmatched seed_ records are intentionally excluded. A seed whose name doesn't match
+      // any existing Supabase collaboradora would be inserted as a NEW duplicate record, which is wrong.
+      // Seeds exist only as display fallback on first load; they are discarded once real data arrives.
       const colsToPush = [...new Map(
-        [...staleInSupabase, ...localOnly, ...seedColobsUnmatched].map(c => [c.id, c])
+        [...staleInSupabase, ...localOnly].map(c => [c.id, c])
       ).values()];
       if (colsToPush.length > 0) {
         supabase.functions.invoke('rh-write', {
