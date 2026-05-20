@@ -18,6 +18,34 @@ function json200(body: unknown) {
   });
 }
 
+// Returns true only for real UUIDs (e.g. from Supabase auto-generate)
+function isUUID(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
+// Build a colaboradora row — use || null so empty strings don't break DATE columns
+function buildColRow(c: any) {
+  return {
+    nome:                    c.nome,
+    telefone:                c.telefone       || null,
+    foto:                    c.foto           || null,
+    data_admissao:           c.dataAdmissao,
+    cargo_atual:             c.cargoAtual,
+    status:                  c.status,
+    observacoes:             c.observacoes    || null,
+    endereco:                c.endereco       || null,
+    cep:                     c.cep            || null,
+    contrato_url:            c.contratoUrl    || null,
+    contrato_nome:           c.contratoNome   || null,
+    pontos_fortes:           c.pontosFortes   || null,
+    areas_desenvolvimento:   c.areasDesenvolvimento || null,
+    perfil_comportamental:   c.perfilComportamental || null,
+    meta_mensal_faxinas:     c.metaMensalFaxinas || null,
+    data_nascimento:         c.dataNascimento || null,
+    updated_at:              new Date().toISOString(),
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
@@ -33,36 +61,25 @@ Deno.serve(async (req) => {
     // ── Upsert a single colaboradora ──────────────────────────────────────────
     if (action === 'upsert_colaboradora') {
       const c = data;
-      // Use || null (not ??) so empty strings '' are treated as null for DATE/text columns
-      const row = {
-        nome:                    c.nome,
-        telefone:                c.telefone || null,
-        foto:                    c.foto || null,
-        data_admissao:           c.dataAdmissao,
-        cargo_atual:             c.cargoAtual,
-        status:                  c.status,
-        observacoes:             c.observacoes || null,
-        endereco:                c.endereco || null,
-        cep:                     c.cep || null,
-        contrato_url:            c.contratoUrl || null,
-        contrato_nome:           c.contratoNome || null,
-        pontos_fortes:           c.pontosFortes || null,
-        areas_desenvolvimento:   c.areasDesenvolvimento || null,
-        perfil_comportamental:   c.perfilComportamental || null,
-        meta_mensal_faxinas:     c.metaMensalFaxinas || null,
-        data_nascimento:         c.dataNascimento || null,  // '' → null (DATE constraint)
-        updated_at:              new Date().toISOString(),
-      };
+      const row = buildColRow(c);
 
-      const isLocalId = c.id && c.id.startsWith('col_');
-      if (isLocalId) {
-        const { data: r, error } = await supabase.from('colaboradoras_rh').insert(row).select().single();
-        if (error) return json200({ ok: false, error: error.message });
-        return json200({ ok: true, id: r.id, created: true });
-      } else {
+      if (isUUID(c.id)) {
+        // Real Supabase ID → upsert by id
         const { data: r, error } = await supabase.from('colaboradoras_rh').upsert({ id: c.id, ...row }).select().single();
         if (error) return json200({ ok: false, error: error.message });
         return json200({ ok: true, id: r.id, created: false });
+      } else {
+        // Local ID (col_xxx, seed_xxx, etc.) → find by name first to avoid duplicates
+        const { data: existing } = await supabase.from('colaboradoras_rh').select('id').ilike('nome', c.nome).maybeSingle();
+        if (existing?.id) {
+          const { data: r, error } = await supabase.from('colaboradoras_rh').update(row).eq('id', existing.id).select().single();
+          if (error) return json200({ ok: false, error: error.message });
+          return json200({ ok: true, id: r.id, created: false });
+        } else {
+          const { data: r, error } = await supabase.from('colaboradoras_rh').insert(row).select().single();
+          if (error) return json200({ ok: false, error: error.message });
+          return json200({ ok: true, id: r.id, created: true });
+        }
       }
     }
 
@@ -70,32 +87,21 @@ Deno.serve(async (req) => {
     if (action === 'sync_colaboradoras') {
       const results = [];
       for (const c of (data as any[])) {
-        const row = {
-          nome:                    c.nome,
-          telefone:                c.telefone || null,
-          foto:                    c.foto || null,
-          data_admissao:           c.dataAdmissao,
-          cargo_atual:             c.cargoAtual,
-          status:                  c.status,
-          observacoes:             c.observacoes || null,
-          endereco:                c.endereco || null,
-          cep:                     c.cep || null,
-          contrato_url:            c.contratoUrl || null,
-          contrato_nome:           c.contratoNome || null,
-          pontos_fortes:           c.pontosFortes || null,
-          areas_desenvolvimento:   c.areasDesenvolvimento || null,
-          perfil_comportamental:   c.perfilComportamental || null,
-          meta_mensal_faxinas:     c.metaMensalFaxinas || null,
-          data_nascimento:         c.dataNascimento || null,  // '' → null (DATE constraint)
-          updated_at:              new Date().toISOString(),
-        };
-        const isLocalId = c.id && c.id.startsWith('col_');
-        if (isLocalId) {
-          const { data: r, error } = await supabase.from('colaboradoras_rh').insert(row).select().single();
-          results.push({ localId: c.id, supabaseId: r?.id ?? null, error: error?.message ?? null });
-        } else {
+        const row = buildColRow(c);
+        if (isUUID(c.id)) {
+          // Real UUID → upsert directly
           const { data: r, error } = await supabase.from('colaboradoras_rh').upsert({ id: c.id, ...row }).select().single();
           results.push({ localId: c.id, supabaseId: r?.id ?? null, error: error?.message ?? null });
+        } else {
+          // Local ID (col_xxx / seed_xxx) → find by name to avoid duplicates
+          const { data: existing } = await supabase.from('colaboradoras_rh').select('id').ilike('nome', c.nome).maybeSingle();
+          if (existing?.id) {
+            const { data: r, error } = await supabase.from('colaboradoras_rh').update(row).eq('id', existing.id).select().single();
+            results.push({ localId: c.id, supabaseId: r?.id ?? null, error: error?.message ?? null });
+          } else {
+            const { data: r, error } = await supabase.from('colaboradoras_rh').insert(row).select().single();
+            results.push({ localId: c.id, supabaseId: r?.id ?? null, error: error?.message ?? null });
+          }
         }
       }
       return json200({ ok: true, results });

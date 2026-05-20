@@ -443,14 +443,29 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const finalCols = cols.length > 0 ? [...mergedCols, ...localOnly] : lsCols;
 
       // ── Auto-push: if LS has edits newer than Supabase, push them silently ──
-      // This fixes the case where updateColaboradora saved to LS but Supabase write failed
-      const colsToPush = [
-        ...staleInSupabase,
-        ...localOnly, // local col_ not yet in Supabase
-      ].filter(c => !c.id.startsWith('seed_'));
+      // Also push seed_ records — rh-write resolves them by name so seed_vanielen
+      // correctly finds and updates the real Vaniele record in Supabase
+      const seedColabs = lsCols.filter(c => c.id.startsWith('seed_'));
+      const colsToPush = [...new Map(
+        [...staleInSupabase, ...localOnly, ...seedColabs].map(c => [c.id, c])
+      ).values()];
       if (colsToPush.length > 0) {
         supabase.functions.invoke('rh-write', {
           body: { action: 'sync_colaboradoras', data: colsToPush },
+        }).then(res => {
+          // Update IDs in LS if seed_ got resolved to real UUID
+          const results: { localId: string; supabaseId: string | null }[] = res.data?.results ?? [];
+          const newMapping: Record<string, string> = {};
+          for (const r of results) {
+            if (r.supabaseId && r.localId !== r.supabaseId) newMapping[r.localId] = r.supabaseId;
+          }
+          if (Object.keys(newMapping).length > 0) {
+            setColaboradoras(prev => {
+              const next = prev.map(c => newMapping[c.id] ? { ...c, id: newMapping[c.id] } : c);
+              lsSet('rh_colaboradoras', next);
+              return next;
+            });
+          }
         }).catch(() => {});
       }
 
@@ -874,14 +889,28 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       } catch { errors++; }
     }
 
-    // ── Step 3: push updates for existing (UUID) collaborators ────────────────
-    // Catches cases where updateColaboradora failed silently (e.g. network error)
-    const uuidColabs = colaboradoras.filter(c => !c.id.startsWith('col_') && !c.id.startsWith('seed_'));
-    if (uuidColabs.length > 0) {
+    // ── Step 3: push ALL colaboradoras (UUID + seed_ + col_ not yet mapped) ─────
+    // Includes seed_ records — rh-write now resolves them by name in Supabase
+    // so 'seed_vanielen' → finds existing Supabase Vaniele → updates her cargo/data
+    const allColabs = colaboradoras.filter(c => !mapping[c.id]); // skip already-synced col_ above
+    if (allColabs.length > 0) {
       try {
-        await supabase.functions.invoke('rh-write', {
-          body: { action: 'sync_colaboradoras', data: uuidColabs },
+        const res = await supabase.functions.invoke('rh-write', {
+          body: { action: 'sync_colaboradoras', data: allColabs },
         });
+        // Update LS: if a seed_ or col_ got resolved to a real UUID, replace the ID
+        const step3Results: { localId: string; supabaseId: string | null }[] = res.data?.results ?? [];
+        const newMapping: Record<string, string> = {};
+        for (const r of step3Results) {
+          if (r.supabaseId && r.localId !== r.supabaseId) newMapping[r.localId] = r.supabaseId;
+        }
+        if (Object.keys(newMapping).length > 0) {
+          setColaboradoras(prev => {
+            const next = prev.map(c => newMapping[c.id] ? { ...c, id: newMapping[c.id] } : c);
+            lsSet('rh_colaboradoras', next);
+            return next;
+          });
+        }
       } catch {}
     }
 
