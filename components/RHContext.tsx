@@ -406,10 +406,19 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const activeRems = cfgRems.filter(c => !c.vigenciaFim);
       const activeCris = cfgCris.filter(c => !c.vigenciaFim);
 
-      // Use LS values when Supabase returned nothing (RLS blocked)
+      // Compare createdAt: LS may be newer if Supabase write failed — prefer the most recent
+      const newestDate = (arr: { createdAt: string }[]) =>
+        arr.length ? arr.map(r => r.createdAt ?? '0').sort().pop()! : '0';
+
+      const lsRemDate = newestDate(lsRemConfig);
+      const sbRemDate = newestDate(activeRems);
+      const lsCriDate = newestDate(lsCriConfig);
+      const sbCriDate = newestDate(activeCris);
+
+      // Supabase wins only if its data is strictly newer than what's in LS
+      const finalRems = (sbRemDate > lsRemDate && activeRems.length) ? activeRems : (lsRemConfig.length ? lsRemConfig : DEFAULT_CONFIG_REMUNERACAO);
+      const finalCris = (sbCriDate > lsCriDate && activeCris.length) ? activeCris : (lsCriConfig.length ? lsCriConfig : DEFAULT_CONFIG_CRITERIOS);
       const finalBonus = activeBonus;
-      const finalRems  = activeRems.length  ? activeRems  : lsRemConfig;
-      const finalCris  = activeCris.length  ? activeCris  : lsCriConfig;
 
       // Merge Supabase + local-only (only col_XXX — never seeds, they're just fallback)
       const supabaseIds  = new Set(cols.map((c: ColaboradoraRH) => c.id));
@@ -450,10 +459,10 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       if (finalDes.length)   lsSet('rh_desempenho', finalDes);
       if (finalPros.length)  lsSet('rh_promocoes', finalPros);
       if (bons.length)       lsSet('rh_bonus_mensal', bons);
-      // Only update LS config if Supabase returned real data (avoid overwriting saved values with defaults)
+      // Only update LS config if Supabase data is newer than what's already saved locally
       lsSet('rh_config_bonus', finalBonus);
-      if (activeRems.length) lsSet('rh_config_remuneracao', activeRems);
-      if (activeCris.length) lsSet('rh_config_criterios', activeCris);
+      if (sbRemDate > lsRemDate && activeRems.length) lsSet('rh_config_remuneracao', activeRems);
+      if (sbCriDate > lsCriDate && activeCris.length) lsSet('rh_config_criterios', activeCris);
       if (finalAvals.length) lsSet('rh_avaliacoes', finalAvals);
       if (finalObs.length)   lsSet('rh_obs_colaboradoras', finalObs);
       if (cands.length)      lsSet('rh_candidatas', cands);
