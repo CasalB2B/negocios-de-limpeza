@@ -124,9 +124,10 @@ export const AdminRHColaboradoras: React.FC = () => {
     promocoes, configRemuneracao, bonusMensal,
   } = useRH();
 
-  // Show sync button whenever there are unsynced collaborators OR local evaluations
+  // hasPending = true when there are unsynced new records OR always show as available for force-sync
   const hasPending = colaboradoras.some(c => c.id.startsWith('col_') || c.id.startsWith('seed_'))
-    || avaliacoes.some(a => a.id.startsWith('aval_'));
+    || avaliacoes.some(a => a.id.startsWith('aval_'))
+    || colaboradoras.length > 0; // always allow force-sync to push edits
 
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');

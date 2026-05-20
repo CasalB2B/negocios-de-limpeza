@@ -819,6 +819,17 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       } catch { errors++; }
     }
 
+    // ── Step 3: push updates for existing (UUID) collaborators ────────────────
+    // Catches cases where updateColaboradora failed silently (e.g. network error)
+    const uuidColabs = colaboradoras.filter(c => !c.id.startsWith('col_') && !c.id.startsWith('seed_'));
+    if (uuidColabs.length > 0) {
+      try {
+        await supabase.functions.invoke('rh-write', {
+          body: { action: 'sync_colaboradoras', data: uuidColabs },
+        });
+      } catch {}
+    }
+
     // Update state/LS with new colaboradora IDs — keep aval_ items as fallback
     // (RLS blocks reading avaliacoes from Supabase with anon key, so we keep
     //  them in localStorage as the source of truth for the admin UI)
