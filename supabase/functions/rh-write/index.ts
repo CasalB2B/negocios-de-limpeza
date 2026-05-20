@@ -33,23 +33,25 @@ Deno.serve(async (req) => {
     // ── Upsert a single colaboradora ──────────────────────────────────────────
     if (action === 'upsert_colaboradora') {
       const c = data;
+      // Use || null (not ??) so empty strings '' are treated as null for DATE/text columns
       const row = {
         nome:                    c.nome,
-        telefone:                c.telefone ?? null,
-        foto:                    c.foto ?? null,
+        telefone:                c.telefone || null,
+        foto:                    c.foto || null,
         data_admissao:           c.dataAdmissao,
         cargo_atual:             c.cargoAtual,
         status:                  c.status,
-        observacoes:             c.observacoes ?? null,
-        endereco:                c.endereco ?? null,
-        cep:                     c.cep ?? null,
-        contrato_url:            c.contratoUrl ?? null,
-        contrato_nome:           c.contratoNome ?? null,
-        pontos_fortes:           c.pontosFortes ?? null,
-        areas_desenvolvimento:   c.areasDesenvolvimento ?? null,
-        perfil_comportamental:   c.perfilComportamental ?? null,
-        meta_mensal_faxinas:     c.metaMensalFaxinas ?? null,
-        data_nascimento:         c.dataNascimento ?? null,
+        observacoes:             c.observacoes || null,
+        endereco:                c.endereco || null,
+        cep:                     c.cep || null,
+        contrato_url:            c.contratoUrl || null,
+        contrato_nome:           c.contratoNome || null,
+        pontos_fortes:           c.pontosFortes || null,
+        areas_desenvolvimento:   c.areasDesenvolvimento || null,
+        perfil_comportamental:   c.perfilComportamental || null,
+        meta_mensal_faxinas:     c.metaMensalFaxinas || null,
+        data_nascimento:         c.dataNascimento || null,  // '' → null (DATE constraint)
+        updated_at:              new Date().toISOString(),
       };
 
       const isLocalId = c.id && c.id.startsWith('col_');
@@ -70,21 +72,22 @@ Deno.serve(async (req) => {
       for (const c of (data as any[])) {
         const row = {
           nome:                    c.nome,
-          telefone:                c.telefone ?? null,
-          foto:                    c.foto ?? null,
+          telefone:                c.telefone || null,
+          foto:                    c.foto || null,
           data_admissao:           c.dataAdmissao,
           cargo_atual:             c.cargoAtual,
           status:                  c.status,
-          observacoes:             c.observacoes ?? null,
-          endereco:                c.endereco ?? null,
-          cep:                     c.cep ?? null,
-          contrato_url:            c.contratoUrl ?? null,
-          contrato_nome:           c.contratoNome ?? null,
-          pontos_fortes:           c.pontosFortes ?? null,
-          areas_desenvolvimento:   c.areasDesenvolvimento ?? null,
-          perfil_comportamental:   c.perfilComportamental ?? null,
-          meta_mensal_faxinas:     c.metaMensalFaxinas ?? null,
-          data_nascimento:         c.dataNascimento ?? null,
+          observacoes:             c.observacoes || null,
+          endereco:                c.endereco || null,
+          cep:                     c.cep || null,
+          contrato_url:            c.contratoUrl || null,
+          contrato_nome:           c.contratoNome || null,
+          pontos_fortes:           c.pontosFortes || null,
+          areas_desenvolvimento:   c.areasDesenvolvimento || null,
+          perfil_comportamental:   c.perfilComportamental || null,
+          meta_mensal_faxinas:     c.metaMensalFaxinas || null,
+          data_nascimento:         c.dataNascimento || null,  // '' → null (DATE constraint)
+          updated_at:              new Date().toISOString(),
         };
         const isLocalId = c.id && c.id.startsWith('col_');
         if (isLocalId) {
