@@ -564,12 +564,23 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const current = colaboradoras.find(c => c.id === id);
     if (!current) return { ok: true };
 
+    // Build payload: always include all scalar fields, but foto ONLY if
+    // the caller explicitly provides it (non-empty) to keep request small
+    // and prevent overwriting existing DB foto with null.
+    const payload: Record<string, unknown> = { ...current, ...data, id };
+    if (!data.foto) delete payload.foto;
+
     try {
       const res = await supabase.functions.invoke('rh-write', {
-        body: { action: 'upsert_colaboradora', data: { ...current, ...data, id } },
+        body: { action: 'upsert_colaboradora', data: payload },
       });
+      if (res.error) {
+        const errMsg = res.error.message ?? String(res.error);
+        console.error('[RH] invoke error:', errMsg);
+        return { ok: false, error: errMsg };
+      }
       if (!res.data?.ok) {
-        const errMsg = res.data?.error ?? 'Erro desconhecido';
+        const errMsg = res.data?.error ?? 'Erro desconhecido do servidor';
         console.error('[RH] updateColaboradora failed:', errMsg);
         return { ok: false, error: errMsg };
       }

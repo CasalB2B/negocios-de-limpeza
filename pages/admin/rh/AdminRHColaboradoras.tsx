@@ -283,7 +283,7 @@ export const AdminRHColaboradoras: React.FC = () => {
     const result = await updateColaboradora(editing.id, updated);
 
     if (!result.ok) {
-      setSaveError('Salvo localmente, mas falhou no servidor. Tente Sincronizar.');
+      setSaveError(`Falhou no servidor: ${result.error ?? 'erro desconhecido'}. Tente Sincronizar.`);
       // Keep modal open so user sees the error
       return;
     }
