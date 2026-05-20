@@ -281,15 +281,26 @@ export const EquipePage: React.FC = () => {
     };
   }, [isEmbed, loading]);
 
-  useEffect(() => {
-    fetch(`${SUPABASE_URL}/functions/v1/get-public-team`, {
+  const fetchData = React.useCallback(() => {
+    return fetch(`${SUPABASE_URL}/functions/v1/get-public-team`, {
       headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` },
     })
       .then(r => r.json())
       .then(d => { setColabs(d.colaboradoras ?? []); setAvaliacoes(d.avaliacoes ?? []); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .catch(() => {});
   }, []);
+
+  // Initial load
+  useEffect(() => {
+    fetchData().finally(() => setLoading(false));
+  }, [fetchData]);
+
+  // Auto-refresh every 5 minutes (keeps embed up-to-date for visitors with the page open)
+  useEffect(() => {
+    if (!isEmbed) return;
+    const interval = setInterval(() => { fetchData(); }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [isEmbed, fetchData]);
 
   const spinner = (
     <div className="flex items-center justify-center p-12">
