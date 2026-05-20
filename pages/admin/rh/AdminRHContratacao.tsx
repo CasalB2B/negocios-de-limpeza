@@ -265,9 +265,27 @@ export const AdminRHContratacao: React.FC = () => {
   const aiFileRef = useRef<HTMLInputElement>(null);
 
   const filtered = useMemo(() => {
-    return candidatas
+    const base = candidatas
       .filter(c => filterStatus === 'TODAS' || c.status === filterStatus)
       .filter(c => c.nome.toLowerCase().includes(search.toLowerCase()));
+
+    // Sort: candidates with a scheduled interview datetime come first (asc),
+    // then the rest sorted by creation date desc (newest first)
+    return base.sort((a, b) => {
+      const pa = getPipeline(a.id);
+      const pb = getPipeline(b.id);
+      const dtA = pa.entrevistaData && pa.entrevistaHorario
+        ? new Date(`${pa.entrevistaData}T${pa.entrevistaHorario}`).getTime()
+        : null;
+      const dtB = pb.entrevistaData && pb.entrevistaHorario
+        ? new Date(`${pb.entrevistaData}T${pb.entrevistaHorario}`).getTime()
+        : null;
+
+      if (dtA !== null && dtB !== null) return dtA - dtB; // both scheduled → sort asc
+      if (dtA !== null) return -1; // a has time, b doesn't → a first
+      if (dtB !== null) return 1;  // b has time, a doesn't → b first
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // neither → newest first
+    });
   }, [candidatas, search, filterStatus]);
 
   const counts = useMemo(() => {
@@ -429,9 +447,15 @@ export const AdminRHContratacao: React.FC = () => {
             {filtered.map(c => {
               const etapa = getEtapa(c.id);
               const eCfg = ETAPA_CONFIG[etapa];
+              const pl = getPipeline(c.id);
+              const temEntrevista = !!(pl.entrevistaData && pl.entrevistaHorario);
               return (
                 <button key={c.id} onClick={() => openAberta(c)}
-                  className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-100 dark:border-darkBorder p-4 text-left hover:border-primary/40 hover:shadow-sm transition-all group flex items-center gap-4">
+                  className={`bg-white dark:bg-darkSurface rounded-2xl border p-4 text-left hover:border-primary/40 hover:shadow-sm transition-all group flex items-center gap-4 ${
+                    temEntrevista
+                      ? 'border-blue-200 dark:border-blue-800'
+                      : 'border-gray-100 dark:border-darkBorder'
+                  }`}>
                   {/* Avatar */}
                   <div className={`w-12 h-12 rounded-2xl ${eCfg.color} bg-opacity-20 flex items-center justify-center text-xl shrink-0`}>
                     {eCfg.icon}
@@ -444,7 +468,7 @@ export const AdminRHContratacao: React.FC = () => {
                         {eCfg.short}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="text-[10px] text-lightText dark:text-darkTextSecondary flex items-center gap-1">
                         <Calendar size={10} />
                         {formatDate(c.data)}
@@ -455,6 +479,15 @@ export const AdminRHContratacao: React.FC = () => {
                         </span>
                       )}
                     </div>
+                    {/* Entrevista agendada */}
+                    {temEntrevista && (
+                      <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400">
+                        <Clock size={10} className="shrink-0" />
+                        <span className="text-[10px] font-bold">
+                          {new Date(pl.entrevistaData! + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às {pl.entrevistaHorario}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <ChevronRight size={16} className="text-lightText group-hover:text-primary transition-colors shrink-0" />
                 </button>
