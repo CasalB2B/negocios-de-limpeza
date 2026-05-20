@@ -445,7 +445,7 @@ export const AdminRHColaboradoras: React.FC = () => {
               const anivHoje = anivDias === 0;
               const anivBreve = anivDias !== null && anivDias <= 7;
               return (
-                <div key={col.id} className={`bg-white dark:bg-darkSurface rounded-2xl border p-4 flex items-start gap-4 ${anivHoje ? 'border-pink-300 dark:border-pink-700 shadow-pink-100 dark:shadow-none shadow-sm' : 'border-gray-100 dark:border-darkBorder'}`}>
+                <div key={col.id} onClick={() => abrirPerfil(col)} className={`bg-white dark:bg-darkSurface rounded-2xl border p-4 flex items-start gap-4 cursor-pointer hover:shadow-md hover:border-purple-200 dark:hover:border-purple-700 transition-all duration-200 ${anivHoje ? 'border-pink-300 dark:border-pink-700 shadow-pink-100 dark:shadow-none shadow-sm' : 'border-gray-100 dark:border-darkBorder'}`}>
                   <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-darkBg flex items-center justify-center text-2xl font-bold text-lightText overflow-hidden shrink-0">
                     {col.foto ? <img src={col.foto} alt={col.nome} className="w-full h-full object-cover rounded-2xl" /> : col.nome[0]}
                   </div>
@@ -498,7 +498,7 @@ export const AdminRHColaboradoras: React.FC = () => {
 
                     {/* Link de avaliação */}
                     {col.status === StatusColaboradoraRH.ATIVA && (
-                      <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-darkBorder">
+                      <div onClick={e => e.stopPropagation()} className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-darkBorder">
                         <a
                           href={`https://wa.me/?text=${getMsgWhatsApp(col.nome, getLinkAvaliacao(col.id))}`}
                           target="_blank" rel="noopener noreferrer"
@@ -522,7 +522,7 @@ export const AdminRHColaboradoras: React.FC = () => {
                       </div>
                     )}
                     {col.status !== StatusColaboradoraRH.ATIVA && (
-                      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-darkBorder">
+                      <div onClick={e => e.stopPropagation()} className="mt-3 pt-3 border-t border-gray-100 dark:border-darkBorder">
                         <button onClick={() => abrirPerfil(col)} className="flex items-center gap-1 px-3 py-1 bg-primary text-white rounded-lg text-[10px] font-bold hover:bg-primary/90 transition-colors">
                           Ver perfil <ChevronRight size={10} />
                         </button>
