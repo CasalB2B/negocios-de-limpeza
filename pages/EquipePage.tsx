@@ -173,10 +173,10 @@ function TeamCards({ colabs, avaliacoes }: { colabs: Colab[]; avaliacoes: Avalia
 
           return (
             <div key={col.id}
-              className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col items-center text-center gap-3">
+              className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:border-purple-200 hover:-translate-y-1 transition-all duration-300 p-5 flex flex-col items-center text-center gap-3 cursor-default">
 
               {/* Avatar */}
-              <div className="w-16 h-16 rounded-2xl bg-purple-100 flex items-center justify-center font-bold text-purple-600 text-2xl overflow-hidden shrink-0">
+              <div className="w-16 h-16 rounded-2xl bg-purple-100 flex items-center justify-center font-bold text-purple-600 text-2xl overflow-hidden shrink-0 group-hover:scale-110 group-hover:rounded-full transition-all duration-300 shadow-sm group-hover:shadow-purple-200 group-hover:shadow-md">
                 {col.foto
                   ? <img src={col.foto} alt={col.nome} className="w-full h-full object-cover" />
                   : col.nome[0]?.toUpperCase()}
@@ -184,7 +184,7 @@ function TeamCards({ colabs, avaliacoes }: { colabs: Colab[]; avaliacoes: Avalia
 
               {/* Name + cargo */}
               <div>
-                <p className="font-bold text-gray-800 text-base leading-tight">{col.nome}</p>
+                <p className="font-bold text-gray-800 text-base leading-tight group-hover:text-purple-700 transition-colors duration-200">{col.nome}</p>
                 <span className={`inline-block mt-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${cargoColor}`}>
                   {cargo}
                 </span>
@@ -206,7 +206,7 @@ function TeamCards({ colabs, avaliacoes }: { colabs: Colab[]; avaliacoes: Avalia
               {s.total > 0 && (
                 <button
                   onClick={() => setSelected(col)}
-                  className="mt-1 flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors border border-purple-100"
+                  className="mt-1 flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors border border-purple-100 group-hover:bg-purple-600 group-hover:text-white group-hover:border-purple-600 transition-all duration-200"
                 >
                   <MessageSquare size={11} />
                   Ver avaliações
