@@ -100,6 +100,7 @@ interface PipelineExtra {
   etapa: EtapaCandidatura;
   entrevistaData?: string;
   entrevistaHorario?: string;
+  entrevistaConfirmada?: boolean; // candidata confirmou presença na entrevista?
   demandasRealizadas: number; // 0-3
   anotacoes: Array<{ id: string; texto: string; criadoEm: string }>;
   dadosFormulario?: string; // respostas do formulário de triagem
@@ -452,7 +453,9 @@ export const AdminRHContratacao: React.FC = () => {
               return (
                 <button key={c.id} onClick={() => openAberta(c)}
                   className={`bg-white dark:bg-darkSurface rounded-2xl border p-4 text-left hover:border-primary/40 hover:shadow-sm transition-all group flex items-center gap-4 ${
-                    temEntrevista
+                    temEntrevista && pl.entrevistaConfirmada
+                      ? 'border-green-200 dark:border-green-800'
+                      : temEntrevista
                       ? 'border-blue-200 dark:border-blue-800'
                       : 'border-gray-100 dark:border-darkBorder'
                   }`}>
@@ -479,13 +482,26 @@ export const AdminRHContratacao: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    {/* Entrevista agendada */}
+                    {/* Entrevista agendada + confirmação */}
                     {temEntrevista && (
-                      <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400">
-                        <Clock size={10} className="shrink-0" />
-                        <span className="text-[10px] font-bold">
-                          {new Date(pl.entrevistaData! + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às {pl.entrevistaHorario}
-                        </span>
+                      <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400">
+                          <Clock size={10} className="shrink-0" />
+                          <span className="text-[10px] font-bold">
+                            {new Date(pl.entrevistaData! + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às {pl.entrevistaHorario}
+                          </span>
+                        </div>
+                        {pl.entrevistaConfirmada ? (
+                          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                            <CheckCircle size={10} className="shrink-0" />
+                            <span className="text-[10px] font-bold">Confirmada</span>
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400">
+                            <Clock size={10} className="shrink-0" />
+                            <span className="text-[10px] font-bold">Não confirmada</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -646,6 +662,27 @@ export const AdminRHContratacao: React.FC = () => {
                           {formatDate(pipeline.entrevistaData)}
                           {pipeline.entrevistaHorario && ` às ${pipeline.entrevistaHorario}`}
                         </div>
+                      )}
+
+                      {/* Confirmação de presença */}
+                      {pipeline.entrevistaData && (
+                        <button
+                          onClick={() => setPipeline(prev => ({ ...prev, entrevistaConfirmada: !prev.entrevistaConfirmada }))}
+                          className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all font-bold text-sm ${
+                            pipeline.entrevistaConfirmada
+                              ? 'bg-green-500 border-green-500 text-white shadow-md'
+                              : 'bg-white dark:bg-darkBg border-orange-200 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:border-orange-400'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            {pipeline.entrevistaConfirmada
+                              ? <><CheckCircle size={16} /> Presença confirmada!</>
+                              : <><Clock size={16} /> Aguardando confirmação</>}
+                          </span>
+                          <span className="text-xs opacity-80">
+                            {pipeline.entrevistaConfirmada ? 'Clique para desmarcar' : 'Clique para confirmar'}
+                          </span>
+                        </button>
                       )}
                     </div>
                   )}
