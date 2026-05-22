@@ -215,21 +215,25 @@ const DEFAULT_CONFIG_BONUS: ConfiguracaoBonusLider = {
   metaAvaliacao: 4.5,
   metaFaxinasMes: 100,
   salarioFixo: 2800,
-  vigenciaInicio: new Date().toISOString().split('T')[0],
-  createdAt: new Date().toISOString(),
+  // Fixed past date so real Supabase/LS data always wins in newestDate comparison
+  vigenciaInicio: '2000-01-01',
+  createdAt: '2000-01-01T00:00:00.000Z',
 };
 
+// Fixed past dates so real Supabase/LS data always wins in newestDate comparison.
+// Using new Date() here (module-load time) would make defaults appear "newer" than
+// historical Supabase saves on fresh devices, causing saved values to be ignored.
 const DEFAULT_CONFIG_REMUNERACAO: ConfiguracaoRemuneracaoRH[] = [
-  { id: 'rem_j', cargo: 'JUNIOR',       diaria4h: 80,  diaria6h: 120, diaria8h: 140, passagem: 10.20, vigenciaInicio: new Date().toISOString().split('T')[0], createdAt: new Date().toISOString() },
-  { id: 'rem_s', cargo: 'SENIOR',       diaria4h: 85,  diaria6h: 130, diaria8h: 150, passagem: 10.20, vigenciaInicio: new Date().toISOString().split('T')[0], createdAt: new Date().toISOString() },
-  { id: 'rem_p', cargo: 'PROFISSIONAL', diaria4h: 90,  diaria6h: 140, diaria8h: 160, passagem: 10.20, vigenciaInicio: new Date().toISOString().split('T')[0], createdAt: new Date().toISOString() },
+  { id: 'rem_j', cargo: 'JUNIOR',       diaria4h: 80,  diaria6h: 120, diaria8h: 140, passagem: 10.20, vigenciaInicio: '2000-01-01', createdAt: '2000-01-01T00:00:00.000Z' },
+  { id: 'rem_s', cargo: 'SENIOR',       diaria4h: 85,  diaria6h: 130, diaria8h: 150, passagem: 10.20, vigenciaInicio: '2000-01-01', createdAt: '2000-01-01T00:00:00.000Z' },
+  { id: 'rem_p', cargo: 'PROFISSIONAL', diaria4h: 90,  diaria6h: 140, diaria8h: 160, passagem: 10.20, vigenciaInicio: '2000-01-01', createdAt: '2000-01-01T00:00:00.000Z' },
 ];
 
 const DEFAULT_CONFIG_CRITERIOS: ConfiguracaoCriteriosRH[] = [
-  { id: 'crit_j', cargoOrigem: CargoRH.JUNIOR,       tempoMinimoMeses: 6,  mesesSemReclamacoes: 3, mesesConsecutivosMetaBatida: 1, vigenciaInicio: new Date().toISOString().split('T')[0], createdAt: new Date().toISOString() },
-  { id: 'crit_s', cargoOrigem: CargoRH.SENIOR,       tempoMinimoMeses: 12, mesesSemReclamacoes: 3, mesesConsecutivosMetaBatida: 1, vigenciaInicio: new Date().toISOString().split('T')[0], createdAt: new Date().toISOString() },
-  { id: 'crit_p', cargoOrigem: CargoRH.PROFISSIONAL, tempoMinimoMeses: 18, mesesSemReclamacoes: 3, mesesConsecutivosMetaBatida: 1, vigenciaInicio: new Date().toISOString().split('T')[0], createdAt: new Date().toISOString() },
-  { id: 'crit_l', cargoOrigem: CargoRH.LIDER,        tempoMinimoMeses: 36, mesesSemReclamacoes: 6, mesesConsecutivosMetaBatida: 3, vigenciaInicio: new Date().toISOString().split('T')[0], createdAt: new Date().toISOString() },
+  { id: 'crit_j', cargoOrigem: CargoRH.JUNIOR,       tempoMinimoMeses: 6,  mesesSemReclamacoes: 3, mesesConsecutivosMetaBatida: 1, vigenciaInicio: '2000-01-01', createdAt: '2000-01-01T00:00:00.000Z' },
+  { id: 'crit_s', cargoOrigem: CargoRH.SENIOR,       tempoMinimoMeses: 12, mesesSemReclamacoes: 3, mesesConsecutivosMetaBatida: 1, vigenciaInicio: '2000-01-01', createdAt: '2000-01-01T00:00:00.000Z' },
+  { id: 'crit_p', cargoOrigem: CargoRH.PROFISSIONAL, tempoMinimoMeses: 18, mesesSemReclamacoes: 3, mesesConsecutivosMetaBatida: 1, vigenciaInicio: '2000-01-01', createdAt: '2000-01-01T00:00:00.000Z' },
+  { id: 'crit_l', cargoOrigem: CargoRH.LIDER,        tempoMinimoMeses: 36, mesesSemReclamacoes: 6, mesesConsecutivosMetaBatida: 3, vigenciaInicio: '2000-01-01', createdAt: '2000-01-01T00:00:00.000Z' },
 ];
 
 // Seed: Vaniele — Líder de Equipe, 3 anos de empresa

@@ -70,9 +70,11 @@ export const AdminRHConfiguracoes: React.FC = () => {
   const [remS, setRemS] = useState({ diaria4h: 85,  diaria6h: 130, diaria8h: 150, passagem: 10.20 });
   const [remP, setRemP] = useState({ diaria4h: 90,  diaria6h: 140, diaria8h: 160, passagem: 10.20 });
 
-  useEffect(() => { if (remJunior) setRemJ({ diaria4h: remJunior.diaria4h, diaria6h: remJunior.diaria6h, diaria8h: remJunior.diaria8h, passagem: remJunior.passagem }); }, [remJunior?.id]);
-  useEffect(() => { if (remSenior) setRemS({ diaria4h: remSenior.diaria4h, diaria6h: remSenior.diaria6h, diaria8h: remSenior.diaria8h, passagem: remSenior.passagem }); }, [remSenior?.id]);
-  useEffect(() => { if (remProf)   setRemP({ diaria4h: remProf.diaria4h,   diaria6h: remProf.diaria6h,   diaria8h: remProf.diaria8h,   passagem: remProf.passagem   }); }, [remProf?.id]);
+  // Re-sync form fields whenever the context config changes (Phase 1 LS load OR Phase 2 Supabase sync).
+  // Deps include all field values so the form updates even when only values change (same record ID).
+  useEffect(() => { if (remJunior) setRemJ({ diaria4h: remJunior.diaria4h, diaria6h: remJunior.diaria6h, diaria8h: remJunior.diaria8h, passagem: remJunior.passagem }); }, [remJunior?.id, remJunior?.diaria4h, remJunior?.diaria6h, remJunior?.diaria8h, remJunior?.passagem]);
+  useEffect(() => { if (remSenior) setRemS({ diaria4h: remSenior.diaria4h, diaria6h: remSenior.diaria6h, diaria8h: remSenior.diaria8h, passagem: remSenior.passagem }); }, [remSenior?.id, remSenior?.diaria4h, remSenior?.diaria6h, remSenior?.diaria8h, remSenior?.passagem]);
+  useEffect(() => { if (remProf)   setRemP({ diaria4h: remProf.diaria4h,   diaria6h: remProf.diaria6h,   diaria8h: remProf.diaria8h,   passagem: remProf.passagem   }); }, [remProf?.id, remProf?.diaria4h, remProf?.diaria6h, remProf?.diaria8h, remProf?.passagem]);
 
   // ── Bônus config ────────────────────────────────────────────────────────────
   const [bonusCfg, setBonusCfg] = useState({
@@ -96,7 +98,7 @@ export const AdminRHConfiguracoes: React.FC = () => {
       setCalcMeta(configBonusLider.metaFaxinasMes || 100);
       // relMeta não sincroniza com o total da equipe — é individual, fica em 20
     }
-  }, [configBonusLider?.id]);
+  }, [configBonusLider?.id, configBonusLider?.salarioFixo, configBonusLider?.multiplicadorFaxina, configBonusLider?.bonusAvaliacao, configBonusLider?.bonusAvaliacao5estrelas, configBonusLider?.metaAvaliacao, configBonusLider?.metaFaxinasMes]);
 
   // ── Bônus calculator state ──────────────────────────────────────────────────
   const lideres = useMemo(
@@ -270,7 +272,9 @@ export const AdminRHConfiguracoes: React.FC = () => {
     const s = getCrit(CargoRH.SENIOR);       if (s) setCritS({ tempoMinimoMeses: s.tempoMinimoMeses, mesesSemReclamacoes: s.mesesSemReclamacoes, mesesConsecutivosMetaBatida: s.mesesConsecutivosMetaBatida });
     const p = getCrit(CargoRH.PROFISSIONAL); if (p) setCritP({ tempoMinimoMeses: p.tempoMinimoMeses, mesesSemReclamacoes: p.mesesSemReclamacoes, mesesConsecutivosMetaBatida: p.mesesConsecutivosMetaBatida });
     const l = getCrit(CargoRH.LIDER);        if (l) setCritL({ tempoMinimoMeses: l.tempoMinimoMeses, mesesSemReclamacoes: l.mesesSemReclamacoes, mesesConsecutivosMetaBatida: l.mesesConsecutivosMetaBatida });
-  }, [configCriterios.length]);
+  // configCriterios is a new array reference every time setConfigCriterios is called,
+  // so this fires on both Phase-1 (LS) and Phase-2 (Supabase) loads.
+  }, [configCriterios]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const askConfirm = (fn: () => Promise<void>) => { setPendingSave(() => fn); setShowConfirm(true); };
