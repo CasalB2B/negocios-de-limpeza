@@ -761,7 +761,7 @@ export const AdminRHContratacao: React.FC = () => {
                       onChange={e => setPipeline(p => ({ ...p, dadosFormulario: e.target.value }))}
                       rows={10}
                       placeholder={"Respostas do formulário de candidatura...\n\nEx:\nNome: Maria Silva\nIdade: 28\nExperiência: 3 anos como diarista\nDisponibilidade: Segunda a sexta\nComo conheceu: Instagram\n..."}
-                      className="w-full border border-input bg-gray-50 dark:bg-darkBg rounded-xl px-4 py-3 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none font-mono leading-relaxed"
+                      className="w-full border border-input bg-gray-50 dark:bg-darkBg rounded-xl px-4 py-3 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y font-mono leading-relaxed"
                     />
                     <button
                       onClick={() => { setAiError(''); aiFileRef.current?.click(); }}
