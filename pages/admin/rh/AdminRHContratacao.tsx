@@ -215,9 +215,9 @@ function PipelineBar({
               <button
                 onClick={() => !disabled && onChange(e)}
                 disabled={disabled}
-                className={`flex flex-col items-center gap-1 px-2 py-1.5 rounded-xl transition-all shrink-0 ${
+                className={`flex flex-col items-center gap-1 px-2 py-1.5 rounded-xl transition-colors shrink-0 ${
                   current
-                    ? 'bg-primary text-white shadow-md scale-105'
+                    ? 'bg-primary text-white shadow-md ring-2 ring-white/30'
                     : done
                     ? 'bg-primary/20 text-primary dark:bg-primary/30'
                     : 'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-gray-200 dark:hover:bg-darkBorder'
@@ -599,10 +599,11 @@ export const AdminRHContratacao: React.FC = () => {
             </div>
 
             {/* ── Corpo: duas colunas no desktop, empilhado no mobile ───────── */}
-            <div className="flex-1 overflow-hidden flex flex-col lg:flex-row min-h-0">
+            {/* Mobile: scroll vertical normal; Desktop (lg): overflow-hidden + colunas independentes */}
+            <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden lg:min-h-0">
 
               {/* COLUNA ESQUERDA — pipeline contextual + dados do formulário + anotações */}
-              <div className="lg:w-[45%] xl:w-[42%] flex flex-col border-b lg:border-b-0 lg:border-r border-gray-100 dark:border-darkBorder overflow-y-auto">
+              <div className="lg:w-[45%] xl:w-[42%] flex flex-col border-b lg:border-b-0 lg:border-r border-gray-100 dark:border-darkBorder lg:overflow-y-auto">
                 <div className="p-5 space-y-5">
 
                   {/* Etapa: Contato Inicial */}
@@ -813,8 +814,8 @@ export const AdminRHContratacao: React.FC = () => {
               </div>
 
               {/* COLUNA DIREITA — Notas da Entrevista (ocupa toda a altura) */}
-              <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                <div className="flex-1 flex flex-col p-5 gap-4 min-h-0">
+              <div className="flex-1 flex flex-col lg:min-h-0 lg:overflow-hidden">
+                <div className="flex-1 flex flex-col p-5 gap-4 lg:min-h-0">
 
                   {/* Título e instrução */}
                   <div className="shrink-0">
@@ -827,12 +828,12 @@ export const AdminRHContratacao: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* Textarea que preenche todo o espaço disponível */}
+                  {/* Textarea que preenche todo o espaço disponível (desktop); altura fixa no mobile */}
                   <textarea
                     value={docForm.notasEntrevista ?? ''}
                     onChange={e => setDocForm(p => ({ ...p, notasEntrevista: e.target.value }))}
                     placeholder={"Notas da entrevista...\n\nPerguntas e respostas:\n— Por que quer trabalhar conosco?\n— Tem transporte próprio?\n— Disponibilidade de horário?\n— Já trabalhou em casa de família? Como foi?\n\nImpressão geral:\n..."}
-                    className="flex-1 w-full min-h-0 border border-input bg-gray-50 dark:bg-darkBg rounded-2xl px-5 py-4 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none leading-relaxed"
+                    className="flex-1 w-full min-h-[260px] lg:min-h-0 border border-input bg-gray-50 dark:bg-darkBg rounded-2xl px-5 py-4 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none leading-relaxed"
                   />
 
                   {/* Observações extras — compacto, abaixo das notas */}
