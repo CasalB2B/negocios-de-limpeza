@@ -532,108 +532,98 @@ export const AdminRHContratacao: React.FC = () => {
           </div>
         </Modal>
 
-        {/* Drawer de candidata */}
+        {/* ═══ Painel full-screen de candidata ═══════════════════════════════ */}
         {aberta && (
-          <div className="fixed inset-0 z-50 flex items-stretch justify-end">
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setAberta(null)} />
-            <div className="relative w-full max-w-2xl bg-white dark:bg-darkSurface shadow-2xl flex flex-col h-full overflow-hidden animate-in slide-in-from-right-10">
+          <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-darkSurface">
 
-              {/* Header */}
-              <div className="bg-gradient-to-r from-primary to-violet-500 text-white p-5 shrink-0">
-                <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center font-bold text-2xl shrink-0">
-                    {ETAPA_CONFIG[pipeline.etapa].icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
+            {/* ── Header ──────────────────────────────────────────────────────── */}
+            <div className="bg-gradient-to-r from-primary to-violet-500 text-white shrink-0">
+              {/* Linha de identidade */}
+              <div className="flex items-center gap-3 px-5 pt-4 pb-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center font-bold text-xl shrink-0">
+                  {ETAPA_CONFIG[pipeline.etapa].icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  {editando ? (
+                    <input
+                      className="font-bold text-base bg-white/20 rounded-lg px-2 py-0.5 focus:outline-none w-full text-white placeholder-white/60"
+                      value={docForm.nome ?? aberta.nome}
+                      onChange={e => setDocForm(p => ({ ...p, nome: e.target.value }))}
+                    />
+                  ) : (
+                    <p className="font-bold text-base leading-tight truncate">{aberta.nome}</p>
+                  )}
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
                     {editando ? (
-                      <input
-                        className="font-bold text-lg bg-white/20 rounded-lg px-2 py-1 focus:outline-none w-full text-white placeholder-white/60"
-                        value={docForm.nome ?? aberta.nome}
-                        onChange={e => setDocForm(p => ({ ...p, nome: e.target.value }))}
-                      />
+                      <select value={docForm.status ?? aberta.status}
+                        onChange={e => setDocForm(p => ({ ...p, status: e.target.value as StatusCandidataRH }))}
+                        className="border-0 bg-white/20 rounded-lg px-2 py-0.5 text-xs text-white focus:outline-none">
+                        {STATUS_ORDER.map(s => <option key={s} value={s} className="text-darkText">{STATUS_CONFIG[s].label}</option>)}
+                      </select>
                     ) : (
-                      <p className="font-bold text-lg leading-tight">{aberta.nome}</p>
-                    )}
-                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      {editando ? (
-                        <select value={docForm.status ?? aberta.status}
-                          onChange={e => setDocForm(p => ({ ...p, status: e.target.value as StatusCandidataRH }))}
-                          className="border-0 bg-white/20 rounded-lg px-2 py-1 text-xs text-white focus:outline-none">
-                          {STATUS_ORDER.map(s => <option key={s} value={s} className="text-darkText">{STATUS_CONFIG[s].label}</option>)}
-                        </select>
-                      ) : (
-                        <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full">
-                          {STATUS_CONFIG[aberta.status].label}
-                        </span>
-                      )}
-                      <EtapaBadge etapa={pipeline.etapa} />
-                      <span className="text-[11px] text-white/70 flex items-center gap-1">
-                        <Calendar size={10} /> {formatDate(aberta.data)}
+                      <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full">
+                        {STATUS_CONFIG[aberta.status].label}
                       </span>
-                      {aberta.telefone && (
-                        <span className="text-[11px] text-white/70 flex items-center gap-1">
-                          <Phone size={10} /> {aberta.telefone}
-                        </span>
-                      )}
-                    </div>
+                    )}
+                    <EtapaBadge etapa={pipeline.etapa} />
+                    <span className="text-[11px] text-white/70 flex items-center gap-1">
+                      <Calendar size={10} /> {formatDate(aberta.data)}
+                    </span>
+                    {aberta.telefone && (
+                      <span className="text-[11px] text-white/70 flex items-center gap-1">
+                        <Phone size={10} /> {aberta.telefone}
+                      </span>
+                    )}
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button onClick={() => setEditando(e => !e)}
-                      className={`p-2 rounded-xl transition-colors ${editando ? 'bg-white/30' : 'hover:bg-white/20'}`}>
-                      <Edit size={16} />
-                    </button>
-                    <button onClick={() => setConfirmDelete(aberta.id)}
-                      className="p-2 hover:bg-red-500/30 rounded-xl transition-colors">
-                      <Trash2 size={16} />
-                    </button>
-                    <button onClick={() => setAberta(null)}
-                      className="p-2 hover:bg-white/20 rounded-xl transition-colors">
-                      <X size={18} />
-                    </button>
-                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => setEditando(e => !e)}
+                    className={`p-2 rounded-xl transition-colors ${editando ? 'bg-white/30' : 'hover:bg-white/20'}`}>
+                    <Edit size={15} />
+                  </button>
+                  <button onClick={() => setConfirmDelete(aberta.id)}
+                    className="p-2 hover:bg-red-500/30 rounded-xl transition-colors">
+                    <Trash2 size={15} />
+                  </button>
+                  <button onClick={() => setAberta(null)}
+                    className="p-2 hover:bg-white/20 rounded-xl transition-colors">
+                    <X size={18} />
+                  </button>
                 </div>
               </div>
 
-              {/* Conteúdo scrollável */}
-              <div className="flex-1 overflow-y-auto">
+              {/* Pipeline bar — ocupa a largura toda */}
+              <div className="px-5 pb-4">
+                <PipelineBar etapa={pipeline.etapa} onChange={updateEtapa} />
+              </div>
+            </div>
 
-                {/* Pipeline + Agendamento */}
-                <div className="p-5 space-y-5 border-b border-gray-100 dark:border-darkBorder">
+            {/* ── Corpo: duas colunas no desktop, empilhado no mobile ───────── */}
+            <div className="flex-1 overflow-hidden flex flex-col lg:flex-row min-h-0">
 
-                  {/* Pipeline stages */}
-                  <PipelineBar etapa={pipeline.etapa} onChange={updateEtapa} />
+              {/* COLUNA ESQUERDA — pipeline contextual + dados do formulário + anotações */}
+              <div className="lg:w-[45%] xl:w-[42%] flex flex-col border-b lg:border-b-0 lg:border-r border-gray-100 dark:border-darkBorder overflow-y-auto">
+                <div className="p-5 space-y-5">
 
-                  {/* Contato inicial */}
+                  {/* Etapa: Contato Inicial */}
                   {pipeline.etapa === 'CONTATO_INICIAL' && (
                     <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl p-4 space-y-3">
                       <div className="flex items-center gap-2">
                         <span className="text-lg">📱</span>
                         <p className="text-sm font-bold text-indigo-800 dark:text-indigo-300">Contato Inicial</p>
                       </div>
-                      <div className="space-y-2 text-xs text-indigo-700 dark:text-indigo-300">
-                        <p className="font-bold">Checklist de primeiro contato:</p>
-                        <ul className="space-y-1.5 pl-1">
-                          {[
-                            'Apresentar a empresa e modelo de trabalho (MEI)',
-                            'Explicar a remuneração (diária + passagem)',
-                            'Verificar disponibilidade de horários',
-                            'Confirmar interesse na vaga',
-                            'Agendar entrevista presencial',
-                          ].map((item, i) => (
-                            <li key={i} className="flex items-start gap-2">
-                              <span className="mt-0.5 shrink-0">✦</span>
-                              <span>{item}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                      <ul className="space-y-1.5 pl-1 text-xs text-indigo-700 dark:text-indigo-300">
+                        {['Apresentar a empresa e modelo de trabalho (MEI)', 'Explicar a remuneração (diária + passagem)', 'Verificar disponibilidade de horários', 'Confirmar interesse na vaga', 'Agendar entrevista presencial'].map((item, i) => (
+                          <li key={i} className="flex items-start gap-2"><span className="mt-0.5 shrink-0">✦</span><span>{item}</span></li>
+                        ))}
+                      </ul>
                       <p className="text-[10px] text-indigo-500 dark:text-indigo-400 italic">
                         Após confirmar interesse, avance para Triagem e preencha o formulário abaixo.
                       </p>
                     </div>
                   )}
 
-                  {/* Agendamento de entrevista */}
+                  {/* Etapa: Entrevista */}
                   {(pipeline.etapa === 'ENTREVISTA_AGENDADA' || pipeline.etapa === 'ENTREVISTADA') && (
                     <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-4 space-y-3">
                       <div className="flex items-center gap-2">
@@ -643,15 +633,13 @@ export const AdminRHContratacao: React.FC = () => {
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs font-bold text-blue-700 dark:text-blue-400 mb-1">Data</label>
-                          <input type="date"
-                            value={pipeline.entrevistaData || ''}
+                          <input type="date" value={pipeline.entrevistaData || ''}
                             onChange={e => setPipeline(prev => ({ ...prev, entrevistaData: e.target.value }))}
                             className="w-full border border-blue-200 dark:border-blue-800 bg-white dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-blue-300" />
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-blue-700 dark:text-blue-400 mb-1">Horário</label>
-                          <input type="time"
-                            value={pipeline.entrevistaHorario || ''}
+                          <input type="time" value={pipeline.entrevistaHorario || ''}
                             onChange={e => setPipeline(prev => ({ ...prev, entrevistaHorario: e.target.value }))}
                             className="w-full border border-blue-200 dark:border-blue-800 bg-white dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-blue-300" />
                         </div>
@@ -659,92 +647,60 @@ export const AdminRHContratacao: React.FC = () => {
                       {pipeline.entrevistaData && (
                         <div className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl px-3 py-2 text-blue-800 dark:text-blue-300 text-xs font-bold">
                           <Calendar size={12} />
-                          {formatDate(pipeline.entrevistaData)}
-                          {pipeline.entrevistaHorario && ` às ${pipeline.entrevistaHorario}`}
+                          {formatDate(pipeline.entrevistaData)}{pipeline.entrevistaHorario && ` às ${pipeline.entrevistaHorario}`}
                         </div>
                       )}
-
-                      {/* Confirmação de presença */}
                       {pipeline.entrevistaData && (
                         <button
                           onClick={() => setPipeline(prev => ({ ...prev, entrevistaConfirmada: !prev.entrevistaConfirmada }))}
-                          className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all font-bold text-sm ${
-                            pipeline.entrevistaConfirmada
-                              ? 'bg-green-500 border-green-500 text-white shadow-md'
-                              : 'bg-white dark:bg-darkBg border-orange-200 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:border-orange-400'
-                          }`}
-                        >
+                          className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all font-bold text-sm ${pipeline.entrevistaConfirmada ? 'bg-green-500 border-green-500 text-white shadow-md' : 'bg-white dark:bg-darkBg border-orange-200 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:border-orange-400'}`}>
                           <span className="flex items-center gap-2">
-                            {pipeline.entrevistaConfirmada
-                              ? <><CheckCircle size={16} /> Presença confirmada!</>
-                              : <><Clock size={16} /> Aguardando confirmação</>}
+                            {pipeline.entrevistaConfirmada ? <><CheckCircle size={16} /> Presença confirmada!</> : <><Clock size={16} /> Aguardando confirmação</>}
                           </span>
-                          <span className="text-xs opacity-80">
-                            {pipeline.entrevistaConfirmada ? 'Clique para desmarcar' : 'Clique para confirmar'}
-                          </span>
+                          <span className="text-xs opacity-80">{pipeline.entrevistaConfirmada ? 'Clique para desmarcar' : 'Clique para confirmar'}</span>
                         </button>
                       )}
                     </div>
                   )}
 
-                  {/* Contador de demandas */}
+                  {/* Etapa: Avaliação */}
                   {pipeline.etapa === 'AVALIACAO' && (
                     <div className="bg-amber-50 dark:bg-amber-900/20 rounded-2xl p-4 space-y-3">
                       <div className="flex items-center gap-2">
                         <Briefcase size={15} className="text-amber-600 dark:text-amber-400" />
                         <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Demandas de Avaliação</p>
-                        <span className="ml-auto text-xs font-bold text-amber-700 dark:text-amber-400">
-                          {pipeline.demandasRealizadas}/3 realizadas
-                        </span>
+                        <span className="ml-auto text-xs font-bold text-amber-700 dark:text-amber-400">{pipeline.demandasRealizadas}/3 realizadas</span>
                       </div>
                       <div className="flex gap-3">
                         {[1, 2, 3].map(n => (
                           <button key={n} onClick={() => toggleDemanda(n)}
-                            className={`flex-1 flex flex-col items-center gap-1 p-3 rounded-2xl border-2 transition-all font-bold text-sm ${
-                              pipeline.demandasRealizadas >= n
-                                ? 'bg-amber-500 border-amber-500 text-white shadow-md'
-                                : 'bg-white dark:bg-darkBg border-amber-200 dark:border-amber-800 text-amber-400 hover:border-amber-400'
-                            }`}>
-                            {pipeline.demandasRealizadas >= n ? '✅' : '⭕'}
-                            <span className="text-xs">Demanda {n}</span>
+                            className={`flex-1 flex flex-col items-center gap-1 p-3 rounded-2xl border-2 transition-all font-bold text-sm ${pipeline.demandasRealizadas >= n ? 'bg-amber-500 border-amber-500 text-white shadow-md' : 'bg-white dark:bg-darkBg border-amber-200 dark:border-amber-800 text-amber-400 hover:border-amber-400'}`}>
+                            {pipeline.demandasRealizadas >= n ? '✅' : '⭕'}<span className="text-xs">Demanda {n}</span>
                           </button>
                         ))}
                       </div>
                       {pipeline.demandasRealizadas === 3 && (
                         <div className="flex items-center gap-2 bg-green-100 dark:bg-green-900/30 rounded-xl px-3 py-2 text-green-700 dark:text-green-400 text-xs font-bold">
-                          <CheckCircle size={13} />
-                          3 demandas concluídas! Avançar para abertura do MEI.
+                          <CheckCircle size={13} /> 3 demandas concluídas! Avançar para abertura do MEI.
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* Documentação */}
+                  {/* Etapa: Documentação */}
                   {pipeline.etapa === 'DOCUMENTACAO' && (
                     <div className="bg-teal-50 dark:bg-teal-900/20 rounded-2xl p-4 space-y-3">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">📄</span>
-                          <p className="text-sm font-bold text-teal-800 dark:text-teal-300">Documentação</p>
-                        </div>
-                        <span className="text-xs font-bold text-teal-700 dark:text-teal-400">
-                          {Object.values(pipeline.documentosChecklist || {}).filter(Boolean).length}/{DOCS_CHECKLIST.length}
-                        </span>
+                        <div className="flex items-center gap-2"><span className="text-lg">📄</span><p className="text-sm font-bold text-teal-800 dark:text-teal-300">Documentação</p></div>
+                        <span className="text-xs font-bold text-teal-700 dark:text-teal-400">{Object.values(pipeline.documentosChecklist || {}).filter(Boolean).length}/{DOCS_CHECKLIST.length}</span>
                       </div>
                       <div className="space-y-2">
                         {DOCS_CHECKLIST.map(doc => {
                           const checked = !!(pipeline.documentosChecklist || {})[doc.id];
                           return (
                             <button key={doc.id}
-                              onClick={() => setPipeline(prev => ({
-                                ...prev,
-                                documentosChecklist: { ...(prev.documentosChecklist || {}), [doc.id]: !checked },
-                              }))}
-                              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 transition-all text-left ${
-                                checked
-                                  ? 'bg-teal-500 border-teal-500 text-white'
-                                  : 'bg-white dark:bg-darkBg border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 hover:border-teal-400'
-                              }`}>
+                              onClick={() => setPipeline(prev => ({ ...prev, documentosChecklist: { ...(prev.documentosChecklist || {}), [doc.id]: !checked } }))}
+                              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 transition-all text-left ${checked ? 'bg-teal-500 border-teal-500 text-white' : 'bg-white dark:bg-darkBg border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 hover:border-teal-400'}`}>
                               <span className="text-base shrink-0">{checked ? '✅' : '⬜'}</span>
                               <span className="text-xs font-bold flex-1">{doc.label}</span>
                               {!doc.required && <span className="text-[9px] opacity-70 font-normal">(opcional)</span>}
@@ -753,107 +709,25 @@ export const AdminRHContratacao: React.FC = () => {
                         })}
                       </div>
                       {Object.values(pipeline.documentosChecklist || {}).filter(Boolean).length === DOCS_CHECKLIST.length && (
-                        <div className="flex items-center gap-2 bg-teal-100 dark:bg-teal-900/30 rounded-xl px-3 py-2 text-teal-700 dark:text-teal-400 text-xs font-bold">
-                          <CheckCircle size={13} />
-                          Todos os documentos coletados! Avançar para abertura do MEI.
-                        </div>
+                        <div className="flex items-center gap-2 bg-teal-100 dark:bg-teal-900/30 rounded-xl px-3 py-2 text-teal-700 dark:text-teal-400 text-xs font-bold"><CheckCircle size={13} /> Todos os documentos coletados!</div>
                       )}
                     </div>
                   )}
 
-                  {/* MEI info */}
+                  {/* Etapa: MEI */}
                   {pipeline.etapa === 'ABRINDO_MEI' && (
                     <div className="bg-orange-50 dark:bg-orange-900/20 rounded-2xl p-4">
-                      <div className="flex items-center gap-2">
-                        <AlertCircle size={15} className="text-orange-600 dark:text-orange-400" />
-                        <p className="text-sm font-bold text-orange-800 dark:text-orange-300">Abrindo MEI</p>
-                      </div>
-                      <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                        Passada a avaliação em 3 demandas — orientar a candidata a abrir o MEI e preparar o contrato.
-                      </p>
+                      <div className="flex items-center gap-2"><AlertCircle size={15} className="text-orange-600 dark:text-orange-400" /><p className="text-sm font-bold text-orange-800 dark:text-orange-300">Abrindo MEI</p></div>
+                      <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Passada a avaliação em 3 demandas — orientar a candidata a abrir o MEI e preparar o contrato.</p>
                     </div>
                   )}
 
                   {pipeline.etapa === 'CONTRATADA' && (
                     <div className="bg-green-50 dark:bg-green-900/20 rounded-2xl p-4">
-                      <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                        <CheckCircle size={15} />
-                        <p className="text-sm font-bold">🎉 Contratada com sucesso!</p>
-                      </div>
-                      <p className="text-xs text-green-600 dark:text-green-500 mt-1">
-                        Lembre de cadastrar a nova colaboradora na aba Colaboradoras.
-                      </p>
+                      <div className="flex items-center gap-2 text-green-700 dark:text-green-400"><CheckCircle size={15} /><p className="text-sm font-bold">🎉 Contratada com sucesso!</p></div>
+                      <p className="text-xs text-green-600 dark:text-green-500 mt-1">Lembre de cadastrar a nova colaboradora na aba Colaboradoras.</p>
                     </div>
                   )}
-                </div>
-
-                <div className="p-5 space-y-6">
-
-                  {/* 📝 Bloco de Anotações (com data) */}
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => setShowAnotacoes(v => !v)}
-                      className="flex items-center justify-between w-full group">
-                      <div className="flex items-center gap-2">
-                        <StickyNote size={15} className="text-primary" />
-                        <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">Anotações</p>
-                        {pipeline.anotacoes?.length > 0 && (
-                          <span className="text-[10px] bg-primary/10 text-primary rounded-full px-2 py-0.5 font-bold">
-                            {pipeline.anotacoes.length}
-                          </span>
-                        )}
-                      </div>
-                      {showAnotacoes
-                        ? <ChevronUp size={14} className="text-lightText" />
-                        : <ChevronDown size={14} className="text-lightText" />}
-                    </button>
-
-                    {showAnotacoes && (
-                      <div className="space-y-3">
-                        {/* Nova anotação */}
-                        <div className="flex gap-2">
-                          <textarea
-                            value={novaAnotacao}
-                            onChange={e => setNovaAnotacao(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) addAnotacao(); }}
-                            rows={2}
-                            placeholder="Digite uma anotação... (Ctrl+Enter para salvar)"
-                            className="flex-1 border border-input bg-gray-50 dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-                          />
-                          <button onClick={addAnotacao}
-                            className="px-3 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors shrink-0">
-                            <Plus size={16} />
-                          </button>
-                        </div>
-
-                        {/* Lista de anotações */}
-                        {(pipeline.anotacoes || []).length === 0 ? (
-                          <p className="text-xs text-lightText dark:text-darkTextSecondary italic text-center py-3">
-                            Sem anotações ainda.
-                          </p>
-                        ) : (
-                          <div className="space-y-2">
-                            {(pipeline.anotacoes || []).map(a => (
-                              <div key={a.id}
-                                className="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/30 rounded-xl px-3 py-2.5 flex gap-2">
-                                <div className="flex-1">
-                                  <p className="text-[10px] text-yellow-600 dark:text-yellow-400 font-bold mb-0.5 flex items-center gap-1">
-                                    <Clock size={9} />
-                                    {formatDateTime(a.criadoEm)}
-                                  </p>
-                                  <p className="text-xs text-darkText dark:text-darkTextPrimary leading-relaxed whitespace-pre-wrap">{a.texto}</p>
-                                </div>
-                                <button onClick={() => removeAnotacao(a.id)}
-                                  className="p-1 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg text-lightText hover:text-red-500 transition-colors shrink-0">
-                                  <X size={12} />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
 
                   {/* Dados do Formulário */}
                   <div className="space-y-2">
@@ -862,35 +736,14 @@ export const AdminRHContratacao: React.FC = () => {
                         <ClipboardList size={15} className="text-primary" />
                         <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">Dados do Formulário</p>
                       </div>
-                      {/* IA extraction button */}
                       <div className="flex items-center gap-2">
-                        <input
-                          ref={aiFileRef}
-                          type="file"
-                          accept="image/*,application/pdf"
-                          className="hidden"
-                          onChange={handleAiExtract}
-                        />
+                        <input ref={aiFileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleAiExtract} />
                         <button
                           onClick={() => { setAiError(''); aiFileRef.current?.click(); }}
                           disabled={aiExtracting}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                            aiSuccess
-                              ? 'bg-green-50 text-green-600 border-green-200 dark:bg-green-900/20 dark:border-green-800'
-                              : 'bg-gradient-to-r from-primary/10 to-violet-500/10 text-primary border-primary/20 hover:from-primary/20 hover:to-violet-500/20'
-                          } disabled:opacity-60`}
-                          title="Envie uma foto, print ou PDF do formulário preenchido — a IA extrai os dados automaticamente"
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${aiSuccess ? 'bg-green-50 text-green-600 border-green-200 dark:bg-green-900/20 dark:border-green-800' : 'bg-gradient-to-r from-primary/10 to-violet-500/10 text-primary border-primary/20 hover:from-primary/20 hover:to-violet-500/20'} disabled:opacity-60`}
                         >
-                          {aiExtracting ? (
-                            <>
-                              <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                              Extraindo...
-                            </>
-                          ) : aiSuccess ? (
-                            <><CheckCircle size={12} /> Extraído!</>
-                          ) : (
-                            <><Sparkles size={12} /> Extrair com IA</>
-                          )}
+                          {aiExtracting ? (<><span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />Extraindo...</>) : aiSuccess ? (<><CheckCircle size={12} /> Extraído!</>) : (<><Sparkles size={12} /> Extrair com IA</>)}
                         </button>
                       </div>
                     </div>
@@ -899,70 +752,113 @@ export const AdminRHContratacao: React.FC = () => {
                     </p>
                     {aiError && (
                       <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2 text-xs text-red-600 dark:text-red-400">
-                        <AlertCircle size={13} className="shrink-0 mt-0.5" />
-                        <span>{aiError}</span>
+                        <AlertCircle size={13} className="shrink-0 mt-0.5" /><span>{aiError}</span>
                       </div>
                     )}
                     <textarea
                       value={pipeline.dadosFormulario ?? ''}
                       onChange={e => setPipeline(p => ({ ...p, dadosFormulario: e.target.value }))}
-                      rows={8}
+                      rows={10}
                       placeholder={"Respostas do formulário de candidatura...\n\nEx:\nNome: Maria Silva\nIdade: 28\nExperiência: 3 anos como diarista\nDisponibilidade: Segunda a sexta\nComo conheceu: Instagram\n..."}
                       className="w-full border border-input bg-gray-50 dark:bg-darkBg rounded-xl px-4 py-3 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none font-mono leading-relaxed"
                     />
-                    {/* Drop zone hint for images */}
                     <button
                       onClick={() => { setAiError(''); aiFileRef.current?.click(); }}
                       disabled={aiExtracting}
-                      className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-primary/20 dark:border-primary/30 rounded-xl py-3 text-xs text-primary/60 hover:text-primary hover:border-primary/40 transition-colors font-bold disabled:opacity-50"
-                    >
-                      <ImageIcon size={14} />
-                      Arraste ou clique para enviar foto / print / PDF do formulário
+                      className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-primary/20 dark:border-primary/30 rounded-xl py-3 text-xs text-primary/60 hover:text-primary hover:border-primary/40 transition-colors font-bold disabled:opacity-50">
+                      <ImageIcon size={14} /> Arraste ou clique para enviar foto / print / PDF do formulário
                     </button>
                   </div>
 
-                  {/* Notas da Entrevista */}
+                  {/* Anotações rápidas */}
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <FileText size={15} className="text-primary" />
-                      <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">Notas da Entrevista</p>
-                    </div>
-                    <p className="text-xs text-lightText dark:text-darkTextSecondary">
-                      Use como bloco de notas durante a entrevista.
-                    </p>
-                    <textarea
-                      value={docForm.notasEntrevista ?? ''}
-                      onChange={e => setDocForm(p => ({ ...p, notasEntrevista: e.target.value }))}
-                      rows={10}
-                      placeholder={"Notas da entrevista...\n\nPerguntas e respostas:\n— Por que quer trabalhar conosco?\n— Tem transporte próprio?\n— Disponibilidade de horário?\n— Já trabalhou em casa de família? Como foi?\n\nImpressão geral:\n..."}
-                      className="w-full border border-input bg-gray-50 dark:bg-darkBg rounded-xl px-4 py-3 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none leading-relaxed"
-                    />
-                  </div>
-
-                  {/* Observações */}
-                  <div className="space-y-2">
-                    <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">Observações extras</p>
-                    <textarea
-                      value={docForm.observacoes ?? ''}
-                      onChange={e => setDocForm(p => ({ ...p, observacoes: e.target.value }))}
-                      rows={3}
-                      placeholder="Qualquer outra anotação relevante..."
-                      className="w-full border border-input bg-gray-50 dark:bg-darkBg rounded-xl px-4 py-3 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-                    />
+                    <button onClick={() => setShowAnotacoes(v => !v)} className="flex items-center justify-between w-full group">
+                      <div className="flex items-center gap-2">
+                        <StickyNote size={15} className="text-primary" />
+                        <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">Anotações</p>
+                        {pipeline.anotacoes?.length > 0 && (
+                          <span className="text-[10px] bg-primary/10 text-primary rounded-full px-2 py-0.5 font-bold">{pipeline.anotacoes.length}</span>
+                        )}
+                      </div>
+                      {showAnotacoes ? <ChevronUp size={14} className="text-lightText" /> : <ChevronDown size={14} className="text-lightText" />}
+                    </button>
+                    {showAnotacoes && (
+                      <div className="space-y-3">
+                        <div className="flex gap-2">
+                          <textarea value={novaAnotacao} onChange={e => setNovaAnotacao(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) addAnotacao(); }}
+                            rows={2} placeholder="Digite uma anotação... (Ctrl+Enter para salvar)"
+                            className="flex-1 border border-input bg-gray-50 dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" />
+                          <button onClick={addAnotacao} className="px-3 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors shrink-0"><Plus size={16} /></button>
+                        </div>
+                        {(pipeline.anotacoes || []).length === 0 ? (
+                          <p className="text-xs text-lightText dark:text-darkTextSecondary italic text-center py-3">Sem anotações ainda.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {(pipeline.anotacoes || []).map(a => (
+                              <div key={a.id} className="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/30 rounded-xl px-3 py-2.5 flex gap-2">
+                                <div className="flex-1">
+                                  <p className="text-[10px] text-yellow-600 dark:text-yellow-400 font-bold mb-0.5 flex items-center gap-1"><Clock size={9} />{formatDateTime(a.criadoEm)}</p>
+                                  <p className="text-xs text-darkText dark:text-darkTextPrimary leading-relaxed whitespace-pre-wrap">{a.texto}</p>
+                                </div>
+                                <button onClick={() => removeAnotacao(a.id)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg text-lightText hover:text-red-500 transition-colors shrink-0"><X size={12} /></button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Footer com botão salvar */}
-              <div className="shrink-0 p-4 border-t border-gray-100 dark:border-darkBorder bg-white dark:bg-darkSurface space-y-2">
-                {savedOk && (
-                  <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-3 py-2 text-green-700 dark:text-green-400 text-sm font-bold">
-                    <CheckCircle size={15} /> Alterações salvas com sucesso!
+              {/* COLUNA DIREITA — Notas da Entrevista (ocupa toda a altura) */}
+              <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                <div className="flex-1 flex flex-col p-5 gap-4 min-h-0">
+
+                  {/* Título e instrução */}
+                  <div className="shrink-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <FileText size={15} className="text-primary" />
+                      <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">Notas da Entrevista</p>
+                    </div>
+                    <p className="text-xs text-lightText dark:text-darkTextSecondary">
+                      Bloco de notas aberto durante a entrevista — escreva à vontade.
+                    </p>
                   </div>
-                )}
-                <Button fullWidth onClick={handleSaveDoc} variant={savedOk ? 'outline' : 'primary'}>
-                  {saving ? 'Salvando...' : savedOk ? '✅ Salvo!' : 'Salvar alterações'}
-                </Button>
+
+                  {/* Textarea que preenche todo o espaço disponível */}
+                  <textarea
+                    value={docForm.notasEntrevista ?? ''}
+                    onChange={e => setDocForm(p => ({ ...p, notasEntrevista: e.target.value }))}
+                    placeholder={"Notas da entrevista...\n\nPerguntas e respostas:\n— Por que quer trabalhar conosco?\n— Tem transporte próprio?\n— Disponibilidade de horário?\n— Já trabalhou em casa de família? Como foi?\n\nImpressão geral:\n..."}
+                    className="flex-1 w-full min-h-0 border border-input bg-gray-50 dark:bg-darkBg rounded-2xl px-5 py-4 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none leading-relaxed"
+                  />
+
+                  {/* Observações extras — compacto, abaixo das notas */}
+                  <div className="shrink-0 space-y-1.5">
+                    <p className="text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Observações extras</p>
+                    <textarea
+                      value={docForm.observacoes ?? ''}
+                      onChange={e => setDocForm(p => ({ ...p, observacoes: e.target.value }))}
+                      rows={2}
+                      placeholder="Qualquer outra anotação relevante..."
+                      className="w-full border border-input bg-gray-50 dark:bg-darkBg rounded-xl px-4 py-2.5 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Footer salvar — grudado na base da coluna direita */}
+                <div className="shrink-0 px-5 pb-5 pt-3 border-t border-gray-100 dark:border-darkBorder bg-white dark:bg-darkSurface space-y-2">
+                  {savedOk && (
+                    <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-3 py-2 text-green-700 dark:text-green-400 text-sm font-bold">
+                      <CheckCircle size={15} /> Alterações salvas!
+                    </div>
+                  )}
+                  <Button fullWidth onClick={handleSaveDoc} variant={savedOk ? 'outline' : 'primary'}>
+                    {saving ? 'Salvando...' : savedOk ? '✅ Salvo!' : 'Salvar alterações'}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
