@@ -537,7 +537,9 @@ export const AdminRHContratacao: React.FC = () => {
           <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-darkSurface">
 
             {/* ── Header ──────────────────────────────────────────────────────── */}
-            <div className="bg-gradient-to-r from-primary to-violet-500 text-white shrink-0">
+            {/* style inline: garante que o gradiente preenche a área do notch (safe-area-inset-top) */}
+            <div className="bg-gradient-to-r from-primary to-violet-500 text-white shrink-0"
+                 style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
               {/* Linha de identidade */}
               <div className="flex items-center gap-3 px-5 pt-4 pb-3">
                 <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center font-bold text-xl shrink-0">
@@ -592,10 +594,11 @@ export const AdminRHContratacao: React.FC = () => {
                 </div>
               </div>
 
-              {/* Pipeline bar — ocupa a largura toda */}
-              <div className="px-5 pb-4">
-                <PipelineBar etapa={pipeline.etapa} onChange={updateEtapa} />
-              </div>
+            </div>
+
+            {/* Pipeline bar — faixa própria (fundo branco/surface para contraste correto das etapas) */}
+            <div className="shrink-0 px-5 py-3 bg-white dark:bg-darkSurface border-b border-gray-100 dark:border-darkBorder shadow-sm">
+              <PipelineBar etapa={pipeline.etapa} onChange={updateEtapa} />
             </div>
 
             {/* ── Corpo: duas colunas no desktop, empilhado no mobile ───────── */}
