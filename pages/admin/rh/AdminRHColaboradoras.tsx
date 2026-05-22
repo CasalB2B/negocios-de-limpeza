@@ -96,6 +96,16 @@ const BLANK: ColaboradoraFormData = {
   dataNascimento: '',
 };
 
+/** Converte meses em texto legível: "8 meses", "1 ano", "2 anos e 3 meses" */
+function fmtTempo(meses: number): string {
+  if (meses < 12) return `${meses} ${meses === 1 ? 'mês' : 'meses'}`;
+  const anos  = Math.floor(meses / 12);
+  const resto = meses % 12;
+  const aStr  = `${anos} ${anos === 1 ? 'ano' : 'anos'}`;
+  if (resto === 0) return aStr;
+  return `${aStr} e ${resto} ${resto === 1 ? 'mês' : 'meses'}`;
+}
+
 // ─── Birthday helpers ─────────────────────────────────────────────────────────
 
 function diasAteAniversario(dataNascimento: string): number {
@@ -494,7 +504,7 @@ export const AdminRHColaboradoras: React.FC = () => {
 
                     <div className="flex flex-wrap items-center gap-3 mt-2">
                       <span className="flex items-center gap-1 text-xs text-lightText dark:text-darkTextSecondary">
-                        <Clock size={12} /> {meses} {meses === 1 ? 'mês' : 'meses'}
+                        <Clock size={12} /> {fmtTempo(meses)}
                       </span>
                       {media != null && (
                         <span className="flex items-center gap-1 text-xs text-yellow-600 dark:text-yellow-400 font-bold">
@@ -681,7 +691,7 @@ export const AdminRHColaboradoras: React.FC = () => {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-gray-50 dark:bg-darkBg rounded-xl p-3">
                         <p className="text-[10px] text-lightText dark:text-darkTextSecondary uppercase font-bold tracking-wide">Tempo na empresa</p>
-                        <p className="text-lg font-bold text-darkText dark:text-darkTextPrimary mt-0.5">{getMesesNaEmpresa(perfilAberto.dataAdmissao)} meses</p>
+                        <p className="text-lg font-bold text-darkText dark:text-darkTextPrimary mt-0.5">{fmtTempo(getMesesNaEmpresa(perfilAberto.dataAdmissao))}</p>
                       </div>
                       <div className="bg-gray-50 dark:bg-darkBg rounded-xl p-3">
                         <p className="text-[10px] text-lightText dark:text-darkTextSecondary uppercase font-bold tracking-wide">Admissão</p>
