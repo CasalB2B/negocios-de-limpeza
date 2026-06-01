@@ -482,26 +482,24 @@ export const AdminRHContratacao: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    {/* Entrevista agendada + confirmação */}
+                    {/* Entrevista agendada — destaque visual */}
                     {temEntrevista && (
-                      <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-                        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400">
-                          <Clock size={10} className="shrink-0" />
-                          <span className="text-[10px] font-bold">
-                            {new Date(pl.entrevistaData! + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às {pl.entrevistaHorario}
-                          </span>
-                        </div>
-                        {pl.entrevistaConfirmada ? (
-                          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                            <CheckCircle size={10} className="shrink-0" />
-                            <span className="text-[10px] font-bold">Confirmada</span>
-                          </div>
-                        ) : (
-                          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400">
-                            <Clock size={10} className="shrink-0" />
-                            <span className="text-[10px] font-bold">Não confirmada</span>
-                          </div>
-                        )}
+                      <div className={`mt-2 flex items-center gap-2 px-3 py-2 rounded-xl ${
+                        pl.entrevistaConfirmada
+                          ? 'bg-green-500 text-white'
+                          : 'bg-blue-500 text-white'
+                      }`}>
+                        <Calendar size={13} className="shrink-0" />
+                        <span className="text-xs font-bold tracking-wide">
+                          {new Date(pl.entrevistaData! + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })} às {pl.entrevistaHorario}
+                        </span>
+                        <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          pl.entrevistaConfirmada
+                            ? 'bg-white/25 text-white'
+                            : 'bg-white/20 text-white'
+                        }`}>
+                          {pl.entrevistaConfirmada ? '✓ Confirmada' : '⏳ Aguardando'}
+                        </span>
                       </div>
                     )}
                   </div>
