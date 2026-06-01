@@ -413,18 +413,9 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const activeRems = cfgRems.filter(c => !c.vigenciaFim);
       const activeCris = cfgCris.filter(c => !c.vigenciaFim);
 
-      // Compare createdAt: LS may be newer if Supabase write failed — prefer the most recent
-      const newestDate = (arr: { createdAt: string }[]) =>
-        arr.length ? arr.map(r => r.createdAt ?? '0').sort().pop()! : '0';
-
-      const lsRemDate = newestDate(lsRemConfig);
-      const sbRemDate = newestDate(activeRems);
-      const lsCriDate = newestDate(lsCriConfig);
-      const sbCriDate = newestDate(activeCris);
-
-      // Deduplicate: keep only the LATEST record per cargo/cargoOrigem.
-      // Supabase may accumulate multiple records per cargo when each save INSERTs
-      // instead of updating — without dedup, .find() returns the oldest record first.
+      // ── Helpers para deduplicar registros acumulados no Supabase ──────────────
+      // Supabase pode acumular múltiplos registros por cargo quando cada save faz INSERT.
+      // Sem dedup, .find() retorna o mais antigo primeiro.
       const dedupeRems = (arr: ConfiguracaoRemuneracaoRH[]) => {
         const map = new Map<string, ConfiguracaoRemuneracaoRH>();
         for (const r of arr) {
@@ -442,11 +433,27 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         return [...map.values()];
       };
 
-      // Supabase wins only if its data is strictly newer than what's in LS
-      const rawFinalRems = (sbRemDate > lsRemDate && activeRems.length) ? activeRems : (lsRemConfig.length ? lsRemConfig : DEFAULT_CONFIG_REMUNERACAO);
-      const rawFinalCris = (sbCriDate > lsCriDate && activeCris.length) ? activeCris : (lsCriConfig.length ? lsCriConfig : DEFAULT_CONFIG_CRITERIOS);
-      const finalRems = dedupeRems(rawFinalRems);
-      const finalCris = dedupeCris(rawFinalCris);
+      // ── Lógica de fonte de verdade para configs ────────────────────────────
+      // Problema: o clock do servidor Supabase fica ligeiramente à frente do cliente,
+      // então sbDate > lsDate é quase sempre verdadeiro — Supabase sobrescreve o LS
+      // com valores antigos mesmo após o usuário salvar valores corretos.
+      //
+      // Solução: usar o padrão do ID para identificar a origem:
+      //   rem_1748001234567_0  → salvo pelo usuário neste dispositivo → confia no LS
+      //   rem_j / rem_s / rem_p  → defaults de fábrica
+      //   UUID (abc123-...)   → veio do Supabase em load anterior
+      //
+      // Se LS tem IDs do padrão "rem_\d+_\d+" o usuário já salvou aqui → LS é autoritativo.
+      // Caso contrário (dispositivo novo / LS limpo) → Supabase é autoritativo.
+      const lsRemIsUserSaved = lsRemConfig.some(r => /^rem_\d+_\d+$/.test(r.id));
+      const lsCriIsUserSaved = lsCriConfig.some(r => /^crit_\d+_\d+$/.test(r.id));
+
+      const finalRems = lsRemIsUserSaved
+        ? dedupeRems(lsRemConfig)
+        : (activeRems.length ? dedupeRems(activeRems) : DEFAULT_CONFIG_REMUNERACAO);
+      const finalCris = lsCriIsUserSaved
+        ? dedupeCris(lsCriConfig)
+        : (activeCris.length ? dedupeCris(activeCris) : DEFAULT_CONFIG_CRITERIOS);
       const finalBonus = activeBonus;
 
       // Merge Supabase + local-only (only col_XXX — never seeds, they're just fallback)
@@ -542,10 +549,12 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       if (finalDes.length)   lsSet('rh_desempenho', finalDes);
       if (finalPros.length)  lsSet('rh_promocoes', finalPros);
       if (bons.length)       lsSet('rh_bonus_mensal', bons);
-      // Only update LS config if Supabase data is newer than what's already saved locally
+      // Configs: só sobrescreve LS com dados do Supabase em dispositivos sem saves locais.
+      // Se o usuário já salvou neste dispositivo (IDs com rem_\d+_\d+), nunca deixa o
+      // Supabase sobrescrever — evita o clock-skew reverter os valores salvos.
       lsSet('rh_config_bonus', finalBonus);
-      if (sbRemDate > lsRemDate && activeRems.length) lsSet('rh_config_remuneracao', finalRems);
-      if (sbCriDate > lsCriDate && activeCris.length) lsSet('rh_config_criterios', finalCris);
+      if (!lsRemIsUserSaved && activeRems.length) lsSet('rh_config_remuneracao', finalRems);
+      if (!lsCriIsUserSaved && activeCris.length) lsSet('rh_config_criterios', finalCris);
       if (finalAvals.length) lsSet('rh_avaliacoes', finalAvals);
       if (finalObs.length)   lsSet('rh_obs_colaboradoras', finalObs);
       if (cands.length)      lsSet('rh_candidatas', cands);
