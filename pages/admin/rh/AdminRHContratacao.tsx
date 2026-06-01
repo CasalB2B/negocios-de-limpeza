@@ -7,9 +7,9 @@ import { Input } from '../../../components/Input';
 import { Modal } from '../../../components/Modal';
 import {
   UserPlus, Search, X, Trash2, Phone, Calendar,
-  FileText, ClipboardList, ChevronRight, Edit, CheckCircle,
+  FileText, ClipboardList, ChevronRight, ChevronLeft, Edit, CheckCircle,
   Clock, StickyNote, Plus, ChevronDown, ChevronUp, Briefcase,
-  AlertCircle, Sparkles, ImageIcon, Upload,
+  AlertCircle, Sparkles, ImageIcon, Upload, List, LayoutGrid, CalendarDays,
 } from 'lucide-react';
 
 // ─── Gemini AI extraction ─────────────────────────────────────────────────────
@@ -243,7 +243,10 @@ export const AdminRHContratacao: React.FC = () => {
   const { candidatas, addCandidatura, updateCandidatura, deleteCandidatura } = useRH();
 
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState<StatusCandidataRH | 'TODAS'>('TODAS');
+  const [filterStatus, setFilterStatus] = useState<StatusCandidataRH | 'TODAS'>('NOVA');
+  const [viewMode, setViewMode] = useState<'lista' | 'kanban' | 'calendario'>('lista');
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [pipelineVersion, setPipelineVersion] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState<FormData>({ ...BLANK });
   const [aberta, setAberta] = useState<CandidataRH | null>(null);
@@ -417,98 +420,268 @@ export const AdminRHContratacao: React.FC = () => {
           <Button icon={<UserPlus size={16} />} onClick={() => { setForm({ ...BLANK }); setShowAdd(true); }}>Nova</Button>
         </div>
 
-        {/* Filtros de status */}
+        {/* Filtros de status — Nova primeiro, Todas por último */}
         <div className="flex flex-wrap gap-2">
+          {STATUS_ORDER.map(s => (
+            <button key={s}
+              onClick={() => setFilterStatus(s)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterStatus === s ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-gray-200 dark:hover:bg-darkBorder'}`}>
+              {STATUS_CONFIG[s].label}{counts[s] > 0 ? ` (${counts[s]})` : ''}
+            </button>
+          ))}
           <button
             onClick={() => setFilterStatus('TODAS')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterStatus === 'TODAS' ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-gray-200 dark:hover:bg-darkBorder'}`}>
             Todas ({candidatas.length})
           </button>
-          {STATUS_ORDER.map(s => (
-            <button key={s}
-              onClick={() => setFilterStatus(s)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterStatus === s ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-gray-200 dark:hover:bg-darkBorder'}`}>
-              {STATUS_CONFIG[s].label} {counts[s] > 0 && `(${counts[s]})`}
-            </button>
-          ))}
         </div>
 
-        {/* Search */}
-        <Input placeholder="Buscar por nome..." value={search} onChange={e => setSearch(e.target.value)} icon={<Search size={16} />} />
-
-        {/* Lista */}
-        {filtered.length === 0 ? (
-          <div className="text-center py-16 text-lightText dark:text-darkTextSecondary">
-            <ClipboardList size={32} className="mx-auto mb-3 opacity-30" />
-            <p className="font-bold">Nenhuma candidata encontrada.</p>
-            <p className="text-sm mt-1">Clique em "Nova" para registrar uma candidatura.</p>
+        {/* Search + View toggle */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <Input placeholder="Buscar por nome..." value={search} onChange={e => setSearch(e.target.value)} icon={<Search size={16} />} />
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {filtered.map(c => {
-              const etapa = getEtapa(c.id);
-              const eCfg = ETAPA_CONFIG[etapa];
-              const pl = getPipeline(c.id);
-              const temEntrevista = !!(pl.entrevistaData && pl.entrevistaHorario);
-              return (
-                <button key={c.id} onClick={() => openAberta(c)}
-                  className={`bg-white dark:bg-darkSurface rounded-2xl border p-4 text-left hover:border-primary/40 hover:shadow-sm transition-all group flex items-center gap-4 ${
-                    temEntrevista && pl.entrevistaConfirmada
-                      ? 'border-green-200 dark:border-green-800'
-                      : temEntrevista
-                      ? 'border-blue-200 dark:border-blue-800'
-                      : 'border-gray-100 dark:border-darkBorder'
-                  }`}>
-                  {/* Avatar */}
-                  <div className={`w-12 h-12 rounded-2xl ${eCfg.color} bg-opacity-20 flex items-center justify-center text-xl shrink-0`}>
-                    {eCfg.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-darkText dark:text-darkTextPrimary truncate">{c.nome}</p>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <StatusBadge status={c.status} />
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-white ${eCfg.color}`}>
-                        {eCfg.short}
-                      </span>
+          <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-darkBg rounded-xl p-1 shrink-0">
+            <button onClick={() => setViewMode('lista')} title="Lista"
+              className={`p-2 rounded-lg transition-colors ${viewMode === 'lista' ? 'bg-white dark:bg-darkSurface shadow-sm text-primary' : 'text-lightText dark:text-darkTextSecondary hover:text-darkText dark:hover:text-darkTextPrimary'}`}>
+              <List size={15} />
+            </button>
+            <button onClick={() => setViewMode('kanban')} title="Kanban"
+              className={`p-2 rounded-lg transition-colors ${viewMode === 'kanban' ? 'bg-white dark:bg-darkSurface shadow-sm text-primary' : 'text-lightText dark:text-darkTextSecondary hover:text-darkText dark:hover:text-darkTextPrimary'}`}>
+              <LayoutGrid size={15} />
+            </button>
+            <button onClick={() => setViewMode('calendario')} title="Calendário"
+              className={`p-2 rounded-lg transition-colors ${viewMode === 'calendario' ? 'bg-white dark:bg-darkSurface shadow-sm text-primary' : 'text-lightText dark:text-darkTextSecondary hover:text-darkText dark:hover:text-darkTextPrimary'}`}>
+              <CalendarDays size={15} />
+            </button>
+          </div>
+        </div>
+
+        {/* ── LISTA ─────────────────────────────────────────────────────── */}
+        {viewMode === 'lista' && (
+          filtered.length === 0 ? (
+            <div className="text-center py-16 text-lightText dark:text-darkTextSecondary">
+              <ClipboardList size={32} className="mx-auto mb-3 opacity-30" />
+              <p className="font-bold">Nenhuma candidata encontrada.</p>
+              <p className="text-sm mt-1">Clique em "Nova" para registrar uma candidatura.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {filtered.map(c => {
+                const etapa = getEtapa(c.id);
+                const eCfg = ETAPA_CONFIG[etapa];
+                const pl = getPipeline(c.id);
+                const temEntrevista = !!(pl.entrevistaData && pl.entrevistaHorario);
+                return (
+                  <button key={c.id} onClick={() => openAberta(c)}
+                    className={`bg-white dark:bg-darkSurface rounded-2xl border p-4 text-left hover:border-primary/40 hover:shadow-sm transition-all group flex items-center gap-4 ${
+                      temEntrevista && pl.entrevistaConfirmada
+                        ? 'border-green-200 dark:border-green-800'
+                        : temEntrevista
+                        ? 'border-blue-200 dark:border-blue-800'
+                        : 'border-gray-100 dark:border-darkBorder'
+                    }`}>
+                    <div className={`w-12 h-12 rounded-2xl ${eCfg.color} bg-opacity-20 flex items-center justify-center text-xl shrink-0`}>
+                      {eCfg.icon}
                     </div>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span className="text-[10px] text-lightText dark:text-darkTextSecondary flex items-center gap-1">
-                        <Calendar size={10} />
-                        {formatDate(c.data)}
-                      </span>
-                      {c.telefone && (
-                        <span className="text-[10px] text-lightText dark:text-darkTextSecondary flex items-center gap-1">
-                          <Phone size={10} /> {c.telefone}
-                        </span>
-                      )}
-                    </div>
-                    {/* Entrevista agendada — destaque visual */}
-                    {temEntrevista && (
-                      <div className={`mt-2 flex items-center gap-2 px-3 py-2 rounded-xl ${
-                        pl.entrevistaConfirmada
-                          ? 'bg-green-500 text-white'
-                          : 'bg-blue-500 text-white'
-                      }`}>
-                        <Calendar size={13} className="shrink-0" />
-                        <span className="text-xs font-bold tracking-wide">
-                          {new Date(pl.entrevistaData! + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })} às {pl.entrevistaHorario}
-                        </span>
-                        <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          pl.entrevistaConfirmada
-                            ? 'bg-white/25 text-white'
-                            : 'bg-white/20 text-white'
-                        }`}>
-                          {pl.entrevistaConfirmada ? '✓ Confirmada' : '⏳ Aguardando'}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-darkText dark:text-darkTextPrimary truncate">{c.nome}</p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <StatusBadge status={c.status} />
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-white ${eCfg.color}`}>
+                          {eCfg.short}
                         </span>
                       </div>
-                    )}
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="text-[10px] text-lightText dark:text-darkTextSecondary flex items-center gap-1">
+                          <Calendar size={10} /> {formatDate(c.data)}
+                        </span>
+                        {c.telefone && (
+                          <span className="text-[10px] text-lightText dark:text-darkTextSecondary flex items-center gap-1">
+                            <Phone size={10} /> {c.telefone}
+                          </span>
+                        )}
+                      </div>
+                      {temEntrevista && (
+                        <div className={`mt-2 flex items-center gap-2 px-3 py-2 rounded-xl ${pl.entrevistaConfirmada ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'}`}>
+                          <Calendar size={13} className="shrink-0" />
+                          <span className="text-xs font-bold tracking-wide">
+                            {new Date(pl.entrevistaData! + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })} às {pl.entrevistaHorario}
+                          </span>
+                          <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/25 text-white">
+                            {pl.entrevistaConfirmada ? '✓ Confirmada' : '⏳ Aguardando'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <ChevronRight size={16} className="text-lightText group-hover:text-primary transition-colors shrink-0" />
+                  </button>
+                );
+              })}
+            </div>
+          )
+        )}
+
+        {/* ── KANBAN ────────────────────────────────────────────────────── */}
+        {viewMode === 'kanban' && (
+          <div key={pipelineVersion} className="overflow-x-auto pb-4 -mx-4 px-4">
+            <div className="flex gap-3" style={{ minWidth: `${ETAPA_ORDER.length * 220}px` }}>
+              {ETAPA_ORDER.map(etapa => {
+                const cfg = ETAPA_CONFIG[etapa];
+                const cards = candidatas.filter(c => {
+                  const pl = getPipeline(c.id);
+                  const matchesFilter = filterStatus === 'TODAS' || c.status === filterStatus;
+                  const matchesSearch = c.nome.toLowerCase().includes(search.toLowerCase());
+                  return pl.etapa === etapa && matchesFilter && matchesSearch;
+                });
+                return (
+                  <div key={etapa}
+                    className="w-52 flex-none flex flex-col gap-2 bg-gray-50 dark:bg-darkBg rounded-2xl p-3"
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={e => {
+                      e.preventDefault();
+                      const id = e.dataTransfer.getData('candidata_id');
+                      if (!id) return;
+                      const pl = getPipeline(id);
+                      savePipeline(id, { ...pl, etapa });
+                      setPipelineVersion(v => v + 1);
+                    }}
+                  >
+                    {/* Column header */}
+                    <div className="flex items-center gap-1.5 px-1 pb-1 border-b border-gray-200 dark:border-darkBorder">
+                      <span className="text-sm">{cfg.icon}</span>
+                      <p className="text-[11px] font-bold text-darkText dark:text-darkTextPrimary flex-1 truncate">{cfg.label}</p>
+                      {cards.length > 0 && (
+                        <span className="text-[9px] bg-gray-200 dark:bg-darkBorder text-lightText dark:text-darkTextSecondary rounded-full px-1.5 py-0.5 font-bold shrink-0">{cards.length}</span>
+                      )}
+                    </div>
+                    {/* Cards */}
+                    <div className="flex flex-col gap-2 min-h-[72px]">
+                      {cards.map(c => {
+                        const pl = getPipeline(c.id);
+                        const temEntrevista = !!(pl.entrevistaData && pl.entrevistaHorario);
+                        return (
+                          <div key={c.id}
+                            draggable
+                            onDragStart={e => { e.dataTransfer.setData('candidata_id', c.id); e.dataTransfer.effectAllowed = 'move'; }}
+                            onClick={() => openAberta(c)}
+                            className="bg-white dark:bg-darkSurface rounded-xl border border-gray-100 dark:border-darkBorder p-2.5 cursor-grab active:cursor-grabbing hover:border-primary/40 hover:shadow-sm transition-all select-none"
+                          >
+                            <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary truncate">{c.nome}</p>
+                            <div className="mt-1">
+                              <StatusBadge status={c.status} />
+                            </div>
+                            {temEntrevista && (
+                              <div className={`mt-1.5 flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold ${pl.entrevistaConfirmada ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
+                                <Calendar size={9} className="shrink-0" />
+                                {new Date(pl.entrevistaData! + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} {pl.entrevistaHorario}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {cards.length === 0 && (
+                        <div className="border-2 border-dashed border-gray-200 dark:border-darkBorder rounded-xl flex-1 min-h-[72px] flex items-center justify-center">
+                          <p className="text-[10px] text-lightText dark:text-darkTextSecondary opacity-60">Solte aqui</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <ChevronRight size={16} className="text-lightText group-hover:text-primary transition-colors shrink-0" />
-                </button>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
+
+        {/* ── CALENDÁRIO ────────────────────────────────────────────────── */}
+        {viewMode === 'calendario' && (() => {
+          const today = new Date();
+          // Monday of the current week + offset
+          const dayOfWeek = today.getDay();
+          const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+          const weekStart = new Date(today);
+          weekStart.setDate(today.getDate() + diffToMonday + weekOffset * 7);
+          const weekDays = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(weekStart);
+            d.setDate(weekStart.getDate() + i);
+            return d;
+          });
+          const DAY_NAMES = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+          const todayStr = today.toLocaleDateString('sv-SE');
+          const candidatesForDay = (date: Date) => {
+            const dateStr = date.toLocaleDateString('sv-SE');
+            return candidatas.filter(c => {
+              const pl = getPipeline(c.id);
+              const matchesFilter = filterStatus === 'TODAS' || c.status === filterStatus;
+              const matchesSearch = c.nome.toLowerCase().includes(search.toLowerCase());
+              return pl.entrevistaData === dateStr && matchesFilter && matchesSearch;
+            }).sort((a, b) => (getPipeline(a.id).entrevistaHorario || '').localeCompare(getPipeline(b.id).entrevistaHorario || ''));
+          };
+          return (
+            <div className="space-y-3">
+              {/* Navigation */}
+              <div className="flex items-center justify-between gap-3">
+                <button onClick={() => setWeekOffset(v => v - 1)}
+                  className="p-2 rounded-xl bg-gray-100 dark:bg-darkBg hover:bg-gray-200 dark:hover:bg-darkBorder transition-colors shrink-0">
+                  <ChevronLeft size={16} className="text-lightText" />
+                </button>
+                <div className="text-center flex-1">
+                  <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">
+                    {weekDays[0].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} – {weekDays[6].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </p>
+                  {weekOffset !== 0 && (
+                    <button onClick={() => setWeekOffset(0)} className="text-[11px] text-primary hover:underline font-bold">
+                      Voltar para hoje
+                    </button>
+                  )}
+                </div>
+                <button onClick={() => setWeekOffset(v => v + 1)}
+                  className="p-2 rounded-xl bg-gray-100 dark:bg-darkBg hover:bg-gray-200 dark:hover:bg-darkBorder transition-colors shrink-0">
+                  <ChevronRight size={16} className="text-lightText" />
+                </button>
+              </div>
+              {/* Week grid — scrollable horizontally on mobile */}
+              <div className="overflow-x-auto -mx-4 px-4">
+                <div className="grid gap-2 min-w-[490px]" style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
+                  {weekDays.map((day, i) => {
+                    const dateStr = day.toLocaleDateString('sv-SE');
+                    const isToday = dateStr === todayStr;
+                    const dayCandidates = candidatesForDay(day);
+                    return (
+                      <div key={dateStr}
+                        className={`rounded-2xl border p-2 min-h-[110px] ${isToday ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-gray-100 dark:border-darkBorder bg-white dark:bg-darkSurface'}`}>
+                        <div className="flex flex-col items-center mb-2">
+                          <p className={`text-[10px] font-bold uppercase ${isToday ? 'text-primary' : 'text-lightText dark:text-darkTextSecondary'}`}>{DAY_NAMES[i]}</p>
+                          <p className={`text-base font-bold leading-tight ${isToday ? 'text-primary' : 'text-darkText dark:text-darkTextPrimary'}`}>{day.getDate()}</p>
+                        </div>
+                        <div className="space-y-1">
+                          {dayCandidates.map(c => {
+                            const pl = getPipeline(c.id);
+                            return (
+                              <button key={c.id} onClick={() => openAberta(c)}
+                                className={`w-full text-left rounded-lg px-1.5 py-1 text-[9px] font-bold leading-tight ${pl.entrevistaConfirmada ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
+                                {pl.entrevistaHorario && <span className="opacity-80 block">{pl.entrevistaHorario}</span>}
+                                <span className="truncate block">{c.nome.split(' ')[0]}</span>
+                              </button>
+                            );
+                          })}
+                          {dayCandidates.length === 0 && (
+                            <p className="text-[9px] text-center text-lightText dark:text-darkTextSecondary opacity-40 pt-1">—</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              {/* Legend */}
+              <div className="flex items-center gap-4 justify-end text-[10px] font-bold">
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-100 dark:bg-blue-900/30 inline-block" /> Aguardando</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-100 dark:bg-green-900/30 inline-block" /> Confirmada</span>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Modal Nova Candidatura */}
         <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Nova Candidatura">
