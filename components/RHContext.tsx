@@ -362,8 +362,19 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const lsPros   = lsGet<PromocaoRH[]>('rh_promocoes', []);
     const lsBons   = lsGet<BonusMensalRH[]>('rh_bonus_mensal', []);
     const lsCfg    = lsGet<ConfiguracaoBonusLider>('rh_config_bonus', DEFAULT_CONFIG_BONUS);
-    const lsRems   = lsGet<ConfiguracaoRemuneracaoRH[]>('rh_config_remuneracao', DEFAULT_CONFIG_REMUNERACAO);
-    const lsCris   = lsGet<ConfiguracaoCriteriosRH[]>('rh_config_criterios', DEFAULT_CONFIG_CRITERIOS);
+    // Prefere o backup (_bkp) se o principal foi limpo mas o backup tem saves do usuário
+    const _lsRems     = lsGet<ConfiguracaoRemuneracaoRH[]>('rh_config_remuneracao', DEFAULT_CONFIG_REMUNERACAO);
+    const _lsRemsBkp  = lsGet<ConfiguracaoRemuneracaoRH[]>('rh_config_remuneracao_bkp', []);
+    const _lsCris     = lsGet<ConfiguracaoCriteriosRH[]>('rh_config_criterios', DEFAULT_CONFIG_CRITERIOS);
+    const _lsCrisBkp  = lsGet<ConfiguracaoCriteriosRH[]>('rh_config_criterios_bkp', []);
+    const remHasUser  = (arr: ConfiguracaoRemuneracaoRH[]) => arr.some(r => /^rem_\d+_\d+$/.test(r.id));
+    const criHasUser  = (arr: ConfiguracaoCriteriosRH[])   => arr.some(r => /^crit_\d+_\d+$/.test(r.id));
+    // Se o principal foi limpo mas o backup tem saves do usuário, restaura o principal
+    const lsRems = (!remHasUser(_lsRems) && remHasUser(_lsRemsBkp)) ? _lsRemsBkp : _lsRems;
+    const lsCris = (!criHasUser(_lsCris) && criHasUser(_lsCrisBkp)) ? _lsCrisBkp : _lsCris;
+    // Restaura o LS principal a partir do backup se necessário
+    if (!remHasUser(_lsRems) && remHasUser(_lsRemsBkp)) lsSet('rh_config_remuneracao', lsRems);
+    if (!criHasUser(_lsCris) && criHasUser(_lsCrisBkp)) lsSet('rh_config_criterios', lsCris);
     const lsAvals  = lsGet<AvaliacaoCliente[]>('rh_avaliacoes', []);
     const lsObs    = lsGet<ObservacaoColaboradora[]>('rh_obs_colaboradoras', []);
     const lsCands  = lsGet<CandidataRH[]>('rh_candidatas', []);
@@ -877,24 +888,29 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const updateConfigRemuneracao = useCallback(async (items: Omit<ConfiguracaoRemuneracaoRH, 'id' | 'createdAt'>[]) => {
     const saved = items.map((item, i) => ({ ...item, id: `rem_${Date.now()}_${i}`, createdAt: new Date().toISOString() }));
+    // Salva no LS e no estado ANTES da chamada Supabase — garante que o dado está
+    // seguro mesmo se a rede falhar ou a página fechar durante o await.
+    // A chave _bkp é um backup que sobrevive mesmo se o usuário limpar o LS principal.
+    setConfigRemuneracao(saved);
+    lsSet('rh_config_remuneracao', saved);
+    lsSet('rh_config_remuneracao_bkp', saved); // backup resistente a limpeza manual
     try {
       await supabase.functions.invoke('rh-write', {
         body: { action: 'upsert_config_remuneracao', data: items },
       });
     } catch {}
-    setConfigRemuneracao(saved);
-    lsSet('rh_config_remuneracao', saved);
   }, []);
 
   const updateConfigCriterios = useCallback(async (items: Omit<ConfiguracaoCriteriosRH, 'id' | 'createdAt'>[]) => {
     const saved = items.map((item, i) => ({ ...item, id: `crit_${Date.now()}_${i}`, createdAt: new Date().toISOString() }));
+    setConfigCriterios(saved);
+    lsSet('rh_config_criterios', saved);
+    lsSet('rh_config_criterios_bkp', saved); // backup resistente a limpeza manual
     try {
       await supabase.functions.invoke('rh-write', {
         body: { action: 'upsert_config_criterios', data: items },
       });
     } catch {}
-    setConfigCriterios(saved);
-    lsSet('rh_config_criterios', saved);
   }, []);
 
   // ── Sync local collaborators to Supabase ───────────────────────────────────
