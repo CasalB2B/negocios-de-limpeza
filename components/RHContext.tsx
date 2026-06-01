@@ -225,8 +225,8 @@ const DEFAULT_CONFIG_BONUS: ConfiguracaoBonusLider = {
 // historical Supabase saves on fresh devices, causing saved values to be ignored.
 const DEFAULT_CONFIG_REMUNERACAO: ConfiguracaoRemuneracaoRH[] = [
   { id: 'rem_j', cargo: 'JUNIOR',       diaria4h: 80,  diaria6h: 120, diaria8h: 140, passagem: 10.20, vigenciaInicio: '2000-01-01', createdAt: '2000-01-01T00:00:00.000Z' },
-  { id: 'rem_s', cargo: 'SENIOR',       diaria4h: 85,  diaria6h: 130, diaria8h: 150, passagem: 10.20, vigenciaInicio: '2000-01-01', createdAt: '2000-01-01T00:00:00.000Z' },
-  { id: 'rem_p', cargo: 'PROFISSIONAL', diaria4h: 90,  diaria6h: 140, diaria8h: 160, passagem: 10.20, vigenciaInicio: '2000-01-01', createdAt: '2000-01-01T00:00:00.000Z' },
+  { id: 'rem_s', cargo: 'SENIOR',       diaria4h: 100, diaria6h: 140, diaria8h: 160, passagem: 10.20, vigenciaInicio: '2000-01-01', createdAt: '2000-01-01T00:00:00.000Z' },
+  { id: 'rem_p', cargo: 'PROFISSIONAL', diaria4h: 120, diaria6h: 160, diaria8h: 180, passagem: 10.20, vigenciaInicio: '2000-01-01', createdAt: '2000-01-01T00:00:00.000Z' },
 ];
 
 const DEFAULT_CONFIG_CRITERIOS: ConfiguracaoCriteriosRH[] = [
