@@ -422,9 +422,31 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const lsCriDate = newestDate(lsCriConfig);
       const sbCriDate = newestDate(activeCris);
 
+      // Deduplicate: keep only the LATEST record per cargo/cargoOrigem.
+      // Supabase may accumulate multiple records per cargo when each save INSERTs
+      // instead of updating — without dedup, .find() returns the oldest record first.
+      const dedupeRems = (arr: ConfiguracaoRemuneracaoRH[]) => {
+        const map = new Map<string, ConfiguracaoRemuneracaoRH>();
+        for (const r of arr) {
+          const ex = map.get(r.cargo);
+          if (!ex || r.createdAt > ex.createdAt) map.set(r.cargo, r);
+        }
+        return [...map.values()];
+      };
+      const dedupeCris = (arr: ConfiguracaoCriteriosRH[]) => {
+        const map = new Map<string, ConfiguracaoCriteriosRH>();
+        for (const r of arr) {
+          const ex = map.get(r.cargoOrigem);
+          if (!ex || r.createdAt > ex.createdAt) map.set(r.cargoOrigem, r);
+        }
+        return [...map.values()];
+      };
+
       // Supabase wins only if its data is strictly newer than what's in LS
-      const finalRems = (sbRemDate > lsRemDate && activeRems.length) ? activeRems : (lsRemConfig.length ? lsRemConfig : DEFAULT_CONFIG_REMUNERACAO);
-      const finalCris = (sbCriDate > lsCriDate && activeCris.length) ? activeCris : (lsCriConfig.length ? lsCriConfig : DEFAULT_CONFIG_CRITERIOS);
+      const rawFinalRems = (sbRemDate > lsRemDate && activeRems.length) ? activeRems : (lsRemConfig.length ? lsRemConfig : DEFAULT_CONFIG_REMUNERACAO);
+      const rawFinalCris = (sbCriDate > lsCriDate && activeCris.length) ? activeCris : (lsCriConfig.length ? lsCriConfig : DEFAULT_CONFIG_CRITERIOS);
+      const finalRems = dedupeRems(rawFinalRems);
+      const finalCris = dedupeCris(rawFinalCris);
       const finalBonus = activeBonus;
 
       // Merge Supabase + local-only (only col_XXX — never seeds, they're just fallback)
@@ -522,8 +544,8 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       if (bons.length)       lsSet('rh_bonus_mensal', bons);
       // Only update LS config if Supabase data is newer than what's already saved locally
       lsSet('rh_config_bonus', finalBonus);
-      if (sbRemDate > lsRemDate && activeRems.length) lsSet('rh_config_remuneracao', activeRems);
-      if (sbCriDate > lsCriDate && activeCris.length) lsSet('rh_config_criterios', activeCris);
+      if (sbRemDate > lsRemDate && activeRems.length) lsSet('rh_config_remuneracao', finalRems);
+      if (sbCriDate > lsCriDate && activeCris.length) lsSet('rh_config_criterios', finalCris);
       if (finalAvals.length) lsSet('rh_avaliacoes', finalAvals);
       if (finalObs.length)   lsSet('rh_obs_colaboradoras', finalObs);
       if (cands.length)      lsSet('rh_candidatas', cands);

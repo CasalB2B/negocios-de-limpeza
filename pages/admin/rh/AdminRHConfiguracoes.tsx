@@ -62,9 +62,15 @@ export const AdminRHConfiguracoes: React.FC = () => {
   const [saved, setSaved]           = useState(false);
 
   // ── Remuneração ─────────────────────────────────────────────────────────────
-  const remJunior = configRemuneracao.find(r => r.cargo === 'JUNIOR');
-  const remSenior = configRemuneracao.find(r => r.cargo === 'SENIOR');
-  const remProf   = configRemuneracao.find(r => r.cargo === 'PROFISSIONAL');
+  // Use the LATEST record per cargo (sort desc by createdAt) to avoid showing
+  // stale historical records when Supabase has accumulated multiple entries per cargo.
+  const latestFor = (cargo: string) =>
+    [...configRemuneracao]
+      .filter(r => r.cargo === cargo)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  const remJunior = latestFor('JUNIOR');
+  const remSenior = latestFor('SENIOR');
+  const remProf   = latestFor('PROFISSIONAL');
 
   const [remJ, setRemJ] = useState({ diaria4h: 80,  diaria6h: 120, diaria8h: 140, passagem: 10.20 });
   const [remS, setRemS] = useState({ diaria4h: 85,  diaria6h: 130, diaria8h: 150, passagem: 10.20 });
