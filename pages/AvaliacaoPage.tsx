@@ -175,7 +175,7 @@ export const AvaliacaoPage: React.FC = () => {
         {/* Form */}
         <div className="bg-white dark:bg-darkSurface rounded-3xl border border-gray-100 dark:border-darkBorder p-6 space-y-5 shadow-sm">
           <div className="text-center">
-            <h2 className="font-bold text-lg text-darkText dark:text-darkTextPrimary">Como foi sua faxina?</h2>
+            <h2 className="font-bold text-lg text-darkText dark:text-darkTextPrimary">Como foi seu atendimento?</h2>
             <p className="text-sm text-lightText dark:text-darkTextSecondary mt-1">Sua opinião nos ajuda a melhorar sempre</p>
           </div>
 
