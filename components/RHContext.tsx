@@ -553,22 +553,26 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       setConfigCriterios(finalCris);
       setAvaliacoes(finalAvals);
       setObsColaboradoras(finalObs);
-      setCandidatas(cands);
+
+      // Merge candidatas: inclui local-only (cand_XXX ainda não no Supabase) + Supabase
+      // Se Supabase retornou vazio, usa localStorage (dispositivo novo ou escrita falhou antes)
+      const lsCands2 = lsGet<CandidataRH[]>('rh_candidatas', []);
+      const sbCandIds = new Set(cands.map((c: CandidataRH) => c.id));
+      const localOnlyCands = lsCands2.filter(c => c.id.startsWith('cand_') && !sbCandIds.has(c.id));
+      const finalCands = cands.length > 0 ? [...cands, ...localOnlyCands] : lsCands2;
+      setCandidatas(finalCands);
 
       // Só sobrescreve localStorage com dados do Supabase se Supabase retornou algo
-      if (finalCols.length)  lsSet('rh_colaboradoras', finalCols);
-      if (finalDes.length)   lsSet('rh_desempenho', finalDes);
-      if (finalPros.length)  lsSet('rh_promocoes', finalPros);
-      if (bons.length)       lsSet('rh_bonus_mensal', bons);
-      // Configs: só sobrescreve LS com dados do Supabase em dispositivos sem saves locais.
-      // Se o usuário já salvou neste dispositivo (IDs com rem_\d+_\d+), nunca deixa o
-      // Supabase sobrescrever — evita o clock-skew reverter os valores salvos.
+      if (finalCols.length)   lsSet('rh_colaboradoras', finalCols);
+      if (finalDes.length)    lsSet('rh_desempenho', finalDes);
+      if (finalPros.length)   lsSet('rh_promocoes', finalPros);
+      if (bons.length)        lsSet('rh_bonus_mensal', bons);
       lsSet('rh_config_bonus', finalBonus);
       if (!lsRemIsUserSaved && activeRems.length) lsSet('rh_config_remuneracao', finalRems);
       if (!lsCriIsUserSaved && activeCris.length) lsSet('rh_config_criterios', finalCris);
-      if (finalAvals.length) lsSet('rh_avaliacoes', finalAvals);
-      if (finalObs.length)   lsSet('rh_obs_colaboradoras', finalObs);
-      if (cands.length)      lsSet('rh_candidatas', cands);
+      if (finalAvals.length)  lsSet('rh_avaliacoes', finalAvals);
+      if (finalObs.length)    lsSet('rh_obs_colaboradoras', finalObs);
+      if (finalCands.length)  lsSet('rh_candidatas', finalCands);
     } catch {
       // Supabase offline — Phase 1 localStorage data is already showing in the UI, nothing to do
     } finally {
