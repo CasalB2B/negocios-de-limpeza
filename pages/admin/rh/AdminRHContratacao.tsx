@@ -278,22 +278,23 @@ export const AdminRHContratacao: React.FC = () => {
       .filter(c => filterStatus === 'TODAS' || c.status === filterStatus)
       .filter(c => c.nome.toLowerCase().includes(search.toLowerCase()));
 
-    // Sort: candidates with a scheduled interview datetime come first (asc),
-    // then the rest sorted by creation date desc (newest first)
+    // Sort: scheduled (ligação or entrevista) come first sorted asc by datetime,
+    // then unscheduled sorted by creation date desc (newest first)
+    const getScheduledDt = (pl: PipelineExtra): number | null => {
+      // Phone call takes priority when in that stage; otherwise interview
+      if (pl.ligacaoData && pl.ligacaoHorario)
+        return new Date(`${pl.ligacaoData}T${pl.ligacaoHorario}`).getTime();
+      if (pl.entrevistaData && pl.entrevistaHorario)
+        return new Date(`${pl.entrevistaData}T${pl.entrevistaHorario}`).getTime();
+      return null;
+    };
     return base.sort((a, b) => {
-      const pa = getPipeline(a.id);
-      const pb = getPipeline(b.id);
-      const dtA = pa.entrevistaData && pa.entrevistaHorario
-        ? new Date(`${pa.entrevistaData}T${pa.entrevistaHorario}`).getTime()
-        : null;
-      const dtB = pb.entrevistaData && pb.entrevistaHorario
-        ? new Date(`${pb.entrevistaData}T${pb.entrevistaHorario}`).getTime()
-        : null;
-
-      if (dtA !== null && dtB !== null) return dtA - dtB; // both scheduled → sort asc
-      if (dtA !== null) return -1; // a has time, b doesn't → a first
-      if (dtB !== null) return 1;  // b has time, a doesn't → b first
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // neither → newest first
+      const dtA = getScheduledDt(getPipeline(a.id));
+      const dtB = getScheduledDt(getPipeline(b.id));
+      if (dtA !== null && dtB !== null) return dtA - dtB;
+      if (dtA !== null) return -1;
+      if (dtB !== null) return 1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
   }, [candidatas, search, filterStatus]);
 
@@ -476,6 +477,7 @@ export const AdminRHContratacao: React.FC = () => {
                 const etapa = getEtapa(c.id);
                 const eCfg = ETAPA_CONFIG[etapa];
                 const pl = getPipeline(c.id);
+                const temLigacao    = !!(pl.ligacaoData && pl.ligacaoHorario);
                 const temEntrevista = !!(pl.entrevistaData && pl.entrevistaHorario);
                 return (
                   <button key={c.id} onClick={() => openAberta(c)}
@@ -484,6 +486,8 @@ export const AdminRHContratacao: React.FC = () => {
                         ? 'border-green-200 dark:border-green-800'
                         : temEntrevista
                         ? 'border-blue-200 dark:border-blue-800'
+                        : temLigacao
+                        ? 'border-violet-200 dark:border-violet-800'
                         : 'border-gray-100 dark:border-darkBorder'
                     }`}>
                     <div className={`w-12 h-12 rounded-2xl ${eCfg.color} bg-opacity-20 flex items-center justify-center text-xl shrink-0`}>
@@ -507,6 +511,19 @@ export const AdminRHContratacao: React.FC = () => {
                           </span>
                         )}
                       </div>
+                      {/* Banner ligação agendada */}
+                      {temLigacao && (
+                        <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-violet-500 text-white">
+                          <Phone size={13} className="shrink-0" />
+                          <span className="text-xs font-bold tracking-wide">
+                            {new Date(pl.ligacaoData! + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })} às {pl.ligacaoHorario}
+                          </span>
+                          <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/25 text-white">
+                            📞 Ligação
+                          </span>
+                        </div>
+                      )}
+                      {/* Banner entrevista agendada */}
                       {temEntrevista && (
                         <div className={`mt-2 flex items-center gap-2 px-3 py-2 rounded-xl ${pl.entrevistaConfirmada ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'}`}>
                           <Calendar size={13} className="shrink-0" />
