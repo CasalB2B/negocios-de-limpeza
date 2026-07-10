@@ -99,13 +99,15 @@ export type EtapaCandidatura =
 
 interface PipelineExtra {
   etapa: EtapaCandidatura;
+  ligacaoData?: string;
+  ligacaoHorario?: string;
   entrevistaData?: string;
   entrevistaHorario?: string;
-  entrevistaConfirmada?: boolean; // candidata confirmou presença na entrevista?
+  entrevistaConfirmada?: boolean;
   demandasRealizadas: number; // 0-3
   anotacoes: Array<{ id: string; texto: string; criadoEm: string }>;
-  dadosFormulario?: string; // respostas do formulário de triagem
-  documentosChecklist?: Record<string, boolean>; // DOCUMENTACAO stage checklist
+  dadosFormulario?: string;
+  documentosChecklist?: Record<string, boolean>;
 }
 
 const ETAPA_CONFIG: Record<EtapaCandidatura, { label: string; short: string; color: string; icon: string }> = {
@@ -908,27 +910,47 @@ export const AdminRHContratacao: React.FC = () => {
                   {pipeline.etapa === 'LIGACAO_TELEFONICA' && (
                     <div className="bg-violet-50 dark:bg-violet-900/20 rounded-2xl p-4 space-y-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-lg">📞</span>
-                        <p className="text-sm font-bold text-violet-800 dark:text-violet-300">Ligação Telefônica</p>
+                        <Clock size={15} className="text-violet-600 dark:text-violet-400" />
+                        <p className="text-sm font-bold text-violet-800 dark:text-violet-300">Agendamento da Ligação</p>
                       </div>
-                      <ul className="space-y-1.5 pl-1 text-xs text-violet-700 dark:text-violet-300">
-                        {[
-                          'Confirmar interesse na vaga e disponibilidade',
-                          'Explicar o modelo de trabalho (MEI / diarista)',
-                          'Apresentar a remuneração (diária + passagem)',
-                          'Verificar experiência prévia em limpeza',
-                          'Esclarecer dúvidas da candidata',
-                          'Agendar entrevista presencial se perfil aprovado',
-                        ].map((item, i) => (
-                          <li key={i} className="flex items-start gap-2">
-                            <span className="mt-0.5 shrink-0">✦</span>
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <p className="text-[10px] text-violet-500 dark:text-violet-400 italic">
-                        Após a ligação, avance para Entrevista Agendada se o perfil for adequado — ou use as anotações para registrar o resultado.
-                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-violet-700 dark:text-violet-400 mb-1">Data</label>
+                          <input type="date" value={pipeline.ligacaoData || ''}
+                            onChange={e => setPipeline(prev => ({ ...prev, ligacaoData: e.target.value }))}
+                            className="w-full border border-violet-200 dark:border-violet-800 bg-white dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-violet-300" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-violet-700 dark:text-violet-400 mb-1">Horário</label>
+                          <input type="time" value={pipeline.ligacaoHorario || ''}
+                            onChange={e => setPipeline(prev => ({ ...prev, ligacaoHorario: e.target.value }))}
+                            className="w-full border border-violet-200 dark:border-violet-800 bg-white dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-violet-300" />
+                        </div>
+                      </div>
+                      {pipeline.ligacaoData && (
+                        <div className="flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 rounded-xl px-3 py-2 text-violet-800 dark:text-violet-300 text-xs font-bold">
+                          <Calendar size={12} />
+                          {formatDate(pipeline.ligacaoData)}{pipeline.ligacaoHorario && ` às ${pipeline.ligacaoHorario}`}
+                        </div>
+                      )}
+                      <div className="border-t border-violet-200 dark:border-violet-800 pt-3">
+                        <p className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wide mb-2">Roteiro da ligação</p>
+                        <ul className="space-y-1.5 pl-1 text-xs text-violet-700 dark:text-violet-300">
+                          {[
+                            'Confirmar interesse na vaga e disponibilidade',
+                            'Explicar o modelo de trabalho (MEI / diarista)',
+                            'Apresentar a remuneração (diária + passagem)',
+                            'Verificar experiência prévia em limpeza',
+                            'Esclarecer dúvidas da candidata',
+                            'Agendar entrevista presencial se perfil aprovado',
+                          ].map((item, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <span className="mt-0.5 shrink-0">✦</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
                   )}
 
