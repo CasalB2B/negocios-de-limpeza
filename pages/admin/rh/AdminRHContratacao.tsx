@@ -89,6 +89,7 @@ async function extractWithGemini(file: File): Promise<string> {
 export type EtapaCandidatura =
   | 'CONTATO_INICIAL'
   | 'TRIAGEM'
+  | 'LIGACAO_TELEFONICA'
   | 'ENTREVISTA_AGENDADA'
   | 'ENTREVISTADA'
   | 'AVALIACAO'
@@ -108,9 +109,10 @@ interface PipelineExtra {
 }
 
 const ETAPA_CONFIG: Record<EtapaCandidatura, { label: string; short: string; color: string; icon: string }> = {
-  CONTATO_INICIAL:     { label: 'Contato Inicial',     short: 'Contato',      color: 'bg-indigo-500', icon: '📱' },
-  TRIAGEM:             { label: 'Triagem',             short: 'Triagem',      color: 'bg-gray-400',   icon: '📋' },
-  ENTREVISTA_AGENDADA: { label: 'Entrevista Agendada', short: 'Entrevista',   color: 'bg-blue-500',   icon: '📅' },
+  CONTATO_INICIAL:     { label: 'Contato Inicial',     short: 'Contato',      color: 'bg-indigo-500',  icon: '📱' },
+  TRIAGEM:             { label: 'Triagem',             short: 'Triagem',      color: 'bg-gray-400',    icon: '📋' },
+  LIGACAO_TELEFONICA:  { label: 'Ligação Telefônica',  short: 'Ligação',      color: 'bg-violet-500',  icon: '📞' },
+  ENTREVISTA_AGENDADA: { label: 'Entrevista Agendada', short: 'Entrevista',   color: 'bg-blue-500',    icon: '📅' },
   ENTREVISTADA:        { label: 'Entrevistada',        short: 'Entrevistada', color: 'bg-cyan-500',   icon: '✅' },
   AVALIACAO:           { label: 'Em Avaliação',        short: 'Avaliação',    color: 'bg-amber-500',  icon: '⭐' },
   DOCUMENTACAO:        { label: 'Documentação',        short: 'Docs',         color: 'bg-teal-500',   icon: '📄' },
@@ -119,7 +121,7 @@ const ETAPA_CONFIG: Record<EtapaCandidatura, { label: string; short: string; col
 };
 
 const ETAPA_ORDER: EtapaCandidatura[] = [
-  'CONTATO_INICIAL', 'TRIAGEM', 'ENTREVISTA_AGENDADA', 'ENTREVISTADA', 'AVALIACAO', 'DOCUMENTACAO', 'ABRINDO_MEI', 'CONTRATADA',
+  'CONTATO_INICIAL', 'TRIAGEM', 'LIGACAO_TELEFONICA', 'ENTREVISTA_AGENDADA', 'ENTREVISTADA', 'AVALIACAO', 'DOCUMENTACAO', 'ABRINDO_MEI', 'CONTRATADA',
 ];
 
 const DOCS_CHECKLIST: { id: string; label: string; required: boolean }[] = [
@@ -898,6 +900,34 @@ export const AdminRHContratacao: React.FC = () => {
                       </ul>
                       <p className="text-[10px] text-indigo-500 dark:text-indigo-400 italic">
                         Após confirmar interesse, avance para Triagem e preencha o formulário abaixo.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Etapa: Ligação Telefônica */}
+                  {pipeline.etapa === 'LIGACAO_TELEFONICA' && (
+                    <div className="bg-violet-50 dark:bg-violet-900/20 rounded-2xl p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">📞</span>
+                        <p className="text-sm font-bold text-violet-800 dark:text-violet-300">Ligação Telefônica</p>
+                      </div>
+                      <ul className="space-y-1.5 pl-1 text-xs text-violet-700 dark:text-violet-300">
+                        {[
+                          'Confirmar interesse na vaga e disponibilidade',
+                          'Explicar o modelo de trabalho (MEI / diarista)',
+                          'Apresentar a remuneração (diária + passagem)',
+                          'Verificar experiência prévia em limpeza',
+                          'Esclarecer dúvidas da candidata',
+                          'Agendar entrevista presencial se perfil aprovado',
+                        ].map((item, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="mt-0.5 shrink-0">✦</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="text-[10px] text-violet-500 dark:text-violet-400 italic">
+                        Após a ligação, avance para Entrevista Agendada se o perfil for adequado — ou use as anotações para registrar o resultado.
                       </p>
                     </div>
                   )}
