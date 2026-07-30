@@ -293,6 +293,18 @@ Deno.serve(async (req) => {
       return json200({ ok: true });
     }
 
+    // ── Storage: get signed upload URL (bypasses RLS via service role) ────────
+    if (action === 'get_upload_url') {
+      const bucket = data.bucket || 'rh-files';
+      const path: string = data.path;
+      // Create bucket if it doesn't exist yet (public = true so files are readable without auth)
+      await supabase.storage.createBucket(bucket, { public: true }).catch(() => {});
+      const { data: signed, error } = await supabase.storage.from(bucket).createSignedUploadUrl(path);
+      if (error) return json200({ ok: false, error: error.message });
+      const publicUrl = supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+      return json200({ ok: true, signedUrl: signed.signedUrl, token: signed.token, path: signed.path, publicUrl });
+    }
+
     // ── Save config remuneração ───────────────────────────────────────────────
     if (action === 'upsert_config_remuneracao') {
       const { data: prevs } = await supabase

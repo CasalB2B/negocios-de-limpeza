@@ -10,7 +10,9 @@ import {
   FileText, ClipboardList, ChevronRight, ChevronLeft, Edit, CheckCircle,
   Clock, StickyNote, Plus, ChevronDown, ChevronUp, Briefcase,
   AlertCircle, Sparkles, ImageIcon, Upload, List, LayoutGrid, CalendarDays,
+  Mic, MicOff, Paperclip,
 } from 'lucide-react';
+import { supabase } from '../../../lib/supabase';
 
 // ─── Gemini AI extraction ─────────────────────────────────────────────────────
 
@@ -105,7 +107,7 @@ interface PipelineExtra {
   entrevistaHorario?: string;
   entrevistaConfirmada?: boolean;
   demandasRealizadas: number; // 0-3
-  anotacoes: Array<{ id: string; texto: string; criadoEm: string }>;
+  anotacoes: Array<{ id: string; texto: string; criadoEm: string; tipo?: 'TEXTO' | 'AUDIO' | 'IMAGEM'; arquivoUrl?: string; arquivoNome?: string; }>;
   dadosFormulario?: string;
   documentosChecklist?: Record<string, boolean>;
 }
@@ -258,11 +260,17 @@ export const AdminRHContratacao: React.FC = () => {
   const [editando, setEditando] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   // Pipeline state for the open drawer
   const [pipeline, setPipeline] = useState<PipelineExtra>({ etapa: 'CONTATO_INICIAL', demandasRealizadas: 0, anotacoes: [], documentosChecklist: {} });
   const [novaAnotacao, setNovaAnotacao] = useState('');
   const [showAnotacoes, setShowAnotacoes] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [uploadingAnot, setUploadingAnot] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const audioAnotRef = useRef<HTMLInputElement>(null);
+  const imageAnotRef = useRef<HTMLInputElement>(null);
 
   // Local editable state for the open drawer
   const [docForm, setDocForm] = useState<Partial<CandidataRH>>({});
@@ -344,15 +352,21 @@ export const AdminRHContratacao: React.FC = () => {
   const handleSaveDoc = async () => {
     if (!aberta) return;
     setSaving(true);
+    setSaveError(false);
     // Serialize pipeline to dados_formulario so it persists in Supabase (survives cache clear)
     const withPipeline = { ...docForm, dadosFormulario: JSON.stringify(pipeline) };
-    await updateCandidatura(aberta.id, withPipeline);
+    const ok = await updateCandidatura(aberta.id, withPipeline);
     savePipeline(aberta.id, pipeline); // keep localStorage copy as fast-read cache
     setAberta(prev => prev ? { ...prev, ...withPipeline } : prev);
     setSaving(false);
     setEditando(false);
-    setSavedOk(true);
-    setTimeout(() => setSavedOk(false), 2500);
+    if (ok) {
+      setSavedOk(true);
+      setTimeout(() => setSavedOk(false), 2500);
+    } else {
+      setSaveError(true);
+      setTimeout(() => setSaveError(false), 5000);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -374,6 +388,63 @@ export const AdminRHContratacao: React.FC = () => {
 
   const removeAnotacao = (id: string) => {
     setPipeline(prev => ({ ...prev, anotacoes: prev.anotacoes.filter(a => a.id !== id) }));
+  };
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      recognitionRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { alert('Transcrição não suportada neste navegador. Use Chrome ou Edge.'); return; }
+    const rec = new SR();
+    rec.lang = 'pt-BR';
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.onresult = (e: any) => {
+      const text = Array.from(e.results as any[]).map((r: any) => r[0].transcript).join('');
+      setNovaAnotacao(text);
+    };
+    rec.onend = () => setIsRecording(false);
+    rec.start();
+    recognitionRef.current = rec;
+    setIsRecording(true);
+    setNovaAnotacao('');
+  };
+
+  const handleAnotacaoArquivo = async (file: File, tipo: 'AUDIO' | 'IMAGEM') => {
+    if (!aberta) return;
+    setUploadingAnot(true);
+    try {
+      const path = `${aberta.id}/${Date.now()}_${file.name}`;
+      // Edge function uses SERVICE_ROLE_KEY to bypass RLS and returns a signed upload URL
+      const res = await supabase.functions.invoke('rh-write', {
+        body: { action: 'get_upload_url', data: { path, bucket: 'rh-files' } },
+      });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Falha ao obter URL de upload');
+      // Upload directly to signed URL — no auth required, bypasses RLS
+      const uploadRes = await fetch(res.data.signedUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type, 'x-upsert': 'true' },
+      });
+      if (!uploadRes.ok) throw new Error('Falha no upload');
+      const nova = {
+        id: `n_${Date.now()}`,
+        texto: tipo === 'IMAGEM' ? novaAnotacao.trim() : '',
+        criadoEm: new Date().toISOString(),
+        tipo,
+        arquivoUrl: res.data.publicUrl,
+        arquivoNome: file.name,
+      };
+      setPipeline(prev => ({ ...prev, anotacoes: [nova, ...(prev.anotacoes || [])] }));
+      if (tipo === 'IMAGEM') setNovaAnotacao('');
+    } catch (e) {
+      console.error('Upload anotação falhou:', e);
+    } finally {
+      setUploadingAnot(false);
+    }
   };
 
   const toggleDemanda = (n: number) => {
@@ -405,12 +476,32 @@ export const AdminRHContratacao: React.FC = () => {
     }
   };
 
-  // Auto-save pipeline on changes (debounced)
+  // Auto-save pipeline on changes (debounced) — saves to localStorage AND Supabase
   useEffect(() => {
     if (!aberta) return;
-    const t = setTimeout(() => savePipeline(aberta.id, pipeline), 800);
+    const t = setTimeout(() => {
+      savePipeline(aberta.id, pipeline);
+      updateCandidatura(aberta.id, { dadosFormulario: JSON.stringify(pipeline) });
+    }, 1500);
     return () => clearTimeout(t);
   }, [pipeline, aberta]);
+
+  // When Phase 2 syncs from Supabase, refresh the open drawer so the other device's
+  // pipeline data (interview times, notes, etapa) shows without needing to reopen
+  useEffect(() => {
+    if (!aberta || editando) return;
+    const updated = candidatas.find(c => c.id === aberta.id);
+    if (!updated || updated.dadosFormulario === aberta.dadosFormulario) return;
+    // Supabase returned newer dadosFormulario — refresh without losing local LS cache
+    const fromSupabase = (() => {
+      try { const p = JSON.parse(updated.dadosFormulario || ''); if (p?.etapa) return p as PipelineExtra; } catch {} return null;
+    })();
+    if (fromSupabase) {
+      setAberta(updated);
+      setPipeline({ documentosChecklist: {}, ...getPipeline(updated.id), ...fromSupabase });
+      setDocForm({ notasEntrevista: updated.notasEntrevista || '', status: updated.status, observacoes: updated.observacoes || '' });
+    }
+  }, [candidatas]);
 
   return (
     <Layout role={UserRole.ADMIN}>
@@ -565,7 +656,9 @@ export const AdminRHContratacao: React.FC = () => {
                       const id = e.dataTransfer.getData('candidata_id');
                       if (!id) return;
                       const pl = getPipeline(id);
-                      savePipeline(id, { ...pl, etapa });
+                      const updated = { ...pl, etapa };
+                      savePipeline(id, updated);
+                      updateCandidatura(id, { dadosFormulario: JSON.stringify(updated) });
                       setPipelineVersion(v => v + 1);
                     }}
                   >
@@ -1132,22 +1225,61 @@ export const AdminRHContratacao: React.FC = () => {
                     </button>
                     {showAnotacoes && (
                       <div className="space-y-3">
+                        {/* Input row */}
                         <div className="flex gap-2">
                           <textarea value={novaAnotacao} onChange={e => setNovaAnotacao(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) addAnotacao(); }}
-                            rows={2} placeholder="Digite uma anotação... (Ctrl+Enter para salvar)"
-                            className="flex-1 border border-input bg-gray-50 dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" />
+                            rows={2} placeholder={isRecording ? '🎙️ Ouvindo... fale agora' : 'Digite uma anotação... (Ctrl+Enter para salvar)'}
+                            className={`flex-1 border bg-gray-50 dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 resize-none transition-all ${isRecording ? 'border-red-400 ring-2 ring-red-200 dark:ring-red-800' : 'border-input focus:ring-primary/30'}`} />
                           <button onClick={addAnotacao} className="px-3 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors shrink-0"><Plus size={16} /></button>
                         </div>
+                        {/* Toolbar: mic, audio file, image */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button onClick={toggleRecording}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${isRecording ? 'bg-red-500 text-white' : 'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-red-50 hover:text-red-500'}`}>
+                            {isRecording ? <><MicOff size={12} /> Parar</> : <><Mic size={12} /> Gravar</>}
+                          </button>
+                          <button onClick={() => audioAnotRef.current?.click()} disabled={uploadingAnot}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-violet-50 hover:text-violet-600 transition-all disabled:opacity-50">
+                            <Paperclip size={12} /> Áudio
+                          </button>
+                          <button onClick={() => imageAnotRef.current?.click()} disabled={uploadingAnot}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-blue-50 hover:text-blue-600 transition-all disabled:opacity-50">
+                            <ImageIcon size={12} /> Foto
+                          </button>
+                          {uploadingAnot && <span className="text-xs text-lightText dark:text-darkTextSecondary animate-pulse">Enviando...</span>}
+                          <input ref={audioAnotRef} type="file" accept="audio/*" className="hidden"
+                            onChange={e => { const f = e.target.files?.[0]; if (f) handleAnotacaoArquivo(f, 'AUDIO'); e.target.value = ''; }} />
+                          <input ref={imageAnotRef} type="file" accept="image/*" className="hidden"
+                            onChange={e => { const f = e.target.files?.[0]; if (f) handleAnotacaoArquivo(f, 'IMAGEM'); e.target.value = ''; }} />
+                        </div>
+                        {/* Annotation list */}
                         {(pipeline.anotacoes || []).length === 0 ? (
                           <p className="text-xs text-lightText dark:text-darkTextSecondary italic text-center py-3">Sem anotações ainda.</p>
                         ) : (
                           <div className="space-y-2">
                             {(pipeline.anotacoes || []).map(a => (
-                              <div key={a.id} className="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/30 rounded-xl px-3 py-2.5 flex gap-2">
-                                <div className="flex-1">
-                                  <p className="text-[10px] text-yellow-600 dark:text-yellow-400 font-bold mb-0.5 flex items-center gap-1"><Clock size={9} />{formatDateTime(a.criadoEm)}</p>
-                                  <p className="text-xs text-darkText dark:text-darkTextPrimary leading-relaxed whitespace-pre-wrap">{a.texto}</p>
+                              <div key={a.id} className={`border rounded-xl px-3 py-2.5 flex gap-2 ${
+                                a.tipo === 'AUDIO' ? 'bg-violet-50 dark:bg-violet-900/10 border-violet-100 dark:border-violet-900/30' :
+                                a.tipo === 'IMAGEM' ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30' :
+                                'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-100 dark:border-yellow-900/30'
+                              }`}>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[10px] font-bold mb-1 flex items-center gap-1 flex-wrap">
+                                    <Clock size={9} className="text-lightText" />
+                                    <span className="text-lightText dark:text-darkTextSecondary">{formatDateTime(a.criadoEm)}</span>
+                                    {a.tipo === 'AUDIO' && <span className="bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 px-1.5 py-0.5 rounded text-[9px]">🎵 Áudio</span>}
+                                    {a.tipo === 'IMAGEM' && <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded text-[9px]">🖼️ Imagem</span>}
+                                  </p>
+                                  {a.tipo === 'AUDIO' && a.arquivoUrl && (
+                                    <audio controls className="w-full rounded-lg" style={{ height: '36px' }}>
+                                      <source src={a.arquivoUrl} />
+                                    </audio>
+                                  )}
+                                  {a.tipo === 'IMAGEM' && a.arquivoUrl && (
+                                    <img src={a.arquivoUrl} alt={a.arquivoNome || 'imagem'} className="w-full rounded-lg max-h-48 object-contain mb-1" />
+                                  )}
+                                  {a.texto && <p className="text-xs text-darkText dark:text-darkTextPrimary leading-relaxed whitespace-pre-wrap mt-0.5">{a.texto}</p>}
                                 </div>
                                 <button onClick={() => removeAnotacao(a.id)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg text-lightText hover:text-red-500 transition-colors shrink-0"><X size={12} /></button>
                               </div>
@@ -1200,7 +1332,12 @@ export const AdminRHContratacao: React.FC = () => {
                 <div className="shrink-0 px-5 pb-5 pt-3 border-t border-gray-100 dark:border-darkBorder bg-white dark:bg-darkSurface space-y-2">
                   {savedOk && (
                     <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-3 py-2 text-green-700 dark:text-green-400 text-sm font-bold">
-                      <CheckCircle size={15} /> Alterações salvas!
+                      <CheckCircle size={15} /> Salvo e sincronizado!
+                    </div>
+                  )}
+                  {saveError && (
+                    <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2 text-red-700 dark:text-red-400 text-sm font-bold">
+                      ⚠️ Erro ao sincronizar — salvo localmente. Verifique sua conexão e tente novamente.
                     </div>
                   )}
                   <Button fullWidth onClick={handleSaveDoc} variant={savedOk ? 'outline' : 'primary'}>

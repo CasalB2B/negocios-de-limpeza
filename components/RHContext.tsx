@@ -198,7 +198,7 @@ interface RHContextType {
 
   candidatas: CandidataRH[];
   addCandidatura: (data: Omit<CandidataRH, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateCandidatura: (id: string, data: Partial<CandidataRH>) => Promise<void>;
+  updateCandidatura: (id: string, data: Partial<CandidataRH>) => Promise<boolean>;
   deleteCandidatura: (id: string) => Promise<void>;
 
   getElegibilidade: (colaboradora: ColaboradoraRH) => ElegibilidadeRH;
@@ -843,17 +843,20 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     setCandidatas(prev => { const next = [item, ...prev]; lsSet('rh_candidatas', next); return next; });
   }, []);
 
-  const updateCandidatura = useCallback(async (id: string, data: Partial<CandidataRH>) => {
+  const updateCandidatura = useCallback(async (id: string, data: Partial<CandidataRH>): Promise<boolean> => {
     const upd = (prev: CandidataRH[]) => { const next = prev.map(c => c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c); lsSet('rh_candidatas', next); return next; };
+    let sbOk = false;
     try {
       const current = candidatas.find(c => c.id === id);
       if (current) {
-        await supabase.functions.invoke('rh-write', {
+        const res = await supabase.functions.invoke('rh-write', {
           body: { action: 'upsert_candidatura', data: { ...current, ...data, id } },
         });
+        sbOk = res.data?.ok === true;
       }
     } catch {}
     setCandidatas(upd);
+    return sbOk;
   }, [candidatas]);
 
   const deleteCandidatura = useCallback(async (id: string) => {
