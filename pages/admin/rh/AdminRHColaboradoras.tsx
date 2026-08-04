@@ -190,6 +190,7 @@ export const AdminRHColaboradoras: React.FC = () => {
   const [search, setSearch] = useState('');
   const [filterCargo, setFilterCargo] = useState<CargoRH | 'TODOS'>('TODOS');
   const [filterTempo, setFilterTempo] = useState<'TODOS' | 'lt6' | '6a12' | '1a2a' | 'gt2a'>('TODOS');
+  const [filterStatus, setFilterStatus] = useState<StatusColaboradoraRH | 'TODAS'>('ATIVA' as StatusColaboradoraRH);
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<ColaboradoraRH | null>(null);
   const [form, setForm] = useState<ColaboradoraFormData>({ ...BLANK });
@@ -214,6 +215,7 @@ export const AdminRHColaboradoras: React.FC = () => {
 
   const filtered = colaboradoras.filter(c => {
     if (!c.nome.toLowerCase().includes(search.toLowerCase())) return false;
+    if (filterStatus !== 'TODAS' && c.status !== filterStatus) return false;
     if (filterCargo !== 'TODOS' && c.cargoAtual !== filterCargo) return false;
     if (filterTempo !== 'TODOS') {
       const m = getMesesNaEmpresa(c.dataAdmissao);
@@ -395,6 +397,25 @@ export const AdminRHColaboradoras: React.FC = () => {
 
         {/* Search */}
         <Input placeholder="Buscar por nome..." value={search} onChange={e => setSearch(e.target.value)} icon={<Search size={16} />} />
+
+        {/* Filtro por status */}
+        <div className="space-y-2">
+          <p className="text-[11px] font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Status</p>
+          <div className="flex flex-wrap gap-2">
+            {([
+              { key: 'ATIVA',    label: 'Ativas',    active: 'bg-green-600 text-white' },
+              { key: 'AFASTADA', label: 'Afastadas', active: 'bg-yellow-500 text-white' },
+              { key: 'INATIVA',  label: 'Inativas',  active: 'bg-red-500 text-white' },
+              { key: 'TODAS',    label: 'Todas',     active: 'bg-primary text-white' },
+            ] as const).map(({ key, label, active }) => (
+              <button key={key}
+                onClick={() => setFilterStatus(key as StatusColaboradoraRH | 'TODAS')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterStatus === key ? active : 'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-gray-200 dark:hover:bg-darkBorder'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Filtro por cargo */}
         <div className="space-y-2">
