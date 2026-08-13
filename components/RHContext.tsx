@@ -193,6 +193,7 @@ interface RHContextType {
 
   observacoes: ObservacaoColaboradora[];
   addObservacao: (data: Omit<ObservacaoColaboradora, 'id' | 'createdAt'>) => Promise<void>;
+  updateObservacao: (id: string, data: Omit<ObservacaoColaboradora, 'id' | 'createdAt'>) => Promise<void>;
   deleteObservacao: (id: string) => Promise<void>;
   deleteAvaliacao: (id: string) => Promise<void>;
 
@@ -802,6 +803,17 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     setObsColaboradoras(prev => { const next = [item, ...prev]; lsSet('rh_obs_colaboradoras', next); return next; });
   }, []);
 
+  const updateObservacao = useCallback(async (id: string, data: Omit<ObservacaoColaboradora, 'id' | 'createdAt'>) => {
+    setObsColaboradoras(prev => {
+      const next = prev.map(o => o.id === id ? { ...o, ...data } : o);
+      lsSet('rh_obs_colaboradoras', next);
+      return next;
+    });
+    try {
+      await supabase.functions.invoke('rh-write', { body: { action: 'upsert_observacao', data: { ...data, id } } });
+    } catch {}
+  }, []);
+
   const deleteObservacao = useCallback(async (id: string) => {
     try {
       await supabase.functions.invoke('rh-write', { body: { action: 'delete_observacao', data: { id } } });
@@ -1071,7 +1083,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       addDesempenho, updateDesempenho, deleteDesempenho,
       addPromocao, addBonusMensal, calcularBonus,
       addAvaliacao, getMediaAvaliacoesMes, deleteAvaliacao,
-      observacoes: obsColaboradoras, addObservacao, deleteObservacao,
+      observacoes: obsColaboradoras, addObservacao, updateObservacao, deleteObservacao,
       candidatas, addCandidatura, updateCandidatura, deleteCandidatura,
       updateConfigBonusLider, updateConfigRemuneracao, updateConfigCriterios,
       getElegibilidade, getMesesNaEmpresa,

@@ -12,6 +12,7 @@ import {
   TrendingUp, AlertCircle, ThumbsUp, Minus, ExternalLink,
   Phone, MapPin, FileText, Upload, Download, Award, DollarSign,
   CloudUpload, Target, CheckSquare, Square, PartyPopper,
+  Pencil, ChevronDown, ChevronUp,
 } from 'lucide-react';
 
 // ─── Onboarding Checklist ────────────────────────────────────────────────────
@@ -159,7 +160,7 @@ export const AdminRHColaboradoras: React.FC = () => {
     colaboradoras, addColaboradora, updateColaboradora, deleteColaboradora,
     syncToSupabase,
     getElegibilidade, getMesesNaEmpresa, rhLoading, rhSyncing,
-    avaliacoes, observacoes, addObservacao, deleteObservacao, deleteAvaliacao,
+    avaliacoes, observacoes, addObservacao, updateObservacao, deleteObservacao, deleteAvaliacao,
     promocoes, configRemuneracao, bonusMensal,
   } = useRH();
 
@@ -206,6 +207,8 @@ export const AdminRHColaboradoras: React.FC = () => {
   // Obs form
   const [obsForm, setObsForm] = useState({ tipo: 'POSITIVA' as ObservacaoColaboradora['tipo'], titulo: '', descricao: '', data: new Date().toLocaleDateString('sv-SE'), registradoPor: '' });
   const [showObsForm, setShowObsForm] = useState(false);
+  const [editingObs, setEditingObs] = useState<ObservacaoColaboradora | null>(null);
+  const [expandedObs, setExpandedObs] = useState<Record<string, boolean>>({});
 
   const handleCopy = (id: string) => {
     navigator.clipboard.writeText(getLinkAvaliacao(id)).catch(() => {});
@@ -317,9 +320,20 @@ export const AdminRHColaboradoras: React.FC = () => {
 
   const handleAddObs = async () => {
     if (!perfilAberto || !obsForm.titulo) return;
-    await addObservacao({ ...obsForm, colaboradoraId: perfilAberto.id });
+    if (editingObs) {
+      await updateObservacao(editingObs.id, { ...obsForm, colaboradoraId: perfilAberto.id });
+      setEditingObs(null);
+    } else {
+      await addObservacao({ ...obsForm, colaboradoraId: perfilAberto.id });
+    }
     setObsForm({ tipo: 'POSITIVA', titulo: '', descricao: '', data: new Date().toLocaleDateString('sv-SE'), registradoPor: '' });
     setShowObsForm(false);
+  };
+
+  const openEditObs = (obs: ObservacaoColaboradora) => {
+    setEditingObs(obs);
+    setObsForm({ tipo: obs.tipo, titulo: obs.titulo, descricao: obs.descricao || '', data: obs.data, registradoPor: obs.registradoPor || '' });
+    setShowObsForm(true);
   };
 
   const abrirPerfil = (col: ColaboradoraRH) => {
@@ -965,7 +979,7 @@ export const AdminRHColaboradoras: React.FC = () => {
                     {/* Formulário de nova observação */}
                     {showObsForm && (
                       <div className="bg-gray-50 dark:bg-darkBg rounded-2xl p-4 space-y-3 border border-gray-200 dark:border-darkBorder">
-                        <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary">Novo Registro</p>
+                        <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary">{editingObs ? 'Editar Registro' : 'Novo Registro'}</p>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="text-[11px] font-bold text-lightText dark:text-darkTextSecondary block mb-1">Tipo</label>
@@ -1002,7 +1016,7 @@ export const AdminRHColaboradoras: React.FC = () => {
                             className="w-full border border-input bg-white dark:bg-darkSurface rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30" />
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => setShowObsForm(false)}
+                          <button onClick={() => { setShowObsForm(false); setEditingObs(null); setObsForm({ tipo: 'POSITIVA', titulo: '', descricao: '', data: new Date().toLocaleDateString('sv-SE'), registradoPor: '' }); }}
                             className="flex-1 py-2 border border-gray-200 dark:border-darkBorder rounded-xl text-sm text-lightText hover:bg-gray-100 dark:hover:bg-darkBorder transition-colors font-bold">
                             Cancelar
                           </button>
@@ -1025,10 +1039,13 @@ export const AdminRHColaboradoras: React.FC = () => {
                       <div className="space-y-3">
                         {colObs.map(obs => {
                           const tc = TIPO_OBS[obs.tipo];
+                          const LIMIT = 200;
+                          const isLong = (obs.descricao?.length ?? 0) > LIMIT;
+                          const isExpanded = !!expandedObs[obs.id];
                           return (
                             <div key={obs.id} className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-100 dark:border-darkBorder p-4">
                               <div className="flex items-start justify-between gap-2">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${tc.bg} ${tc.text}`}>
                                     {tc.icon} {tc.label}
                                   </span>
@@ -1036,14 +1053,37 @@ export const AdminRHColaboradoras: React.FC = () => {
                                     {new Date(obs.data + 'T12:00:00').toLocaleDateString('pt-BR')}
                                   </span>
                                 </div>
-                                <button onClick={() => deleteObservacao(obs.id)}
-                                  className="text-lightText hover:text-red-500 transition-colors p-0.5">
-                                  <X size={14} />
-                                </button>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button onClick={() => openEditObs(obs)}
+                                    className="text-lightText hover:text-primary transition-colors p-0.5"
+                                    title="Editar registro">
+                                    <Pencil size={13} />
+                                  </button>
+                                  <button onClick={() => deleteObservacao(obs.id)}
+                                    className="text-lightText hover:text-red-500 transition-colors p-0.5"
+                                    title="Excluir registro">
+                                    <X size={14} />
+                                  </button>
+                                </div>
                               </div>
                               <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary mt-2">{obs.titulo}</p>
                               {obs.descricao && (
-                                <p className="text-sm text-lightText dark:text-darkTextSecondary mt-1 leading-relaxed">{obs.descricao}</p>
+                                <div className="mt-1">
+                                  <p className="text-sm text-lightText dark:text-darkTextSecondary leading-relaxed">
+                                    {isLong && !isExpanded
+                                      ? obs.descricao.slice(0, LIMIT) + '...'
+                                      : obs.descricao}
+                                  </p>
+                                  {isLong && (
+                                    <button
+                                      onClick={() => setExpandedObs(prev => ({ ...prev, [obs.id]: !prev[obs.id] }))}
+                                      className="flex items-center gap-1 mt-1.5 text-[11px] font-bold text-primary hover:text-primary/80 transition-colors">
+                                      {isExpanded
+                                        ? <><ChevronUp size={12} /> Ver menos</>
+                                        : <><ChevronDown size={12} /> Ver mais</>}
+                                    </button>
+                                  )}
+                                </div>
                               )}
                               {obs.registradoPor && (
                                 <p className="text-[10px] text-lightText dark:text-darkTextSecondary mt-2">Por: {obs.registradoPor}</p>
