@@ -13,6 +13,7 @@ import {
   Mic, MicOff, Paperclip,
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
+import { RichNoteEditor } from '../../../components/RichNoteEditor';
 
 // ─── Gemini AI extraction ─────────────────────────────────────────────────────
 
@@ -1307,12 +1308,13 @@ export const AdminRHContratacao: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* Textarea que preenche todo o espaço disponível (desktop); altura fixa no mobile */}
-                  <textarea
-                    value={docForm.notasEntrevista ?? ''}
-                    onChange={e => setDocForm(p => ({ ...p, notasEntrevista: e.target.value }))}
+                  {/* Rich text editor — re-mounts via key when candidata changes */}
+                  <RichNoteEditor
+                    key={aberta?.id ?? 'none'}
+                    defaultValue={docForm.notasEntrevista ?? ''}
+                    onChange={html => setDocForm(p => ({ ...p, notasEntrevista: html }))}
                     placeholder={"Notas da entrevista...\n\nPerguntas e respostas:\n— Por que quer trabalhar conosco?\n— Tem transporte próprio?\n— Disponibilidade de horário?\n— Já trabalhou em casa de família? Como foi?\n\nImpressão geral:\n..."}
-                    className="flex-1 w-full min-h-[260px] lg:min-h-0 border border-input bg-gray-50 dark:bg-darkBg rounded-2xl px-5 py-4 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none leading-relaxed"
+                    className="flex-1 min-h-[260px] lg:min-h-0"
                   />
 
                   {/* Observações extras — compacto, abaixo das notas */}
