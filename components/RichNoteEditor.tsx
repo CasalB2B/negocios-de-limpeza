@@ -126,8 +126,8 @@ export const RichNoteEditor: React.FC<RichNoteEditorProps> = ({
     <div
       className={`flex flex-col border border-input rounded-2xl overflow-hidden bg-gray-50 dark:bg-darkBg focus-within:ring-2 focus-within:ring-primary/30 ${className}`}
     >
-      {/* ── Toolbar ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-0.5 px-2.5 py-2 border-b border-input bg-white dark:bg-darkSurface shrink-0 flex-wrap">
+      {/* ── Toolbar — sticky so it stays visible while scrolling ─────── */}
+      <div className="sticky top-0 z-10 flex items-center gap-0.5 px-2.5 py-2 border-b border-input bg-white dark:bg-darkSurface shrink-0 flex-wrap">
         <ToolBtn onClick={() => exec('bold')} title="Negrito (Ctrl+B)">
           <Bold size={13} />
         </ToolBtn>
