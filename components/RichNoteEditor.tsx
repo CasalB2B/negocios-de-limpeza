@@ -124,10 +124,10 @@ export const RichNoteEditor: React.FC<RichNoteEditorProps> = ({
 
   return (
     <div
-      className={`flex flex-col border border-input rounded-2xl overflow-hidden bg-gray-50 dark:bg-darkBg focus-within:ring-2 focus-within:ring-primary/30 ${className}`}
+      className={`flex flex-col border border-input rounded-2xl bg-gray-50 dark:bg-darkBg focus-within:ring-2 focus-within:ring-primary/30 ${className}`}
     >
-      {/* ── Toolbar — sticky so it stays visible while scrolling ─────── */}
-      <div className="sticky top-0 z-10 flex items-center gap-0.5 px-2.5 py-2 border-b border-input bg-white dark:bg-darkSurface shrink-0 flex-wrap">
+      {/* ── Toolbar — shrink-0 so it always stays at top in flex column ── */}
+      <div className="flex items-center gap-0.5 px-2.5 py-2 border-b border-input bg-white dark:bg-darkSurface shrink-0 flex-wrap rounded-t-2xl">
         <ToolBtn onClick={() => exec('bold')} title="Negrito (Ctrl+B)">
           <Bold size={13} />
         </ToolBtn>
@@ -184,8 +184,8 @@ export const RichNoteEditor: React.FC<RichNoteEditorProps> = ({
         </ToolBtn>
       </div>
 
-      {/* ── Editable area ───────────────────────────────────────────────── */}
-      <div className="relative flex-1">
+      {/* ── Editable area — on desktop scrolls inside the bounded editor box ── */}
+      <div className="relative flex-1 lg:overflow-y-auto rounded-b-2xl">
         {/* Placeholder overlay — only shown when empty */}
         {showPlaceholder && (
           <div
