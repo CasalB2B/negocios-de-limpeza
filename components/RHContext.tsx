@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { CargoRH, StatusColaboradoraRH, ElegibilidadeRH } from '../types';
 
@@ -350,13 +350,90 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [rhLoading, setRhLoading] = useState(true);
   const [rhSyncing, setRhSyncing] = useState(false); // background refresh indicator
 
-  // ── Load ────────────────────────────────────────────────────────────────────
+  // ── Load + auto-sync ────────────────────────────────────────────────────────
+  const lastSyncAt = useRef<number>(0);
+
   useEffect(() => {
     loadAll();
+
+    // ── Visibility-based sync ─────────────────────────────────────────────
+    // When the user returns to the tab (or unlocks the phone/switches back to
+    // the app), re-fetch from Supabase if the last sync was > 30 seconds ago.
+    // This is the primary fix for "data from PC not showing on notebook".
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        const age = Date.now() - lastSyncAt.current;
+        if (age > 30_000) {
+          loadAll(true); // background-only: skip Phase 1 to avoid stale flash
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // ── Polling: every 90 s while the tab is visible ──────────────────────
+    // Catches any missed updates (e.g. another device saved while this tab
+    // was open but idle).
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadAll(true);
+      }
+    }, 90_000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      clearInterval(interval);
+    };
   }, []);
 
-  const loadAll = async () => {
+  const loadAll = async (backgroundOnly = false) => {
     // ── Phase 1: instant load from localStorage ──────────────────────────────
+    // Skipped on background refreshes (visibility / polling) to avoid a stale
+    // data flash — Phase 1 would just re-set the same values that are already
+    // in React state. Only needed on the very first load when state is empty.
+    if (backgroundOnly) {
+      // Jump straight to Phase 2 — skip Phase 1 localStorage flash
+      setRhSyncing(true);
+      try {
+        const adminRes = await supabase.functions.invoke('rh-write', {
+          body: { action: 'get_admin_data' },
+        });
+        if (!adminRes.data?.ok) return;
+        const d = adminRes.data;
+        // Key names must match what get_admin_data actually returns
+        const cols    = (d.colaboradoras    || []).map(mapColaboradora);
+        const des     = (d.desempenho       || []).map(mapDesempenho);
+        const pros    = (d.promocoes        || []).map(mapPromocao);
+        const bons    = (d.bonus            || []).map(mapBonusMensal);
+        const cfgBons = (d.configBonus      || []).map(mapConfigBonus);
+        const cfgRems = (d.configRemuneracao|| []).map(mapRemuneracao);
+        const cfgCris = (d.configCriterios  || []).map(mapCriterios);
+        const avals   = (d.avaliacoes       || []).map(mapAvaliacao);
+        const obs     = (d.observacoes      || []).map(mapObservacao);
+        const cands   = (d.candidatas       || []).map(mapCandidatura);
+        if (cols.length)  { setColaboradoras(cols);    lsSet('rh_colaboradoras', cols); }
+        if (des.length)   { setDesempenhoMensal(des);  lsSet('rh_desempenho', des); }
+        if (pros.length)  { setPromocoes(pros);         lsSet('rh_promocoes', pros); }
+        if (bons.length)  { setBonusMensal(bons);       lsSet('rh_bonus_mensal', bons); }
+        const activeRems = cfgRems.filter(c => !c.vigenciaFim);
+        if (activeRems.length) { setConfigRemuneracao(activeRems); lsSet('rh_config_remuneracao', activeRems); }
+        const activeCris = cfgCris.filter(c => !c.vigenciaFim);
+        if (activeCris.length) { setConfigCriterios(activeCris);  lsSet('rh_config_criterios', activeCris); }
+        if (cfgBons.length) {
+          const activeBonus = cfgBons.find(c => !c.vigenciaFim) ?? cfgBons[cfgBons.length - 1];
+          setConfigBonusLider(activeBonus); lsSet('rh_config_bonus', activeBonus);
+        }
+        if (avals.length) {
+          const tombstone = new Set(lsGet<string[]>('rh_deleted_avals', []));
+          const fresh = avals.filter((a: AvaliacaoCliente) => !tombstone.has(a.id));
+          setAvaliacoes(fresh); lsSet('rh_avaliacoes', fresh);
+        }
+        if (obs.length)   { setObsColaboradoras(obs);  lsSet('rh_obs_colaboradoras', obs); }
+        if (cands.length) { setCandidatas(cands);       lsSet('rh_candidatas', cands); }
+        lastSyncAt.current = Date.now();
+      } catch { /* Supabase offline — stay on current state */ } finally { setRhSyncing(false); }
+      return;
+    }
+
     // Populate state immediately so the UI is never blank while the edge function loads
     const lsCols   = lsGet<ColaboradoraRH[]>('rh_colaboradoras', SEED_COLABORADORAS);
     const lsDes    = lsGet<DesempenhoMensalRH[]>('rh_desempenho', buildVanielenDesempenho());
@@ -574,6 +651,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       if (finalAvals.length)  lsSet('rh_avaliacoes', finalAvals);
       if (finalObs.length)    lsSet('rh_obs_colaboradoras', finalObs);
       if (finalCands.length)  lsSet('rh_candidatas', finalCands);
+      lastSyncAt.current = Date.now();
     } catch {
       // Supabase offline — Phase 1 localStorage data is already showing in the UI, nothing to do
     } finally {
