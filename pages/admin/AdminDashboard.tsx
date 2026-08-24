@@ -37,7 +37,7 @@ function fmtDate(dt: Date): string {
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { colaboradoras, candidatas } = useRH();
+  const { colaboradoras, candidatas, avaliacoes } = useRH();
 
   const [notifPerm, setNotifPerm] = useState<NotificationPermission>('default');
 
@@ -182,12 +182,14 @@ export const AdminDashboard: React.FC = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {[
-              { label: 'Colaboradoras ativas',  value: ativasCount,       emoji: '✅', path: '/admin/rh/colaboradoras' },
-              { label: 'Afastadas',             value: afastadasCount,    emoji: '⏸️',  path: '/admin/rh/colaboradoras' },
-              { label: 'Em processo seletivo',  value: emProcesso,        emoji: '📋', path: '/admin/rh/contratacao' },
-              { label: 'Ligações agendadas',    value: ligacoesAgend,     emoji: '📞', path: '/admin/rh/contratacao' },
+              { label: 'Colaboradoras ativas',  value: ativasCount,        emoji: '✅', path: '/admin/rh/colaboradoras' },
+              { label: 'Em processo seletivo',  value: emProcesso,         emoji: '📋', path: '/admin/rh/contratacao' },
+              { label: 'Ligações agendadas',    value: ligacoesAgend,      emoji: '📞', path: '/admin/rh/contratacao' },
+              { label: 'Entrevistas agendadas', value: entrevistasAgend,   emoji: '🎤', path: '/admin/rh/contratacao' },
+              { label: 'Afastadas',             value: afastadasCount,     emoji: '⏸️',  path: '/admin/rh/colaboradoras' },
+              { label: 'Avaliações recebidas',   value: avaliacoes.length,  emoji: '⭐', path: '/admin/rh/avaliacoes' },
             ].map(item => (
               <button
                 key={item.label}
@@ -270,21 +272,6 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Entrevistas agendadas counter ── */}
-        {entrevistasAgend > 0 && (
-          <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl px-4 py-3">
-            <span className="text-xl">🎤</span>
-            <p className="text-sm font-bold text-blue-800 dark:text-blue-300">
-              {entrevistasAgend} entrevista{entrevistasAgend > 1 ? 's' : ''} agendada{entrevistasAgend > 1 ? 's' : ''} no processo seletivo
-            </p>
-            <button
-              onClick={() => navigate('/admin/rh/contratacao')}
-              className="ml-auto text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline shrink-0"
-            >
-              Ver
-            </button>
-          </div>
-        )}
 
       </div>
     </Layout>
