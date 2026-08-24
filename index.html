@@ -192,6 +192,17 @@
       .dark .rich-editor-content h1,
       .dark .rich-editor-content h2 { color: #f8fafc; }
       .dark .rich-editor-content hr { border-color: #334155; }
+
+      /* ── Mobile: clear bottom nav + iOS safe area ───────────────────────── */
+      @media (max-width: 767px) {
+        .mobile-pb-nav {
+          padding-bottom: max(7rem, calc(5rem + env(safe-area-inset-bottom)));
+        }
+        /* Full-screen drawer: footer accounts for home-indicator */
+        .drawer-footer-safe {
+          padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 1.25rem));
+        }
+      }
     </style>
   <script>
     // Aplica o tema salvo ANTES do React renderizar — evita flash de tela errada

@@ -42,6 +42,7 @@ import { AdminAnalytics } from './pages/admin/AdminAnalytics';
 import { QuoteChat } from './pages/client/QuoteChat';
 import { PWAManager } from './components/PWAManager';
 import { RHProvider } from './components/RHContext';
+import { RHNotificationsWatcher } from './components/RHNotifications';
 import { AdminRHDashboard } from './pages/admin/rh/AdminRHDashboard';
 import { AdminRHColaboradoras } from './pages/admin/rh/AdminRHColaboradoras';
 import { AdminRHDesempenho } from './pages/admin/rh/AdminRHDesempenho';
@@ -80,6 +81,8 @@ const App: React.FC = () => {
         {/* PWA: manifest dinâmico + install prompt + notifications */}
         <ManifestSwitcher />
         <PWAManager />
+        {/* RH: agenda-based push notifications for ligações/entrevistas */}
+        <RHNotificationsWatcher />
         <HashRouter>
           <Routes>
             {/* Public Routes */}

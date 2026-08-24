@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Layout } from '../../../components/Layout';
 import { UserRole } from '../../../types';
 import { useRH, CandidataRH, StatusCandidataRH } from '../../../components/RHContext';
@@ -257,11 +258,14 @@ export const AdminRHContratacao: React.FC = () => {
   const [pipelineVersion, setPipelineVersion] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState<FormData>({ ...BLANK });
+  const [searchParams] = useSearchParams();
   const [aberta, setAberta] = useState<CandidataRH | null>(null);
   const [editando, setEditando] = useState(false);
   // Keep a ref to the latest pipeline so the drawer-close flush can read it
   // without capturing a stale closure (the debounce cleanup cancels the timer).
   const pipelineRef = useRef<any>(null);
+  // Deep-link: auto-open candidata when URL has ?candidataId= (from push notification)
+  const deepLinkHandledRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
   const [saveError, setSaveError] = useState(false);
@@ -509,6 +513,15 @@ export const AdminRHContratacao: React.FC = () => {
     savePipeline(id, pipelineRef.current);
     updateCandidatura(id, { dadosFormulario: JSON.stringify(pipelineRef.current) });
   }, [aberta]);
+
+  // Deep-link: open the candidata whose id came from a push-notification URL (?candidataId=)
+  useEffect(() => {
+    if (deepLinkHandledRef.current || !candidatas.length) return;
+    const id = searchParams.get('candidataId');
+    if (!id) return;
+    const found = candidatas.find(c => c.id === id);
+    if (found) { setAberta(found); deepLinkHandledRef.current = true; }
+  }, [candidatas, searchParams]);
 
   // When Phase 2 syncs from Supabase, refresh the open drawer so the other device's
   // pipeline data (interview times, notes, etapa) shows without needing to reopen
@@ -1354,7 +1367,7 @@ export const AdminRHContratacao: React.FC = () => {
                 </div>
 
                 {/* Footer salvar — grudado na base da coluna direita */}
-                <div className="shrink-0 px-5 pb-5 pt-3 border-t border-gray-100 dark:border-darkBorder bg-white dark:bg-darkSurface space-y-2">
+                <div className="shrink-0 px-5 pt-3 border-t border-gray-100 dark:border-darkBorder bg-white dark:bg-darkSurface space-y-2 drawer-footer-safe" style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom, 1.25rem))' }}>
                   {savedOk && (
                     <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-3 py-2 text-green-700 dark:text-green-400 text-sm font-bold">
                       <CheckCircle size={15} /> Salvo e sincronizado!

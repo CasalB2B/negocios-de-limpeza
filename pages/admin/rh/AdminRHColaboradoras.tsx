@@ -192,6 +192,7 @@ export const AdminRHColaboradoras: React.FC = () => {
   const [filterCargo, setFilterCargo] = useState<CargoRH | 'TODOS'>('TODOS');
   const [filterTempo, setFilterTempo] = useState<'TODOS' | 'lt6' | '6a12' | '1a2a' | 'gt2a'>('TODOS');
   const [filterStatus, setFilterStatus] = useState<StatusColaboradoraRH | 'TODAS'>('ATIVA' as StatusColaboradoraRH);
+  const [showFilters, setShowFilters] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<ColaboradoraRH | null>(null);
   const [form, setForm] = useState<ColaboradoraFormData>({ ...BLANK });
@@ -371,99 +372,132 @@ export const AdminRHColaboradoras: React.FC = () => {
 
   return (
     <Layout role={UserRole.ADMIN}>
-      <div className="space-y-5">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-2">
+      <div className="space-y-4">
+        {/* Header — compact for mobile */}
+        <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <h1 className="text-2xl font-bold text-darkText dark:text-darkTextPrimary">Colaboradoras</h1>
-            <p className="text-sm text-lightText dark:text-darkTextSecondary mt-0.5">{colaboradoras.length} cadastradas</p>
+            <p className="text-sm text-lightText dark:text-darkTextSecondary mt-0.5">
+              {colaboradoras.filter(c => c.status === StatusColaboradoraRH.ATIVA).length} ativas
+              {rhSyncing && (
+                <span className="ml-2 inline-flex items-center gap-1 text-primary/70 text-xs animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                  sincronizando...
+                </span>
+              )}
+            </p>
           </div>
-          <div className="flex flex-col items-end gap-1.5 shrink-0">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleSync}
-                disabled={syncing}
-                title={hasPending ? 'Enviar dados locais para o banco' : 'Forçar sincronização com o banco'}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors disabled:opacity-60 ${
-                  hasPending
-                    ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'
-                    : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100 dark:bg-darkBg dark:text-darkTextSecondary dark:border-darkBorder'
-                }`}
-              >
-                <CloudUpload size={14} className={syncing ? 'animate-pulse' : ''} />
-                {syncing ? 'Sincronizando…' : hasPending ? '⚠ Sincronizar' : 'Sincronizar'}
-              </button>
-              <Button icon={<UserPlus size={16} />} onClick={openAdd}>Nova</Button>
-            </div>
-            {rhSyncing && !syncMsg && (
-              <span className="flex items-center gap-1 text-[11px] text-primary/70 font-medium animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                Atualizando dados...
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Sync — icon-only on mobile, text on desktop */}
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              title={hasPending ? 'Sincronizar com o banco' : 'Forçar sincronização'}
+              className={`p-2 md:px-3 md:py-1.5 rounded-xl border transition-colors disabled:opacity-60 flex items-center gap-1.5 ${
+                hasPending
+                  ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'
+                  : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100 dark:bg-darkBg dark:text-darkTextSecondary dark:border-darkBorder'
+              }`}
+            >
+              <CloudUpload size={15} className={syncing ? 'animate-pulse' : ''} />
+              <span className="hidden md:inline text-xs font-semibold">
+                {syncing ? 'Sincronizando…' : 'Sincronizar'}
               </span>
-            )}
-            {syncMsg && (
-              <span className="text-[11px] text-gray-500 dark:text-gray-400 text-right leading-tight max-w-[200px]">
-                {syncMsg}
-              </span>
-            )}
+            </button>
+            <Button icon={<UserPlus size={16} />} onClick={openAdd}>Nova</Button>
           </div>
         </div>
+
+        {/* Sync feedback toast */}
+        {syncMsg && (
+          <p className="text-xs text-gray-500 dark:text-gray-400">{syncMsg}</p>
+        )}
 
         {/* Search */}
         <Input placeholder="Buscar por nome..." value={search} onChange={e => setSearch(e.target.value)} icon={<Search size={16} />} />
 
-        {/* Filtro por status */}
-        <div className="space-y-2">
-          <p className="text-[11px] font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Status</p>
-          <div className="flex flex-wrap gap-2">
-            {([
-              { key: 'ATIVA',    label: 'Ativas',    active: 'bg-green-600 text-white' },
-              { key: 'AFASTADA', label: 'Afastadas', active: 'bg-yellow-500 text-white' },
-              { key: 'INATIVA',  label: 'Inativas',  active: 'bg-red-500 text-white' },
-              { key: 'TODAS',    label: 'Todas',     active: 'bg-primary text-white' },
-            ] as const).map(({ key, label, active }) => (
-              <button key={key}
-                onClick={() => setFilterStatus(key as StatusColaboradoraRH | 'TODAS')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterStatus === key ? active : 'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-gray-200 dark:hover:bg-darkBorder'}`}>
-                {label}
-              </button>
-            ))}
-          </div>
+        {/* Status filter — always visible (primary filter) */}
+        <div className="flex flex-wrap gap-2">
+          {([
+            { key: 'ATIVA',    label: 'Ativas',    active: 'bg-green-600 text-white' },
+            { key: 'AFASTADA', label: 'Afastadas', active: 'bg-yellow-500 text-white' },
+            { key: 'INATIVA',  label: 'Inativas',  active: 'bg-red-500 text-white' },
+            { key: 'TODAS',    label: 'Todas',     active: 'bg-primary text-white' },
+          ] as const).map(({ key, label, active }) => (
+            <button key={key}
+              onClick={() => setFilterStatus(key as StatusColaboradoraRH | 'TODAS')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterStatus === key ? active : 'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-gray-200 dark:hover:bg-darkBorder'}`}>
+              {label}
+            </button>
+          ))}
+
+          {/* Toggle advanced filters */}
+          <button
+            onClick={() => setShowFilters(f => !f)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 border ${
+              showFilters || filterCargo !== 'TODOS' || filterTempo !== 'TODOS'
+                ? 'bg-primary/10 text-primary border-primary/30 dark:bg-primary/20'
+                : 'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary border-transparent hover:bg-gray-200'
+            }`}
+          >
+            <Target size={12} />
+            Filtros
+            {(filterCargo !== 'TODOS' || filterTempo !== 'TODOS') && (
+              <span className="w-4 h-4 rounded-full bg-primary text-white text-[9px] flex items-center justify-center font-bold">
+                {(filterCargo !== 'TODOS' ? 1 : 0) + (filterTempo !== 'TODOS' ? 1 : 0)}
+              </span>
+            )}
+          </button>
         </div>
 
-        {/* Filtro por cargo */}
-        <div className="space-y-2">
-          <p className="text-[11px] font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Cargo</p>
-          <div className="flex flex-wrap gap-2">
-            {(['TODOS', 'JUNIOR', 'SENIOR', 'PROFISSIONAL', 'LIDER', 'GERENTE'] as const).map(c => (
-              <button key={c}
-                onClick={() => setFilterCargo(c as CargoRH | 'TODOS')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterCargo === c ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-gray-200 dark:hover:bg-darkBorder'}`}>
-                {c === 'TODOS' ? 'Todos' : c === 'JUNIOR' ? 'Auxiliar' : c === 'SENIOR' ? 'Faxineira' : c === 'PROFISSIONAL' ? 'Profissional' : c === 'LIDER' ? 'Líder' : 'Gerente'}
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Advanced filters — collapsible */}
+        {showFilters && (
+          <div className="bg-gray-50 dark:bg-darkBg rounded-2xl p-4 space-y-4 border border-gray-100 dark:border-darkBorder">
+            {/* Cargo */}
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Cargo</p>
+              <div className="flex flex-wrap gap-2">
+                {(['TODOS', 'JUNIOR', 'SENIOR', 'PROFISSIONAL', 'LIDER', 'GERENTE'] as const).map(c => (
+                  <button key={c}
+                    onClick={() => setFilterCargo(c as CargoRH | 'TODOS')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterCargo === c ? 'bg-primary text-white' : 'bg-white dark:bg-darkSurface text-lightText dark:text-darkTextSecondary border border-gray-200 dark:border-darkBorder hover:border-primary/40'}`}>
+                    {c === 'TODOS' ? 'Todos' : c === 'JUNIOR' ? 'Auxiliar' : c === 'SENIOR' ? 'Faxineira' : c === 'PROFISSIONAL' ? 'Profissional' : c === 'LIDER' ? 'Líder' : 'Gerente'}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        {/* Filtro por tempo na empresa */}
-        <div className="space-y-2">
-          <p className="text-[11px] font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Tempo na empresa</p>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { key: 'TODOS', label: 'Todos' },
-              { key: 'lt6',   label: '< 6 meses' },
-              { key: '6a12',  label: '6 – 12 meses' },
-              { key: '1a2a',  label: '1 – 2 anos' },
-              { key: 'gt2a',  label: '+ 2 anos' },
-            ].map(({ key, label }) => (
-              <button key={key}
-                onClick={() => setFilterTempo(key as any)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterTempo === key ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-gray-200 dark:hover:bg-darkBorder'}`}>
-                {label}
+            {/* Tempo na empresa */}
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Tempo na empresa</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'TODOS', label: 'Todos' },
+                  { key: 'lt6',   label: '< 6 meses' },
+                  { key: '6a12',  label: '6–12 meses' },
+                  { key: '1a2a',  label: '1–2 anos' },
+                  { key: 'gt2a',  label: '+ 2 anos' },
+                ].map(({ key, label }) => (
+                  <button key={key}
+                    onClick={() => setFilterTempo(key as any)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterTempo === key ? 'bg-primary text-white' : 'bg-white dark:bg-darkSurface text-lightText dark:text-darkTextSecondary border border-gray-200 dark:border-darkBorder hover:border-primary/40'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Clear all */}
+            {(filterCargo !== 'TODOS' || filterTempo !== 'TODOS') && (
+              <button
+                onClick={() => { setFilterCargo('TODOS'); setFilterTempo('TODOS'); }}
+                className="text-xs text-red-500 hover:underline font-bold"
+              >
+                Limpar filtros
               </button>
-            ))}
+            )}
           </div>
-        </div>
+        )}
 
         {/* ── Aniversários próximos ──────────────────────────────────────────── */}
         {(() => {

@@ -313,7 +313,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           </div>
         </header>
 
-        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
+        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 md:p-8 mobile-pb-nav md:pb-8">
           {children}
         </main>
 
