@@ -103,6 +103,7 @@ export type EtapaCandidatura =
 
 interface PipelineExtra {
   etapa: EtapaCandidatura;
+  bairro?: string;
   ligacaoData?: string;
   ligacaoHorario?: string;
   entrevistaData?: string;
@@ -112,6 +113,10 @@ interface PipelineExtra {
   anotacoes: Array<{ id: string; texto: string; criadoEm: string; tipo?: 'TEXTO' | 'AUDIO' | 'IMAGEM'; arquivoUrl?: string; arquivoNome?: string; }>;
   dadosFormulario?: string;
   documentosChecklist?: Record<string, boolean>;
+  // Ligação de Introdução — após contratação (kit, contrato assinado, etc.)
+  ligacaoIntroData?: string;
+  ligacaoIntroHorario?: string;
+  ligacaoIntroNotas?: string;
 }
 
 const ETAPA_CONFIG: Record<EtapaCandidatura, { label: string; short: string; color: string; icon: string }> = {
@@ -265,6 +270,7 @@ export const AdminRHContratacao: React.FC = () => {
   const [pipelineVersion, setPipelineVersion] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState<FormData>({ ...BLANK });
+  const [formBairro, setFormBairro] = useState('');
   const [searchParams] = useSearchParams();
   const [aberta, setAberta] = useState<CandidataRH | null>(null);
   const [editando, setEditando] = useState(false);
@@ -359,8 +365,12 @@ export const AdminRHContratacao: React.FC = () => {
     if (!form.nome.trim()) { setFormError('Nome é obrigatório.'); return; }
     if (!form.data) { setFormError('Data é obrigatória.'); return; }
     setFormError('');
-    await addCandidatura(form);
+    // Store bairro in the initial pipeline JSON so it persists in Supabase
+    const pipeline0: Partial<PipelineExtra> = { etapa: 'CONTATO_INICIAL', demandasRealizadas: 0, anotacoes: [], documentosChecklist: {} };
+    if (formBairro.trim()) pipeline0.bairro = formBairro.trim();
+    await addCandidatura({ ...form, dadosFormulario: JSON.stringify(pipeline0) });
     setForm({ ...BLANK });
+    setFormBairro('');
     setShowAdd(false);
   };
 
@@ -676,7 +686,7 @@ export const AdminRHContratacao: React.FC = () => {
           )}
 
         {/* Modal Nova Candidatura */}
-        <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Nova Candidatura">
+        <Modal isOpen={showAdd} onClose={() => { setShowAdd(false); setFormBairro(''); }} title="Nova Candidatura">
           <div className="space-y-4">
             <Input label="Nome completo *" value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))} />
             <div className="grid grid-cols-2 gap-3">
@@ -687,10 +697,11 @@ export const AdminRHContratacao: React.FC = () => {
               </div>
               <Input label="Telefone" value={form.telefone || ''} onChange={e => setForm(p => ({ ...p, telefone: e.target.value }))} />
             </div>
+            <Input label="Bairro" value={formBairro} onChange={e => setFormBairro(e.target.value)} />
           </div>
           {formError && <p className="mt-2 text-xs font-bold text-red-500">{formError}</p>}
           <div className="flex gap-3 mt-4">
-            <Button variant="outline" fullWidth onClick={() => { setShowAdd(false); setFormError(''); }}>Cancelar</Button>
+            <Button variant="outline" fullWidth onClick={() => { setShowAdd(false); setFormError(''); setFormBairro(''); }}>Cancelar</Button>
             <Button fullWidth onClick={handleAdd}>Criar</Button>
           </div>
         </Modal>
@@ -701,9 +712,10 @@ export const AdminRHContratacao: React.FC = () => {
           <div className="fixed inset-0 z-[60] flex flex-col bg-white dark:bg-darkSurface">
 
             {/* ── Header ──────────────────────────────────────────────────────── */}
-            {/* style inline: garante que o gradiente preenche a área do notch (safe-area-inset-top) */}
-            <div className="bg-gradient-to-r from-primary to-violet-500 text-white shrink-0"
-                 style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+            {/* Explicit notch-fill: a zero-height spacer inside the gradient pushes content
+                below the iPhone notch while the gradient background fills it flush to top. */}
+            <div className="bg-gradient-to-r from-primary to-violet-500 text-white shrink-0">
+              <div style={{ height: 'env(safe-area-inset-top, 0px)' }} />
               {/* Linha de identidade */}
               <div className="flex items-center gap-3 px-5 pt-4 pb-3">
                 <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center font-bold text-xl shrink-0">
@@ -942,6 +954,61 @@ export const AdminRHContratacao: React.FC = () => {
                     <div className="bg-green-50 dark:bg-green-900/20 rounded-2xl p-4">
                       <div className="flex items-center gap-2 text-green-700 dark:text-green-400"><CheckCircle size={15} /><p className="text-sm font-bold">🎉 Contratada com sucesso!</p></div>
                       <p className="text-xs text-green-600 dark:text-green-500 mt-1">Lembre de cadastrar a nova colaboradora na aba Colaboradoras.</p>
+                    </div>
+                  )}
+
+                  {/* ── Bairro ──────────────────────────────────────────────────── */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">📍 Bairro</label>
+                    <input
+                      type="text"
+                      value={pipeline.bairro ?? ''}
+                      onChange={e => setPipeline(p => ({ ...p, bairro: e.target.value }))}
+                      placeholder="Ex.: Centro, Muquiçaba, Praia do Morro..."
+                      className="w-full border border-input bg-gray-50 dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+
+                  {/* ── Ligação de Introdução (pós-contratação) ─────────────────── */}
+                  {(pipeline.etapa === 'DOCUMENTACAO' || pipeline.etapa === 'ABRINDO_MEI' || pipeline.etapa === 'CONTRATADA') && (
+                    <div className="bg-violet-50 dark:bg-violet-900/20 rounded-2xl p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Phone size={15} className="text-violet-600 dark:text-violet-400" />
+                        <p className="text-sm font-bold text-violet-800 dark:text-violet-300">Ligação de Introdução</p>
+                      </div>
+                      <p className="text-[11px] text-violet-600 dark:text-violet-400 -mt-1">
+                        Ligação após assinatura do contrato — alinhar kit, primeiros passos, dúvidas.
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-violet-700 dark:text-violet-400 mb-1">Data</label>
+                          <input type="date" value={pipeline.ligacaoIntroData || ''}
+                            onChange={e => setPipeline(prev => ({ ...prev, ligacaoIntroData: e.target.value }))}
+                            className="w-full border border-violet-200 dark:border-violet-800 bg-white dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-violet-300" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-violet-700 dark:text-violet-400 mb-1">Horário</label>
+                          <input type="time" value={pipeline.ligacaoIntroHorario || ''}
+                            onChange={e => setPipeline(prev => ({ ...prev, ligacaoIntroHorario: e.target.value }))}
+                            className="w-full border border-violet-200 dark:border-violet-800 bg-white dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-violet-300" />
+                        </div>
+                      </div>
+                      {pipeline.ligacaoIntroData && (
+                        <div className="flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 rounded-xl px-3 py-2 text-violet-800 dark:text-violet-300 text-xs font-bold">
+                          <Phone size={12} />
+                          {formatDate(pipeline.ligacaoIntroData)}{pipeline.ligacaoIntroHorario && ` às ${pipeline.ligacaoIntroHorario}`}
+                        </div>
+                      )}
+                      <div className="space-y-1">
+                        <label className="block text-xs font-bold text-violet-700 dark:text-violet-400">Pauta / notas da ligação</label>
+                        <textarea
+                          value={pipeline.ligacaoIntroNotas ?? ''}
+                          onChange={e => setPipeline(p => ({ ...p, ligacaoIntroNotas: e.target.value }))}
+                          rows={4}
+                          placeholder={"• Confirmar recebimento do kit\n• Tirar dúvidas sobre o app\n• Explicar processo dos primeiros atendimentos\n• ..."}
+                          className="w-full border border-violet-200 dark:border-violet-800 bg-white dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-violet-300 resize-none"
+                        />
+                      </div>
                     </div>
                   )}
 

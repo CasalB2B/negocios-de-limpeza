@@ -75,7 +75,9 @@ function checkEvent(
     const baseId  = `${tipo}_${candidataId}_${dt.toISOString().slice(0, 16)}`;
     const emoji   = tipo === 'ligacao' ? '📞' : '🎤';
     const tipoStr = tipo === 'ligacao' ? 'Ligação' : 'Entrevista';
-    const url     = `/?role=admin#/admin/rh/contratacao?candidataId=${candidataId}`;
+    // Use hash-only URL so the ?role=admin redirect script in index.html
+    // does NOT intercept and strip the candidataId deep-link
+    const url     = `/#/admin/rh/contratacao?candidataId=${candidataId}`;
     const horario = fmtTime(dt);
 
     for (const w of WINDOWS) {
