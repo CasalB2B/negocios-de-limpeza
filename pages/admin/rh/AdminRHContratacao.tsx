@@ -10,7 +10,7 @@ import {
   UserPlus, Search, X, Trash2, Phone, Calendar,
   FileText, ClipboardList, ChevronRight, ChevronLeft, Edit, CheckCircle,
   Clock, StickyNote, Plus, ChevronDown, ChevronUp, Briefcase,
-  AlertCircle, Sparkles, ImageIcon, Upload, List, LayoutGrid, CalendarDays,
+  AlertCircle, Sparkles, ImageIcon, Upload,
   Mic, MicOff, Paperclip,
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
@@ -141,11 +141,21 @@ const DOCS_CHECKLIST: { id: string; label: string; required: boolean }[] = [
 
 const PIPELINE_KEY = 'rh_candidata_pipeline';
 
-function getPipeline(id: string): PipelineExtra {
+const PIPELINE_DEFAULTS: PipelineExtra = { etapa: 'CONTATO_INICIAL', demandasRealizadas: 0, anotacoes: [], documentosChecklist: {} };
+
+function getPipeline(id: string, dadosFormulario?: string): PipelineExtra {
+  // dadosFormulario (from Supabase) is the source of truth — it persists across devices
+  // and survives localStorage being cleared. Use localStorage only as a fast cache fallback.
+  if (dadosFormulario) {
+    try {
+      const db = JSON.parse(dadosFormulario);
+      if (db && db.etapa) return { ...PIPELINE_DEFAULTS, ...db };
+    } catch {}
+  }
   try {
     const all = JSON.parse(localStorage.getItem(PIPELINE_KEY) || '{}');
-    return all[id] ?? { etapa: 'CONTATO_INICIAL', demandasRealizadas: 0, anotacoes: [], documentosChecklist: {} };
-  } catch { return { etapa: 'CONTATO_INICIAL', demandasRealizadas: 0, anotacoes: [], documentosChecklist: {} }; }
+    return all[id] ?? { ...PIPELINE_DEFAULTS };
+  } catch { return { ...PIPELINE_DEFAULTS }; }
 }
 
 function savePipeline(id: string, data: PipelineExtra) {
@@ -252,9 +262,6 @@ export const AdminRHContratacao: React.FC = () => {
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<StatusCandidataRH | 'TODAS'>('NOVA');
-  const [viewMode, setViewMode] = useState<'lista' | 'kanban' | 'calendario'>('lista');
-  const [calOffset, setCalOffset] = useState(0);
-  const [calViewMode, setCalViewMode] = useState<'dia' | 'semana' | 'mes'>('semana');
   const [pipelineVersion, setPipelineVersion] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState<FormData>({ ...BLANK });
@@ -305,8 +312,8 @@ export const AdminRHContratacao: React.FC = () => {
       return null;
     };
     return base.sort((a, b) => {
-      const dtA = getScheduledDt(getPipeline(a.id));
-      const dtB = getScheduledDt(getPipeline(b.id));
+      const dtA = getScheduledDt(getPipeline(a.id, a.dadosFormulario));
+      const dtB = getScheduledDt(getPipeline(b.id, b.dadosFormulario));
       if (dtA !== null && dtB !== null) return dtA - dtB;
       if (dtA !== null) return -1;
       if (dtB !== null) return 1;
@@ -523,6 +530,22 @@ export const AdminRHContratacao: React.FC = () => {
     if (found) { setAberta(found); deepLinkHandledRef.current = true; }
   }, [candidatas, searchParams]);
 
+  // Lock body scroll when drawer is open — prevents the background page from scrolling
+  // on iOS while the user scrolls inside the fixed overlay (scroll-bleed fix)
+  useEffect(() => {
+    if (aberta) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    };
+  }, [aberta]);
+
   // When Phase 2 syncs from Supabase, refresh the open drawer so the other device's
   // pipeline data (interview times, notes, etapa) shows without needing to reopen
   useEffect(() => {
@@ -554,8 +577,8 @@ export const AdminRHContratacao: React.FC = () => {
           <Button icon={<UserPlus size={16} />} onClick={() => { setForm({ ...BLANK }); setShowAdd(true); }}>Nova</Button>
         </div>
 
-        {/* Filtros de status — somente em Lista e Calendário (Kanban mostra todos) */}
-        {viewMode !== 'kanban' && <div className="flex flex-wrap gap-2">
+        {/* Filtros de status */}
+        <div className="flex flex-wrap gap-2">
           {STATUS_ORDER.map(s => (
             <button key={s}
               onClick={() => setFilterStatus(s)}
@@ -568,32 +591,13 @@ export const AdminRHContratacao: React.FC = () => {
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterStatus === 'TODAS' ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-gray-200 dark:hover:bg-darkBorder'}`}>
             Todas ({candidatas.length})
           </button>
-        </div>}
-
-        {/* Search + View toggle */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1">
-            <Input placeholder="Buscar por nome..." value={search} onChange={e => setSearch(e.target.value)} icon={<Search size={16} />} />
-          </div>
-          <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-darkBg rounded-xl p-1 shrink-0">
-            <button onClick={() => setViewMode('lista')} title="Lista"
-              className={`p-2 rounded-lg transition-colors ${viewMode === 'lista' ? 'bg-white dark:bg-darkSurface shadow-sm text-primary' : 'text-lightText dark:text-darkTextSecondary hover:text-darkText dark:hover:text-darkTextPrimary'}`}>
-              <List size={15} />
-            </button>
-            <button onClick={() => setViewMode('kanban')} title="Kanban"
-              className={`p-2 rounded-lg transition-colors ${viewMode === 'kanban' ? 'bg-white dark:bg-darkSurface shadow-sm text-primary' : 'text-lightText dark:text-darkTextSecondary hover:text-darkText dark:hover:text-darkTextPrimary'}`}>
-              <LayoutGrid size={15} />
-            </button>
-            <button onClick={() => setViewMode('calendario')} title="Calendário"
-              className={`p-2 rounded-lg transition-colors ${viewMode === 'calendario' ? 'bg-white dark:bg-darkSurface shadow-sm text-primary' : 'text-lightText dark:text-darkTextSecondary hover:text-darkText dark:hover:text-darkTextPrimary'}`}>
-              <CalendarDays size={15} />
-            </button>
-          </div>
         </div>
 
+        {/* Search */}
+        <Input placeholder="Buscar por nome..." value={search} onChange={e => setSearch(e.target.value)} icon={<Search size={16} />} />
+
         {/* ── LISTA ─────────────────────────────────────────────────────── */}
-        {viewMode === 'lista' && (
-          filtered.length === 0 ? (
+        {filtered.length === 0 ? (
             <div className="text-center py-16 text-lightText dark:text-darkTextSecondary">
               <ClipboardList size={32} className="mx-auto mb-3 opacity-30" />
               <p className="font-bold">Nenhuma candidata encontrada.</p>
@@ -602,9 +606,9 @@ export const AdminRHContratacao: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {filtered.map(c => {
-                const etapa = getEtapa(c.id);
-                const eCfg = ETAPA_CONFIG[etapa];
-                const pl = getPipeline(c.id);
+                const pl = getPipeline(c.id, c.dadosFormulario);
+                const etapa = pl.etapa;
+                const eCfg = ETAPA_CONFIG[etapa] ?? ETAPA_CONFIG['CONTATO_INICIAL'];
                 const temLigacao    = !!(pl.ligacaoData && pl.ligacaoHorario);
                 const temEntrevista = !!(pl.entrevistaData && pl.entrevistaHorario);
                 return (
@@ -670,275 +674,10 @@ export const AdminRHContratacao: React.FC = () => {
               })}
             </div>
           )
-        )}
 
-        {/* ── KANBAN ────────────────────────────────────────────────────── */}
-        {viewMode === 'kanban' && (
-          <div key={pipelineVersion} className="overflow-x-auto pb-4 -mx-4 px-4">
-            <div className="flex gap-4" style={{ minWidth: `${ETAPA_ORDER.length * 270}px` }}>
-              {ETAPA_ORDER.map(etapa => {
-                const cfg = ETAPA_CONFIG[etapa];
-                // Kanban ignora filtro de status — mostra TODOS, só filtra por busca
-                const cards = candidatas.filter(c => {
-                  const pl = getPipeline(c.id);
-                  const matchesSearch = c.nome.toLowerCase().includes(search.toLowerCase());
-                  return pl.etapa === etapa && matchesSearch;
-                });
-                return (
-                  <div key={etapa}
-                    className="w-64 flex-none flex flex-col gap-3 bg-gray-50 dark:bg-darkBg rounded-2xl p-4"
-                    onDragOver={e => e.preventDefault()}
-                    onDrop={e => {
-                      e.preventDefault();
-                      const id = e.dataTransfer.getData('candidata_id');
-                      if (!id) return;
-                      const pl = getPipeline(id);
-                      const updated = { ...pl, etapa };
-                      savePipeline(id, updated);
-                      updateCandidatura(id, { dadosFormulario: JSON.stringify(updated) });
-                      setPipelineVersion(v => v + 1);
-                    }}
-                  >
-                    {/* Column header */}
-                    <div className="flex items-center gap-2 pb-2 border-b border-gray-200 dark:border-darkBorder">
-                      <span className="text-base">{cfg.icon}</span>
-                      <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary flex-1">{cfg.label}</p>
-                      <span className={`text-[10px] rounded-full px-2 py-0.5 font-bold shrink-0 ${cards.length > 0 ? 'bg-primary/15 text-primary' : 'bg-gray-200 dark:bg-darkBorder text-lightText dark:text-darkTextSecondary'}`}>{cards.length}</span>
-                    </div>
-                    {/* Cards */}
-                    <div className="flex flex-col gap-2.5 min-h-[100px]">
-                      {cards.map(c => {
-                        const pl = getPipeline(c.id);
-                        const temEntrevista = !!(pl.entrevistaData && pl.entrevistaHorario);
-                        return (
-                          <div key={c.id}
-                            draggable
-                            onDragStart={e => { e.dataTransfer.setData('candidata_id', c.id); e.dataTransfer.effectAllowed = 'move'; }}
-                            onClick={() => openAberta(c)}
-                            className="bg-white dark:bg-darkSurface rounded-xl border border-gray-100 dark:border-darkBorder p-3 cursor-grab active:cursor-grabbing hover:border-primary/40 hover:shadow-md transition-all select-none"
-                          >
-                            <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary truncate mb-1.5">{c.nome}</p>
-                            <StatusBadge status={c.status} />
-                            {c.telefone && (
-                              <p className="mt-1.5 text-[11px] text-lightText dark:text-darkTextSecondary flex items-center gap-1">
-                                <Phone size={10} /> {c.telefone}
-                              </p>
-                            )}
-                            {temEntrevista && (
-                              <div className={`mt-2 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold ${pl.entrevistaConfirmada ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
-                                <Calendar size={11} className="shrink-0" />
-                                {new Date(pl.entrevistaData! + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })} {pl.entrevistaHorario}
-                              </div>
-                            )}
-                            <p className="mt-1.5 text-[10px] text-lightText dark:text-darkTextSecondary">{formatDate(c.data)}</p>
-                          </div>
-                        );
-                      })}
-                      {cards.length === 0 && (
-                        <div className="border-2 border-dashed border-gray-200 dark:border-darkBorder rounded-xl flex-1 min-h-[100px] flex items-center justify-center">
-                          <p className="text-xs text-lightText dark:text-darkTextSecondary opacity-50">Solte aqui</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ── CALENDÁRIO ────────────────────────────────────────────────── */}
-        {viewMode === 'calendario' && (() => {
-          const today = new Date();
-          const todayStr = today.toLocaleDateString('sv-SE');
-          const DAY_NAMES_SHORT = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-          const DAY_NAMES_FULL  = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
-
-          const candidatesForDay = (date: Date) => {
-            const dateStr = date.toLocaleDateString('sv-SE');
-            return candidatas.filter(c => {
-              const pl = getPipeline(c.id);
-              const matchesFilter = filterStatus === 'TODAS' || c.status === filterStatus;
-              const matchesSearch = c.nome.toLowerCase().includes(search.toLowerCase());
-              return pl.entrevistaData === dateStr && matchesFilter && matchesSearch;
-            }).sort((a, b) => (getPipeline(a.id).entrevistaHorario || '').localeCompare(getPipeline(b.id).entrevistaHorario || ''));
-          };
-
-          // ── Day cell shared renderer ──────────────────────────────────
-          const DayCell = ({ day, dayIdx, mini }: { day: Date; dayIdx: number; mini?: boolean }) => {
-            const dateStr = day.toLocaleDateString('sv-SE');
-            const isToday = dateStr === todayStr;
-            const dayCandidates = candidatesForDay(day);
-            return (
-              <div className={`rounded-2xl border flex flex-col ${mini ? 'p-1.5 min-h-[90px]' : 'p-3 min-h-[150px]'} ${isToday ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-gray-100 dark:border-darkBorder bg-white dark:bg-darkSurface'}`}>
-                <div className={`flex flex-col items-center ${mini ? 'mb-1' : 'mb-2'}`}>
-                  <p className={`font-bold uppercase ${mini ? 'text-[9px]' : 'text-[11px]'} ${isToday ? 'text-primary' : 'text-lightText dark:text-darkTextSecondary'}`}>{DAY_NAMES_SHORT[dayIdx]}</p>
-                  <p className={`font-bold leading-tight ${mini ? 'text-sm' : 'text-lg'} ${isToday ? 'text-primary' : 'text-darkText dark:text-darkTextPrimary'}`}>{day.getDate()}</p>
-                </div>
-                <div className={`flex flex-col ${mini ? 'gap-0.5' : 'gap-1'} flex-1`}>
-                  {dayCandidates.map(c => {
-                    const pl = getPipeline(c.id);
-                    return (
-                      <button key={c.id} onClick={() => openAberta(c)}
-                        className={`w-full text-left rounded-lg font-bold leading-tight truncate ${mini ? 'px-1 py-0.5 text-[8px]' : 'px-2 py-1 text-[11px]'} ${pl.entrevistaConfirmada ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
-                        {!mini && pl.entrevistaHorario && <span className="opacity-75 mr-1">{pl.entrevistaHorario}</span>}
-                        {c.nome.split(' ')[0]}
-                      </button>
-                    );
-                  })}
-                  {dayCandidates.length === 0 && (
-                    <p className={`text-center text-lightText dark:text-darkTextSecondary opacity-30 pt-1 ${mini ? 'text-[8px]' : 'text-xs'}`}>—</p>
-                  )}
-                </div>
-              </div>
-            );
-          };
-
-          return (
-            <div className="space-y-4">
-              {/* Controls: sub-mode toggle + navigation */}
-              <div className="flex items-center gap-3 flex-wrap">
-                {/* Sub-mode toggle */}
-                <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-darkBg rounded-xl p-1">
-                  {(['dia', 'semana', 'mes'] as const).map(m => (
-                    <button key={m} onClick={() => { setCalViewMode(m); setCalOffset(0); }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors capitalize ${calViewMode === m ? 'bg-white dark:bg-darkSurface shadow-sm text-primary' : 'text-lightText dark:text-darkTextSecondary hover:text-darkText dark:hover:text-darkTextPrimary'}`}>
-                      {m === 'dia' ? 'Dia' : m === 'semana' ? 'Semana' : 'Mês'}
-                    </button>
-                  ))}
-                </div>
-                {/* Navigation */}
-                <div className="flex items-center gap-2 flex-1">
-                  <button onClick={() => setCalOffset(v => v - 1)}
-                    className="p-2 rounded-xl bg-gray-100 dark:bg-darkBg hover:bg-gray-200 dark:hover:bg-darkBorder transition-colors shrink-0">
-                    <ChevronLeft size={16} className="text-lightText" />
-                  </button>
-                  <div className="flex-1 text-center">
-                    {calViewMode === 'dia' && (() => {
-                      const d = new Date(today); d.setDate(today.getDate() + calOffset);
-                      return <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">{d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</p>;
-                    })()}
-                    {calViewMode === 'semana' && (() => {
-                      const dow = today.getDay(); const diff = dow === 0 ? -6 : 1 - dow;
-                      const ws = new Date(today); ws.setDate(today.getDate() + diff + calOffset * 7);
-                      const we = new Date(ws); we.setDate(ws.getDate() + 6);
-                      return <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">{ws.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} – {we.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}</p>;
-                    })()}
-                    {calViewMode === 'mes' && (() => {
-                      const ms = new Date(today.getFullYear(), today.getMonth() + calOffset, 1);
-                      return <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary capitalize">{ms.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</p>;
-                    })()}
-                    {calOffset !== 0 && (
-                      <button onClick={() => setCalOffset(0)} className="text-[11px] text-primary hover:underline font-bold">Voltar para hoje</button>
-                    )}
-                  </div>
-                  <button onClick={() => setCalOffset(v => v + 1)}
-                    className="p-2 rounded-xl bg-gray-100 dark:bg-darkBg hover:bg-gray-200 dark:hover:bg-darkBorder transition-colors shrink-0">
-                    <ChevronRight size={16} className="text-lightText" />
-                  </button>
-                </div>
-              </div>
-
-              {/* ── DIA ──────────────────────────────────────────────── */}
-              {calViewMode === 'dia' && (() => {
-                const selDay = new Date(today); selDay.setDate(today.getDate() + calOffset);
-                const selDateStr = selDay.toLocaleDateString('sv-SE');
-                const dowIdx = (selDay.getDay() + 6) % 7; // 0=Mon
-                const dayCandidates = candidatesForDay(selDay);
-                return (
-                  <div className="space-y-3">
-                    <div className={`rounded-2xl border p-5 ${selDateStr === todayStr ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-gray-100 dark:border-darkBorder bg-white dark:bg-darkSurface'}`}>
-                      <p className={`text-xs font-bold uppercase mb-4 ${selDateStr === todayStr ? 'text-primary' : 'text-lightText dark:text-darkTextSecondary'}`}>{DAY_NAMES_FULL[dowIdx]}, {selDay.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</p>
-                      {dayCandidates.length === 0 ? (
-                        <div className="text-center py-10">
-                          <CalendarDays size={28} className="mx-auto mb-2 opacity-20" />
-                          <p className="text-sm text-lightText dark:text-darkTextSecondary">Nenhuma entrevista neste dia.</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {dayCandidates.map(c => {
-                            const pl = getPipeline(c.id);
-                            const eCfg = ETAPA_CONFIG[pl.etapa];
-                            return (
-                              <button key={c.id} onClick={() => openAberta(c)}
-                                className="w-full flex items-center gap-4 bg-gray-50 dark:bg-darkBg rounded-2xl p-4 hover:border-primary/40 border border-gray-100 dark:border-darkBorder hover:shadow-sm transition-all text-left">
-                                <div className={`w-14 shrink-0 text-center ${pl.entrevistaConfirmada ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'}`}>
-                                  <p className="text-xl font-black leading-none">{pl.entrevistaHorario?.split(':')[0] ?? '—'}</p>
-                                  <p className="text-xs font-bold opacity-70">{pl.entrevistaHorario ? `:${pl.entrevistaHorario.split(':')[1]}` : ''}</p>
-                                </div>
-                                <div className="w-px h-10 bg-gray-200 dark:bg-darkBorder shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-bold text-darkText dark:text-darkTextPrimary">{c.nome}</p>
-                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                    <StatusBadge status={c.status} />
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white ${eCfg.color}`}>{eCfg.short}</span>
-                                  </div>
-                                </div>
-                                <span className={`text-xs font-bold px-3 py-1.5 rounded-xl shrink-0 ${pl.entrevistaConfirmada ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
-                                  {pl.entrevistaConfirmada ? '✓ Confirmada' : '⏳ Aguardando'}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* ── SEMANA ────────────────────────────────────────────── */}
-              {calViewMode === 'semana' && (() => {
-                const dow = today.getDay(); const diff = dow === 0 ? -6 : 1 - dow;
-                const weekStart = new Date(today); weekStart.setDate(today.getDate() + diff + calOffset * 7);
-                const weekDays = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(weekStart.getDate() + i); return d; });
-                return (
-                  <div className="overflow-x-auto -mx-4 px-4">
-                    <div className="grid gap-2 min-w-[560px]" style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
-                      {weekDays.map((day, i) => <DayCell key={day.toLocaleDateString('sv-SE')} day={day} dayIdx={i} />)}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* ── MÊS ───────────────────────────────────────────────── */}
-              {calViewMode === 'mes' && (() => {
-                const monthStart = new Date(today.getFullYear(), today.getMonth() + calOffset, 1);
-                const monthEnd   = new Date(today.getFullYear(), today.getMonth() + calOffset + 1, 0);
-                const startDow = (monthStart.getDay() + 6) % 7; // 0=Mon
-                const gridStart = new Date(monthStart); gridStart.setDate(gridStart.getDate() - startDow);
-                const totalCells = Math.ceil((startDow + monthEnd.getDate()) / 7) * 7;
-                const gridDays = Array.from({ length: totalCells }, (_, i) => { const d = new Date(gridStart); d.setDate(gridStart.getDate() + i); return d; });
-                return (
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-7 gap-1">
-                      {['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map(n => (
-                        <p key={n} className="text-center text-[10px] font-bold text-lightText dark:text-darkTextSecondary uppercase py-1">{n}</p>
-                      ))}
-                      {gridDays.map((day, i) => {
-                        const inMonth = day.getMonth() === monthStart.getMonth();
-                        const dayIdx = i % 7;
-                        return (
-                          <div key={day.toLocaleDateString('sv-SE')} className={inMonth ? '' : 'opacity-30'}>
-                            <DayCell day={day} dayIdx={dayIdx} mini />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Legend */}
-              <div className="flex items-center gap-4 justify-end text-[10px] font-bold text-lightText dark:text-darkTextSecondary">
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-md bg-blue-100 dark:bg-blue-900/40 inline-block" /> Aguardando</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-md bg-green-100 dark:bg-green-900/40 inline-block" /> Confirmada</span>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Modal Nova Candidatura */}
+        {/* ── [VIEWS REMOVIDAS: Kanban e Calendário] ──────────────────────── */}
+        {/* ── MODAL ────────────────────────────────────────────────────── */}
+                {/* Modal Nova Candidatura */}
         <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Nova Candidatura">
           <div className="space-y-4">
             <Input label="Nome completo *" value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))} />
@@ -959,8 +698,9 @@ export const AdminRHContratacao: React.FC = () => {
         </Modal>
 
         {/* ═══ Painel full-screen de candidata ═══════════════════════════════ */}
+        {/* z-[60]: fica acima do bottom nav (z-50) — evita nav cobrindo o footer do drawer */}
         {aberta && (
-          <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-darkSurface">
+          <div className="fixed inset-0 z-[60] flex flex-col bg-white dark:bg-darkSurface">
 
             {/* ── Header ──────────────────────────────────────────────────────── */}
             {/* style inline: garante que o gradiente preenche a área do notch (safe-area-inset-top) */}
@@ -1028,8 +768,8 @@ export const AdminRHContratacao: React.FC = () => {
             </div>
 
             {/* ── Corpo: duas colunas no desktop, empilhado no mobile ───────── */}
-            {/* Mobile: scroll vertical normal; Desktop (lg): overflow-hidden + colunas independentes */}
-            <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden lg:min-h-0">
+            {/* overscroll-contain: previne scroll bleed no iOS (a página de trás não rola) */}
+            <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden lg:min-h-0 overscroll-contain">
 
               {/* COLUNA ESQUERDA — pipeline contextual + dados do formulário + anotações */}
               <div className="lg:w-[45%] xl:w-[42%] flex flex-col border-b lg:border-b-0 lg:border-r border-gray-100 dark:border-darkBorder lg:overflow-y-auto">
