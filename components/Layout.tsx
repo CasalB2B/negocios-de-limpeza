@@ -169,7 +169,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
     switch (role) {
       case UserRole.ADMIN:
         return [
-          { icon: <LayoutDashboard size={16} />, label: 'Visão Geral',  path: '/admin/rh',                  group: 'RH' },
+          { icon: <LayoutDashboard size={16} />, label: 'Visão Geral',  path: '/admin/dashboard',           group: 'RH' },
           { icon: <UserPlus size={16} />,        label: 'Contratação',  path: '/admin/rh/contratacao',      group: 'RH' },
           { icon: <Users size={16} />,           label: 'Colaboradoras',path: '/admin/rh/colaboradoras',    group: 'RH' },
           { icon: <MessageSquare size={16} />,   label: 'Avaliações',   path: '/admin/rh/avaliacoes',       group: 'RH' },
@@ -222,7 +222,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                     const isMarketing = item.path === '/admin/marketing';
                     const MARKETING_PATHS = ['/admin/quotes', '/admin/crm', '/admin/inbox', '/admin/whatsapp', '/admin/analytics'];
                     const onMarketing = isMarketing && MARKETING_PATHS.some(p => location.pathname.startsWith(p));
-                    const isActive = isCRM ? onCRM : isMarketing ? onMarketing : location.pathname === item.path;
+                    const isDashboard = item.path === '/admin/dashboard';
+                    const onDashboard = isDashboard && (location.pathname === '/admin/dashboard' || location.pathname === '/admin/rh');
+                    const isActive = isCRM ? onCRM : isMarketing ? onMarketing : isDashboard ? onDashboard : location.pathname === item.path;
                     return (
                       <div key={item.path}>
                         <button
@@ -318,18 +320,23 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
         {/* Mobile Bottom Nav (Admin/Collab) */}
         <nav className="md:hidden bg-white dark:bg-darkSurface border-t border-gray-200 dark:border-darkBorder flex justify-around p-2 fixed bottom-0 left-0 w-full z-50 pb-safe">
            {/* Renderiza os primeiros 4 itens normalmente */}
-           {menuItems.slice(0, 4).map((item) => (
+           {menuItems.slice(0, 4).map((item) => {
+            const mobileActive = item.path === '/admin/dashboard'
+              ? location.pathname === '/admin/dashboard' || location.pathname === '/admin/rh'
+              : location.pathname === item.path;
+            return (
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
               className={`flex flex-col items-center justify-center p-2 rounded-lg w-full transition-all active:scale-95 ${
-                location.pathname === item.path ? 'text-primary' : 'text-lightText dark:text-darkTextSecondary'
+                mobileActive ? 'text-primary' : 'text-lightText dark:text-darkTextSecondary'
               }`}
             >
               {item.icon}
               <span className="text-[10px] mt-1 font-medium truncate w-full text-center">{item.label}</span>
             </button>
-          ))}
+          );})}
+
           
           {/* Menu "Mais" se houver mais de 4 itens (Admin) */}
           {menuItems.length > 4 && (
