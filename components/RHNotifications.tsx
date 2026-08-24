@@ -4,48 +4,94 @@ import { sendNotification } from './PWAManager';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const NOTIF_TRACK_KEY  = 'rh_notif_sent';
-const ADVANCE_MINUTES  = 60; // notify up to 60 min before event
-const CHECK_INTERVAL   = 5 * 60 * 1000; // re-check every 5 minutes
+const NOTIF_TRACK_KEY = 'rh_notif_sent';
+const CHECK_INTERVAL  = 2 * 60 * 1000; // check every 2 min
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Three notification windows per event (each fires once, independently)
+const WINDOWS = [
+  { maxMin: 65, minMin: 16, suffix: '_60', urgency: (t: string) => `em ~1 hora (${t})` },
+  { maxMin: 18, minMin: 6,  suffix: '_15', urgency: (t: string) => `em 15 minutos — ${t}` },
+  { maxMin: 7,  minMin: 0,  suffix: '_5',  urgency: (t: string) => `⚠️ em 5 minutos! ${t}` },
+] as const;
+
+// ─── Safe localStorage helpers ────────────────────────────────────────────────
+// All reads/writes are wrapped in try/catch — a full localStorage must NEVER
+// crash the app; notifications are non-critical.
 
 function getTracked(): Record<string, number> {
   try { return JSON.parse(localStorage.getItem(NOTIF_TRACK_KEY) || '{}'); } catch { return {}; }
 }
 
-function markSent(eventId: string) {
-  const tracked = getTracked();
-  tracked[eventId] = Date.now();
-  // Prune entries older than 48h to keep localStorage tidy
-  const cutoff = Date.now() - 48 * 60 * 60 * 1000;
-  for (const k of Object.keys(tracked)) { if (tracked[k] < cutoff) delete tracked[k]; }
-  localStorage.setItem(NOTIF_TRACK_KEY, JSON.stringify(tracked));
+function markSent(key: string) {
+  try {
+    const tracked = getTracked();
+    tracked[key] = Date.now();
+    // Prune entries older than 24h to stay small
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    for (const k of Object.keys(tracked)) { if (tracked[k] < cutoff) delete tracked[k]; }
+    try {
+      localStorage.setItem(NOTIF_TRACK_KEY, JSON.stringify(tracked));
+    } catch {
+      // localStorage full — clear only this key (non-critical) and retry once
+      try { localStorage.removeItem(NOTIF_TRACK_KEY); } catch {}
+    }
+  } catch { /* never crash */ }
 }
 
-function alreadySent(eventId: string): boolean {
-  return !!getTracked()[eventId];
+function alreadySent(key: string): boolean {
+  try { return !!getTracked()[key]; } catch { return false; }
 }
 
-/** Parse "YYYY-MM-DD" + "HH:MM" into a Date. Returns null on failure. */
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function parseDateTime(dateStr: string, timeStr: string): Date | null {
   if (!dateStr || !timeStr) return null;
   try {
-    const [h, m] = timeStr.split(':').map(Number);
-    if (isNaN(h) || isNaN(m)) return null;
-    const d = new Date(`${dateStr}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`);
+    const d = new Date(`${dateStr}T${timeStr}:00`);
     return isNaN(d.getTime()) ? null : d;
   } catch { return null; }
 }
 
-/** Nice time string like "14:30" */
-function timeStr(dt: Date): string {
+function fmtTime(dt: Date): string {
   return dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-/** Minutes remaining until dt (negative if past) */
 function minutesUntil(dt: Date): number {
   return (dt.getTime() - Date.now()) / 60_000;
+}
+
+// ─── Check a single event against all windows ─────────────────────────────────
+
+function checkEvent(
+  tipo: 'ligacao' | 'entrevista',
+  candidataId: string,
+  candidataNome: string,
+  dt: Date,
+) {
+  try {
+    const min = minutesUntil(dt);
+    if (min <= 0) return;
+
+    const baseId  = `${tipo}_${candidataId}_${dt.toISOString().slice(0, 16)}`;
+    const emoji   = tipo === 'ligacao' ? '📞' : '🎤';
+    const tipoStr = tipo === 'ligacao' ? 'Ligação' : 'Entrevista';
+    const url     = `/?role=admin#/admin/rh/contratacao?candidataId=${candidataId}`;
+    const horario = fmtTime(dt);
+
+    for (const w of WINDOWS) {
+      if (min > w.maxMin || min < w.minMin) continue;
+      const tag = baseId + w.suffix;
+      if (alreadySent(tag)) continue;
+
+      sendNotification(
+        `${emoji} ${tipoStr} com ${candidataNome}`,
+        `${tipoStr} ${w.urgency(horario)}`,
+        url,
+        tag,
+      );
+      markSent(tag);
+    }
+  } catch { /* notifications are non-critical — never crash */ }
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -53,70 +99,39 @@ function minutesUntil(dt: Date): number {
 export function useRHNotifications() {
   const { candidatas } = useRH();
 
-  // Keep a ref so the interval always uses the latest candidatas without re-creating
-  const candidatasRef = useRef(candidatas);
-  useEffect(() => { candidatasRef.current = candidatas; }, [candidatas]);
+  const ref = useRef(candidatas);
+  useEffect(() => { ref.current = candidatas; }, [candidatas]);
 
   useEffect(() => {
-    // Only fire for admin users with notifications granted
     if (localStorage.getItem('auth_admin') !== 'true') return;
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
-    function checkUpcoming() {
-      const now = Date.now();
+    function check() {
+      try {
+        for (const c of ref.current) {
+          let p: Record<string, any> = {};
+          try { p = JSON.parse(c.dadosFormulario || '{}'); } catch {}
 
-      for (const c of candidatasRef.current) {
-        let pipeline: Record<string, any> = {};
-        try { pipeline = JSON.parse(c.dadosFormulario || '{}'); } catch {}
+          if (p.ligacaoData && p.ligacaoHorario) {
+            const dt = parseDateTime(p.ligacaoData, p.ligacaoHorario);
+            if (dt) checkEvent('ligacao', c.id, c.nome, dt);
+          }
 
-        // ── Ligação ────────────────────────────────────────────────────────
-        if (pipeline.ligacaoData && pipeline.ligacaoHorario) {
-          const dt = parseDateTime(pipeline.ligacaoData, pipeline.ligacaoHorario);
-          if (dt) {
-            const min = minutesUntil(dt);
-            const eventId = `ligacao_${c.id}_${pipeline.ligacaoData}_${pipeline.ligacaoHorario}`;
-            if (min > 0 && min <= ADVANCE_MINUTES && !alreadySent(eventId)) {
-              const whenText = min < 2 ? 'agora!' : `em ${Math.round(min)} min`;
-              sendNotification(
-                `📞 Ligação com ${c.nome}`,
-                `Agendada para ${timeStr(dt)} — ${whenText}`,
-                `/?role=admin#/admin/rh/contratacao?candidataId=${c.id}`,
-                eventId,
-              );
-              markSent(eventId);
-            }
+          if (p.entrevistaData && p.entrevistaHorario) {
+            const dt = parseDateTime(p.entrevistaData, p.entrevistaHorario);
+            if (dt) checkEvent('entrevista', c.id, c.nome, dt);
           }
         }
-
-        // ── Entrevista ─────────────────────────────────────────────────────
-        if (pipeline.entrevistaData && pipeline.entrevistaHorario) {
-          const dt = parseDateTime(pipeline.entrevistaData, pipeline.entrevistaHorario);
-          if (dt) {
-            const min = minutesUntil(dt);
-            const eventId = `entrevista_${c.id}_${pipeline.entrevistaData}_${pipeline.entrevistaHorario}`;
-            if (min > 0 && min <= ADVANCE_MINUTES && !alreadySent(eventId)) {
-              const whenText = min < 2 ? 'agora!' : `em ${Math.round(min)} min`;
-              sendNotification(
-                `🎤 Entrevista com ${c.nome}`,
-                `Agendada para ${timeStr(dt)} — ${whenText}`,
-                `/?role=admin#/admin/rh/contratacao?candidataId=${c.id}`,
-                eventId,
-              );
-              markSent(eventId);
-            }
-          }
-        }
-      }
+      } catch { /* never crash */ }
     }
 
-    // Check on mount + whenever candidatas list updates
-    checkUpcoming();
-    const interval = setInterval(checkUpcoming, CHECK_INTERVAL);
+    check();
+    const interval = setInterval(check, CHECK_INTERVAL);
     return () => clearInterval(interval);
   }, [candidatas]);
 }
 
-// ─── Invisible component for mounting in App.tsx ──────────────────────────────
+// ─── Invisible mount point ────────────────────────────────────────────────────
 
 export function RHNotificationsWatcher() {
   useRHNotifications();
