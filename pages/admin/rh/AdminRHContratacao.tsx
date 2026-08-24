@@ -673,11 +673,9 @@ export const AdminRHContratacao: React.FC = () => {
                 );
               })}
             </div>
-          )
+          )}
 
-        {/* ── [VIEWS REMOVIDAS: Kanban e Calendário] ──────────────────────── */}
-        {/* ── MODAL ────────────────────────────────────────────────────── */}
-                {/* Modal Nova Candidatura */}
+        {/* Modal Nova Candidatura */}
         <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Nova Candidatura">
           <div className="space-y-4">
             <Input label="Nome completo *" value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))} />

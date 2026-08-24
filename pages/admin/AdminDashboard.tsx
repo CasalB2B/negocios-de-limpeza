@@ -61,20 +61,36 @@ export const AdminDashboard: React.FC = () => {
   })();
 
   // ── RH counters (field names match PipelineExtra in AdminRHContratacao) ───
-  const ativasCount     = colaboradoras.filter(c => c.status === 'ATIVA').length;
-  const afastadasCount  = colaboradoras.filter(c => c.status === 'AFASTADA').length;
-  const emProcesso      = candidatas.filter(c => !['CONTRATADA','DESCARTADA'].includes(c.status)).length;
+  const ativasCount    = colaboradoras.filter(c => c.status === 'ATIVA').length;
+  const afastadasCount = colaboradoras.filter(c => c.status === 'AFASTADA').length;
 
-  // Count candidatas with ligacaoData set (field name corrected from dataLigacao → ligacaoData)
-  const ligacoesAgend   = candidatas.filter(c => {
+  // Current month range for filtering
+  const mesAtual = today.getMonth();
+  const anoAtual = today.getFullYear();
+  const isMesAtual = (dateStr: string) => {
+    if (!dateStr) return false;
+    try {
+      const d = new Date(dateStr + 'T12:00:00');
+      return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
+    } catch { return false; }
+  };
+
+  // Em processo = candidatas com ligação OU entrevista agendada (ativamente em processo)
+  const emProcesso = candidatas.filter(c => {
     const p = parsePipeline(c.dadosFormulario);
-    return !!p.ligacaoData;
+    return !!p.ligacaoData || !!p.entrevistaData;
   }).length;
 
-  // Count candidatas in ENTREVISTA_AGENDADA stage (corrected from 'ENTREVISTA')
+  // Ligações do mês atual
+  const ligacoesAgend = candidatas.filter(c => {
+    const p = parsePipeline(c.dadosFormulario);
+    return isMesAtual(p.ligacaoData);
+  }).length;
+
+  // Entrevistas do mês atual
   const entrevistasAgend = candidatas.filter(c => {
     const p = parsePipeline(c.dadosFormulario);
-    return p.etapa === 'ENTREVISTA_AGENDADA';
+    return isMesAtual(p.entrevistaData);
   }).length;
 
   // ── Aniversários próximos (±7 dias) ──────────────────────────────────────
@@ -184,12 +200,12 @@ export const AdminDashboard: React.FC = () => {
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {[
-              { label: 'Colaboradoras ativas',  value: ativasCount,        emoji: '✅', path: '/admin/rh/colaboradoras' },
-              { label: 'Em processo seletivo',  value: emProcesso,         emoji: '📋', path: '/admin/rh/contratacao' },
-              { label: 'Ligações agendadas',    value: ligacoesAgend,      emoji: '📞', path: '/admin/rh/contratacao' },
-              { label: 'Entrevistas agendadas', value: entrevistasAgend,   emoji: '🎤', path: '/admin/rh/contratacao' },
-              { label: 'Afastadas',             value: afastadasCount,     emoji: '⏸️',  path: '/admin/rh/colaboradoras' },
-              { label: 'Avaliações recebidas',   value: avaliacoes.length,  emoji: '⭐', path: '/admin/rh/avaliacoes' },
+              { label: 'Colaboradoras ativas',         value: ativasCount,       emoji: '✅', path: '/admin/rh/colaboradoras' },
+              { label: 'Em processo (c/ agendamento)', value: emProcesso,        emoji: '📋', path: '/admin/rh/contratacao' },
+              { label: 'Ligações este mês',            value: ligacoesAgend,     emoji: '📞', path: '/admin/rh/contratacao' },
+              { label: 'Entrevistas este mês',         value: entrevistasAgend,  emoji: '🎤', path: '/admin/rh/contratacao' },
+              { label: 'Afastadas',                    value: afastadasCount,    emoji: '⏸️',  path: '/admin/rh/colaboradoras' },
+              { label: 'Avaliações recebidas',         value: avaliacoes.length, emoji: '⭐', path: '/admin/rh/avaliacoes' },
             ].map(item => (
               <button
                 key={item.label}
