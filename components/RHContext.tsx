@@ -363,7 +363,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         const age = Date.now() - lastSyncAt.current;
-        if (age > 30_000) {
+        if (age > 5_000) { // 5 s — refresh as soon as user returns to app
           loadAll(true); // background-only: skip Phase 1 to avoid stale flash
         }
       }
@@ -377,7 +377,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       if (document.visibilityState === 'visible') {
         loadAll(true);
       }
-    }, 90_000);
+    }, 30_000); // every 30 s
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility);

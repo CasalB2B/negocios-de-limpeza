@@ -1,8 +1,8 @@
 {
-  "name": "Negócios de Limpeza",
-  "short_name": "NL Limpeza",
-  "description": "Plataforma completa de gestão de serviços de limpeza em Guarapari",
-  "start_url": "/#/",
+  "name": "NL — Sistema de Gestão",
+  "short_name": "NL Gestão",
+  "description": "Sistema de gestão de equipe, colaboradoras e processos — Negócios de Limpeza",
+  "start_url": "/?role=admin",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -27,24 +27,24 @@
   "screenshots": [],
   "shortcuts": [
     {
-      "name": "Admin CRM",
-      "short_name": "CRM",
-      "description": "Abrir painel administrativo",
-      "url": "/#/admin/crm",
-      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
-    },
-    {
-      "name": "Admin Dashboard",
+      "name": "Dashboard",
       "short_name": "Dashboard",
-      "description": "Painel de controle",
-      "url": "/#/admin/dashboard",
+      "description": "Painel de controle geral",
+      "url": "/?role=admin#/admin/dashboard",
       "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
     },
     {
-      "name": "Fazer Orçamento",
-      "short_name": "Orçamento",
-      "description": "Solicitar orçamento de limpeza",
-      "url": "/#/client/quote-chat",
+      "name": "Colaboradoras",
+      "short_name": "Equipe",
+      "description": "Gestão da equipe de colaboradoras",
+      "url": "/?role=admin#/admin/rh/colaboradoras",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Contratação",
+      "short_name": "RH",
+      "description": "Processo seletivo e contratação",
+      "url": "/?role=admin#/admin/rh/contratacao",
       "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
     }
   ]
