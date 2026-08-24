@@ -172,6 +172,13 @@ function savePipeline(id: string, data: PipelineExtra) {
 }
 
 // ─── Google Calendar link helper ──────────────────────────────────────────────
+/** Formats a Brazilian phone number for wa.me — strips non-digits, prepends 55 if missing */
+function waUrl(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  const withCC = digits.startsWith('55') && digits.length >= 12 ? digits : `55${digits}`;
+  return `https://wa.me/${withCC}`;
+}
+
 function gcalUrl(title: string, dateStr: string, timeStr: string, description = '', durationMin = 30): string {
   try {
     const [y, m, d] = dateStr.split('-').map(Number);
@@ -372,6 +379,7 @@ export const AdminRHContratacao: React.FC = () => {
 
   const [formError, setFormError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [showCallMenu, setShowCallMenu] = useState(false);
 
   const handleAdd = async () => {
     if (!form.nome.trim()) { setFormError('Nome é obrigatório.'); return; }
@@ -760,9 +768,45 @@ export const AdminRHContratacao: React.FC = () => {
                       <Calendar size={10} /> {formatDate(aberta.data)}
                     </span>
                     {aberta.telefone && (
-                      <span className="text-[11px] text-white/70 flex items-center gap-1">
-                        <Phone size={10} /> {aberta.telefone}
-                      </span>
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowCallMenu(m => !m)}
+                          className="text-[11px] text-white/80 flex items-center gap-1 bg-white/15 hover:bg-white/25 active:bg-white/30 px-2 py-0.5 rounded-full transition-colors"
+                        >
+                          <Phone size={10} /> {aberta.telefone}
+                        </button>
+                        {showCallMenu && (
+                          <>
+                            {/* Invisible backdrop to close on outside tap */}
+                            <div className="fixed inset-0 z-10" onClick={() => setShowCallMenu(false)} />
+                            <div className="absolute left-0 top-full mt-1.5 z-20 bg-white dark:bg-darkSurface rounded-2xl shadow-2xl border border-gray-100 dark:border-darkBorder overflow-hidden min-w-[180px]">
+                              <a
+                                href={`tel:+${aberta.telefone.replace(/\D/g,'')}`}
+                                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-darkBg transition-colors"
+                                onClick={() => setShowCallMenu(false)}
+                              >
+                                <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                                  <Phone size={14} className="text-primary" />
+                                </div>
+                                <span className="text-sm font-bold text-darkText dark:text-darkTextPrimary">Ligação</span>
+                              </a>
+                              <div className="border-t border-gray-100 dark:border-darkBorder" />
+                              <a
+                                href={waUrl(aberta.telefone)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-darkBg transition-colors"
+                                onClick={() => setShowCallMenu(false)}
+                              >
+                                <div className="w-8 h-8 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
+                                  <span className="text-base leading-none">💬</span>
+                                </div>
+                                <span className="text-sm font-bold text-darkText dark:text-darkTextPrimary">WhatsApp</span>
+                              </a>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

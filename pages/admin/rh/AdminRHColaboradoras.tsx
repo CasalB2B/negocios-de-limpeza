@@ -895,7 +895,15 @@ export const AdminRHColaboradoras: React.FC = () => {
                         {perfilAberto.telefone && (
                           <div className="flex items-center gap-2 text-sm text-darkText dark:text-darkTextPrimary">
                             <Phone size={13} className="text-primary shrink-0" />
-                            <a href={`tel:${perfilAberto.telefone}`} className="hover:text-primary transition-colors">{perfilAberto.telefone}</a>
+                            <a href={`tel:${perfilAberto.telefone}`} className="hover:text-primary transition-colors flex-1">{perfilAberto.telefone}</a>
+                            <a
+                              href={`https://wa.me/${(() => { const d = perfilAberto.telefone.replace(/\D/g,''); return d.startsWith('55') && d.length >= 12 ? d : '55'+d; })()}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-xs font-bold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 px-2.5 py-1 rounded-full transition-colors shrink-0"
+                            >
+                              💬 WA
+                            </a>
                           </div>
                         )}
                         {perfilAberto.endereco && (
