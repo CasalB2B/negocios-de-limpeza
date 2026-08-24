@@ -15,6 +15,28 @@ import {
   Pencil, ChevronDown, ChevronUp,
 } from 'lucide-react';
 
+// ─── Ligação de Introdução ────────────────────────────────────────────────────
+
+const LIG_INTRO_KEY = 'rh_ligacao_intro';
+
+interface LigacaoIntro {
+  data?: string;
+  horario?: string;
+  notas?: string;
+  realizada?: boolean;
+}
+
+function getLigacaoIntro(id: string): LigacaoIntro {
+  try { const all = JSON.parse(localStorage.getItem(LIG_INTRO_KEY) || '{}'); return all[id] ?? {}; } catch { return {}; }
+}
+function saveLigacaoIntro(id: string, intro: LigacaoIntro) {
+  try {
+    const all = JSON.parse(localStorage.getItem(LIG_INTRO_KEY) || '{}');
+    all[id] = intro;
+    localStorage.setItem(LIG_INTRO_KEY, JSON.stringify(all));
+  } catch {}
+}
+
 // ─── Onboarding Checklist ────────────────────────────────────────────────────
 
 const ONBOARDING_KEY = 'rh_onboarding';
@@ -200,8 +222,9 @@ export const AdminRHColaboradoras: React.FC = () => {
   const [saveError, setSaveError] = useState('');   // feedback when server save fails
   const [copiedId, setCopiedId] = useState('');
   const [perfilAberto, setPerfilAberto] = useState<ColaboradoraRH | null>(null);
-  const [perfilTab, setPerfilTab] = useState<'dados' | 'comportamental' | 'diario' | 'avaliacoes' | 'onboarding'>('dados');
+  const [perfilTab, setPerfilTab] = useState<'dados' | 'comportamental' | 'diario' | 'avaliacoes' | 'onboarding' | 'introducao'>('dados');
   const [onboarding, setOnboarding] = useState<Record<string, boolean>>({});
+  const [ligacaoIntro, setLigacaoIntro] = useState<LigacaoIntro>({});
   const photoRef = useRef<HTMLInputElement>(null);
   const contratoRef = useRef<HTMLInputElement>(null);
 
@@ -341,6 +364,14 @@ export const AdminRHColaboradoras: React.FC = () => {
     setPerfilAberto(col);
     setPerfilTab('dados');
     setOnboarding(getOnboarding(col.id));
+    setLigacaoIntro(getLigacaoIntro(col.id));
+  };
+
+  const updateLigacaoIntro = (patch: Partial<LigacaoIntro>) => {
+    if (!perfilAberto) return;
+    const updated = { ...ligacaoIntro, ...patch };
+    setLigacaoIntro(updated);
+    saveLigacaoIntro(perfilAberto.id, updated);
   };
 
   const toggleOnboarding = (itemId: string) => {
@@ -731,6 +762,7 @@ export const AdminRHColaboradoras: React.FC = () => {
                     { key: 'comportamental', label: 'Comportamental', icon: <BookOpen size={14}/>, badge: null },
                     { key: 'diario',         label: 'Diário',         icon: <MessageSquare size={14}/>, badge: colObs.length > 0 ? { count: colObs.length, color: 'bg-primary' } : null },
                     { key: 'avaliacoes',     label: 'Avaliações',     icon: <Star size={14}/>, badge: colAvals.length > 0 ? { count: colAvals.length, color: 'bg-yellow-500' } : null },
+                    { key: 'introducao',     label: 'Introdução',     icon: <Phone size={14}/>, badge: ligacaoIntro.realizada ? { count: '✓', color: 'bg-green-500' } : ligacaoIntro.data ? { count: '📞', color: 'bg-violet-500' } : null },
                     { key: 'onboarding',     label: 'Onboarding',     icon: <CheckSquare size={14}/>, badge: onbDone < onbTotal ? { count: `${onbPct}%`, color: onbPct === 100 ? 'bg-green-500' : 'bg-orange-400' } : { count: '✓', color: 'bg-green-500' } },
                   ] as const).map(tab => (
                     <button key={tab.key} onClick={() => setPerfilTab(tab.key)}
@@ -1222,6 +1254,77 @@ export const AdminRHColaboradoras: React.FC = () => {
                         ))}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* ── Ligação de Introdução ── */}
+                {perfilTab === 'introducao' && (
+                  <div className="space-y-5">
+                    {/* Header */}
+                    <div className={`rounded-2xl p-4 border ${ligacaoIntro.realizada ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800'}`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Phone size={16} className={ligacaoIntro.realizada ? 'text-green-600 dark:text-green-400' : 'text-violet-600 dark:text-violet-400'} />
+                        <p className={`text-sm font-bold ${ligacaoIntro.realizada ? 'text-green-800 dark:text-green-300' : 'text-violet-800 dark:text-violet-300'}`}>
+                          {ligacaoIntro.realizada ? '✅ Ligação de Introdução Realizada!' : '📞 Ligação de Introdução'}
+                        </p>
+                      </div>
+                      <p className={`text-xs ${ligacaoIntro.realizada ? 'text-green-600 dark:text-green-400' : 'text-violet-600 dark:text-violet-400'}`}>
+                        Ligação pós-contratação — confirmar kit, alinhar primeiros passos, tirar dúvidas.
+                      </p>
+                    </div>
+
+                    {/* Data e horário */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide mb-1.5">Data</label>
+                        <input type="date" value={ligacaoIntro.data || ''}
+                          onChange={e => updateLigacaoIntro({ data: e.target.value })}
+                          className="w-full border border-input bg-gray-50 dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide mb-1.5">Horário</label>
+                        <input type="time" value={ligacaoIntro.horario || ''}
+                          onChange={e => updateLigacaoIntro({ horario: e.target.value })}
+                          className="w-full border border-input bg-gray-50 dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                      </div>
+                    </div>
+
+                    {/* Agendamento confirmado */}
+                    {ligacaoIntro.data && (
+                      <div className="flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 rounded-xl px-3 py-2 text-violet-800 dark:text-violet-300 text-xs font-bold">
+                        <Phone size={12} />
+                        {new Date(ligacaoIntro.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+                        {ligacaoIntro.horario && ` às ${ligacaoIntro.horario}`}
+                      </div>
+                    )}
+
+                    {/* Pauta */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Pauta / notas da ligação</label>
+                      <textarea
+                        value={ligacaoIntro.notas ?? ''}
+                        onChange={e => updateLigacaoIntro({ notas: e.target.value })}
+                        rows={8}
+                        placeholder={"• Confirmar recebimento do kit (uniforme, pano, etc.)\n• Apresentar o app e como ver os agendamentos\n• Explicar como funciona o pagamento (diária + passagem)\n• Tirar dúvidas sobre o primeiro atendimento\n• Reforçar o grupo do WhatsApp\n• ..."}
+                        className="w-full border border-input bg-gray-50 dark:bg-darkBg rounded-xl px-4 py-3 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y min-h-[160px]"
+                      />
+                    </div>
+
+                    {/* Marcar como realizada */}
+                    <button
+                      onClick={() => updateLigacaoIntro({ realizada: !ligacaoIntro.realizada })}
+                      className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border-2 transition-all font-bold text-sm ${
+                        ligacaoIntro.realizada
+                          ? 'bg-green-500 border-green-500 text-white shadow-md'
+                          : 'bg-white dark:bg-darkBg border-violet-200 dark:border-violet-700 text-violet-600 dark:text-violet-400 hover:border-violet-400'
+                      }`}>
+                      <span className="flex items-center gap-2">
+                        {ligacaoIntro.realizada
+                          ? <><CheckSquare size={18} /> Ligação realizada!</>
+                          : <><Phone size={18} /> Marcar como realizada</>}
+                      </span>
+                      <span className="text-xs opacity-75">{ligacaoIntro.realizada ? 'Clique para desmarcar' : 'Clique ao concluir a ligação'}</span>
+                    </button>
                   </div>
                 )}
 

@@ -969,49 +969,6 @@ export const AdminRHContratacao: React.FC = () => {
                     />
                   </div>
 
-                  {/* ── Ligação de Introdução (pós-contratação) ─────────────────── */}
-                  {(pipeline.etapa === 'DOCUMENTACAO' || pipeline.etapa === 'ABRINDO_MEI' || pipeline.etapa === 'CONTRATADA') && (
-                    <div className="bg-violet-50 dark:bg-violet-900/20 rounded-2xl p-4 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Phone size={15} className="text-violet-600 dark:text-violet-400" />
-                        <p className="text-sm font-bold text-violet-800 dark:text-violet-300">Ligação de Introdução</p>
-                      </div>
-                      <p className="text-[11px] text-violet-600 dark:text-violet-400 -mt-1">
-                        Ligação após assinatura do contrato — alinhar kit, primeiros passos, dúvidas.
-                      </p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-bold text-violet-700 dark:text-violet-400 mb-1">Data</label>
-                          <input type="date" value={pipeline.ligacaoIntroData || ''}
-                            onChange={e => setPipeline(prev => ({ ...prev, ligacaoIntroData: e.target.value }))}
-                            className="w-full border border-violet-200 dark:border-violet-800 bg-white dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-violet-300" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-violet-700 dark:text-violet-400 mb-1">Horário</label>
-                          <input type="time" value={pipeline.ligacaoIntroHorario || ''}
-                            onChange={e => setPipeline(prev => ({ ...prev, ligacaoIntroHorario: e.target.value }))}
-                            className="w-full border border-violet-200 dark:border-violet-800 bg-white dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-violet-300" />
-                        </div>
-                      </div>
-                      {pipeline.ligacaoIntroData && (
-                        <div className="flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 rounded-xl px-3 py-2 text-violet-800 dark:text-violet-300 text-xs font-bold">
-                          <Phone size={12} />
-                          {formatDate(pipeline.ligacaoIntroData)}{pipeline.ligacaoIntroHorario && ` às ${pipeline.ligacaoIntroHorario}`}
-                        </div>
-                      )}
-                      <div className="space-y-1">
-                        <label className="block text-xs font-bold text-violet-700 dark:text-violet-400">Pauta / notas da ligação</label>
-                        <textarea
-                          value={pipeline.ligacaoIntroNotas ?? ''}
-                          onChange={e => setPipeline(p => ({ ...p, ligacaoIntroNotas: e.target.value }))}
-                          rows={4}
-                          placeholder={"• Confirmar recebimento do kit\n• Tirar dúvidas sobre o app\n• Explicar processo dos primeiros atendimentos\n• ..."}
-                          className="w-full border border-violet-200 dark:border-violet-800 bg-white dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-violet-300 resize-none"
-                        />
-                      </div>
-                    </div>
-                  )}
-
                   {/* Dados do Formulário */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
