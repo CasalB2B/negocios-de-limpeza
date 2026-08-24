@@ -1289,12 +1289,30 @@ export const AdminRHColaboradoras: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Agendamento confirmado */}
+                    {/* Agendamento confirmado + Google Agenda */}
                     {ligacaoIntro.data && (
-                      <div className="flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 rounded-xl px-3 py-2 text-violet-800 dark:text-violet-300 text-xs font-bold">
-                        <Phone size={12} />
-                        {new Date(ligacaoIntro.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
-                        {ligacaoIntro.horario && ` às ${ligacaoIntro.horario}`}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 rounded-xl px-3 py-2 text-violet-800 dark:text-violet-300 text-xs font-bold flex-1">
+                          <Phone size={12} />
+                          {new Date(ligacaoIntro.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+                          {ligacaoIntro.horario && ` às ${ligacaoIntro.horario}`}
+                        </div>
+                        <a href={(() => {
+                            try {
+                              const [y,m,d] = ligacaoIntro.data!.split('-').map(Number);
+                              const [h,min] = (ligacaoIntro.horario || '09:00').split(':').map(Number);
+                              const start = new Date(y, m-1, d, h, min, 0);
+                              const end   = new Date(start.getTime() + 30*60_000);
+                              const fmt   = (dt: Date) => dt.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z');
+                              const title = encodeURIComponent(`📞 Ligação de Introdução — ${perfilAberto?.nome ?? ''}`);
+                              const details = encodeURIComponent('Ligação pós-contratação — confirmar kit, primeiros passos, dúvidas.');
+                              return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${fmt(start)}/${fmt(end)}&details=${details}`;
+                            } catch { return 'https://calendar.google.com'; }
+                          })()}
+                          target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-darkBg border border-violet-300 dark:border-violet-700 rounded-xl text-xs font-bold text-violet-700 dark:text-violet-300 hover:bg-violet-50 transition-colors shrink-0">
+                          📅 Google Agenda
+                        </a>
                       </div>
                     )}
 

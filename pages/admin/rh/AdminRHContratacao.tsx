@@ -171,6 +171,18 @@ function savePipeline(id: string, data: PipelineExtra) {
   } catch {}
 }
 
+// ─── Google Calendar link helper ──────────────────────────────────────────────
+function gcalUrl(title: string, dateStr: string, timeStr: string, description = '', durationMin = 30): string {
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const [h, min] = (timeStr || '09:00').split(':').map(Number);
+    const start = new Date(y, m - 1, d, h, min, 0);
+    const end   = new Date(start.getTime() + durationMin * 60_000);
+    const fmt   = (dt: Date) => dt.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${fmt(start)}/${fmt(end)}&details=${encodeURIComponent(description)}`;
+  } catch { return 'https://calendar.google.com'; }
+}
+
 // ─── Status config ────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<StatusCandidataRH, { label: string; bg: string; text: string; dot: string }> = {
@@ -825,9 +837,21 @@ export const AdminRHContratacao: React.FC = () => {
                         </div>
                       </div>
                       {pipeline.ligacaoData && (
-                        <div className="flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 rounded-xl px-3 py-2 text-violet-800 dark:text-violet-300 text-xs font-bold">
-                          <Calendar size={12} />
-                          {formatDate(pipeline.ligacaoData)}{pipeline.ligacaoHorario && ` às ${pipeline.ligacaoHorario}`}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 rounded-xl px-3 py-2 text-violet-800 dark:text-violet-300 text-xs font-bold flex-1">
+                            <Calendar size={12} />
+                            {formatDate(pipeline.ligacaoData)}{pipeline.ligacaoHorario && ` às ${pipeline.ligacaoHorario}`}
+                          </div>
+                          <a href={gcalUrl(
+                              `📞 Ligação com ${aberta?.nome ?? 'candidata'}`,
+                              pipeline.ligacaoData,
+                              pipeline.ligacaoHorario || '09:00',
+                              `Ligação de triagem — processo seletivo NL Limpeza`,
+                            )}
+                            target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-darkBg border border-violet-300 dark:border-violet-700 rounded-xl text-xs font-bold text-violet-700 dark:text-violet-300 hover:bg-violet-50 transition-colors shrink-0">
+                            📅 Google Agenda
+                          </a>
                         </div>
                       )}
                       <div className="border-t border-violet-200 dark:border-violet-800 pt-3">
@@ -873,9 +897,22 @@ export const AdminRHContratacao: React.FC = () => {
                         </div>
                       </div>
                       {pipeline.entrevistaData && (
-                        <div className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl px-3 py-2 text-blue-800 dark:text-blue-300 text-xs font-bold">
-                          <Calendar size={12} />
-                          {formatDate(pipeline.entrevistaData)}{pipeline.entrevistaHorario && ` às ${pipeline.entrevistaHorario}`}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl px-3 py-2 text-blue-800 dark:text-blue-300 text-xs font-bold flex-1">
+                            <Calendar size={12} />
+                            {formatDate(pipeline.entrevistaData)}{pipeline.entrevistaHorario && ` às ${pipeline.entrevistaHorario}`}
+                          </div>
+                          <a href={gcalUrl(
+                              `🎤 Entrevista com ${aberta?.nome ?? 'candidata'}`,
+                              pipeline.entrevistaData,
+                              pipeline.entrevistaHorario || '09:00',
+                              `Entrevista presencial — processo seletivo NL Limpeza`,
+                              60,
+                            )}
+                            target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-darkBg border border-blue-300 dark:border-blue-700 rounded-xl text-xs font-bold text-blue-700 dark:text-blue-300 hover:bg-blue-50 transition-colors shrink-0">
+                            📅 Google Agenda
+                          </a>
                         </div>
                       )}
                       {pipeline.entrevistaData && (
