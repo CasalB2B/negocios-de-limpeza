@@ -259,6 +259,9 @@ export const AdminRHContratacao: React.FC = () => {
   const [form, setForm] = useState<FormData>({ ...BLANK });
   const [aberta, setAberta] = useState<CandidataRH | null>(null);
   const [editando, setEditando] = useState(false);
+  // Keep a ref to the latest pipeline so the drawer-close flush can read it
+  // without capturing a stale closure (the debounce cleanup cancels the timer).
+  const pipelineRef = useRef<any>(null);
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
   const [saveError, setSaveError] = useState(false);
@@ -477,7 +480,12 @@ export const AdminRHContratacao: React.FC = () => {
     }
   };
 
-  // Auto-save pipeline on changes (debounced) — saves to localStorage AND Supabase
+  // Keep ref in sync with latest pipeline — used by the flush-on-close effect.
+  useEffect(() => { pipelineRef.current = pipeline; }, [pipeline]);
+
+  // Auto-save pipeline on changes (debounced) — saves to localStorage AND Supabase.
+  // NOTE: the cleanup cancels the timer when the drawer closes, so we have a separate
+  // flush-on-close effect below that saves synchronously when aberta becomes null.
   useEffect(() => {
     if (!aberta) return;
     const t = setTimeout(() => {
@@ -486,6 +494,21 @@ export const AdminRHContratacao: React.FC = () => {
     }, 1500);
     return () => clearTimeout(t);
   }, [pipeline, aberta]);
+
+  // Flush on close: capture the candidata id alongside the pipeline in a ref.
+  const lastAbiertaIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (aberta) { lastAbiertaIdRef.current = aberta.id; }
+  }, [aberta?.id]);
+
+  useEffect(() => {
+    if (aberta !== null) return; // drawer still open or initial render
+    const id = lastAbiertaIdRef.current;
+    if (!id || !pipelineRef.current) return;
+    // Flush immediately — no await; fire-and-forget is fine for the save
+    savePipeline(id, pipelineRef.current);
+    updateCandidatura(id, { dadosFormulario: JSON.stringify(pipelineRef.current) });
+  }, [aberta]);
 
   // When Phase 2 syncs from Supabase, refresh the open drawer so the other device's
   // pipeline data (interview times, notes, etapa) shows without needing to reopen

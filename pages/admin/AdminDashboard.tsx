@@ -9,6 +9,7 @@ import {
   MessageSquare, ArrowRight, Phone, Clock, Star, Zap
 } from 'lucide-react';
 import { useData } from '../../components/DataContext';
+import { useRH } from '../../components/RHContext';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const FUNNEL_COLORS = ['#8b5cf6','#3b82f6','#f97316','#eab308','#22c55e','#6b7280'];
@@ -16,6 +17,7 @@ const FUNNEL_COLORS = ['#8b5cf6','#3b82f6','#f97316','#eab308','#22c55e','#6b728
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { notifications, markAllNotificationsRead, services, transactions, quotes, clients, collaborators } = useData();
+  const { colaboradoras, candidatas, getMesesNaEmpresa } = useRH();
   const [showNotifications, setShowNotifications] = useState(false);
 
   const today = new Date();
@@ -59,6 +61,27 @@ export const AdminDashboard: React.FC = () => {
   const convRate           = quotes.length > 0 ? Math.round((converted / quotes.length) * 100) : 0;
   const totalRevenue       = transactions.filter(t => t.type === 'INCOME' && t.status === 'PAID').reduce((s, t) => s + t.amount, 0);
   const unreadNotifs       = notifications.filter(n => !n.read).length;
+
+  // ── RH Resumo ──
+  const ativasCount   = colaboradoras.filter(c => c.status === 'ATIVA').length;
+  const emProcesso    = candidatas.filter(c => !['CONTRATADA','DESCARTADA'].includes(c.status)).length;
+  // Candidatas com ligação agendada (dataLigacao in pipeline JSON)
+  const ligacoesPend  = candidatas.filter(c => {
+    try { const p = JSON.parse(c.dadosFormulario || ''); return !!p?.dataLigacao; } catch { return false; }
+  }).length;
+  // Candidatas na etapa ENTREVISTA
+  const entrevistasPend = candidatas.filter(c => {
+    try { const p = JSON.parse(c.dadosFormulario || ''); return p?.etapa === 'ENTREVISTA'; } catch { return false; }
+  }).length;
+  // Aniversários próximos (7 dias)
+  const hoje = new Date();
+  const aniversariosHoje = colaboradoras.filter(c => {
+    if (!c.dataNascimento || c.status !== 'ATIVA') return false;
+    try {
+      const [, m, d] = c.dataNascimento.split('-').map(Number);
+      return m === hoje.getMonth() + 1 && Math.abs(d - hoje.getDate()) <= 7;
+    } catch { return false; }
+  }).length;
 
   // ── Lead scoring helper ──
   const leadScore = (q: any) => {
@@ -202,14 +225,37 @@ export const AdminDashboard: React.FC = () => {
           ))}
         </div>
 
-        {/* ── Analytics preview card ── */}
-        <div onClick={() => navigate('/admin/analytics')}
-          className="bg-gradient-to-r from-violet-600 to-blue-600 rounded-2xl p-5 mb-6 cursor-pointer hover:opacity-95 transition-opacity flex items-center justify-between group">
-          <div className="text-white">
-            <p className="font-bold text-lg">📊 Analytics do Chat</p>
-            <p className="text-violet-100 text-sm mt-0.5">Funil de conversão, horários de pico, origem de tráfego e muito mais</p>
+        {/* ── RH Resumo ── */}
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-5 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-white">
+              <p className="font-bold text-lg">👥 Equipe &amp; Contratações</p>
+              <p className="text-purple-100 text-sm mt-0.5">Visão geral do RH em tempo real</p>
+            </div>
+            <button onClick={() => navigate('/admin/rh/colaboradoras')}
+              className="text-white/80 hover:text-white text-xs flex items-center gap-1 transition-colors">
+              Ver RH <ArrowRight size={12}/>
+            </button>
           </div>
-          <ArrowRight size={22} className="text-white/70 group-hover:translate-x-1 transition-transform shrink-0"/>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { label: 'Colaboradoras ativas', value: ativasCount,      emoji: '✅', path: '/admin/rh/colaboradoras' },
+              { label: 'Em processo seletivo', value: emProcesso,       emoji: '📋', path: '/admin/rh/contratacao' },
+              { label: 'Ligações agendadas',   value: ligacoesPend,     emoji: '📞', path: '/admin/rh/contratacao' },
+              { label: 'Entrevistas',          value: entrevistasPend,  emoji: '🎤', path: '/admin/rh/contratacao' },
+            ].map(item => (
+              <button key={item.label} onClick={() => navigate(item.path)}
+                className="bg-white/15 hover:bg-white/25 transition-colors rounded-xl p-3 text-left">
+                <p className="text-2xl font-bold text-white">{item.emoji} {item.value}</p>
+                <p className="text-xs text-purple-100 mt-0.5">{item.label}</p>
+              </button>
+            ))}
+          </div>
+          {aniversariosHoje > 0 && (
+            <div className="mt-3 bg-white/10 rounded-xl px-3 py-2 text-sm text-white flex items-center gap-2">
+              🎂 <span><strong>{aniversariosHoje}</strong> aniversário{aniversariosHoje > 1 ? 's' : ''} próximo{aniversariosHoje > 1 ? 's' : ''} na equipe!</span>
+            </div>
+          )}
         </div>
 
         {/* ── Middle Row ── */}
