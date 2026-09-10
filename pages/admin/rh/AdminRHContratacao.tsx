@@ -340,10 +340,6 @@ export const AdminRHContratacao: React.FC = () => {
   const [novaAnotacao, setNovaAnotacao] = useState('');
   const [showAnotacoes, setShowAnotacoes] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-<<<<<<< HEAD
-=======
-  const [punctuating, setPunctuating] = useState(false); // true while Gemini corrects voice text
->>>>>>> 871736a (feat(voice): auto-punctuate voice notes with Gemini after recording stops)
   const [uploadingAnot, setUploadingAnot] = useState(false);
   const recognitionRef = useRef<any>(null);
   const audioAnotRef = useRef<HTMLInputElement>(null);
@@ -472,20 +468,12 @@ export const AdminRHContratacao: React.FC = () => {
     setPipeline(prev => ({ ...prev, anotacoes: prev.anotacoes.filter(a => a.id !== id) }));
   };
 
-<<<<<<< HEAD
-  const toggleRecording = () => {
-    if (isRecording) {
-      recognitionRef.current?.stop();
-      setIsRecording(false);
-=======
-  // Holds raw transcript while recording so onend can read the latest value
+  // Accumulates confirmed speech segments across the recording session
   const rawTranscriptRef = useRef('');
 
   const toggleRecording = () => {
     if (isRecording) {
       recognitionRef.current?.stop();
-      // onend handler will trigger Gemini punctuation
->>>>>>> 871736a (feat(voice): auto-punctuate voice notes with Gemini after recording stops)
       return;
     }
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -494,42 +482,45 @@ export const AdminRHContratacao: React.FC = () => {
     rec.lang = 'pt-BR';
     rec.continuous = true;
     rec.interimResults = true;
-<<<<<<< HEAD
+
+    // Accumulates confirmed (final) segments across the session
+    let finalAccum = '';
+
     rec.onresult = (e: any) => {
-      const text = Array.from(e.results as any[]).map((r: any) => r[0].transcript).join('');
-      setNovaAnotacao(text);
-    };
-    rec.onend = () => setIsRecording(false);
-=======
-    rawTranscriptRef.current = '';
-    rec.onresult = (e: any) => {
-      // Only collect final results to avoid double-joining interim+final segments
-      const finals = Array.from(e.results as any[])
-        .filter((r: any) => r.isFinal)
-        .map((r: any) => r[0].transcript)
-        .join(' ');
-      const interim = Array.from(e.results as any[])
-        .filter((r: any) => !r.isFinal)
-        .map((r: any) => r[0].transcript)
-        .join('');
-      const combined = (finals + (interim ? ' ' + interim : '')).trim();
-      rawTranscriptRef.current = combined;
-      setNovaAnotacao(combined); // show raw text while recording
-    };
-    rec.onend = async () => {
-      setIsRecording(false);
-      const raw = rawTranscriptRef.current.trim();
-      if (!raw || !GEMINI_KEY) return;
-      // Polish the transcript: add punctuation, capitalisation, fix spacing
-      setPunctuating(true);
-      try {
-        const polished = await punctuateWithGemini(raw);
-        setNovaAnotacao(polished);
-      } finally {
-        setPunctuating(false);
+      // Process only new results since last event (e.resultIndex onwards)
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const seg = e.results[i][0].transcript.trim();
+        if (!seg) continue;
+        if (e.results[i].isFinal) {
+          // Join confirmed segments with a space; lowercase start so the
+          // whole string only has one capital (added at display time below)
+          const lower = seg.charAt(0).toLowerCase() + seg.slice(1);
+          finalAccum += (finalAccum ? ' ' : '') + lower;
+        }
       }
+
+      // Grab current interim (last non-final result, if any)
+      const lastResult = e.results[e.results.length - 1];
+      const interim = (!lastResult.isFinal ? lastResult[0].transcript.trim() : '');
+      const interimLower = interim ? interim.charAt(0).toLowerCase() + interim.slice(1) : '';
+
+      // Build display: finals + interim; capitalize only the very first char
+      const raw = (finalAccum + (interimLower ? ' ' + interimLower : '')).trim();
+      const display = raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : '';
+      rawTranscriptRef.current = finalAccum; // save only finals for onend
+      setNovaAnotacao(display);
     };
->>>>>>> 871736a (feat(voice): auto-punctuate voice notes with Gemini after recording stops)
+
+    rec.onend = () => {
+      setIsRecording(false);
+      // Add a period at the end if the text doesn't already end with punctuation
+      setNovaAnotacao(prev => {
+        const t = prev.trim();
+        if (!t) return t;
+        return /[.!?]$/.test(t) ? t : t + '.';
+      });
+    };
+
     rec.start();
     recognitionRef.current = rec;
     setIsRecording(true);
@@ -1187,7 +1178,6 @@ export const AdminRHContratacao: React.FC = () => {
                         <div className="flex gap-2">
                           <textarea value={novaAnotacao} onChange={e => setNovaAnotacao(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) addAnotacao(); }}
-<<<<<<< HEAD
                             rows={2} placeholder={isRecording ? '🎙️ Ouvindo... fale agora' : 'Digite uma anotação... (Ctrl+Enter para salvar)'}
                             className={`flex-1 border bg-gray-50 dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 resize-none transition-all ${isRecording ? 'border-red-400 ring-2 ring-red-200 dark:ring-red-800' : 'border-input focus:ring-primary/30'}`} />
                           <button onClick={addAnotacao} className="px-3 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors shrink-0"><Plus size={16} /></button>
@@ -1197,32 +1187,6 @@ export const AdminRHContratacao: React.FC = () => {
                           <button onClick={toggleRecording}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${isRecording ? 'bg-red-500 text-white' : 'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-red-50 hover:text-red-500'}`}>
                             {isRecording ? <><MicOff size={12} /> Parar</> : <><Mic size={12} /> Gravar</>}
-=======
-                            disabled={punctuating}
-                            rows={2} placeholder={
-                              isRecording ? '🎙️ Ouvindo... fale agora' :
-                              punctuating ? '✨ Corrigindo pontuação...' :
-                              'Digite uma anotação... (Ctrl+Enter para salvar)'
-                            }
-                            className={`flex-1 border bg-gray-50 dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 resize-none transition-all ${
-                              isRecording ? 'border-red-400 ring-2 ring-red-200 dark:ring-red-800' :
-                              punctuating ? 'border-violet-300 ring-2 ring-violet-200 dark:ring-violet-800 opacity-70' :
-                              'border-input focus:ring-primary/30'
-                            }`} />
-                          <button onClick={addAnotacao} disabled={punctuating} className="px-3 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors shrink-0 disabled:opacity-50"><Plus size={16} /></button>
-                        </div>
-                        {/* Toolbar: mic, audio file, image */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <button onClick={toggleRecording} disabled={punctuating}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all disabled:opacity-50 ${
-                              isRecording ? 'bg-red-500 text-white' :
-                              punctuating ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400' :
-                              'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-red-50 hover:text-red-500'
-                            }`}>
-                            {isRecording ? <><MicOff size={12} /> Parar</> :
-                             punctuating ? <><Sparkles size={12} className="animate-pulse" /> Corrigindo...</> :
-                             <><Mic size={12} /> Gravar</>}
->>>>>>> 871736a (feat(voice): auto-punctuate voice notes with Gemini after recording stops)
                           </button>
                           <button onClick={() => audioAnotRef.current?.click()} disabled={uploadingAnot}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-violet-50 hover:text-violet-600 transition-all disabled:opacity-50">
