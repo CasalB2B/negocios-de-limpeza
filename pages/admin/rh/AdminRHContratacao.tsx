@@ -661,19 +661,23 @@ export const AdminRHContratacao: React.FC = () => {
   }, [aberta]);
 
   // When Phase 2 syncs from Supabase, refresh the open drawer so the other device's
-  // pipeline data (interview times, notes, etapa) shows without needing to reopen
+  // pipeline data (interview times, notes, etapa) shows without needing to reopen.
+  // IMPORTANT: we intentionally do NOT reset docForm here — doing so would silently
+  // overwrite the user's in-progress edits in the notes editor (which is uncontrolled).
+  // docForm is only populated in openAberta (drawer open) and is saved by handleSaveDoc
+  // and the auto-save effects.
   useEffect(() => {
     if (!aberta || editando) return;
     const updated = candidatas.find(c => c.id === aberta.id);
     if (!updated || updated.dadosFormulario === aberta.dadosFormulario) return;
-    // Supabase returned newer dadosFormulario — refresh without losing local LS cache
+    // Supabase returned newer dadosFormulario — refresh pipeline without losing local LS cache
     const fromSupabase = (() => {
       try { const p = JSON.parse(updated.dadosFormulario || ''); if (p?.etapa) return p as PipelineExtra; } catch {} return null;
     })();
     if (fromSupabase) {
       setAberta(updated);
       setPipeline({ documentosChecklist: {}, ...getPipeline(updated.id), ...fromSupabase });
-      setDocForm({ notasEntrevista: updated.notasEntrevista || '', status: updated.status, observacoes: updated.observacoes || '' });
+      // docForm is NOT reset here — preserve any in-progress notes the user is typing
     }
   }, [candidatas]);
 
