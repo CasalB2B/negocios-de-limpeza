@@ -329,6 +329,8 @@ export const AdminRHContratacao: React.FC = () => {
   // Keep a ref to the latest pipeline so the drawer-close flush can read it
   // without capturing a stale closure (the debounce cleanup cancels the timer).
   const pipelineRef = useRef<any>(null);
+  // Same for docForm (notasEntrevista, status, observacoes) — needed by flush-on-close.
+  const docFormRef = useRef<Partial<CandidataRH>>({});
   // Deep-link: auto-open candidata when URL has ?candidataId= (from push notification)
   const deepLinkHandledRef = useRef(false);
   const [saving, setSaving] = useState(false);
@@ -590,20 +592,33 @@ export const AdminRHContratacao: React.FC = () => {
     }
   };
 
-  // Keep ref in sync with latest pipeline — used by the flush-on-close effect.
+  // Keep refs in sync with latest pipeline and docForm — used by flush-on-close.
+  // Using refs avoids stale closures when the debounce cleanup cancels the timer.
   useEffect(() => { pipelineRef.current = pipeline; }, [pipeline]);
+  useEffect(() => { docFormRef.current = docForm; }, [docForm]);
 
-  // Auto-save pipeline on changes (debounced) — saves to localStorage AND Supabase.
-  // NOTE: the cleanup cancels the timer when the drawer closes, so we have a separate
-  // flush-on-close effect below that saves synchronously when aberta becomes null.
+  // Auto-save pipeline on changes (debounced).
+  // IMPORTANT: always includes docFormRef.current so that a pipeline save never
+  // overwrites interview notes with a stale value from the candidatas array.
   useEffect(() => {
     if (!aberta) return;
     const t = setTimeout(() => {
+      const combined = { ...docFormRef.current, dadosFormulario: JSON.stringify(pipeline) };
       savePipeline(aberta.id, pipeline);
-      updateCandidatura(aberta.id, { dadosFormulario: JSON.stringify(pipeline) });
+      updateCandidatura(aberta.id, combined);
     }, 1500);
     return () => clearTimeout(t);
   }, [pipeline, aberta]);
+
+  // Auto-save docForm fields (notasEntrevista, status, observacoes) on changes (debounced).
+  // This is the critical path that persists interview notes without requiring a button press.
+  useEffect(() => {
+    if (!aberta) return;
+    const t = setTimeout(() => {
+      updateCandidatura(aberta.id, docForm);
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [docForm, aberta]);
 
   // Flush on close: capture the candidata id alongside the pipeline in a ref.
   const lastAbiertaIdRef = useRef<string | null>(null);
@@ -615,9 +630,9 @@ export const AdminRHContratacao: React.FC = () => {
     if (aberta !== null) return; // drawer still open or initial render
     const id = lastAbiertaIdRef.current;
     if (!id || !pipelineRef.current) return;
-    // Flush immediately — no await; fire-and-forget is fine for the save
+    // Flush immediately — saves pipeline + latest docForm together so nothing is lost on close.
     savePipeline(id, pipelineRef.current);
-    updateCandidatura(id, { dadosFormulario: JSON.stringify(pipelineRef.current) });
+    updateCandidatura(id, { ...docFormRef.current, dadosFormulario: JSON.stringify(pipelineRef.current) });
   }, [aberta]);
 
   // Deep-link: open the candidata whose id came from a push-notification URL (?candidataId=)
