@@ -93,13 +93,17 @@ export const AdminDashboard: React.FC = () => {
     return isMesAtual(p.entrevistaData);
   }).length;
 
-  // ── Aniversários próximos (±7 dias) ──────────────────────────────────────
+  // ── Aniversários próximos (hoje + próximos 7 dias, sem mostrar passados) ──
   const hoje = new Date();
   const aniversarios = colaboradoras.filter(c => {
     if (!c.dataNascimento || c.status !== 'ATIVA') return false;
     try {
       const [, m, d] = c.dataNascimento.split('-').map(Number);
-      return m === hoje.getMonth()+1 && Math.abs(d - hoje.getDate()) <= 7;
+      // Build the birthday date for this calendar year
+      const anivEsteAno = new Date(hoje.getFullYear(), m - 1, d);
+      // Days until birthday: positive = upcoming, negative = already passed
+      const diffDias = Math.floor((anivEsteAno.getTime() - hoje.setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
+      return diffDias >= 0 && diffDias <= 7;
     } catch { return false; }
   });
 
