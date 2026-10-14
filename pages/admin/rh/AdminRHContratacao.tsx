@@ -435,15 +435,25 @@ export const AdminRHContratacao: React.FC = () => {
 
   const duplicarCandidatura = async (c: CandidataRH, e: React.MouseEvent) => {
     e.stopPropagation(); // don't open the original card's drawer
-    const pipeline0: Partial<PipelineExtra> = { etapa: 'CONTATO_INICIAL', demandasRealizadas: 0, anotacoes: [], documentosChecklist: {} };
+    // Copy all data from original; reset status to NOVA and keep pipeline content
+    // (etapa reset to CONTATO_INICIAL but preserve bairro, anotacoes, dadosFormulario text)
+    const origPipeline = getPipeline(c.id, c.dadosFormulario);
+    const copiaPipeline: PipelineExtra = {
+      ...origPipeline,
+      etapa: 'CONTATO_INICIAL',
+      // Clear scheduled dates so they don't carry over as phantom appointments
+      ligacaoData: undefined, ligacaoHorario: undefined,
+      entrevistaData: undefined, entrevistaHorario: undefined, entrevistaConfirmada: false,
+      demandasRealizadas: 0,
+    };
     await addCandidatura({
       nome: c.nome + ' (cópia)',
       data: new Date().toISOString().split('T')[0],
       telefone: c.telefone,
       status: 'NOVA',
-      dadosFormulario: JSON.stringify(pipeline0),
-      notasEntrevista: '',
-      observacoes: '',
+      dadosFormulario: JSON.stringify(copiaPipeline),
+      notasEntrevista: c.notasEntrevista || '',
+      observacoes: c.observacoes || '',
     });
   };
 
