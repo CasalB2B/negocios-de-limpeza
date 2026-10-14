@@ -201,6 +201,7 @@ interface RHContextType {
   addCandidatura: (data: Omit<CandidataRH, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateCandidatura: (id: string, data: Partial<CandidataRH>) => Promise<boolean>;
   deleteCandidatura: (id: string) => Promise<void>;
+  syncCandidatasOnly: () => Promise<void>;
 
   getElegibilidade: (colaboradora: ColaboradoraRH) => ElegibilidadeRH;
   getMesesNaEmpresa: (dataAdmissao: string) => number;
@@ -949,6 +950,17 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     return sbOk;
   }, [candidatas]);
 
+  // Fast candidatas-only sync — fetches just the candidatas_rh table instead of all
+  // 10 tables. Use this on the Contratação page for a quick refresh on mount/focus.
+  const syncCandidatasOnly = useCallback(async () => {
+    try {
+      const res = await supabase.functions.invoke('rh-write', { body: { action: 'get_candidatas' } });
+      if (!res.data?.ok) return;
+      const cands = (res.data.candidatas || []).map(mapCandidatura);
+      if (cands.length) { setCandidatas(cands); lsSet('rh_candidatas', cands); }
+    } catch {}
+  }, []);
+
   const deleteCandidatura = useCallback(async (id: string) => {
     try {
       await supabase.functions.invoke('rh-write', { body: { action: 'delete_candidatura', data: { id } } });
@@ -1162,7 +1174,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       addPromocao, addBonusMensal, calcularBonus,
       addAvaliacao, getMediaAvaliacoesMes, deleteAvaliacao,
       observacoes: obsColaboradoras, addObservacao, updateObservacao, deleteObservacao,
-      candidatas, addCandidatura, updateCandidatura, deleteCandidatura,
+      candidatas, addCandidatura, updateCandidatura, deleteCandidatura, syncCandidatasOnly,
       updateConfigBonusLider, updateConfigRemuneracao, updateConfigCriterios,
       getElegibilidade, getMesesNaEmpresa,
     }}>

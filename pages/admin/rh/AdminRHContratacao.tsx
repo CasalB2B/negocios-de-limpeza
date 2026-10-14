@@ -11,7 +11,7 @@ import {
   FileText, ClipboardList, ChevronRight, ChevronLeft, Edit, CheckCircle,
   Clock, StickyNote, Plus, ChevronDown, ChevronUp, Briefcase,
   AlertCircle, Sparkles, ImageIcon, Upload,
-  Mic, MicOff, Paperclip,
+  Mic, MicOff, Paperclip, Copy,
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { RichNoteEditor } from '../../../components/RichNoteEditor';
@@ -315,7 +315,7 @@ function PipelineBar({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export const AdminRHContratacao: React.FC = () => {
-  const { candidatas, addCandidatura, updateCandidatura, deleteCandidatura } = useRH();
+  const { candidatas, addCandidatura, updateCandidatura, deleteCandidatura, syncCandidatasOnly } = useRH();
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<StatusCandidataRH | 'TODAS'>('NOVA');
@@ -387,6 +387,10 @@ export const AdminRHContratacao: React.FC = () => {
     return r;
   }, [candidatas]);
 
+  // Fast candidatas sync on page mount — fetches only the candidatas table
+  // so the list is fresh without waiting for the full get_admin_data payload.
+  useEffect(() => { syncCandidatasOnly(); }, []);
+
   // Etapa label for card display
   const getEtapa = (id: string) => getPipeline(id).etapa;
 
@@ -427,6 +431,20 @@ export const AdminRHContratacao: React.FC = () => {
     setForm({ ...BLANK });
     setFormBairro('');
     setShowAdd(false);
+  };
+
+  const duplicarCandidatura = async (c: CandidataRH, e: React.MouseEvent) => {
+    e.stopPropagation(); // don't open the original card's drawer
+    const pipeline0: Partial<PipelineExtra> = { etapa: 'CONTATO_INICIAL', demandasRealizadas: 0, anotacoes: [], documentosChecklist: {} };
+    await addCandidatura({
+      nome: c.nome + ' (cópia)',
+      data: new Date().toISOString().split('T')[0],
+      telefone: c.telefone,
+      status: 'NOVA',
+      dadosFormulario: JSON.stringify(pipeline0),
+      notasEntrevista: '',
+      observacoes: '',
+    });
   };
 
   const handleSaveDoc = async () => {
@@ -730,8 +748,8 @@ export const AdminRHContratacao: React.FC = () => {
                 const temLigacao    = !!(pl.ligacaoData && pl.ligacaoHorario);
                 const temEntrevista = !!(pl.entrevistaData && pl.entrevistaHorario);
                 return (
-                  <button key={c.id} onClick={() => openAberta(c)}
-                    className={`bg-white dark:bg-darkSurface rounded-2xl border p-4 text-left hover:border-primary/40 hover:shadow-sm transition-all group flex items-center gap-4 ${
+                  <div key={c.id}
+                    className={`bg-white dark:bg-darkSurface rounded-2xl border transition-all group relative ${
                       temEntrevista && pl.entrevistaConfirmada
                         ? 'border-green-200 dark:border-green-800'
                         : temEntrevista
@@ -740,54 +758,65 @@ export const AdminRHContratacao: React.FC = () => {
                         ? 'border-violet-200 dark:border-violet-800'
                         : 'border-gray-100 dark:border-darkBorder'
                     }`}>
-                    <div className={`w-12 h-12 rounded-2xl ${eCfg.color} bg-opacity-20 flex items-center justify-center text-xl shrink-0`}>
-                      {eCfg.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-darkText dark:text-darkTextPrimary truncate">{c.nome}</p>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <StatusBadge status={c.status} />
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-white ${eCfg.color}`}>
-                          {eCfg.short}
-                        </span>
+                    {/* Duplicate button — top-right corner, only visible on hover */}
+                    <button
+                      onClick={e => duplicarCandidatura(c, e)}
+                      title="Duplicar candidata"
+                      className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg bg-gray-100 dark:bg-darkBg hover:bg-primary/10 dark:hover:bg-primary/20 text-lightText hover:text-primary z-10"
+                    >
+                      <Copy size={13} />
+                    </button>
+                    {/* Main card click area */}
+                    <button onClick={() => openAberta(c)} className="w-full p-4 text-left hover:bg-gray-50/50 dark:hover:bg-white/[0.02] rounded-2xl flex items-center gap-4 transition-colors">
+                      <div className={`w-12 h-12 rounded-2xl ${eCfg.color} bg-opacity-20 flex items-center justify-center text-xl shrink-0`}>
+                        {eCfg.icon}
                       </div>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="text-[10px] text-lightText dark:text-darkTextSecondary flex items-center gap-1">
-                          <Calendar size={10} /> {formatDate(c.data)}
-                        </span>
-                        {c.telefone && (
-                          <span className="text-[10px] text-lightText dark:text-darkTextSecondary flex items-center gap-1">
-                            <Phone size={10} /> {c.telefone}
+                      <div className="flex-1 min-w-0 pr-6">
+                        <p className="font-bold text-darkText dark:text-darkTextPrimary truncate">{c.nome}</p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <StatusBadge status={c.status} />
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-white ${eCfg.color}`}>
+                            {eCfg.short}
                           </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-[10px] text-lightText dark:text-darkTextSecondary flex items-center gap-1">
+                            <Calendar size={10} /> {formatDate(c.data)}
+                          </span>
+                          {c.telefone && (
+                            <span className="text-[10px] text-lightText dark:text-darkTextSecondary flex items-center gap-1">
+                              <Phone size={10} /> {c.telefone}
+                            </span>
+                          )}
+                        </div>
+                        {/* Banner ligação agendada */}
+                        {temLigacao && (
+                          <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-violet-500 text-white">
+                            <Phone size={13} className="shrink-0" />
+                            <span className="text-xs font-bold tracking-wide">
+                              {new Date(pl.ligacaoData! + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })} às {pl.ligacaoHorario}
+                            </span>
+                            <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/25 text-white">
+                              📞 Ligação
+                            </span>
+                          </div>
+                        )}
+                        {/* Banner entrevista agendada */}
+                        {temEntrevista && (
+                          <div className={`mt-2 flex items-center gap-2 px-3 py-2 rounded-xl ${pl.entrevistaConfirmada ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'}`}>
+                            <Calendar size={13} className="shrink-0" />
+                            <span className="text-xs font-bold tracking-wide">
+                              {new Date(pl.entrevistaData! + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })} às {pl.entrevistaHorario}
+                            </span>
+                            <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/25 text-white">
+                              {pl.entrevistaConfirmada ? '✓ Confirmada' : '⏳ Aguardando'}
+                            </span>
+                          </div>
                         )}
                       </div>
-                      {/* Banner ligação agendada */}
-                      {temLigacao && (
-                        <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-violet-500 text-white">
-                          <Phone size={13} className="shrink-0" />
-                          <span className="text-xs font-bold tracking-wide">
-                            {new Date(pl.ligacaoData! + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })} às {pl.ligacaoHorario}
-                          </span>
-                          <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/25 text-white">
-                            📞 Ligação
-                          </span>
-                        </div>
-                      )}
-                      {/* Banner entrevista agendada */}
-                      {temEntrevista && (
-                        <div className={`mt-2 flex items-center gap-2 px-3 py-2 rounded-xl ${pl.entrevistaConfirmada ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'}`}>
-                          <Calendar size={13} className="shrink-0" />
-                          <span className="text-xs font-bold tracking-wide">
-                            {new Date(pl.entrevistaData! + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })} às {pl.entrevistaHorario}
-                          </span>
-                          <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/25 text-white">
-                            {pl.entrevistaConfirmada ? '✓ Confirmada' : '⏳ Aguardando'}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <ChevronRight size={16} className="text-lightText group-hover:text-primary transition-colors shrink-0" />
-                  </button>
+                      <ChevronRight size={16} className="text-lightText group-hover:text-primary transition-colors shrink-0" />
+                    </button>
+                  </div>
                 );
               })}
             </div>

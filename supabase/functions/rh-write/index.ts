@@ -293,6 +293,18 @@ Deno.serve(async (req) => {
       return json200({ ok: true });
     }
 
+    // ── Fast fetch: candidatas only (skip the other 9 tables) ────────────────
+    // Lightweight alternative to get_admin_data for the Contratação page —
+    // much smaller payload, same RLS bypass via SERVICE_ROLE_KEY.
+    if (action === 'get_candidatas') {
+      const { data: rows, error } = await supabase
+        .from('candidatas_rh')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) return json200({ ok: false, error: error.message });
+      return json200({ ok: true, candidatas: rows || [] });
+    }
+
     // ── Storage: get signed upload URL (bypasses RLS via service role) ────────
     if (action === 'get_upload_url') {
       const bucket = data.bucket || 'rh-files';
