@@ -396,7 +396,7 @@ export const AdminRHContratacao: React.FC = () => {
 
   const openAberta = (c: CandidataRH) => {
     setAberta(c);
-    setDocForm({ notasEntrevista: c.notasEntrevista || '', status: c.status, observacoes: c.observacoes || '' });
+    setDocForm({ notasEntrevista: c.notasEntrevista || '', status: c.status, observacoes: c.observacoes || '', telefone: c.telefone || '' });
     // Restore pipeline: try Supabase (dados_formulario as JSON) → localStorage → default
     const fromSupabase = (() => {
       try {
@@ -894,7 +894,18 @@ export const AdminRHContratacao: React.FC = () => {
                     <span className="text-[11px] text-white/70 flex items-center gap-1">
                       <Calendar size={10} /> {formatDate(aberta.data)}
                     </span>
-                    {aberta.telefone && (
+                    {editando ? (
+                      <div className="flex items-center gap-1 bg-white/20 rounded-lg px-2 py-0.5">
+                        <Phone size={10} className="text-white/70 shrink-0" />
+                        <input
+                          type="tel"
+                          className="text-[11px] bg-transparent focus:outline-none text-white placeholder-white/50 w-32"
+                          placeholder="Telefone"
+                          value={docForm.telefone ?? aberta.telefone ?? ''}
+                          onChange={e => setDocForm(p => ({ ...p, telefone: e.target.value }))}
+                        />
+                      </div>
+                    ) : aberta.telefone ? (
                       <div className="relative">
                         <button
                           onClick={() => setShowCallMenu(m => !m)}
@@ -934,7 +945,7 @@ export const AdminRHContratacao: React.FC = () => {
                           </>
                         )}
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
