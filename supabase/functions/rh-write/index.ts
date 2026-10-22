@@ -42,11 +42,12 @@ function buildColRow(c: any) {
     areas_desenvolvimento:   c.areasDesenvolvimento || null,
     perfil_comportamental:   c.perfilComportamental || null,
     meta_mensal_faxinas:     c.metaMensalFaxinas    || null,
-    data_nascimento:         c.dataNascimento       || null,
     updated_at:              new Date().toISOString(),
   };
   // Only include foto when it's a real value — never overwrite DB foto with null/empty
   if (c.foto) row.foto = c.foto;
+  // Only include data_nascimento when explicitly provided — never clear birthday on unrelated edits
+  if (c.dataNascimento !== undefined) row.data_nascimento = c.dataNascimento || null;
   return row;
 }
 

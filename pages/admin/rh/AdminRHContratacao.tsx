@@ -949,18 +949,34 @@ export const AdminRHContratacao: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={() => setEditando(e => !e)}
-                    className={`p-2 rounded-xl transition-colors ${editando ? 'bg-white/30' : 'hover:bg-white/20'}`}>
-                    <Edit size={15} />
-                  </button>
-                  <button onClick={() => setConfirmDelete(aberta.id)}
-                    className="p-2 hover:bg-red-500/30 rounded-xl transition-colors">
-                    <Trash2 size={15} />
-                  </button>
-                  <button onClick={() => setAberta(null)}
-                    className="p-2 hover:bg-white/20 rounded-xl transition-colors">
-                    <X size={18} />
-                  </button>
+                  {confirmDelete === aberta.id ? (
+                    <>
+                      <span className="text-xs text-white/80 mr-1">Excluir?</span>
+                      <button onClick={() => handleDelete(aberta.id)}
+                        className="px-2 py-1 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-medium transition-colors">
+                        Sim
+                      </button>
+                      <button onClick={() => setConfirmDelete(null)}
+                        className="px-2 py-1 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs transition-colors">
+                        Não
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => setEditando(e => !e)}
+                        className={`p-2 rounded-xl transition-colors ${editando ? 'bg-white/30' : 'hover:bg-white/20'}`}>
+                        <Edit size={15} />
+                      </button>
+                      <button onClick={() => setConfirmDelete(aberta.id)}
+                        className="p-2 hover:bg-red-500/30 rounded-xl transition-colors">
+                        <Trash2 size={15} />
+                      </button>
+                      <button onClick={() => setAberta(null)}
+                        className="p-2 hover:bg-white/20 rounded-xl transition-colors">
+                        <X size={18} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 

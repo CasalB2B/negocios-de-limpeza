@@ -318,6 +318,9 @@ export const AdminRHColaboradoras: React.FC = () => {
       // Don't touch foto — delete it from the payload so server ignores it
       delete (updated as any).foto;
     }
+    // Patch semantics for dataNascimento: if the field is empty, omit it so the server
+    // preserves whatever birthday is already stored (prevents clearing birthday on unrelated edits)
+    if (!updated.dataNascimento) delete (updated as any).dataNascimento;
 
     const result = await updateColaboradora(editing.id, updated);
 
