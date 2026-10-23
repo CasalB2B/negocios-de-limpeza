@@ -1,146 +1,253 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
-import { Plus, Calendar as CalendarIcon, X, Clock, MapPin, User, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '../../components/Button';
-import { Badge } from '../../components/Badge';
 import { Input } from '../../components/Input';
-import { useData } from '../../components/DataContext';
+import { Modal } from '../../components/Modal';
+import {
+  Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, LayoutGrid, List,
+  Clock, MapPin, User, X, AlertTriangle, CheckCircle2, ArrowRight,
+} from 'lucide-react';
+import { useData, Service } from '../../components/DataContext';
+import { supabase } from '../../lib/supabase';
+
+type ViewMode = 'month' | 'week';
+interface RHColaboradora { id: string; nome: string; }
+
+const WEEKDAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const TIME_SLOTS = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+
+const STATUS_COLOR: Record<string, string> = {
+  SCHEDULED: 'bg-blue-500', WAITING_SIGNAL: 'bg-blue-400', CONFIRMED: 'bg-violet-500',
+  SIGNAL_PAID: 'bg-violet-600', IN_PROGRESS: 'bg-orange-500', COMPLETED: 'bg-green-500',
+  CANCELLED: 'bg-red-400', PENDING: 'bg-gray-400',
+};
+
+const formatDateBR = (d: Date) =>
+  `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+
+const parseDateBR = (s: string): Date | null => {
+  if (!s) return null;
+  const parts = s.split('/');
+  if (parts.length === 3) return new Date(+parts[2], +parts[1] - 1, +parts[0]);
+  const iso = new Date(s);
+  return isNaN(iso.getTime()) ? null : iso;
+};
 
 export const AdminCalendar: React.FC = () => {
-  const { services, clients, collaborators, addService, updateServiceStatus } = useData(); 
-  const [showModal, setShowModal] = useState(false); 
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
-  
-  // State for Assigning Collaborator
-  const [assignCollabId, setAssignCollabId] = useState('');
+  const { services, clients, serviceDefinitions, addService, updateServiceStatus } = useData();
+  const [colaboradoras, setColaboradoras] = useState<RHColaboradora[]>([]);
+  const [view, setView] = useState<ViewMode>('month');
+  const [cursor, setCursor] = useState(new Date()); // month anchor: year/month; week anchor: any date in that week
+  const [showCreate, setShowCreate] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Service | null>(null);
+  const [prefillDate, setPrefillDate] = useState('');
 
-  // New Appointment State
-  const [newAppt, setNewAppt] = useState({
-     clientId: '',
-     collaboratorId: '',
-     type: 'Limpeza Residencial',
-     date: '',
-     time: '08:00',
-     price: ''
-  });
+  const BLANK = { clientId: '', type: '', date: '', time: '08:00', price: '', duration: '4', notes: '', addressText: '', collaboratorId: '', collaboratorName: '' };
+  const [form, setForm] = useState(BLANK);
+  const setF = (p: Partial<typeof BLANK>) => setForm(f => ({ ...f, ...p }));
 
-  const timeSlots = ['08:00', '10:00', '12:00', '14:00', '16:00'];
-  const today = new Date();
-  
-  const weekDays = Array.from({length: 7}, (_, i) => {
-     const d = new Date(today);
-     d.setDate(today.getDate() + i);
-     return {
-        name: d.toLocaleDateString('pt-BR', { weekday: 'long' }).split('-')[0] + ' ' + d.getDate(),
-        fullDate: d.toLocaleDateString('pt-BR'),
-        isToday: i === 0,
-     }
-  });
+  useEffect(() => {
+    supabase.from('colaboradoras_rh').select('id, nome').order('nome')
+      .then(({ data }) => { if (data) setColaboradoras(data); });
+  }, []);
 
-  const events = services.map(s => ({
-     id: s.id,
-     time: s.time,
-     fullDate: s.date,
-     client: s.clientName,
-     address: s.address,
-     collabId: s.collaboratorId,
-     collab: s.collaboratorName || 'A Definir',
-     type: s.type,
-     color: s.status === 'COMPLETED' ? 'green' : s.status === 'IN_PROGRESS' ? 'orange' : s.status === 'CONFIRMED' || s.status === 'SCHEDULED' ? 'blue' : 'yellow',
-     status: s.status,
-     notes: s.notes
-  }));
+  // ─── Month helpers ──────────────────────────────────────────────────────────
+  const monthStart = useMemo(() => new Date(cursor.getFullYear(), cursor.getMonth(), 1), [cursor]);
+  const monthEnd = useMemo(() => new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0), [cursor]);
 
-  const getEventForSlot = (dayFullDate: string, time: string) => {
-     return events.find(ev => ev.fullDate === dayFullDate && ev.time.startsWith(time.split(':')[0]));
+  const calendarDays = useMemo(() => {
+    const days: Date[] = [];
+    const start = new Date(monthStart);
+    start.setDate(start.getDate() - start.getDay()); // align to Sunday
+    for (let i = 0; i < 42; i++) {
+      days.push(new Date(start));
+      start.setDate(start.getDate() + 1);
+    }
+    return days;
+  }, [monthStart]);
+
+  // ─── Week helpers ────────────────────────────────────────────────────────────
+  const weekDays = useMemo(() => {
+    const sun = new Date(cursor);
+    sun.setDate(cursor.getDate() - cursor.getDay());
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(sun);
+      d.setDate(sun.getDate() + i);
+      return d;
+    });
+  }, [cursor]);
+
+  // ─── Services indexed by BR date string ──────────────────────────────────────
+  const svcByDate = useMemo(() => {
+    const map = new Map<string, Service[]>();
+    for (const s of services) {
+      if (!s.date) continue;
+      const key = s.date; // already "DD/MM/YYYY"
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(s);
+    }
+    return map;
+  }, [services]);
+
+  const svcsForDay = (d: Date) => svcByDate.get(formatDateBR(d)) || [];
+
+  const prevPeriod = () => {
+    if (view === 'month') setCursor(d => new Date(d.getFullYear(), d.getMonth() - 1, 1));
+    else { const d = new Date(cursor); d.setDate(d.getDate() - 7); setCursor(d); }
+  };
+  const nextPeriod = () => {
+    if (view === 'month') setCursor(d => new Date(d.getFullYear(), d.getMonth() + 1, 1));
+    else { const d = new Date(cursor); d.setDate(d.getDate() + 7); setCursor(d); }
+  };
+  const goToday = () => setCursor(new Date());
+
+  const periodLabel = view === 'month'
+    ? cursor.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    : `${formatDateBR(weekDays[0])} – ${formatDateBR(weekDays[6])}`;
+
+  const openCreate = (date?: string) => {
+    setPrefillDate(date || '');
+    setForm({ ...BLANK, date: date || '' });
+    setShowCreate(true);
   };
 
-  const handleCreateAppointment = () => {
-     if (!newAppt.clientId || !newAppt.date) return;
-     const selectedClient = clients.find(c => c.id === newAppt.clientId);
-     const selectedCollab = collaborators.find(c => c.id === newAppt.collaboratorId);
-     const [y, m, d] = newAppt.date.split('-');
-     const dateFormatted = `${d}/${m}/${y}`;
-
-     addService({
-        id: Math.floor(Math.random() * 10000).toString(),
-        clientId: newAppt.clientId,
-        clientName: selectedClient?.name || 'Cliente',
-        collaboratorId: newAppt.collaboratorId,
-        collaboratorName: selectedCollab?.name || '',
-        type: newAppt.type,
-        date: dateFormatted,
-        time: newAppt.time,
-        address: selectedClient?.address || 'Endereço Principal',
-        status: newAppt.collaboratorId ? 'CONFIRMED' : 'WAITING_SIGNAL', // Se tem collab e cria manual, assume confirmado
-        price: parseFloat(newAppt.price) || 0,
-        duration: 4 as 4 | 6 | 8,
-        createdAt: Date.now()
-     });
-     setShowModal(false);
-     setNewAppt({ clientId: '', collaboratorId: '', type: 'Limpeza Residencial', date: '', time: '08:00', price: '' });
+  const handleCreate = async () => {
+    if (!form.clientId || !form.date || !form.type) return;
+    const client = clients.find(c => c.id === form.clientId);
+    // date is stored as DD/MM/YYYY
+    let dateBR = form.date;
+    if (form.date.includes('-')) {
+      const [y, m, d] = form.date.split('-');
+      dateBR = `${d}/${m}/${y}`;
+    }
+    await addService({
+      id: '',
+      clientId: form.clientId,
+      clientName: client?.name || '',
+      collaboratorId: form.collaboratorId || undefined,
+      collaboratorName: form.collaboratorName || undefined,
+      type: form.type,
+      date: dateBR,
+      time: form.time,
+      address: form.addressText || client?.address || '',
+      status: 'SCHEDULED',
+      price: parseFloat(form.price) || 0,
+      notes: form.notes,
+      duration: parseInt(form.duration) as 4 | 6 | 8,
+      createdAt: Date.now(),
+    });
+    setShowCreate(false);
+    setForm(BLANK);
   };
 
-  const handleAssignCollaborator = () => {
-      if (selectedEvent && assignCollabId) {
-          const collab = collaborators.find(c => c.id === assignCollabId);
-          updateServiceStatus(selectedEvent.id, 'CONFIRMED', {
-              collaboratorId: assignCollabId,
-              collaboratorName: collab?.name
-          });
-          setShowDetailModal(false);
-          setAssignCollabId('');
-      }
-  };
+  const selectedClient = clients.find(c => c.id === form.clientId);
 
-  const renderWeekView = () => (
-    <div className="min-w-[800px] md:min-w-0"> {/* FORÇA SCROLL HORIZONTAL NO MOBILE */}
-      <div className="grid grid-cols-7 border-b border-gray-200 dark:border-darkBorder sticky top-0 bg-white dark:bg-darkSurface z-10">
-          <div className="p-3 md:p-4 border-r border-gray-200 dark:border-darkBorder text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase text-center bg-gray-50/50 dark:bg-darkBg/50">Horário</div>
-          {weekDays.map((day, i) => (
-              <div key={i} className={`p-2 md:p-4 border-r border-gray-200 dark:border-darkBorder text-center ${i === 6 ? 'border-r-0' : ''} ${day.isToday ? 'bg-purple-50 dark:bg-primary/10' : ''}`}>
-                <span className={`text-xs md:text-sm font-bold capitalize block ${day.isToday ? 'text-primary' : 'text-darkText dark:text-darkTextPrimary'}`}>
-                    {day.name}
-                </span>
-              </div>
-          ))}
+  // ─── Render month view ────────────────────────────────────────────────────────
+  const renderMonth = () => (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="grid grid-cols-7 border-b border-gray-200 dark:border-darkBorder shrink-0">
+        {WEEKDAY_LABELS.map(d => (
+          <div key={d} className="p-2 text-center text-[10px] font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">
+            {d}
+          </div>
+        ))}
       </div>
-
-      <div className="divide-y divide-gray-200 dark:divide-darkBorder">
-          {timeSlots.map((time) => (
-              <div key={time} className="grid grid-cols-7 min-h-[100px] md:min-h-[120px]">
-                <div className="p-2 md:p-4 border-r border-gray-200 dark:border-darkBorder flex items-center justify-center text-xs md:text-sm font-medium text-lightText dark:text-darkTextSecondary bg-gray-50/30 dark:bg-darkBg/30">
-                    {time}
-                </div>
-                {weekDays.map((day, dIdx) => {
-                    const event = getEventForSlot(day.fullDate, time);
-                    return (
-                      <div key={dIdx} className="border-r border-gray-200 dark:border-darkBorder p-1 md:p-2 relative group">
-                          {event ? (
-                            <div 
-                                onClick={() => { setSelectedEvent(event); setShowDetailModal(true); setAssignCollabId(event.collabId || ''); }}
-                                className={`h-full w-full bg-${event.color}-50 dark:bg-${event.color}-900/20 border-l-4 border-${event.color}-500 rounded-r p-1.5 md:p-2 cursor-pointer hover:shadow-md transition-shadow flex flex-col justify-between`}
-                            >
-                                <div className="flex justify-between items-start">
-                                  <div className="flex items-center gap-1">
-                                     <p className={`text-[10px] md:text-xs font-bold text-${event.color}-900 dark:text-${event.color}-300 leading-tight`}>
-                                         {event.collab !== 'A Definir' ? event.collab.split(' ')[0] : '⚠ S/ Colab'}
-                                     </p>
-                                  </div>
-                                </div>
-                                <div>
-                                   <p className={`hidden md:block text-[9px] text-${event.color}-700 dark:text-${event.color}-400 leading-tight mb-0.5 font-bold`}>{event.type}</p>
-                                   <p className={`text-[9px] md:text-[10px] font-bold text-${event.color}-900 dark:text-${event.color}-300 truncate`}>{event.client.split(' ')[0]}</p>
-                                </div>
-                            </div>
-                          ) : null}
-                      </div>
-                    )
-                })}
+      <div className="flex-1 overflow-y-auto grid grid-cols-7" style={{ gridAutoRows: 'minmax(80px, 1fr)' }}>
+        {calendarDays.map((day, idx) => {
+          const isCurrentMonth = day.getMonth() === cursor.getMonth();
+          const isToday = formatDateBR(day) === formatDateBR(new Date());
+          const svcs = svcsForDay(day);
+          return (
+            <div
+              key={idx}
+              className={`border-r border-b border-gray-100 dark:border-darkBorder p-1 cursor-pointer hover:bg-gray-50/50 dark:hover:bg-darkBg/30 transition-colors ${
+                !isCurrentMonth ? 'opacity-40' : ''
+              } ${idx % 7 === 6 ? 'border-r-0' : ''}`}
+              onClick={() => openCreate(formatDateBR(day))}
+            >
+              <div className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold mb-1 ${
+                isToday ? 'bg-primary text-white' : 'text-darkText dark:text-darkTextPrimary'
+              }`}>
+                {day.getDate()}
               </div>
-          ))}
+              <div className="space-y-0.5">
+                {svcs.slice(0, 3).map(s => (
+                  <div
+                    key={s.id}
+                    onClick={e => { e.stopPropagation(); setSelectedEvent(s); setShowDetail(true); }}
+                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold text-white truncate ${STATUS_COLOR[s.status] || 'bg-gray-400'}`}
+                  >
+                    <span className="truncate">{s.clientName.split(' ')[0]}</span>
+                  </div>
+                ))}
+                {svcs.length > 3 && (
+                  <p className="text-[9px] text-lightText dark:text-darkTextSecondary font-bold px-1">+{svcs.length - 3} mais</p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // ─── Render week view ────────────────────────────────────────────────────────
+  const renderWeek = () => (
+    <div className="flex-1 overflow-auto">
+      <div className="min-w-[700px]">
+        <div className="grid border-b border-gray-200 dark:border-darkBorder sticky top-0 bg-white dark:bg-darkSurface z-10" style={{ gridTemplateColumns: '60px repeat(7, 1fr)' }}>
+          <div className="p-2 text-xs font-bold text-lightText dark:text-darkTextSecondary text-center bg-gray-50/50 dark:bg-darkBg/50">Hora</div>
+          {weekDays.map((day, i) => {
+            const isToday = formatDateBR(day) === formatDateBR(new Date());
+            return (
+              <div key={i} className={`p-2 text-center border-l border-gray-100 dark:border-darkBorder ${isToday ? 'bg-violet-50 dark:bg-violet-900/20' : ''}`}>
+                <p className={`text-xs font-bold ${isToday ? 'text-primary' : 'text-darkText dark:text-darkTextPrimary'}`}>
+                  {WEEKDAY_LABELS[day.getDay()]}
+                </p>
+                <p className={`text-sm font-bold ${isToday ? 'text-primary' : 'text-lightText dark:text-darkTextSecondary'}`}>
+                  {day.getDate()}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        {TIME_SLOTS.map(time => (
+          <div key={time} className="grid min-h-[72px] border-b border-gray-100 dark:border-darkBorder" style={{ gridTemplateColumns: '60px repeat(7, 1fr)' }}>
+            <div className="p-2 text-xs font-medium text-lightText dark:text-darkTextSecondary text-center bg-gray-50/30 dark:bg-darkBg/30 flex items-start justify-center pt-2">
+              {time}
+            </div>
+            {weekDays.map((day, dIdx) => {
+              const dayKey = formatDateBR(day);
+              const svcs = (svcByDate.get(dayKey) || []).filter(s => (s.time || '').startsWith(time.split(':')[0]));
+              return (
+                <div
+                  key={dIdx}
+                  className="border-l border-gray-100 dark:border-darkBorder p-1 relative group hover:bg-gray-50/30 dark:hover:bg-darkBg/20 cursor-pointer"
+                  onClick={() => openCreate(dayKey)}
+                >
+                  {svcs.map(s => (
+                    <div
+                      key={s.id}
+                      onClick={e => { e.stopPropagation(); setSelectedEvent(s); setShowDetail(true); }}
+                      className={`w-full rounded p-1.5 text-white text-[10px] font-bold cursor-pointer hover:opacity-90 transition-opacity ${STATUS_COLOR[s.status] || 'bg-gray-400'}`}
+                    >
+                      <p className="truncate">{s.clientName.split(' ')[0]}</p>
+                      <p className="truncate opacity-80">{s.type}</p>
+                    </div>
+                  ))}
+                  {svcs.length === 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Plus size={14} className="text-gray-400" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -149,149 +256,259 @@ export const AdminCalendar: React.FC = () => {
     <Layout role={UserRole.ADMIN}>
       <div className="max-w-7xl mx-auto h-full flex flex-col">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 shrink-0">
           <div>
-            <h1 className="text-2xl md:text-3xl font-display font-bold text-darkText dark:text-darkTextPrimary">Calendário Geral</h1>
-            <p className="text-lightText dark:text-darkTextSecondary flex items-center gap-2 mt-1 text-sm md:text-base">
-               <CalendarIcon size={16} /> Visão Semanal
-            </p>
+            <h1 className="text-2xl md:text-3xl font-display font-bold text-darkText dark:text-darkTextPrimary">Calendário</h1>
           </div>
-          <div className="flex items-center w-full md:w-auto">
-             <Button icon={<Plus size={18} />} className="text-sm px-4 w-full md:w-auto" onClick={() => setShowModal(true)}>
-               Criar agendamento
-             </Button>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {/* View toggle */}
+            <div className="flex bg-gray-100 dark:bg-darkBg rounded-xl p-1 gap-1">
+              <button
+                onClick={() => setView('month')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${view === 'month' ? 'bg-white dark:bg-darkSurface text-primary shadow-sm' : 'text-lightText dark:text-darkTextSecondary'}`}
+              >
+                <LayoutGrid size={14} /> Mês
+              </button>
+              <button
+                onClick={() => setView('week')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${view === 'week' ? 'bg-white dark:bg-darkSurface text-primary shadow-sm' : 'text-lightText dark:text-darkTextSecondary'}`}
+              >
+                <List size={14} /> Semana
+              </button>
+            </div>
+            <Button icon={<Plus size={18} />} onClick={() => openCreate()}>Agendar</Button>
           </div>
         </div>
 
-        {/* Calendar Grid Container with Scroll */}
-        <div className="bg-white dark:bg-darkSurface rounded-2xl shadow-sm border border-gray-200 dark:border-darkBorder flex-1 overflow-hidden flex flex-col">
-           <div className="overflow-x-auto flex-1 w-full">
-              {renderWeekView()}
-           </div>
+        {/* Navigation bar */}
+        <div className="flex items-center gap-3 mb-4 shrink-0">
+          <button onClick={prevPeriod} className="p-2 hover:bg-gray-100 dark:hover:bg-darkBorder rounded-xl transition-colors text-darkText dark:text-darkTextPrimary">
+            <ChevronLeft size={18} />
+          </button>
+          <button onClick={goToday} className="px-3 py-1.5 text-xs font-bold bg-gray-100 dark:bg-darkBg hover:bg-gray-200 dark:hover:bg-darkBorder rounded-xl text-darkText dark:text-darkTextPrimary transition-colors">
+            Hoje
+          </button>
+          <button onClick={nextPeriod} className="p-2 hover:bg-gray-100 dark:hover:bg-darkBorder rounded-xl transition-colors text-darkText dark:text-darkTextPrimary">
+            <ChevronRight size={18} />
+          </button>
+          <h2 className="text-base font-bold text-darkText dark:text-darkTextPrimary capitalize">{periodLabel}</h2>
+
+          {/* Summary chips */}
+          <div className="ml-auto flex items-center gap-2">
+            {[
+              { color: 'bg-blue-400', label: 'Agendado', count: services.filter(s => ['SCHEDULED','WAITING_SIGNAL'].includes(s.status)).length },
+              { color: 'bg-violet-500', label: 'Confirmado', count: services.filter(s => ['CONFIRMED','SIGNAL_PAID'].includes(s.status)).length },
+              { color: 'bg-orange-500', label: 'Em Andamento', count: services.filter(s => s.status === 'IN_PROGRESS').length },
+            ].map(chip => chip.count > 0 ? (
+              <div key={chip.label} className="flex items-center gap-1.5 text-xs font-bold text-darkText dark:text-darkTextPrimary">
+                <span className={`w-2 h-2 rounded-full ${chip.color}`} />
+                {chip.count} {chip.label.split(' ')[0].toLowerCase()}
+              </div>
+            ) : null)}
+          </div>
         </div>
 
-        {/* Modal: Novo Agendamento */}
-        {showModal && (
-           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-              <div className="bg-white dark:bg-darkSurface rounded-3xl w-full max-w-lg shadow-2xl border border-gray-100 dark:border-darkBorder animate-in fade-in zoom-in duration-200 overflow-hidden flex flex-col max-h-[90vh]">
-                 <div className="p-6 border-b border-gray-100 dark:border-darkBorder flex justify-between items-center bg-purple-50 dark:bg-primary/10">
-                    <h2 className="text-xl font-bold text-primary">Novo Agendamento</h2>
-                    <button onClick={() => setShowModal(false)} className="p-2 hover:bg-white/50 rounded-full text-primary transition-colors">
-                       <X size={20} />
-                    </button>
-                 </div>
-                 
-                 <div className="p-6 overflow-y-auto space-y-4">
-                    {/* Select Client */}
-                    <div>
-                        <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Cliente</label>
-                        <select 
-                            className="w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary"
-                            value={newAppt.clientId}
-                            onChange={(e) => setNewAppt({...newAppt, clientId: e.target.value})}
-                        >
-                            <option value="">Selecione um cliente...</option>
-                            {clients.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <Input label="Data" type="date" value={newAppt.date} onChange={(e) => setNewAppt({...newAppt, date: e.target.value})} />
-                        <Input label="Horário" type="time" value={newAppt.time} onChange={(e) => setNewAppt({...newAppt, time: e.target.value})} />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Tipo</label>
-                            <select 
-                                className="w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary"
-                                value={newAppt.type}
-                                onChange={(e) => setNewAppt({...newAppt, type: e.target.value})}
-                            >
-                                <option>Limpeza Residencial</option>
-                                <option>Pós-Obra</option>
-                                <option>Passadoria</option>
-                            </select>
-                        </div>
-                        <Input label="Valor (R$)" type="number" value={newAppt.price} onChange={(e) => setNewAppt({...newAppt, price: e.target.value})} />
-                    </div>
-                 </div>
-
-                 <div className="p-6 border-t border-gray-100 dark:border-darkBorder flex justify-end gap-3 bg-gray-50/50 dark:bg-darkBg/50 shrink-0">
-                    <button onClick={() => setShowModal(false)} className="px-6 py-3 font-bold text-lightText hover:bg-gray-100 dark:hover:bg-darkBorder rounded-xl transition-colors">Cancelar</button>
-                    <Button onClick={handleCreateAppointment}>Agendar</Button>
-                 </div>
-              </div>
-           </div>
-        )}
-
-        {/* Modal: Detalhe do Serviço / Vincular Colaborador */}
-        {showDetailModal && selectedEvent && (
-           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-              <div className="bg-white dark:bg-darkSurface rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-darkBorder animate-in fade-in zoom-in duration-200 overflow-hidden max-h-[90vh] flex flex-col">
-                 <div className={`p-6 border-b border-gray-100 dark:border-darkBorder flex justify-between items-center bg-${selectedEvent.color}-50 dark:bg-${selectedEvent.color}-900/20 shrink-0`}>
-                    <div>
-                       <h2 className="text-xl font-bold text-darkText dark:text-darkTextPrimary">Detalhes do Serviço</h2>
-                       <p className="text-xs text-lightText dark:text-darkTextSecondary font-bold uppercase tracking-wider">#{selectedEvent.id}</p>
-                    </div>
-                    <button onClick={() => setShowDetailModal(false)} className="p-2 hover:bg-white dark:hover:bg-darkBg rounded-full text-lightText dark:text-darkTextSecondary hover:text-darkText dark:hover:text-darkTextPrimary transition-colors">
-                       <X size={20} />
-                    </button>
-                 </div>
-                 
-                 <div className="p-6 space-y-5 overflow-y-auto">
-                    <div className="p-4 bg-gray-50 dark:bg-darkBg rounded-xl border border-gray-100 dark:border-darkBorder space-y-3">
-                       <div className="flex items-start gap-3">
-                          <MapPin size={18} className="text-lightText dark:text-darkTextSecondary mt-0.5" />
-                          <div>
-                             <p className="text-xs text-lightText dark:text-darkTextSecondary font-bold uppercase">ENDEREÇO</p>
-                             <p className="font-bold text-darkText dark:text-darkTextPrimary text-sm">{selectedEvent.address}</p>
-                          </div>
-                       </div>
-                       <div className="flex items-center gap-3">
-                          <User size={18} className="text-lightText dark:text-darkTextSecondary" />
-                          <div>
-                             <p className="text-xs text-lightText dark:text-darkTextSecondary font-bold uppercase">CLIENTE</p>
-                             <p className="font-bold text-darkText dark:text-darkTextPrimary">{selectedEvent.client}</p>
-                          </div>
-                       </div>
-                    </div>
-
-                    {/* Área de Vinculação */}
-                    <div className="border-t border-gray-100 dark:border-darkBorder pt-4">
-                        <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-2">Profissional Responsável</label>
-                        {selectedEvent.collab !== 'A Definir' ? (
-                            <div className="flex items-center gap-3 bg-green-50 dark:bg-green-900/20 p-3 rounded-xl border border-green-100 dark:border-green-800">
-                                <CheckCircle size={20} className="text-green-600 dark:text-green-400" />
-                                <span className="font-bold text-green-700 dark:text-green-300">{selectedEvent.collab}</span>
-                                <button onClick={() => setAssignCollabId('')} className="ml-auto text-xs text-red-500 hover:underline">Trocar</button>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 p-2 rounded-lg text-xs font-bold">
-                                    <AlertTriangle size={14}/> Este serviço precisa de um profissional.
-                                </div>
-                                <select 
-                                    className="w-full p-3 bg-white dark:bg-darkSurface border border-gray-300 dark:border-darkBorder rounded-xl outline-none"
-                                    value={assignCollabId}
-                                    onChange={(e) => setAssignCollabId(e.target.value)}
-                                >
-                                    <option value="">Selecione um colaborador...</option>
-                                    {collaborators.map(c => (
-                                        <option key={c.id} value={c.id}>{c.name} ({c.status})</option>
-                                    ))}
-                                </select>
-                                <Button size="sm" fullWidth onClick={handleAssignCollaborator} disabled={!assignCollabId}>Vincular Colaborador</Button>
-                            </div>
-                        )}
-                    </div>
-                 </div>
-              </div>
-           </div>
-        )}
+        {/* Calendar surface */}
+        <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder shadow-sm flex-1 overflow-hidden flex flex-col">
+          {view === 'month' ? renderMonth() : renderWeek()}
+        </div>
       </div>
+
+      {/* Create OS Modal */}
+      <Modal
+        isOpen={showCreate}
+        onClose={() => { setShowCreate(false); setForm(BLANK); }}
+        title="Novo Agendamento"
+        maxWidth="lg"
+        footer={
+          <>
+            <button onClick={() => { setShowCreate(false); setForm(BLANK); }} className="px-6 py-3 font-bold text-lightText hover:bg-gray-100 dark:hover:bg-darkBorder rounded-xl transition-colors">Cancelar</button>
+            <Button onClick={handleCreate} disabled={!form.clientId || !form.date || !form.type}>Agendar</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Cliente *</label>
+            <select
+              className="w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary"
+              value={form.clientId}
+              onChange={e => {
+                const c = clients.find(c => c.id === e.target.value);
+                setF({ clientId: e.target.value, addressText: c?.address || '' });
+              }}
+            >
+              <option value="">Selecione um cliente...</option>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+
+          {selectedClient?.addresses && selectedClient.addresses.length > 0 && (
+            <div>
+              <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Endereço</label>
+              <select
+                className="w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary"
+                value={form.addressText}
+                onChange={e => setF({ addressText: e.target.value })}
+              >
+                {selectedClient.addresses.map(a => (
+                  <option key={a.id as string} value={`${a.street}, ${a.number} - ${a.city}`}>
+                    {a.alias}: {a.street}, {a.number}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Tipo de Serviço *</label>
+            <select
+              className="w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary"
+              value={form.type}
+              onChange={e => {
+                const def = serviceDefinitions.find(d => d.name === e.target.value);
+                setF({ type: e.target.value, price: def?.basePrice ? def.basePrice.toString() : form.price });
+              }}
+            >
+              <option value="">Selecione o serviço...</option>
+              {serviceDefinitions.filter(d => d.active).map(d => (
+                <option key={d.id} value={d.name}>{d.name}{d.basePrice ? ` — R$ ${d.basePrice.toFixed(2)}` : ''}</option>
+              ))}
+              <option value="Outro">Outro</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Data *" type="date" value={form.date.includes('/') ? '' : form.date}
+              onChange={e => setF({ date: e.target.value })} />
+            <Input label="Horário" type="time" value={form.time} onChange={e => setF({ time: e.target.value })} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Valor (R$)" type="number" placeholder="0.00" value={form.price} onChange={e => setF({ price: e.target.value })} />
+            <div>
+              <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Duração</label>
+              <select
+                className="w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary"
+                value={form.duration}
+                onChange={e => setF({ duration: e.target.value })}
+              >
+                <option value="4">4 horas</option>
+                <option value="6">6 horas</option>
+                <option value="8">8 horas</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Colaboradora</label>
+            <select
+              className="w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary"
+              value={form.collaboratorId}
+              onChange={e => {
+                const col = colaboradoras.find(c => c.id === e.target.value);
+                setF({ collaboratorId: e.target.value, collaboratorName: col?.nome || '' });
+              }}
+            >
+              <option value="">A definir depois...</option>
+              {colaboradoras.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Observações</label>
+            <textarea
+              className="w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary text-sm resize-none h-20"
+              placeholder="Instruções especiais, acesso, etc."
+              value={form.notes}
+              onChange={e => setF({ notes: e.target.value })}
+            />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Detail Modal */}
+      {showDetail && selectedEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-darkSurface rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-darkBorder overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="p-5 border-b border-gray-100 dark:border-darkBorder flex justify-between items-start">
+              <div>
+                <h2 className="text-lg font-bold text-darkText dark:text-darkTextPrimary">{selectedEvent.clientName}</h2>
+                <p className="text-sm text-lightText dark:text-darkTextSecondary">{selectedEvent.type}</p>
+              </div>
+              <button onClick={() => setShowDetail(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-darkBorder rounded-full text-lightText">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-3 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-50 dark:bg-darkBg rounded-xl p-3">
+                  <p className="text-[10px] font-bold text-lightText dark:text-darkTextSecondary uppercase mb-1 flex items-center gap-1"><CalendarIcon size={10} /> Data</p>
+                  <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">{selectedEvent.date}</p>
+                </div>
+                <div className="bg-gray-50 dark:bg-darkBg rounded-xl p-3">
+                  <p className="text-[10px] font-bold text-lightText dark:text-darkTextSecondary uppercase mb-1 flex items-center gap-1"><Clock size={10} /> Horário</p>
+                  <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">{selectedEvent.time}</p>
+                </div>
+              </div>
+              <div className="bg-gray-50 dark:bg-darkBg rounded-xl p-3">
+                <p className="text-[10px] font-bold text-lightText dark:text-darkTextSecondary uppercase mb-1 flex items-center gap-1"><MapPin size={10} /> Endereço</p>
+                <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">{selectedEvent.address}</p>
+              </div>
+              <div className="bg-gray-50 dark:bg-darkBg rounded-xl p-3">
+                <p className="text-[10px] font-bold text-lightText dark:text-darkTextSecondary uppercase mb-1 flex items-center gap-1"><User size={10} /> Colaboradora</p>
+                {selectedEvent.collaboratorName ? (
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={14} className="text-green-500" />
+                    <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">{selectedEvent.collaboratorName}</p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={14} className="text-orange-500" />
+                    <p className="text-sm text-orange-600 dark:text-orange-400 font-bold">Sem colaboradora</p>
+                  </div>
+                )}
+              </div>
+              {selectedEvent.price ? (
+                <div className="bg-gray-50 dark:bg-darkBg rounded-xl p-3">
+                  <p className="text-[10px] font-bold text-lightText dark:text-darkTextSecondary uppercase mb-1">Valor</p>
+                  <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">R$ {selectedEvent.price.toFixed(2)}</p>
+                </div>
+              ) : null}
+            </div>
+            <div className="p-5 border-t border-gray-100 dark:border-darkBorder flex gap-3">
+              {selectedEvent.status === 'SCHEDULED' || selectedEvent.status === 'WAITING_SIGNAL' ? (
+                <Button
+                  size="sm"
+                  fullWidth
+                  onClick={() => { updateServiceStatus(selectedEvent.id, 'CONFIRMED'); setShowDetail(false); }}
+                  icon={<ArrowRight size={14} />}
+                >
+                  Confirmar
+                </Button>
+              ) : selectedEvent.status === 'CONFIRMED' ? (
+                <Button
+                  size="sm"
+                  fullWidth
+                  onClick={() => { updateServiceStatus(selectedEvent.id, 'IN_PROGRESS'); setShowDetail(false); }}
+                  icon={<ArrowRight size={14} />}
+                >
+                  Iniciar Serviço
+                </Button>
+              ) : selectedEvent.status === 'IN_PROGRESS' ? (
+                <Button
+                  size="sm"
+                  fullWidth
+                  onClick={() => { updateServiceStatus(selectedEvent.id, 'COMPLETED'); setShowDetail(false); }}
+                  icon={<CheckCircle2 size={14} />}
+                >
+                  Concluir
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };

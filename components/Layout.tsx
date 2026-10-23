@@ -169,11 +169,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
     switch (role) {
       case UserRole.ADMIN:
         return [
+          { icon: <Calendar size={16} />,        label: 'Agendamento',  path: '/admin/calendar',            group: 'OPERAÇÕES' },
+          { icon: <Kanban size={16} />,          label: 'OS / Pipeline',path: '/admin/os',                  group: 'OPERAÇÕES' },
+          { icon: <Grid size={16} />,            label: 'Clientes',     path: '/admin/clients',             group: 'OPERAÇÕES' },
+          { icon: <Sparkles size={16} />,        label: 'Serviços',     path: '/admin/services',            group: 'OPERAÇÕES' },
           { icon: <LayoutDashboard size={16} />, label: 'Visão Geral',  path: '/admin/dashboard',           group: 'RH' },
           { icon: <UserPlus size={16} />,        label: 'Contratação',  path: '/admin/rh/contratacao',      group: 'RH' },
           { icon: <Users size={16} />,           label: 'Colaboradoras',path: '/admin/rh/colaboradoras',    group: 'RH' },
           { icon: <MessageSquare size={16} />,   label: 'Avaliações',   path: '/admin/rh/avaliacoes',       group: 'RH' },
-          { icon: <BarChart2 size={16} />,       label: 'Desempenho',       path: '/admin/rh/desempenho',       group: 'RH' },
+          { icon: <BarChart2 size={16} />,       label: 'Desempenho',   path: '/admin/rh/desempenho',       group: 'RH' },
           { icon: <BookOpen size={16} />,        label: 'Plano de Carreira', path: '/admin/rh/plano-carreira', group: 'RH' },
           { icon: <Settings size={16} />,        label: 'Config. RH',   path: '/admin/rh/configuracoes',    group: 'RH' },
           { icon: <Megaphone size={20} />,       label: 'Marketing',    path: '/admin/marketing',           group: 'VENDAS' },
@@ -208,8 +212,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
 
         <nav className="flex-1 px-4 mt-4 overflow-y-auto">
           {(() => {
-            const groups = ['RH', 'VENDAS', 'CONFIG'] as const;
-            const groupLabels: Record<string, string> = { RH: 'Recursos Humanos', VENDAS: 'Vendas', CONFIG: 'Configurações' };
+            const groups = ['OPERAÇÕES', 'RH', 'VENDAS', 'CONFIG'] as const;
+            const groupLabels: Record<string, string> = { 'OPERAÇÕES': 'Operações', RH: 'Recursos Humanos', VENDAS: 'Vendas', CONFIG: 'Configurações' };
             return groups.map(group => {
               const items = menuItems.filter((i: any) => i.group === group);
               if (!items.length) return null;
