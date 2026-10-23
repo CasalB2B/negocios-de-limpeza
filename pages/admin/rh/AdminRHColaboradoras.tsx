@@ -6,13 +6,14 @@ import { Button } from '../../../components/Button';
 import { Input } from '../../../components/Input';
 import { Modal } from '../../../components/Modal';
 import { Badge } from '../../../components/Badge';
+import { supabase } from '../../../lib/supabase';
 import {
   Search, UserPlus, Edit, Trash2, Camera, Clock, Copy, Check,
   Star, MessageSquare, BookOpen, User, ChevronRight, X, Plus,
   TrendingUp, AlertCircle, ThumbsUp, Minus, ExternalLink,
   Phone, MapPin, FileText, Upload, Download, Award, DollarSign,
   CloudUpload, Target, CheckSquare, Square, PartyPopper,
-  Pencil, ChevronDown, ChevronUp,
+  Pencil, ChevronDown, ChevronUp, KeyRound, Smartphone,
 } from 'lucide-react';
 
 // ─── Ligação de Introdução ────────────────────────────────────────────────────
@@ -233,6 +234,53 @@ export const AdminRHColaboradoras: React.FC = () => {
   const [showObsForm, setShowObsForm] = useState(false);
   const [editingObs, setEditingObs] = useState<ObservacaoColaboradora | null>(null);
   const [expandedObs, setExpandedObs] = useState<Record<string, boolean>>({});
+
+  const [acessoModal, setAcessoModal] = useState<ColaboradoraRH | null>(null);
+  const [acessoEmail, setAcessoEmail] = useState('');
+  const [acessoSenha, setAcessoSenha] = useState('');
+  const [acessoStatus, setAcessoStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [acessoLoading, setAcessoLoading] = useState(false);
+
+  const openAcessoModal = (col: ColaboradoraRH) => {
+    setAcessoModal(col);
+    setAcessoEmail('');
+    setAcessoSenha('');
+    setAcessoStatus(null);
+  };
+
+  const handleDarAcesso = async () => {
+    if (!acessoModal) return;
+    if (!acessoEmail.trim() || !acessoSenha.trim()) {
+      setAcessoStatus({ ok: false, msg: 'Preencha e-mail e senha.' });
+      return;
+    }
+    setAcessoLoading(true);
+    setAcessoStatus(null);
+    const { data: existing } = await supabase.from('app_users').select('id').eq('email', acessoEmail.trim().toLowerCase()).single();
+    if (existing) {
+      setAcessoStatus({ ok: false, msg: 'Já existe um usuário com este e-mail.' });
+      setAcessoLoading(false);
+      return;
+    }
+    const { error } = await supabase.from('app_users').insert({
+      name: acessoModal.nome,
+      email: acessoEmail.trim().toLowerCase(),
+      phone: acessoModal.telefone || '',
+      role: 'COLLABORATOR',
+      status: 'AVAILABLE',
+      photo: acessoModal.foto || '',
+      password: acessoSenha,
+      level: acessoModal.cargoAtual === CargoRH.JUNIOR ? 'junior' : acessoModal.cargoAtual === CargoRH.SENIOR ? 'senior' : 'master',
+    });
+    setAcessoLoading(false);
+    if (error) {
+      setAcessoStatus({ ok: false, msg: `Erro: ${error.message}` });
+    } else {
+      setAcessoStatus({ ok: true, msg: `Acesso criado! Login: ${acessoEmail.trim().toLowerCase()}` });
+      setAcessoEmail('');
+      setAcessoSenha('');
+    }
+  };
 
   const handleCopy = (id: string) => {
     navigator.clipboard.writeText(getLinkAvaliacao(id)).catch(() => {});
@@ -745,6 +793,9 @@ export const AdminRHColaboradoras: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={() => openAcessoModal(perfilAberto)} title="Dar Acesso ao App" className="p-2 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-xl text-lightText hover:text-green-600 transition-colors">
+                    <Smartphone size={16} />
+                  </button>
                   <button onClick={() => openEdit(perfilAberto)} className="p-2 hover:bg-gray-100 dark:hover:bg-darkBorder rounded-xl text-lightText hover:text-primary transition-colors">
                     <Edit size={16} />
                   </button>
@@ -1422,6 +1473,40 @@ export const AdminRHColaboradoras: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Modal — Dar Acesso ao App */}
+      {acessoModal && (
+        <Modal isOpen={!!acessoModal} onClose={() => setAcessoModal(null)} title="Dar Acesso ao App">
+          <div className="flex items-center gap-3 mb-5 p-3 bg-gray-50 dark:bg-darkBg rounded-xl">
+            <div className="w-10 h-10 rounded-xl bg-gray-200 dark:bg-darkBorder flex items-center justify-center overflow-hidden shrink-0 text-lg font-bold">
+              {acessoModal.foto ? <img src={acessoModal.foto} alt={acessoModal.nome} className="w-full h-full object-cover" /> : acessoModal.nome[0]}
+            </div>
+            <div>
+              <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">{acessoModal.nome}</p>
+              {acessoModal.telefone && <p className="text-xs text-lightText dark:text-darkTextSecondary">{acessoModal.telefone}</p>}
+            </div>
+          </div>
+          <p className="text-xs text-lightText dark:text-darkTextSecondary mb-4">
+            Crie um login para esta colaboradora acessar o app mobile. Informe um e-mail e uma senha temporária.
+          </p>
+          <div className="space-y-3">
+            <Input label="E-mail de acesso" type="email" value={acessoEmail} onChange={e => setAcessoEmail(e.target.value)} placeholder="colaboradora@email.com" />
+            <Input label="Senha temporária" type="password" value={acessoSenha} onChange={e => setAcessoSenha(e.target.value)} placeholder="mínimo 6 caracteres" />
+          </div>
+          {acessoStatus && (
+            <div className={`mt-3 flex items-center gap-2 text-sm font-bold px-3 py-2 rounded-xl ${acessoStatus.ok ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600'}`}>
+              {acessoStatus.ok ? <Check size={14} /> : <AlertCircle size={14} />}
+              {acessoStatus.msg}
+            </div>
+          )}
+          <div className="flex gap-3 mt-5">
+            <Button variant="outline" fullWidth onClick={() => setAcessoModal(null)}>Cancelar</Button>
+            <Button fullWidth onClick={handleDarAcesso} disabled={acessoLoading} icon={<KeyRound size={14} />}>
+              {acessoLoading ? 'Criando...' : 'Criar Acesso'}
+            </Button>
+          </div>
+        </Modal>
+      )}
     </Layout>
   );
 };

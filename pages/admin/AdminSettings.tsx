@@ -3,7 +3,7 @@ import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
-import { Settings, Shield, Bell, CreditCard, Building, Save, ToggleLeft, ToggleRight, DollarSign, Users, Camera, Loader } from 'lucide-react';
+import { Settings, Shield, Bell, CreditCard, Building, Save, ToggleLeft, ToggleRight, DollarSign, Users, Camera, Loader, Plug, MessageCircle, Calendar, CheckCircle, AlertCircle } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
 
@@ -14,6 +14,45 @@ export const AdminSettings: React.FC = () => {
     email: localStorage.getItem('notif_email') !== 'false',
     whatsapp: localStorage.getItem('notif_whatsapp') !== 'false',
   }));
+
+  const [integrations, setIntegrations] = useState(() => ({
+    evolutionUrl:      localStorage.getItem('integ_evolution_url') || '',
+    evolutionKey:      localStorage.getItem('integ_evolution_key') || '',
+    evolutionInstance: localStorage.getItem('integ_evolution_instance') || '',
+    googleCalendarId:  localStorage.getItem('integ_gcal_id') || '',
+    googleApiKey:      localStorage.getItem('integ_gcal_apikey') || '',
+  }));
+  const [integSaved, setIntegSaved] = useState(false);
+  const [integTesting, setIntegTesting] = useState(false);
+  const [integTestResult, setIntegTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const handleSaveIntegrations = () => {
+    localStorage.setItem('integ_evolution_url',      integrations.evolutionUrl);
+    localStorage.setItem('integ_evolution_key',      integrations.evolutionKey);
+    localStorage.setItem('integ_evolution_instance', integrations.evolutionInstance);
+    localStorage.setItem('integ_gcal_id',            integrations.googleCalendarId);
+    localStorage.setItem('integ_gcal_apikey',        integrations.googleApiKey);
+    setIntegSaved(true);
+    setTimeout(() => setIntegSaved(false), 2500);
+  };
+
+  const handleTestWhatsApp = async () => {
+    setIntegTesting(true);
+    setIntegTestResult(null);
+    try {
+      const res = await fetch(`${integrations.evolutionUrl}/instance/fetchInstances`, {
+        headers: { apikey: integrations.evolutionKey },
+      });
+      if (res.ok) {
+        setIntegTestResult({ ok: true, msg: 'Conexão com Evolution API OK.' });
+      } else {
+        setIntegTestResult({ ok: false, msg: `Erro ${res.status} — verifique URL e API Key.` });
+      }
+    } catch {
+      setIntegTestResult({ ok: false, msg: 'Não foi possível conectar. Verifique a URL.' });
+    }
+    setIntegTesting(false);
+  };
   const [notifSaved, setNotifSaved] = useState(false);
 
   const handleSaveNotifications = () => {
@@ -392,6 +431,71 @@ export const AdminSettings: React.FC = () => {
             </div>
          );
       default:
+      case 'integracoes':
+        return (
+          <div className="space-y-8 animate-in fade-in duration-300">
+            {/* WhatsApp */}
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-9 h-9 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600">
+                  <MessageCircle size={18} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-darkText dark:text-darkTextPrimary">WhatsApp — Evolution API</h3>
+                  <p className="text-xs text-lightText dark:text-darkTextSecondary">Disparos automáticos: confirmação D-1, avisos e follow-ups</p>
+                </div>
+              </div>
+              <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-800 dark:text-amber-300 mb-4">
+                <strong>API Oficial (WhatsApp Business):</strong> para usar o número oficial sem risco de bloqueio, solicite acesso à Meta Business API em <span className="underline">business.whatsapp.com</span>. A Evolution API abaixo é compatível com ambos os modos.
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                <Input label="URL da Evolution API" value={integrations.evolutionUrl} onChange={e => setIntegrations(p => ({ ...p, evolutionUrl: e.target.value }))} placeholder="https://sua-evolution.exemplo.com" />
+                <Input label="API Key" value={integrations.evolutionKey} onChange={e => setIntegrations(p => ({ ...p, evolutionKey: e.target.value }))} placeholder="901ED6C6-..." type="password" />
+                <Input label="Nome da Instância" value={integrations.evolutionInstance} onChange={e => setIntegrations(p => ({ ...p, evolutionInstance: e.target.value }))} placeholder="ndl-whatsapp" />
+              </div>
+              <div className="flex items-center gap-3 mt-4">
+                <Button variant="outline" onClick={handleTestWhatsApp} disabled={integTesting}>
+                  {integTesting ? <Loader size={14} className="animate-spin" /> : 'Testar Conexão'}
+                </Button>
+                {integTestResult && (
+                  <span className={`flex items-center gap-1.5 text-sm font-bold ${integTestResult.ok ? 'text-green-600' : 'text-red-500'}`}>
+                    {integTestResult.ok ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                    {integTestResult.msg}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-gray-100 dark:border-darkBorder" />
+
+            {/* Google Calendar */}
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
+                  <Calendar size={18} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-darkText dark:text-darkTextPrimary">Google Calendar</h3>
+                  <p className="text-xs text-lightText dark:text-darkTextSecondary">Sincronize OS confirmadas com sua agenda do Google</p>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-1 gap-4">
+                <Input label="Calendar ID" value={integrations.googleCalendarId} onChange={e => setIntegrations(p => ({ ...p, googleCalendarId: e.target.value }))} placeholder="exemplo@group.calendar.google.com" />
+                <Input label="API Key (Google Cloud)" value={integrations.googleApiKey} onChange={e => setIntegrations(p => ({ ...p, googleApiKey: e.target.value }))} placeholder="AIza..." type="password" />
+              </div>
+              <p className="text-xs text-lightText dark:text-darkTextSecondary mt-2">
+                Crie uma API Key em <span className="underline">console.cloud.google.com</span> com permissão para Calendar API e compartilhe o calendário com a service account.
+              </p>
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <Button onClick={handleSaveIntegrations} icon={integSaved ? <CheckCircle size={16} /> : <Save size={16} />}>
+                {integSaved ? 'Salvo!' : 'Salvar Integrações'}
+              </Button>
+            </div>
+          </div>
+        );
+
         return null;
     }
   };
@@ -423,11 +527,17 @@ export const AdminSettings: React.FC = () => {
                >
                   <Bell size={18} /> Notificações
                </button>
-               <button 
+               <button
                   onClick={() => setActiveTab('users')}
                   className={`w-full text-left px-4 py-3 rounded-xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'users' ? 'bg-white text-primary shadow-sm ring-1 ring-gray-200' : 'text-lightText hover:bg-white hover:text-darkText'}`}
                >
                   <Users size={18} /> Usuários & Permissões
+               </button>
+               <button
+                  onClick={() => setActiveTab('integracoes')}
+                  className={`w-full text-left px-4 py-3 rounded-xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'integracoes' ? 'bg-white text-primary shadow-sm ring-1 ring-gray-200' : 'text-lightText hover:bg-white hover:text-darkText'}`}
+               >
+                  <Plug size={18} /> Integrações
                </button>
             </div>
 

@@ -180,7 +180,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           { icon: <BarChart2 size={16} />,       label: 'Desempenho',   path: '/admin/rh/desempenho',       group: 'RH' },
           { icon: <BookOpen size={16} />,        label: 'Plano de Carreira', path: '/admin/rh/plano-carreira', group: 'RH' },
           { icon: <Settings size={16} />,        label: 'Config. RH',   path: '/admin/rh/configuracoes',    group: 'RH' },
-          { icon: <Megaphone size={20} />,       label: 'Marketing',    path: '/admin/marketing',           group: 'VENDAS' },
           { icon: <Settings size={20} />,        label: 'Configurações',path: '/admin/settings',            group: 'CONFIG' },
         ];
       case UserRole.COLLABORATOR:
