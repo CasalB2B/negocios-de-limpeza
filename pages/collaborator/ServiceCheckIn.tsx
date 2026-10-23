@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Layout } from '../../components/Layout';
-import { UserRole } from '../../types';
+import { CollabLayout } from '../../components/CollabLayout';
 import { Button } from '../../components/Button';
-import { ArrowLeft, MapPin, CheckCircle, HelpCircle, Loader, AlertTriangle } from 'lucide-react';
+import { MapPin, CheckCircle, HelpCircle, Loader, AlertTriangle } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useData } from '../../components/DataContext';
 
@@ -61,13 +60,8 @@ export const ServiceCheckIn: React.FC = () => {
   const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <Layout role={UserRole.COLLABORATOR}>
-      <div className="max-w-3xl mx-auto text-center">
-        <div className="flex items-center gap-2 text-sm text-lightText mb-6">
-          <span className="cursor-pointer hover:text-primary flex items-center gap-1" onClick={() => navigate(`/collab/service/${id}/detail`)}>
-            <ArrowLeft size={16} /> Serviços / Check-in
-          </span>
-        </div>
+    <CollabLayout title="Check-in" showBack backTo={`/collab/service/${id}/detail`} hideNav>
+      <div className="max-w-lg mx-auto text-center">
 
         <h1 className="text-3xl font-display font-bold text-darkText mb-2">Check-in de Serviço</h1>
         <p className="text-lightText mb-8">Valide sua localização e confirme o início do serviço.</p>
@@ -152,7 +146,7 @@ export const ServiceCheckIn: React.FC = () => {
           </button>
         </div>
       </div>
-    </Layout>
+    </CollabLayout>
   );
 };
 

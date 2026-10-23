@@ -1,12 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Layout } from '../../components/Layout';
-import { UserRole } from '../../types';
+import { CollabLayout } from '../../components/CollabLayout';
 import { Button } from '../../components/Button';
-import { User, Settings, Lock, Bell, LogOut, X, Save, Phone, ChevronRight, Camera, History, Mail } from 'lucide-react';
+import { User, Lock, Bell, LogOut, Save, ChevronRight, Camera, History, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '../../components/Input';
-import { Modal } from '../../components/Modal'; // Usando o Modal reutilizável
-import { useData } from '../../components/DataContext'; // Usando dados reais
+import { Modal } from '../../components/Modal';
+import { useData } from '../../components/DataContext';
 
 export const CollaboratorProfile: React.FC = () => {
   const navigate = useNavigate();
@@ -85,14 +84,9 @@ export const CollaboratorProfile: React.FC = () => {
   if (!currentCollaborator) return null;
 
   return (
-    <Layout role={UserRole.COLLABORATOR}>
-      <div className="h-full flex flex-col items-center justify-start pt-6">
+    <CollabLayout title="Perfil">
+      <div className="flex flex-col items-center pt-2">
          <div className="w-full max-w-lg">
-            
-            <div className="flex justify-between items-center mb-8 px-2">
-               <h1 className="text-3xl font-display font-bold text-darkText">Perfil</h1>
-               <Settings className="text-lightText cursor-pointer hover:text-darkText transition-colors" />
-            </div>
 
             <div className="bg-white rounded-[32px] p-8 border border-gray-100 shadow-sm text-center mb-6 relative overflow-hidden">
                <div className="relative inline-block mb-4 group">
@@ -294,6 +288,6 @@ export const CollaboratorProfile: React.FC = () => {
             </div>
          </Modal>
       </div>
-    </Layout>
+    </CollabLayout>
   );
 };

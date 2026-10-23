@@ -1,173 +1,169 @@
-import React, { useState, useEffect } from 'react';
-import { Layout } from '../../components/Layout';
-import { UserRole } from '../../types';
-import { Button } from '../../components/Button';
-import { Save, CheckSquare, ChefHat, Bath, BedDouble, Sofa, Clock, Lock, Unlock } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { CheckSquare, ArrowRight, Loader } from 'lucide-react';
+import { useData } from '../../components/DataContext';
+import { supabase } from '../../lib/supabase';
+import { CollabLayout } from '../../components/CollabLayout';
+
+interface ChecklistItem { item: string; done: boolean; }
+
+const DEFAULT_CHECKLIST: Record<string, ChecklistItem[]> = {
+  default: [
+    { item: 'Varrer todos os cômodos', done: false },
+    { item: 'Aspirar carpetes e tapetes', done: false },
+    { item: 'Limpar banheiro(s) — vaso, pia, box', done: false },
+    { item: 'Limpar cozinha — pia, fogão, bancadas', done: false },
+    { item: 'Limpar superfícies e móveis', done: false },
+    { item: 'Limpar espelhos e vidros internos', done: false },
+    { item: 'Passar pano úmido nos pisos', done: false },
+    { item: 'Recolher lixo', done: false },
+  ],
+  'Limpeza Pós-Obra': [
+    { item: 'Remover resíduos grosseiros de obra', done: false },
+    { item: 'Limpar pó de cimento das superfícies', done: false },
+    { item: 'Limpar azulejos e rejuntes', done: false },
+    { item: 'Limpar janelas e esquadrias', done: false },
+    { item: 'Limpar pisos e rodapés', done: false },
+    { item: 'Limpar banheiro — vaso, pia, box', done: false },
+    { item: 'Limpar louças e metais', done: false },
+    { item: 'Polimento final', done: false },
+  ],
+};
+
+function getDefaultChecklist(type: string): ChecklistItem[] {
+  const key = Object.keys(DEFAULT_CHECKLIST).find(k => type?.toLowerCase().includes(k.toLowerCase()));
+  return (key ? DEFAULT_CHECKLIST[key] : DEFAULT_CHECKLIST.default).map(i => ({ ...i }));
+}
 
 export const ServiceChecklist: React.FC = () => {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
+  const { services } = useData();
+  const [items, setItems] = useState<ChecklistItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [isLocked, setIsLocked] = useState(true);
-  const [timeLeft, setTimeLeft] = useState(35 * 60);
-  const UNLOCK_THRESHOLD = 30 * 60;
+  const service = services.find(s => s.id === id);
 
   useEffect(() => {
-    if (!isLocked) return;
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => (prev <= 0 ? 0 : prev - 1));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [isLocked]);
-
-  const [sections, setSections] = useState([
-    {
-      id: 'kitchen', title: 'Cozinha', icon: <ChefHat size={20} />, total: 2,
-      tasks: [
-        { id: 'k1', label: 'Limpar fogão e exaustor (Gordura)', checked: false },
-        { id: 'k2', label: 'Limpar interior do microondas', checked: false },
-      ]
-    },
-    {
-      id: 'bathroom', title: 'Banheiro', icon: <Bath size={20} />, total: 3,
-      tasks: [
-        { id: 'b1', label: 'Higienizar vaso sanitário (foco na borda)', checked: false },
-        { id: 'b2', label: 'Limpar box e vidros (sem manchas)', checked: false },
-        { id: 'b3', label: 'Esfregar azulejos do chuveiro', checked: false },
-      ]
-    },
-    {
-      id: 'bedroom', title: 'Quartos', icon: <BedDouble size={20} />, total: 1,
-      tasks: [{ id: 'q1', label: 'Tirar pó de móveis e cabeceira', checked: false }]
-    },
-    {
-      id: 'living', title: 'Sala', icon: <Sofa size={20} />, total: 1,
-      tasks: [{ id: 's1', label: 'Limpar TV e eletrônicos (apenas pano seco)', checked: false }]
+    if (!service) return;
+    const stored = (service as any).checklist as ChecklistItem[] | null;
+    if (stored && Array.isArray(stored) && stored.length > 0) {
+      setItems(stored);
+    } else {
+      setItems(getDefaultChecklist(service.type));
     }
-  ]);
+    setLoading(false);
+  }, [service]);
 
-  const [observation, setObservation] = useState('');
+  const saveToDb = useCallback(async (updatedItems: ChecklistItem[]) => {
+    if (!id) return;
+    setSaving(true);
+    try {
+      await supabase.from('services').update({ checklist: updatedItems }).eq('id', id);
+    } catch (e) {
+      console.error('Erro ao salvar checklist:', e);
+    } finally {
+      setSaving(false);
+    }
+  }, [id]);
 
-  const toggleTask = (sectionId: string, taskId: string) => {
-    setSections(sections.map(sec =>
-      sec.id === sectionId
-        ? { ...sec, tasks: sec.tasks.map(task => task.id === taskId ? { ...task, checked: !task.checked } : task) }
-        : sec
-    ));
+  const toggleItem = (index: number) => {
+    setItems(prev => {
+      const updated = prev.map((it, i) => i === index ? { ...it, done: !it.done } : it);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => saveToDb(updated), 600);
+      return updated;
+    });
   };
 
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  const completedCount = items.filter(i => i.done).length;
+  const progress = items.length > 0 ? Math.round((completedCount / items.length) * 100) : 0;
+  const allDone = items.length > 0 && completedCount === items.length;
+
+  const handleAdvance = async () => {
+    await saveToDb(items);
+    navigate(`/collab/service/${id}/photos`);
   };
 
-  const totalTasks = sections.reduce((acc, curr) => acc + curr.total, 0);
-  const completedTasks = sections.reduce((acc, curr) => acc + curr.tasks.filter(t => t.checked).length, 0);
-  const progress = Math.round((completedTasks / totalTasks) * 100);
-  const canUnlock = timeLeft <= UNLOCK_THRESHOLD;
-
-  if (isLocked) {
+  if (loading) {
     return (
-      <Layout role={UserRole.COLLABORATOR}>
-        <div className="max-w-md mx-auto flex flex-col items-center justify-center min-h-[60vh] text-center p-4">
-          <div className="w-24 h-24 bg-purple-50 rounded-full flex items-center justify-center mb-6 relative">
-            <Clock size={48} className="text-primary animate-pulse" />
-            <div className="absolute -bottom-2 -right-2 bg-white p-2 rounded-full shadow-md">
-              <Lock size={20} className="text-gray-400" />
-            </div>
-          </div>
-
-          <h2 className="text-2xl font-bold text-darkText mb-2">Serviço em Andamento</h2>
-          <p className="text-lightText mb-8 max-w-xs">
-            O checklist final estará disponível 30 minutos antes do término previsto.
-          </p>
-
-          <div className="bg-darkText text-white p-6 rounded-2xl w-full mb-8 shadow-xl">
-            <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">Tempo Restante Estimado</p>
-            <div className="text-6xl font-mono font-bold tracking-tighter">
-              {formatTime(timeLeft)}
-            </div>
-          </div>
-
-          {canUnlock ? (
-            <Button fullWidth className="h-14 text-lg animate-in fade-in slide-in-from-bottom-4"
-              icon={<Unlock size={20} />} onClick={() => setIsLocked(false)}>
-              Iniciar Checklist Final
-            </Button>
-          ) : (
-            <button disabled className="w-full bg-gray-100 text-gray-400 font-bold py-4 rounded-xl cursor-not-allowed flex items-center justify-center gap-2">
-              <Lock size={18} /> Aguardando horário...
-            </button>
-          )}
+      <CollabLayout title="Checklist" showBack backTo={`/collab/service/${id}/detail`} hideNav>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <Loader className="animate-spin text-violet-600" size={32} />
         </div>
-      </Layout>
+      </CollabLayout>
     );
   }
 
   return (
-    <Layout role={UserRole.COLLABORATOR}>
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-display font-bold text-darkText mb-1">Checklist Final</h1>
-        <p className="text-lightText mb-8">Itens de atenção especial</p>
+    <CollabLayout title="Checklist" showBack backTo={`/collab/service/${id}/detail`} hideNav>
+      <div className="max-w-lg mx-auto space-y-4 pb-6">
 
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm mb-8">
+        {/* Progress */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           <div className="flex justify-between items-center mb-2">
-            <h3 className="font-bold text-darkText">Progresso</h3>
-            <span className="text-primary font-bold">{progress}%</span>
+            <span className="text-sm font-semibold text-gray-700">Progresso</span>
+            <span className="flex items-center gap-1.5">
+              {saving && <Loader size={12} className="animate-spin text-gray-400" />}
+              <span className="font-bold text-violet-600">{progress}%</span>
+            </span>
           </div>
-          <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-            <div className="h-full bg-primary transition-all duration-500" style={{ width: `${progress}%` }}></div>
+          <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-violet-500 rounded-full transition-all duration-500"
+              style={{ width: `${progress}%` }}
+            />
           </div>
-          <p className="text-xs text-lightText mt-2">{completedTasks} de {totalTasks} tarefas concluídas</p>
+          <p className="text-xs text-gray-400 mt-1.5">{completedCount} de {items.length} itens concluídos</p>
         </div>
 
-        <div className="space-y-6">
-          {sections.map(sec => {
-            const secCompleted = sec.tasks.filter(t => t.checked).length;
-            return (
-              <div key={sec.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="bg-purple-50/50 p-4 border-b border-gray-100 flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <div className="text-primary">{sec.icon}</div>
-                    <h3 className="font-bold text-lg text-darkText">{sec.title}</h3>
-                  </div>
-                  <span className="bg-primary/10 text-primary text-xs font-bold px-2 py-1 rounded">{secCompleted}/{sec.total}</span>
+        {/* Items */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="divide-y divide-gray-50">
+            {items.map((item, idx) => (
+              <button
+                key={idx}
+                onClick={() => toggleItem(idx)}
+                className="w-full text-left px-4 py-3.5 flex items-center gap-3 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+              >
+                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all ${
+                  item.done ? 'bg-violet-600 border-violet-600' : 'border-gray-300'
+                }`}>
+                  {item.done && <CheckSquare size={14} className="text-white" />}
                 </div>
-                <div className="divide-y divide-gray-100">
-                  {sec.tasks.map(task => (
-                    <div key={task.id} onClick={() => toggleTask(sec.id, task.id)}
-                      className="p-4 hover:bg-gray-50 cursor-pointer flex items-center gap-4 transition-colors">
-                      <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${task.checked ? 'bg-primary border-primary' : 'border-gray-300 bg-white'}`}>
-                        {task.checked && <CheckSquare size={14} className="text-white" />}
-                      </div>
-                      <span className={`${task.checked ? 'text-gray-400 line-through' : 'text-darkText font-medium'}`}>{task.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+                <span className={`text-sm leading-snug ${item.done ? 'line-through text-gray-400' : 'text-gray-800 font-medium'}`}>
+                  {item.item}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="mt-8 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <h3 className="font-bold text-darkText mb-4">Observações para o Cliente</h3>
-          <textarea
-            className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-primary h-24 text-sm"
-            placeholder="Ex: Acabou o detergente, mancha no tapete não saiu..."
-            value={observation}
-            onChange={e => setObservation(e.target.value)}
-          />
-        </div>
+        {/* Advance */}
+        <button
+          onClick={handleAdvance}
+          className={`w-full font-bold py-4 rounded-2xl flex items-center justify-center gap-2 text-base shadow-lg transition-all active:scale-[0.97] ${
+            allDone
+              ? 'bg-violet-600 hover:bg-violet-700 text-white shadow-violet-200'
+              : 'bg-gray-100 text-gray-500 cursor-default shadow-none'
+          }`}
+          disabled={!allDone}
+        >
+          <ArrowRight size={18} />
+          {allDone ? 'Avançar para Fotos' : `Conclua todos os ${items.length} itens`}
+        </button>
 
-        <div className="mt-8 mb-12">
-          <Button fullWidth className="h-14 shadow-xl shadow-primary/20" icon={<Save size={20} />}
-            onClick={() => navigate(`/collab/service/${id}/photos`)}>
-            Salvar e Avançar para Fotos
-          </Button>
-        </div>
+        {!allDone && (
+          <button
+            onClick={handleAdvance}
+            className="w-full text-center text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2"
+          >
+            Pular e ir para fotos mesmo assim
+          </button>
+        )}
       </div>
-    </Layout>
+    </CollabLayout>
   );
 };

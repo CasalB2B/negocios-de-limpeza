@@ -1,231 +1,186 @@
-import React, { useEffect, useState } from 'react';
-import { Layout } from '../../components/Layout';
-import { UserRole } from '../../types';
-import { Button } from '../../components/Button';
-import { MapPin, Clock, Play, Headphones, AlertCircle, Key, Dog, LayoutGrid, Star, Camera } from 'lucide-react';
+import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { MapPin, Clock, Play, CheckSquare, Camera, AlertCircle, DollarSign } from 'lucide-react';
+import { useData } from '../../components/DataContext';
+import { CollabLayout } from '../../components/CollabLayout';
+
+const STATUS_LABEL: Record<string, string> = {
+  SCHEDULED: 'AGENDADO', CONFIRMED: 'CONFIRMADO', WAITING_SIGNAL: 'AGUARDANDO SINAL',
+  IN_PROGRESS: 'EM ANDAMENTO', COMPLETED: 'CONCLUÍDO', CANCELLED: 'CANCELADO',
+};
+
+const STATUS_STYLE: Record<string, string> = {
+  SCHEDULED: 'bg-violet-100 text-violet-700',
+  CONFIRMED: 'bg-violet-100 text-violet-700',
+  WAITING_SIGNAL: 'bg-yellow-100 text-yellow-700',
+  IN_PROGRESS: 'bg-orange-100 text-orange-700',
+  COMPLETED: 'bg-green-100 text-green-700',
+  CANCELLED: 'bg-gray-100 text-gray-500',
+};
 
 export const ServiceDetail: React.FC = () => {
   const navigate = useNavigate();
-  const { id } = useParams();
-  const [servicePhotos, setServicePhotos] = useState<{ before: string[], after: string[] } | null>(null);
-  
-  // Verifica status real
-  const status = localStorage.getItem(`service_${id}_status`) || 'PENDING';
-  const isCompleted = status === 'COMPLETED';
+  const { id } = useParams<{ id: string }>();
+  const { services } = useData();
 
-  useEffect(() => {
-     if (id && isCompleted) {
-        const storedPhotos = localStorage.getItem(`service_${id}_photos`);
-        if (storedPhotos) {
-           setServicePhotos(JSON.parse(storedPhotos));
-        }
-     }
-  }, [id, isCompleted]);
+  const service = services.find(s => s.id === id);
 
-  const handleSupportClick = () => {
-    const message = encodeURIComponent(`Olá, sou colaboradora e preciso de ajuda com o serviço #${id}.`);
-    window.open(`https://wa.me/5527999808013?text=${message}`, '_blank');
-  };
+  if (!service) {
+    return (
+      <CollabLayout title="Serviço" showBack backTo="/collab/agenda">
+        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
+          <p className="text-4xl mb-3">🔍</p>
+          <p className="font-bold text-gray-700">Serviço não encontrado</p>
+          <button onClick={() => navigate('/collab/agenda')} className="mt-4 text-violet-600 font-semibold text-sm">
+            Voltar para agenda
+          </button>
+        </div>
+      </CollabLayout>
+    );
+  }
 
-  // Endereço codificado para URL do Maps
-  const addressQuery = encodeURIComponent("Av. Paulista, 1234, São Paulo - SP");
-  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${addressQuery}`;
+  const addressQuery = encodeURIComponent(service.address || '');
+  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${addressQuery}`;
+  const isActive = ['SCHEDULED','CONFIRMED','WAITING_SIGNAL'].includes(service.status);
+  const isInProgress = service.status === 'IN_PROGRESS';
+  const isCompleted = service.status === 'COMPLETED';
 
   return (
-    <Layout role={UserRole.COLLABORATOR}>
-      <div className="max-w-6xl mx-auto">
-        
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-lightText mb-6">
-           <span className="cursor-pointer hover:text-primary" onClick={() => navigate('/collab/agenda')}>Home</span>
-           <span>/</span>
-           <span className="cursor-pointer hover:text-primary" onClick={() => navigate('/collab/agenda')}>Meus Serviços</span>
-           <span>/</span>
-           <span className="text-darkText font-bold">Detalhe do Serviço</span>
+    <CollabLayout title="Detalhes do Serviço" showBack backTo="/collab/agenda">
+      <div className="max-w-lg mx-auto space-y-4 pb-6">
+
+        {/* Status + type */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className={`text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${STATUS_STYLE[service.status] || STATUS_STYLE.SCHEDULED}`}>
+              {STATUS_LABEL[service.status] || service.status}
+            </span>
+            {service.price != null && (
+              <span className="flex items-center gap-1 font-bold text-gray-900">
+                <DollarSign size={14} className="text-green-600" />
+                R$ {service.price.toFixed(2)}
+              </span>
+            )}
+          </div>
+          <h2 className="text-lg font-bold text-gray-900">{service.type}</h2>
+          {service.duration && (
+            <p className="text-xs text-gray-400 mt-0.5">{service.duration}h estimadas</p>
+          )}
         </div>
 
-        <h1 className="text-3xl font-display font-bold text-darkText mb-2">Detalhe do Serviço</h1>
-        <p className="text-lightText mb-8">Confira todas as informações antes de iniciar o atendimento.</p>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-           {/* Left Content */}
-           <div className="lg:col-span-2 space-y-6">
-              
-              {/* Hero Image */}
-              <div className="w-full h-64 md:h-80 bg-gray-200 rounded-3xl overflow-hidden relative shadow-sm">
-                 <img src="https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=1000&auto=format&fit=crop" className="w-full h-full object-cover" alt="Sala de Estar" />
-              </div>
-
-              {/* Title & Info */}
-              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                 <div>
-                    <div className="flex gap-2 mb-2">
-                       <span className="text-xs font-bold text-primary uppercase tracking-wider">ID #{id}</span>
-                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${isCompleted ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                          {isCompleted ? 'Concluído' : 'Pendente'}
-                       </span>
-                    </div>
-                    <h2 className="text-2xl font-bold text-darkText">Limpeza Residencial Padrão</h2>
-                    <div className="flex items-center gap-2 text-lightText mt-1">
-                       <Clock size={16} /> Duração estimada: 4 horas
-                    </div>
-                 </div>
-              </div>
-
-              {/* Galeria de Fotos (Se concluído) */}
-              {isCompleted && servicePhotos && (
-               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                  <h2 className="text-lg font-bold text-darkText mb-4 flex items-center gap-2">
-                     <Camera className="text-primary" size={20} /> Fotos Enviadas
-                  </h2>
-                  
-                  <div className="space-y-4">
-                     {servicePhotos.before && servicePhotos.before.length > 0 && (
-                        <div>
-                           <p className="text-xs font-bold text-lightText uppercase mb-2">Antes</p>
-                           <div className="flex gap-2 overflow-x-auto pb-2">
-                              {servicePhotos.before.map((src, i) => (
-                                 <img key={i} src={src} className="w-24 h-24 rounded-lg object-cover border border-gray-200" alt="Antes" />
-                              ))}
-                           </div>
-                        </div>
-                     )}
-                     {servicePhotos.after && servicePhotos.after.length > 0 && (
-                        <div>
-                           <p className="text-xs font-bold text-lightText uppercase mb-2">Depois</p>
-                           <div className="flex gap-2 overflow-x-auto pb-2">
-                              {servicePhotos.after.map((src, i) => (
-                                 <img key={i} src={src} className="w-24 h-24 rounded-lg object-cover border border-gray-200" alt="Depois" />
-                              ))}
-                           </div>
-                        </div>
-                     )}
-                  </div>
-               </div>
-              )}
-
-              {/* CLIENTE CARD */}
-              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-6">
-                 <img src="https://i.pravatar.cc/150?u=maria" alt="Cliente" className="w-20 h-20 rounded-full object-cover border-4 border-purple-50 shadow-md" />
-                 <div className="flex-1">
-                    <p className="text-xs font-bold text-lightText uppercase mb-1">CLIENTE</p>
-                    <h3 className="text-xl font-bold text-darkText">Maria Silva</h3>
-                    <div className="flex items-center gap-1 text-yellow-500 text-sm font-bold mt-1">
-                       <Star size={14} fill="currentColor"/> 5.0 <span className="text-lightText font-normal">(12 serviços)</span>
-                    </div>
-                 </div>
-              </div>
-
-              {/* Logistics & Map */}
-              <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
-                 <h3 className="font-bold text-lg text-darkText mb-6 flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-purple-100 text-primary flex items-center justify-center"><Clock size={18}/></div>
-                    Logística e Horário
-                 </h3>
-
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
-                    <div>
-                       <p className="text-xs text-lightText font-bold uppercase mb-1">DATA E JANELA</p>
-                       <p className="font-bold text-darkText text-lg">Terça-feira, 26 de Maio</p>
-                       <p className="text-lightText">08:00 — 12:00</p>
-                    </div>
-                    <div>
-                       <p className="text-xs text-lightText font-bold uppercase mb-1">LOCALIZAÇÃO</p>
-                       <p className="font-bold text-darkText text-lg">Av. Paulista, 1234 - Ap 42</p>
-                       <p className="text-lightText">Bela Vista, São Paulo - SP</p>
-                       <a 
-                          href={googleMapsUrl} 
-                          target="_blank" 
-                          rel="noreferrer"
-                          className="text-primary font-bold text-sm flex items-center gap-1 mt-1 hover:underline"
-                       >
-                          <MapPin size={14} /> Abrir rota no Google Maps
-                       </a>
-                    </div>
-                 </div>
-
-                 {/* Map Preview */}
-                 <a href={googleMapsUrl} target="_blank" rel="noreferrer" className="block w-full h-48 bg-gray-100 rounded-xl overflow-hidden relative group">
-                    <img src="https://static.vecteezy.com/system/resources/previews/000/153/582/original/vector-city-map-background.jpg" className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity" alt="Mapa" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                       <div className="bg-white px-4 py-2 rounded-full shadow-lg text-xs font-bold text-darkText flex items-center gap-2 transform group-hover:scale-105 transition-transform">
-                          <MapPin size={14} className="text-primary"/> Ver Rota
-                       </div>
-                    </div>
-                 </a>
-              </div>
-
-              {/* Client Notes */}
-              <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
-                 <h3 className="font-bold text-lg text-darkText mb-6 flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-purple-100 text-primary flex items-center justify-center"><AlertCircle size={18}/></div>
-                    Observações do Cliente
-                 </h3>
-
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                       <Dog className="text-primary mb-2" size={24} />
-                       <p className="text-xs font-bold text-lightText uppercase mb-1">PETS</p>
-                       <p className="text-sm text-darkText">2 cães pequenos (amigáveis) no local.</p>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                       <Key className="text-primary mb-2" size={24} />
-                       <p className="text-xs font-bold text-lightText uppercase mb-1">ACESSO</p>
-                       <p className="text-sm text-darkText">Chave disponível na portaria (Bloco B).</p>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                       <LayoutGrid className="text-primary mb-2" size={24} />
-                       <p className="text-xs font-bold text-lightText uppercase mb-1">VIDROS</p>
-                       <p className="text-sm text-darkText">Inclui limpeza de janelas internas.</p>
-                    </div>
-                 </div>
-              </div>
-           </div>
-
-           {/* Right Sidebar (Actions) */}
-           <div className="space-y-6">
-              {!isCompleted && (
-                 <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm sticky top-24">
-                    <h3 className="font-bold text-lg text-darkText mb-4">Ações do Serviço</h3>
-                    <p className="text-sm text-lightText mb-6">Ao chegar no local, realize o Check-in para iniciar a contagem do tempo de serviço.</p>
-
-                    <Button 
-                       fullWidth 
-                       onClick={() => navigate(`/collab/service/${id}/checkin`)}
-                       className="mb-6 h-12 shadow-lg shadow-primary/30"
-                       icon={<Play size={18} fill="currentColor" />}
-                    >
-                       Iniciar (Check-in)
-                    </Button>
-
-                    <div className="border-t border-gray-100 pt-6">
-                       <div className="flex items-center gap-3 mb-4">
-                          <div className="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center text-primary">
-                             <Headphones size={20} />
-                          </div>
-                          <div>
-                             <p className="font-bold text-darkText text-sm">Precisa de ajuda?</p>
-                             <p className="text-xs text-lightText">Suporte Negócios de Limpeza</p>
-                          </div>
-                       </div>
-                       <button 
-                          onClick={handleSupportClick}
-                          className="w-full border border-gray-200 rounded-xl py-3 text-sm font-bold text-darkText hover:bg-gray-50 transition-colors"
-                       >
-                          Contatar Central
-                       </button>
-                    </div>
-                 </div>
-              )}
-
-              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 text-sm text-lightText flex gap-3">
-                 <div className="w-5 h-5 bg-primary text-white rounded-full flex items-center justify-center shrink-0 font-bold text-xs">i</div>
-                 <p>Lembre-se de utilizar seu uniforme completo e EPIs necessários para este tipo de limpeza.</p>
-              </div>
-           </div>
+        {/* Date + Time */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3">
+          <div className="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center text-violet-600 shrink-0">
+            <Clock size={20} />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">Data e horário</p>
+            <p className="font-bold text-gray-900 text-sm">{service.date}{service.time ? ` às ${service.time}` : ''}</p>
+          </div>
         </div>
+
+        {/* Address + Maps link */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-start gap-3 mb-3">
+            <div className="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center text-violet-600 shrink-0">
+              <MapPin size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-gray-400 uppercase">Endereço</p>
+              <p className="font-bold text-gray-900 text-sm leading-snug">{service.address || 'Endereço não informado'}</p>
+            </div>
+          </div>
+          {service.address && (
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-600 font-semibold text-sm py-2.5 rounded-xl hover:bg-blue-100 transition-colors"
+            >
+              <MapPin size={15} /> Abrir rota no Google Maps
+            </a>
+          )}
+        </div>
+
+        {/* Client */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3">
+          <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-gray-500 shrink-0 font-bold text-base">
+            {service.clientName?.charAt(0) || '?'}
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">Cliente</p>
+            <p className="font-bold text-gray-900 text-sm">{service.clientName}</p>
+          </div>
+        </div>
+
+        {/* Notes */}
+        {service.notes && (
+          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex gap-3">
+            <AlertCircle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[10px] font-bold text-amber-600 uppercase mb-1">Observações</p>
+              <p className="text-sm text-gray-700">{service.notes}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Photos if completed */}
+        {isCompleted && (service as any).photos && (
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-2 mb-3">
+              <Camera size={16} className="text-violet-600" />
+              <p className="font-bold text-gray-900 text-sm">Fotos registradas</p>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {[...((service as any).photos?.before || []), ...((service as any).photos?.after || [])].map((src: string, i: number) => (
+                <img key={i} src={src} alt="foto" className="w-20 h-20 rounded-xl object-cover border border-gray-100 shrink-0" />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Action buttons */}
+        {isActive && (
+          <button
+            onClick={() => navigate(`/collab/service/${id}/checkin`)}
+            className="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 text-base shadow-lg shadow-violet-200 active:scale-[0.97] transition-all"
+          >
+            <Play size={18} fill="white" /> Fazer Check-in
+          </button>
+        )}
+
+        {isInProgress && (
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => navigate(`/collab/service/${id}/checklist`)}
+              className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 text-sm shadow-lg shadow-orange-200 active:scale-[0.97] transition-all"
+            >
+              <CheckSquare size={16} /> Checklist
+            </button>
+            <button
+              onClick={() => navigate(`/collab/service/${id}/photos`)}
+              className="bg-white border-2 border-orange-400 text-orange-600 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 text-sm active:scale-[0.97] transition-all"
+            >
+              <Camera size={16} /> Fotos
+            </button>
+          </div>
+        )}
+
+        {isInProgress && (
+          <button
+            onClick={() => navigate(`/collab/service/${id}/checkout`)}
+            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 text-base shadow-lg shadow-green-200 active:scale-[0.97] transition-all"
+          >
+            Finalizar Serviço ✓
+          </button>
+        )}
+
+        {isCompleted && (
+          <div className="flex items-center justify-center gap-2 bg-green-50 text-green-700 font-bold py-4 rounded-2xl border border-green-100">
+            ✓ Serviço concluído
+          </div>
+        )}
       </div>
-    </Layout>
+    </CollabLayout>
   );
 };

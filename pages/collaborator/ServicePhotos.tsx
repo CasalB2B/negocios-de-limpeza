@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Layout } from '../../components/Layout';
-import { UserRole } from '../../types';
+import { CollabLayout } from '../../components/CollabLayout';
 import { Button } from '../../components/Button';
 import { Plus, ArrowRight, X, Loader } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -86,15 +85,9 @@ export const ServicePhotos: React.FC = () => {
   };
 
   return (
-    <Layout role={UserRole.COLLABORATOR}>
-      <div className="max-w-4xl mx-auto pb-20">
-        <div className="flex items-center gap-2 text-sm text-lightText mb-6">
-          <span>Portal da Colaboradora</span><span>/</span>
-          <span className="text-darkText font-bold">Fotos do Serviço</span>
-        </div>
-
-        <h1 className="text-3xl font-display font-bold text-darkText mb-2">Fotos do Serviço</h1>
-        <p className="text-lightText mb-8 max-w-2xl">Registre o progresso enviando fotos do antes e depois. As fotos são salvas no sistema automaticamente.</p>
+    <CollabLayout title="Fotos do Serviço" showBack backTo={`/collab/service/${id}/checklist`} hideNav>
+      <div className="max-w-lg mx-auto pb-6">
+        <p className="text-sm text-gray-500 mb-5">Registre o antes e depois. As fotos são salvas automaticamente.</p>
 
         <input type="file" ref={beforeInputRef} className="hidden" accept="image/*" capture="environment" onChange={e => handlePhotoSelect(e, 'before')} />
         <input type="file" ref={afterInputRef} className="hidden" accept="image/*" capture="environment" onChange={e => handlePhotoSelect(e, 'after')} />
@@ -127,6 +120,6 @@ export const ServicePhotos: React.FC = () => {
             : 'As fotos serão enviadas ao clicar em Continuar.'}
         </p>
       </div>
-    </Layout>
+    </CollabLayout>
   );
 };

@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Layout } from '../../components/Layout';
-import { UserRole } from '../../types';
+import { CollabLayout } from '../../components/CollabLayout';
 import { Button } from '../../components/Button';
-import { DollarSign, Clock, Download, Calendar, Eye, FileText, X, Star } from 'lucide-react';
-import { useData } from '../../components/DataContext'; // Import DataContext
+import { DollarSign, Clock, Eye, FileText, X } from 'lucide-react';
+import { useData } from '../../components/DataContext';
 
 export const CollaboratorFinance: React.FC = () => {
   const { services, currentCollaborator, platformSettings } = useData();
@@ -74,25 +73,14 @@ export const CollaboratorFinance: React.FC = () => {
   }
 
   return (
-    <Layout role={UserRole.COLLABORATOR}>
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-8 flex justify-between items-center">
-           <div>
-              <h1 className="text-3xl font-display font-bold text-darkText">Meu Financeiro</h1>
-              <div className="flex items-center gap-2 mt-1">
-                  <p className="text-lightText">Nível: <strong>{getLevelLabel()}</strong></p>
-              </div>
-           </div>
-           <div className="flex gap-4">
-              <button className="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-xl text-sm font-bold text-darkText hover:bg-gray-50">
-                 <Calendar size={18} /> Este Mês
-              </button>
-              <Button onClick={handleExportPDF} icon={<Download size={18} />} className="text-sm">Exportar PDF</Button>
-           </div>
-        </header>
+    <CollabLayout title="Meu Financeiro">
+      <div className="max-w-lg mx-auto">
+        <div className="mb-4">
+          <p className="text-xs text-gray-400">Nível: <strong className="text-gray-700">{getLevelLabel()}</strong></p>
+        </div>
 
         {/* KPIs Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 gap-3 mb-5">
            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
               <div className="flex justify-between items-start mb-4">
                  <p className="text-sm text-lightText">Total de Limpezas</p>
@@ -133,7 +121,7 @@ export const CollaboratorFinance: React.FC = () => {
         </div>
 
         {/* Table Section */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-4">
            {/* Table Tabs */}
            <div className="flex border-b border-gray-100">
               <button 
@@ -269,6 +257,6 @@ export const CollaboratorFinance: React.FC = () => {
            </div>
         )}
       </div>
-    </Layout>
+    </CollabLayout>
   );
 };

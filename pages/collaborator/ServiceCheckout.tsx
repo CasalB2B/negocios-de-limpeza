@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { Layout } from '../../components/Layout';
-import { UserRole } from '../../types';
+import { CollabLayout } from '../../components/CollabLayout';
 import { Button } from '../../components/Button';
-import { ArrowLeft, CheckCircle, Clock, Loader } from 'lucide-react';
+import { CheckCircle, Clock, Loader } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useData } from '../../components/DataContext';
 
@@ -29,13 +28,8 @@ export const ServiceCheckout: React.FC = () => {
   };
 
   return (
-    <Layout role={UserRole.COLLABORATOR}>
-      <div className="max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[80vh]">
-
-        <div className="w-full text-left mb-8 flex items-center gap-2 text-sm text-lightText">
-          <ArrowLeft size={16} className="cursor-pointer" onClick={() => navigate(`/collab/service/${id}/photos`)} />
-          <span>Serviços Ativos / Finalizar Serviço</span>
-        </div>
+    <CollabLayout title="Finalizar Serviço" showBack backTo={`/collab/service/${id}/photos`} hideNav>
+      <div className="max-w-lg mx-auto">
 
         <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100 w-full text-center">
           <h1 className="text-3xl font-display font-bold text-darkText mb-2">Finalizar Atendimento</h1>
@@ -72,6 +66,6 @@ export const ServiceCheckout: React.FC = () => {
           </button>
         </div>
       </div>
-    </Layout>
+    </CollabLayout>
   );
 };
