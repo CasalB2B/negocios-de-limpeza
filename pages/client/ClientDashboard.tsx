@@ -21,14 +21,18 @@ export const ClientDashboard: React.FC = () => {
   return (
     <Layout role={UserRole.CLIENT}>
       {previewMode && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-700 flex items-center gap-2">
-          <Eye size={12} className="shrink-0" />
-          <span>Modo preview — vendo como <strong>{previewMode.clientName}</strong></span>
+        <div className="bg-blue-600 text-white px-4 py-2 flex items-center justify-between text-xs">
+          <span><Eye size={12} className="inline mr-1 shrink-0" />Visualizando como <strong>{previewMode.clientName}</strong></span>
           <button
-            onClick={() => { clearClientPreview(); window.close(); }}
-            className="ml-auto text-amber-600 hover:underline font-semibold whitespace-nowrap"
+            onClick={() => {
+              clearClientPreview();
+              const returnPath = sessionStorage.getItem('ndl_preview_return_path') || '#/admin/dashboard';
+              sessionStorage.removeItem('ndl_preview_return_path');
+              window.location.hash = returnPath.replace(/^#/, '');
+            }}
+            className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg text-xs font-medium transition-colors whitespace-nowrap"
           >
-            Fechar
+            ← Voltar ao Admin
           </button>
         </div>
       )}

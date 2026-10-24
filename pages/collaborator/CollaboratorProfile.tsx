@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { CollabLayout } from '../../components/CollabLayout';
 import { Button } from '../../components/Button';
-import { User, Lock, Bell, LogOut, Save, ChevronRight, Camera, History, Mail } from 'lucide-react';
+import { User, Lock, Bell, LogOut, Save, ChevronRight, ChevronDown, Camera, History, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '../../components/Input';
 import { Modal } from '../../components/Modal';
@@ -78,8 +78,33 @@ export const CollaboratorProfile: React.FC = () => {
     setPasswordData({ current: '', new: '', confirm: '' });
   };
 
-  // Histórico Filtrado
+  // Histórico Filtrado + agrupado por mês
   const historyServices = services.filter(s => s.collaboratorId === currentCollaborator?.id && s.status === 'COMPLETED');
+
+  const servicesByMonth = historyServices.reduce((acc, s) => {
+    const parts = (s.date || '').split('/');
+    const key = parts.length === 3 ? `${parts[1]}/${parts[2]}` : 'Sem data';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(s);
+    return acc;
+  }, {} as Record<string, typeof historyServices>);
+
+  const sortedMonths = Object.keys(servicesByMonth).sort((a, b) => {
+    if (a === 'Sem data') return 1;
+    if (b === 'Sem data') return -1;
+    const [ma, ya] = a.split('/').map(Number);
+    const [mb, yb] = b.split('/').map(Number);
+    return ya !== yb ? yb - ya : mb - ma;
+  });
+
+  const monthLabel = (key: string) => {
+    if (key === 'Sem data') return 'Sem data';
+    const [m, y] = key.split('/').map(Number);
+    const names = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    return `${names[m - 1]} ${y}`;
+  };
+
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set([sortedMonths[0] || '']));
 
   if (!currentCollaborator) return null;
 
@@ -128,7 +153,7 @@ export const CollaboratorProfile: React.FC = () => {
                      </div>
                      <div className="text-left">
                         <p className="font-bold text-darkText text-sm">Dados Pessoais</p>
-                        <p className="text-xs text-lightText">Edite seu nome, e-mail e endereço</p>
+                        <p className="text-xs text-lightText">Altere seu nome e telefone</p>
                      </div>
                   </div>
                   <ChevronRight size={18} className="text-gray-300" />
@@ -208,19 +233,21 @@ export const CollaboratorProfile: React.FC = () => {
                   value={userData.name} 
                   onChange={(e) => setUserData({...userData, name: e.target.value})}
                />
-               <Input 
-                  label="Telefone / WhatsApp" 
+               <Input
+                  label="Telefone / WhatsApp"
                   value={userData.phone}
                   onChange={(e) => setUserData({...userData, phone: e.target.value})}
                />
-               <Input 
-                  label="E-mail" 
-                  type="email"
-                  value={userData.email}
-                  onChange={(e) => setUserData({...userData, email: e.target.value})}
-               />
+               <div>
+                  <label className="block text-xs font-bold text-lightText mb-1.5 uppercase tracking-wider">E-mail</label>
+                  <div className="w-full px-4 py-3 rounded-xl bg-gray-100 border border-gray-200 text-sm text-gray-500 flex items-center gap-2">
+                     <Mail size={14} className="text-gray-400 shrink-0" />
+                     {userData.email}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1.5">O e-mail é gerenciado pela empresa. Entre em contato com o admin para alterações.</p>
+               </div>
                <p className="text-xs text-lightText bg-gray-50 p-3 rounded-lg border border-gray-100">
-                  Para alterar dados sensíveis como CPF ou Endereço Bancário, entre em contato com o suporte.
+                  Para alterar dados como CPF ou dados bancários, entre em contato com a empresa.
                </p>
             </div>
          </Modal>
@@ -269,18 +296,42 @@ export const CollaboratorProfile: React.FC = () => {
                <Button onClick={() => setShowHistoryModal(false)}>Fechar</Button>
             }
          >
-            <div className="space-y-4">
-               {historyServices.length > 0 ? historyServices.map(service => (
-                  <div key={service.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex justify-between items-center">
-                     <div>
-                        <p className="font-bold text-darkText">{service.type}</p>
-                        <p className="text-xs text-lightText">{service.date} - {service.clientName}</p>
+            <div className="space-y-3">
+               {sortedMonths.length > 0 ? sortedMonths.map(monthKey => {
+                  const isOpen = expandedMonths.has(monthKey);
+                  const monthServices = servicesByMonth[monthKey];
+                  return (
+                     <div key={monthKey} className="border border-gray-100 rounded-xl overflow-hidden">
+                        <button
+                           onClick={() => setExpandedMonths(prev => {
+                              const next = new Set(prev);
+                              next.has(monthKey) ? next.delete(monthKey) : next.add(monthKey);
+                              return next;
+                           })}
+                           className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+                        >
+                           <span className="font-bold text-sm text-darkText">{monthLabel(monthKey)}</span>
+                           <div className="flex items-center gap-2">
+                              <span className="text-xs text-lightText bg-white px-2 py-0.5 rounded-full border border-gray-200">{monthServices.length} serviço{monthServices.length !== 1 ? 's' : ''}</span>
+                              <ChevronDown size={16} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                           </div>
+                        </button>
+                        {isOpen && (
+                           <div className="divide-y divide-gray-50">
+                              {monthServices.map(service => (
+                                 <div key={service.id} className="px-4 py-3 flex justify-between items-center">
+                                    <div>
+                                       <p className="font-semibold text-sm text-darkText">{service.type}</p>
+                                       <p className="text-xs text-lightText">{service.date} · {service.clientName}</p>
+                                    </div>
+                                    <span className="text-green-600 font-bold text-xs bg-green-50 px-2 py-1 rounded-lg">R$ {service.price?.toFixed(2) ?? '—'}</span>
+                                 </div>
+                              ))}
+                           </div>
+                        )}
                      </div>
-                     <div className="text-right">
-                        <span className="text-green-600 font-bold text-sm bg-green-100 px-2 py-1 rounded">R$ {service.price?.toFixed(2)}</span>
-                     </div>
-                  </div>
-               )) : (
+                  );
+               }) : (
                   <div className="text-center py-8 text-lightText">
                      Nenhum serviço concluído encontrado.
                   </div>
