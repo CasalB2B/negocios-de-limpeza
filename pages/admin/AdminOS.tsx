@@ -49,6 +49,8 @@ export const AdminOS: React.FC = () => {
   const [selectedCollabs, setSelectedCollabs] = useState<SelectedCollab[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [selected, setSelected] = useState<Service | null>(null);
+  type CompletionToast = null | 'sending' | { sent: true } | { sent: false; url: string };
+  const [completionToast, setCompletionToast] = useState<CompletionToast>(null);
   const [periodFilter, setPeriodFilter] = useState<'all' | 'week' | 'month'>('all');
   const [clientSearch, setClientSearch] = useState('');
   const [showClientDrop, setShowClientDrop] = useState(false);
@@ -122,6 +124,20 @@ export const AdminOS: React.FC = () => {
   const handleAdvance = (service: Service, next: ColStatus) => {
     updateServiceStatus(service.id, COL_TO_DB[next]);
     if (selected?.id === service.id) setSelected(prev => prev ? { ...prev, status: COL_TO_DB[next] } : null);
+    if (next === 'CONCLUIDO') {
+      setCompletionToast('sending');
+      fetch('https://yhdxmutbreihrtlnbcaf.supabase.co/functions/v1/post-service-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ service_id: service.id }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          setCompletionToast(data.sent ? { sent: true } : { sent: false, url: data.wa_fallback_url || '' });
+          setTimeout(() => setCompletionToast(null), 6000);
+        })
+        .catch(() => setCompletionToast(null));
+    }
   };
 
   const handleCreate = async () => {
@@ -382,6 +398,56 @@ export const AdminOS: React.FC = () => {
           <Button onClick={handleCreate} disabled={!form.clientId || !form.date || !form.type}>Criar OS</Button>
         </div>
       </Modal>
+
+      {/* Completion toast */}
+      {completionToast && (
+        <div className="fixed bottom-6 right-6 z-[70] max-w-sm w-full animate-in slide-in-from-bottom-4 duration-300">
+          {completionToast === 'sending' ? (
+            <div className="bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder rounded-2xl p-4 shadow-xl flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                <MessageCircle size={16} className="text-green-600 animate-pulse" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">Enviando mensagem…</p>
+                <p className="text-xs text-lightText dark:text-darkTextSecondary">Notificando o cliente via WhatsApp</p>
+              </div>
+            </div>
+          ) : completionToast.sent ? (
+            <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-2xl p-4 shadow-xl flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center shrink-0">
+                <CheckCircle2 size={16} className="text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-green-800 dark:text-green-300">Mensagem enviada!</p>
+                <p className="text-xs text-green-600 dark:text-green-400">Cliente notificado via WhatsApp ✓</p>
+              </div>
+              <button onClick={() => setCompletionToast(null)} className="text-green-500 hover:text-green-700"><X size={16} /></button>
+            </div>
+          ) : (
+            <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-2xl p-4 shadow-xl">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+                  <MessageCircle size={16} className="text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-amber-800 dark:text-amber-300">WhatsApp não configurado</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400">Envie a mensagem manualmente</p>
+                </div>
+                <button onClick={() => setCompletionToast(null)} className="text-amber-500 hover:text-amber-700"><X size={16} /></button>
+              </div>
+              <a
+                href={completionToast.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setCompletionToast(null)}
+                className="w-full py-2.5 text-sm font-bold text-white bg-[#25D366] hover:bg-[#1fbb58] rounded-xl flex items-center justify-center gap-2 transition-colors"
+              >
+                <MessageCircle size={15} /> Abrir WhatsApp
+              </a>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Detail drawer */}
       {selected && (
