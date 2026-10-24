@@ -4,12 +4,14 @@ import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
-import { Clock, MapPin, FileText, CheckCircle, Sparkles, Calendar as CalendarIcon, AlertCircle } from 'lucide-react';
+import { Clock, MapPin, FileText, CheckCircle, Sparkles, Calendar as CalendarIcon, AlertCircle, Eye } from 'lucide-react';
 import { useData } from '../../components/DataContext'; // Import context
+import { getClientPreview, clearClientPreview } from '../../lib/adminPreview';
 
 export const ClientDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser, services } = useData(); // Get current user
+  const previewMode = getClientPreview();
 
   // Find next scheduled/confirmed appointment for this user
   const myServices = services.filter(s => s.clientId === currentUser?.id && (s.status === 'SCHEDULED' || s.status === 'CONFIRMED' || s.status === 'IN_PROGRESS'));
@@ -18,6 +20,18 @@ export const ClientDashboard: React.FC = () => {
 
   return (
     <Layout role={UserRole.CLIENT}>
+      {previewMode && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-700 flex items-center gap-2">
+          <Eye size={12} className="shrink-0" />
+          <span>Modo preview — vendo como <strong>{previewMode.clientName}</strong></span>
+          <button
+            onClick={() => { clearClientPreview(); window.close(); }}
+            className="ml-auto text-amber-600 hover:underline font-semibold whitespace-nowrap"
+          >
+            Fechar
+          </button>
+        </div>
+      )}
       <div className="max-w-5xl mx-auto">
         <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>

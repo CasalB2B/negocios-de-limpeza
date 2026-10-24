@@ -6,7 +6,7 @@ import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
 import { useData } from './DataContext';
 import { supabase } from '../lib/supabase';
-import { startCollabPreview, type PreviewCollab } from '../lib/adminPreview';
+import { startCollabPreview, startClientPreview, type PreviewCollab, type PreviewClient } from '../lib/adminPreview';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,6 +20,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   const [showPreviewPanel, setShowPreviewPanel] = useState(false);
   const [previewCollabs, setPreviewCollabs] = useState<PreviewCollab[]>([]);
   const [loadingPreviewCollabs, setLoadingPreviewCollabs] = useState(false);
+  const [showClientPanel, setShowClientPanel] = useState(false);
+  const [clientPreviewList, setClientPreviewList] = useState<PreviewClient[]>([]);
+  const [loadingClientList, setLoadingClientList] = useState(false);
   const { currentUser, logoutClient, logoutCollaborator, logoutAdmin, platformSettings } = useData();
   const mainRef = useRef<HTMLElement>(null);
 
@@ -49,9 +52,32 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   const handlePreviewCollab = (collab: PreviewCollab) => {
     startCollabPreview(collab);
     setShowPreviewPanel(false);
-    // Use anchor click — window.open can be blocked by browsers
     const a = document.createElement('a');
     a.href = '/#/collab/agenda';
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const openClientPanel = async () => {
+    const next = !showClientPanel;
+    setShowClientPanel(next);
+    setShowPreviewPanel(false);
+    if (next) {
+      setLoadingClientList(true);
+      const { data } = await supabase.from('app_users').select('id, name, photo, email').eq('role', 'CLIENT').order('name');
+      setClientPreviewList((data as PreviewClient[]) ?? []);
+      setLoadingClientList(false);
+    }
+  };
+
+  const handlePreviewClient = (client: PreviewClient) => {
+    startClientPreview(client);
+    setShowClientPanel(false);
+    const a = document.createElement('a');
+    a.href = '/#/client/dashboard';
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
     document.body.appendChild(a);
@@ -420,6 +446,39 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                           : <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-[10px] flex-shrink-0">{c.nome[0]}</div>
                         }
                         <span className="truncate">{c.nome}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Ver como cliente */}
+              <button
+                onClick={openClientPanel}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-400 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors mt-0.5"
+              >
+                <User size={13} />
+                Ver como cliente...
+              </button>
+              {showClientPanel && (
+                <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-gray-100 dark:bg-darkSurface dark:border-darkBorder rounded-xl shadow-xl overflow-hidden">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">Escolha um cliente</p>
+                  <div className="max-h-44 overflow-y-auto">
+                    {loadingClientList ? (
+                      <p className="text-xs text-gray-400 p-3 text-center">Carregando...</p>
+                    ) : clientPreviewList.length === 0 ? (
+                      <p className="text-xs text-gray-400 p-3 text-center">Nenhum cliente</p>
+                    ) : clientPreviewList.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => handlePreviewClient(c)}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                      >
+                        {c.photo
+                          ? <img src={c.photo} alt={c.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                          : <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-[10px] flex-shrink-0">{c.name[0]}</div>
+                        }
+                        <span className="truncate">{c.name}</span>
                       </button>
                     ))}
                   </div>
