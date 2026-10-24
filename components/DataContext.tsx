@@ -2,6 +2,28 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ServiceStatus, Address } from '../types';
 import { supabase } from '../lib/supabase';
 
+// --- CACHE HELPERS (stale-while-revalidate) ---
+const CACHE_VER = '2';
+const CACHE_MAX_MS = 30 * 60 * 1000; // 30 min
+
+function getCached<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(`ndl_cache_${key}`);
+    if (!raw) return null;
+    const { d, t, v } = JSON.parse(raw);
+    if (v !== CACHE_VER || Date.now() - t > CACHE_MAX_MS) return null;
+    return d as T;
+  } catch { return null; }
+}
+
+function setCache<T>(key: string, data: T): void {
+  try { localStorage.setItem(`ndl_cache_${key}`, JSON.stringify({ d: data, t: Date.now(), v: CACHE_VER })); } catch {}
+}
+
+export function clearCache(): void {
+  try { Object.keys(localStorage).filter(k => k.startsWith('ndl_cache_')).forEach(k => localStorage.removeItem(k)); } catch {}
+}
+
 // --- TIPOS DE DADOS ---
 export type PricingModel = 'ROOMS' | 'HOURLY' | 'SQM' | 'FIXED';
 
@@ -184,7 +206,8 @@ interface DataContextType {
   currentCollaborator: CollaboratorUser | null;
   adminLoggedIn: boolean;
   loading: boolean;
-  
+  isRefreshing: boolean;
+
   addService: (service: Service) => Promise<void>;
   updateServiceStatus: (id: string, status: string, additionalData?: Partial<Service>) => Promise<void>;
   
@@ -297,6 +320,7 @@ const mockServices: Service[] = [];
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   const [services, setServices] = useState<Service[]>([]);
   const [serviceDefinitions, setServiceDefinitions] = useState<ServiceDefinition[]>(mockServiceDefinitions);
@@ -411,68 +435,84 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     imageUrl: undefined 
   });
 
-  // --- FETCH DATA ---
+  // --- FETCH DATA (parallel + stale-while-revalidate) ---
   const fetchData = async () => {
-    setLoading(true);
+    // 1. Serve cached data immediately — zero perceived latency on repeat visits
+    const cachedServices = getCached<Service[]>('services');
+    const cachedClients = getCached<ClientUser[]>('clients');
+    const cachedCollabs = getCached<CollaboratorUser[]>('collabs');
+    if (cachedServices) setServices(cachedServices);
+    if (cachedClients) setClients(cachedClients);
+    if (cachedCollabs) setCollaborators(cachedCollabs);
+    if (cachedServices || cachedClients) setLoading(false);
+
+    setIsRefreshing(true);
     try {
-        // Tenta conectar ao Supabase e buscar configurações
-        const { data: sDefs, error: sDefError } = await supabase.from('service_definitions').select('*');
-        if (sDefError) throw sDefError; // Força cair no catch se der erro (modo offline)
+        // 2. All 8 fetches in parallel — replaces 8 sequential round trips with 1
+        const [sDefsRes, settingsRes, usersRes, addressesRes, srvsRes, trxsRes, qtsRes, tagsRes] = await Promise.all([
+            supabase.from('service_definitions').select('*'),
+            supabase.from('platform_settings').select('*').single(),
+            supabase.from('app_users').select('*'),
+            supabase.from('addresses').select('*'),
+            supabase.from('services').select('*').order('created_at', { ascending: false }).limit(500),
+            supabase.from('transactions').select('*').order('created_at', { ascending: false }),
+            supabase.from('quotes').select('*').order('created_at', { ascending: false }),
+            supabase.from('crm_tags').select('*').order('name'),
+        ]);
 
-        if (sDefs && sDefs.length > 0) {
-            setServiceDefinitions(sDefs.map(mapDbDefToApp));
+        if (sDefsRes.error) throw sDefsRes.error;
+
+        if (sDefsRes.data && sDefsRes.data.length > 0) {
+            setServiceDefinitions(sDefsRes.data.map(mapDbDefToApp));
         }
 
-        // Fetch Settings
-        const { data: settingsData } = await supabase.from('platform_settings').select('*').single();
-        if (settingsData) {
+        if (settingsRes.data) {
+            const sd = settingsRes.data;
             setPlatformSettings({
-                hourlyRate: settingsData.hourly_rate,
-                minDisplacement: settingsData.min_displacement,
-                payouts: settingsData.payouts,
-                botPrompt: settingsData.bot_prompt || undefined,
-                contactPhone: settingsData.contact_phone || undefined,
-                adminPhoto: settingsData.admin_photo || undefined,
-                adminName: settingsData.admin_name || undefined,
-                ninaEnabled: settingsData.nina_enabled !== false, // default true
-                workingHoursEnabled: settingsData.working_hours_enabled || false,
-                workingHoursStart: settingsData.working_hours_start || '08:00',
-                workingHoursEnd: settingsData.working_hours_end || '18:00',
-                workingHoursDays: settingsData.working_hours_days || '1,2,3,4,5,6',
-                awayMessage: settingsData.away_message || 'Olá! Nosso atendimento é de segunda a sábado, das 8h às 18h. Retornaremos em breve! 😊',
-                followUpEnabled: settingsData.follow_up_enabled || false,
-                followUpChatHours: settingsData.follow_up_hours ?? 2,
-                followUpChatHours2: settingsData.follow_up_hours_2 ?? 26,
-                followUpHumanDelays: (() => { try { const v = JSON.parse(settingsData.follow_up_steps || ''); if (Array.isArray(v) && v.every((n: unknown) => typeof n === 'number')) return v; } catch { /* ignore */ } return [24, 48]; })(),
-                ninaTone: settingsData.nina_tone || 'casual',
-                ninaSilenceHours: settingsData.nina_silence_hours ?? 24,
-                templateWelcome: settingsData.template_welcome || undefined,
-                templateProposal: settingsData.template_proposal || undefined,
-                templateConfirmation: settingsData.template_confirmation || undefined,
+                hourlyRate: sd.hourly_rate,
+                minDisplacement: sd.min_displacement,
+                payouts: sd.payouts,
+                botPrompt: sd.bot_prompt || undefined,
+                contactPhone: sd.contact_phone || undefined,
+                adminPhoto: sd.admin_photo || undefined,
+                adminName: sd.admin_name || undefined,
+                ninaEnabled: sd.nina_enabled !== false,
+                workingHoursEnabled: sd.working_hours_enabled || false,
+                workingHoursStart: sd.working_hours_start || '08:00',
+                workingHoursEnd: sd.working_hours_end || '18:00',
+                workingHoursDays: sd.working_hours_days || '1,2,3,4,5,6',
+                awayMessage: sd.away_message || 'Olá! Nosso atendimento é de segunda a sábado, das 8h às 18h. Retornaremos em breve! 😊',
+                followUpEnabled: sd.follow_up_enabled || false,
+                followUpChatHours: sd.follow_up_hours ?? 2,
+                followUpChatHours2: sd.follow_up_hours_2 ?? 26,
+                followUpHumanDelays: (() => { try { const v = JSON.parse(sd.follow_up_steps || ''); if (Array.isArray(v) && v.every((n: unknown) => typeof n === 'number')) return v; } catch { /* ignore */ } return [24, 48]; })(),
+                ninaTone: sd.nina_tone || 'casual',
+                ninaSilenceHours: sd.nina_silence_hours ?? 24,
+                templateWelcome: sd.template_welcome || undefined,
+                templateProposal: sd.template_proposal || undefined,
+                templateConfirmation: sd.template_confirmation || undefined,
             });
         }
 
-        const { data: users } = await supabase.from('app_users').select('*');
-        const { data: addresses } = await supabase.from('addresses').select('*');
-        
-        if (users) {
-            const rawClients = users.filter(u => u.role === 'CLIENT');
-            const rawCollabs = users.filter(u => u.role === 'COLLABORATOR');
-
-            const mappedClients = rawClients.map(c => {
-                const userAddresses = addresses ? addresses.filter(a => a.user_id === c.id) : [];
-                return mapDbUserToClient(c, userAddresses);
-            });
-
+        if (usersRes.data) {
+            const addrs = addressesRes.data ?? [];
+            const rawClients = usersRes.data.filter((u: any) => u.role === 'CLIENT');
+            const rawCollabs = usersRes.data.filter((u: any) => u.role === 'COLLABORATOR');
+            const mappedClients = rawClients.map((c: any) => mapDbUserToClient(c, addrs.filter((a: any) => a.user_id === c.id)));
+            const mappedCollabs = rawCollabs.map(mapDbUserToCollab);
             setClients(mappedClients);
-            setCollaborators(rawCollabs.map(mapDbUserToCollab));
+            setCollaborators(mappedCollabs);
+            setCache('clients', mappedClients);
+            setCache('collabs', mappedCollabs);
         }
 
-        const { data: srvs } = await supabase.from('services').select('*').order('created_at', { ascending: false });
-        if (srvs) setServices(srvs.map(mapDbServiceToApp));
+        if (srvsRes.data) {
+            const mapped = srvsRes.data.map(mapDbServiceToApp);
+            setServices(mapped);
+            setCache('services', mapped);
+        }
 
-        const { data: trxs } = await supabase.from('transactions').select('*');
-        if (trxs) setTransactions(trxs.map((t: any) => ({
+        if (trxsRes.data) setTransactions(trxsRes.data.map((t: any) => ({
             id: t.id,
             type: t.type,
             serviceType: t.service_type || '',
@@ -484,8 +524,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             receipt: t.receipt || null,
         })));
 
-        const { data: qts } = await supabase.from('quotes').select('*').order('created_at', { ascending: false });
-        if (qts) setQuotes(qts.map((q: any) => ({
+        if (qtsRes.data) setQuotes(qtsRes.data.map((q: any) => ({
             id: q.id,
             name: q.name || '',
             email: q.email || '',
@@ -512,19 +551,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             createdAt: q.created_at ? new Date(q.created_at).getTime() : Date.now()
         })));
 
-        const { data: tagsData } = await supabase.from('crm_tags').select('*').order('name');
-        if (tagsData) setCrmTags(tagsData.map((t: any) => ({ id: t.id, name: t.name, color: t.color || '#6366f1' })));
+        if (tagsRes.data) setCrmTags(tagsRes.data.map((t: any) => ({ id: t.id, name: t.name, color: t.color || '#6366f1' })));
 
     } catch (error) {
         console.warn("Modo Demonstração: Usando dados Mock (Supabase não configurado ou offline).");
-        // Carrega Mock Data se falhar
-        setClients(mockClients);
-        setCollaborators(mockCollaborators);
-        setServices(mockServices);
-        setServiceDefinitions(mockServiceDefinitions);
-        setNotifications([]);
+        if (!cachedServices) {
+            setClients(mockClients);
+            setCollaborators(mockCollaborators);
+            setServices(mockServices);
+            setServiceDefinitions(mockServiceDefinitions);
+            setNotifications([]);
+        }
     } finally {
         setLoading(false);
+        setIsRefreshing(false);
     }
   };
 
@@ -628,6 +668,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     if (data && !error) {
         setServices(prev => [mapDbServiceToApp(data[0]), ...prev.filter(s => s.id !== service.id)]);
+        clearCache();
     } else {
         console.warn("Fallback: Serviço salvo apenas localmente.");
     }
@@ -651,6 +692,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if ((additionalData as any)?.checkout_notes) updates.checkout_notes = (additionalData as any).checkout_notes;
 
     await supabase.from('services').update(updates).eq('id', id);
+    clearCache();
   };
 
   // --- ACTIONS: SERVICE DEFINITIONS ---
@@ -1066,7 +1108,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <DataContext.Provider value={{ 
       services, clients, collaborators, notifications, serviceDefinitions, transactions, platformSettings,
-      currentUser, currentCollaborator, adminLoggedIn, loading,
+      currentUser, currentCollaborator, adminLoggedIn, loading, isRefreshing,
       addService, updateServiceStatus, 
       addServiceDefinition, updateServiceDefinition, deleteServiceDefinition,
       registerClient, updateClient, deleteClient, loginClient, logoutClient,

@@ -23,7 +23,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   const [showClientPanel, setShowClientPanel] = useState(false);
   const [clientPreviewList, setClientPreviewList] = useState<PreviewClient[]>([]);
   const [loadingClientList, setLoadingClientList] = useState(false);
-  const { currentUser, logoutClient, logoutCollaborator, logoutAdmin, platformSettings } = useData();
+  const { currentUser, logoutClient, logoutCollaborator, logoutAdmin, platformSettings, isRefreshing } = useData();
   const mainRef = useRef<HTMLElement>(null);
 
   // Reset scroll to top on every route change
@@ -311,6 +311,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background dark:bg-darkBg font-sans transition-colors duration-300">
+      {/* Subtle refresh indicator */}
+      {isRefreshing && (
+        <div className="fixed top-0 left-0 right-0 z-[9999] h-0.5 bg-violet-200 overflow-hidden">
+          <div className="h-full bg-violet-500 animate-pulse w-2/3 ml-auto mr-0" style={{ animation: 'ndl-slide 1.5s ease-in-out infinite' }} />
+        </div>
+      )}
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-darkSurface border-r border-gray-200 dark:border-darkBorder transition-colors duration-300">
         <div className="p-6 flex items-center gap-3">
