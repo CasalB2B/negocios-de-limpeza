@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
-import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen } from 'lucide-react';
+import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
 import { useData } from './DataContext';
@@ -165,24 +165,86 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   }
 
   // --- LAYOUT DE ADMIN E COLABORADOR (SIDEBAR) ---
+
+  // Groups config for admin nav
+  const adminGroups = [
+    {
+      key: 'OPERAÇÕES',
+      label: 'Operações',
+      icon: <Kanban size={16} />,
+      items: [
+        { icon: <Calendar size={15} />,   label: 'Agendamento',   path: '/admin/calendar' },
+        { icon: <Kanban size={15} />,     label: 'OS / Pipeline', path: '/admin/os' },
+        { icon: <Grid size={15} />,       label: 'Clientes',      path: '/admin/clients' },
+        { icon: <Sparkles size={15} />,   label: 'Serviços',      path: '/admin/services' },
+      ],
+    },
+    {
+      key: 'RH',
+      label: 'Recursos Humanos',
+      icon: <Users size={16} />,
+      items: [
+        { icon: <UserPlus size={15} />,   label: 'Contratação',      path: '/admin/rh/contratacao' },
+        { icon: <Users size={15} />,      label: 'Colaboradoras',    path: '/admin/rh/colaboradoras' },
+        { icon: <MessageSquare size={15}/>,label: 'Avaliações',      path: '/admin/rh/avaliacoes' },
+        { icon: <BarChart2 size={15} />,  label: 'Desempenho',       path: '/admin/rh/desempenho' },
+        { icon: <BookOpen size={15} />,   label: 'Plano de Carreira',path: '/admin/rh/plano-carreira' },
+        { icon: <Settings size={15} />,   label: 'Config. RH',       path: '/admin/rh/configuracoes' },
+      ],
+    },
+    {
+      key: 'FINANCEIRO',
+      label: 'Financeiro',
+      icon: <DollarSign size={16} />,
+      items: [
+        { icon: <DollarSign size={15} />, label: 'Financeiro', path: '/admin/payments' },
+      ],
+    },
+    {
+      key: 'CONFIG',
+      label: 'Configurações',
+      icon: <Settings size={16} />,
+      items: [
+        { icon: <Settings size={15} />,   label: 'Configurações', path: '/admin/settings' },
+      ],
+    },
+  ];
+
+  // Which groups are expanded (auto-expand active group)
+  const getInitialExpanded = () => {
+    const set = new Set<string>();
+    adminGroups.forEach(g => {
+      if (g.items.some(i => location.pathname.startsWith(i.path) || location.pathname === i.path)) {
+        set.add(g.key);
+      }
+    });
+    return set;
+  };
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(getInitialExpanded);
+
+  // Auto-expand when route changes
+  useEffect(() => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      adminGroups.forEach(g => {
+        if (g.items.some(i => location.pathname === i.path || location.pathname.startsWith(i.path + '/'))) {
+          next.add(g.key);
+        }
+      });
+      return next;
+    });
+  }, [location.pathname]);
+
+  const toggleGroup = (key: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
   const getMenuItems = () => {
     switch (role) {
-      case UserRole.ADMIN:
-        return [
-          { icon: <Calendar size={16} />,        label: 'Agendamento',  path: '/admin/calendar',            group: 'OPERAÇÕES' },
-          { icon: <Kanban size={16} />,          label: 'OS / Pipeline',path: '/admin/os',                  group: 'OPERAÇÕES' },
-          { icon: <Grid size={16} />,            label: 'Clientes',     path: '/admin/clients',             group: 'OPERAÇÕES' },
-          { icon: <Sparkles size={16} />,        label: 'Serviços',     path: '/admin/services',            group: 'OPERAÇÕES' },
-          { icon: <LayoutDashboard size={16} />, label: 'Visão Geral',  path: '/admin/dashboard',           group: 'RH' },
-          { icon: <UserPlus size={16} />,        label: 'Contratação',  path: '/admin/rh/contratacao',      group: 'RH' },
-          { icon: <Users size={16} />,           label: 'Colaboradoras',path: '/admin/rh/colaboradoras',    group: 'RH' },
-          { icon: <MessageSquare size={16} />,   label: 'Avaliações',   path: '/admin/rh/avaliacoes',       group: 'RH' },
-          { icon: <BarChart2 size={16} />,       label: 'Desempenho',   path: '/admin/rh/desempenho',       group: 'RH' },
-          { icon: <BookOpen size={16} />,        label: 'Plano de Carreira', path: '/admin/rh/plano-carreira', group: 'RH' },
-          { icon: <Settings size={16} />,        label: 'Config. RH',   path: '/admin/rh/configuracoes',    group: 'RH' },
-          { icon: <DollarSign size={16} />,      label: 'Financeiro',   path: '/admin/payments',            group: 'FINANCEIRO' },
-          { icon: <Settings size={20} />,        label: 'Configurações',path: '/admin/settings',            group: 'CONFIG' },
-        ];
       case UserRole.COLLABORATOR:
         return [
           { icon: <Calendar size={20} />, label: 'Agenda', path: '/collab/agenda' },
@@ -210,68 +272,71 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           </div>
         </div>
 
-        <nav className="flex-1 px-4 mt-4 overflow-y-auto">
-          {(() => {
-            const groups = ['OPERAÇÕES', 'RH', 'VENDAS', 'FINANCEIRO', 'CONFIG'] as const;
-            const groupLabels: Record<string, string> = { 'OPERAÇÕES': 'Operações', RH: 'Recursos Humanos', VENDAS: 'Vendas', FINANCEIRO: 'Financeiro', CONFIG: 'Configurações' };
-            return groups.map(group => {
-              const items = menuItems.filter((i: any) => i.group === group);
-              if (!items.length) return null;
-              return (
-                <div key={group} className="mb-4">
-                  <p className="text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-widest px-4 mb-1">{groupLabels[group]}</p>
-                  {items.map((item: any) => {
-                    const isCRM = item.path === '/admin/crm';
-                    const onCRM = location.pathname.startsWith('/admin/crm');
-                    const isMarketing = item.path === '/admin/marketing';
-                    const MARKETING_PATHS = ['/admin/quotes', '/admin/crm', '/admin/inbox', '/admin/whatsapp', '/admin/analytics'];
-                    const onMarketing = isMarketing && MARKETING_PATHS.some(p => location.pathname.startsWith(p));
-                    const isDashboard = item.path === '/admin/dashboard';
-                    const onDashboard = isDashboard && (location.pathname === '/admin/dashboard' || location.pathname === '/admin/rh');
-                    const isActive = isCRM ? onCRM : isMarketing ? onMarketing : isDashboard ? onDashboard : location.pathname === item.path;
-                    return (
-                      <div key={item.path}>
+        <nav className="flex-1 px-3 mt-2 overflow-y-auto space-y-1 pb-4">
+          {/* Dashboard — top-level item */}
+          <button
+            onClick={() => navigate('/admin/dashboard')}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl w-full transition-colors mb-2 ${
+              location.pathname === '/admin/dashboard'
+                ? 'bg-primary/10 text-primary font-bold'
+                : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder'
+            }`}
+          >
+            <LayoutDashboard size={16} />
+            <span className="text-sm font-semibold">Dashboard</span>
+          </button>
+
+          {/* Collapsible groups */}
+          {adminGroups.map(group => {
+            const isOpen = expandedGroups.has(group.key);
+            const hasActive = group.items.some(i => location.pathname === i.path || location.pathname.startsWith(i.path + '/'));
+            return (
+              <div key={group.key} className="mb-1">
+                {/* Group header — clickable block */}
+                <button
+                  onClick={() => toggleGroup(group.key)}
+                  className={`flex items-center justify-between w-full px-3 py-2.5 rounded-xl transition-colors group ${
+                    hasActive && !isOpen
+                      ? 'bg-primary/5 text-primary'
+                      : 'hover:bg-gray-50 dark:hover:bg-darkBorder text-darkText dark:text-darkTextPrimary'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className={`${hasActive ? 'text-primary' : 'text-lightText dark:text-darkTextSecondary'}`}>
+                      {group.icon}
+                    </span>
+                    <span className="text-sm font-bold">{group.label}</span>
+                  </div>
+                  <span className={`transition-transform duration-200 text-lightText dark:text-darkTextSecondary ${isOpen ? 'rotate-180' : ''}`}>
+                    <ChevronDown size={14} />
+                  </span>
+                </button>
+
+                {/* Sub-items */}
+                {isOpen && (
+                  <div className="mt-0.5 ml-2 pl-3 border-l-2 border-gray-100 dark:border-darkBorder space-y-0.5">
+                    {group.items.map(item => {
+                      const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+                      return (
                         <button
+                          key={item.path}
                           onClick={() => navigate(item.path)}
-                          className={`flex items-center gap-3 px-4 py-2.5 rounded-xl w-full transition-colors border-l-4 mb-0.5 ${
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg w-full transition-colors text-sm ${
                             isActive
-                              ? 'bg-primary/5 dark:bg-primary/10 text-primary font-bold border-primary'
-                              : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder border-transparent'
+                              ? 'bg-primary/10 text-primary font-bold'
+                              : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder'
                           }`}
                         >
                           {item.icon}
-                          <span className="text-sm">{item.label}</span>
+                          <span>{item.label}</span>
                         </button>
-
-                        {/* Marketing sub-menu */}
-                        {isMarketing && onMarketing && (
-                          <div className="ml-4 mb-1 pl-3 border-l-2 border-gray-100 dark:border-darkBorder space-y-0.5">
-                            {[
-                              { label: 'Orçamentos', path: '/admin/quotes',     icon: <MessageSquare size={14} /> },
-                              { label: 'CRM / Leads', path: '/admin/crm',       icon: <Kanban size={14} /> },
-                              { label: 'Conversas',  path: '/admin/inbox',      icon: <Inbox size={14} /> },
-                              { label: 'WhatsApp',   path: '/admin/whatsapp',   icon: <MessageCircle size={14} /> },
-                              { label: 'Analytics',  path: '/admin/analytics',  icon: <BarChart2 size={14} /> },
-                            ].map(sub => (
-                              <button key={sub.path} onClick={() => navigate(sub.path)}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg w-full transition-colors text-xs ${
-                                  location.pathname.startsWith(sub.path)
-                                    ? 'bg-primary/10 text-primary font-bold'
-                                    : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder'
-                                }`}>
-                                {sub.icon}
-                                {sub.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            });
-          })()}
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         <div className="p-4 border-t border-gray-100 dark:border-darkBorder">
