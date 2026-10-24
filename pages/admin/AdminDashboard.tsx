@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import {
-  Bell, UserPlus, AlertCircle, CheckCircle, X, Info,
-  Users, ArrowRight, Phone, Calendar, BarChart2,
-  Settings, BookOpen, MessageSquare, BellOff, BellRing,
+  Calendar, DollarSign, Users, AlertCircle, CheckCircle,
+  Plus, ArrowRight, Clock, TrendingUp, BellRing, BellOff,
+  Phone, MessageSquare, UserPlus, Settings, BookOpen, BarChart2,
 } from 'lucide-react';
 import { useRH } from '../../components/RHContext';
+import { supabase } from '../../lib/supabase';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -15,22 +16,44 @@ function parsePipeline(dadosFormulario: string): Record<string, any> {
   try { return JSON.parse(dadosFormulario || '{}'); } catch { return {}; }
 }
 
-function parseDateTime(dateStr: string, timeStr: string): Date | null {
-  if (!dateStr || !timeStr) return null;
-  try {
-    const d = new Date(`${dateStr}T${timeStr}:00`);
-    return isNaN(d.getTime()) ? null : d;
-  } catch { return null; }
+function todayBR(): string {
+  const now = new Date();
+  const d = String(now.getDate()).padStart(2, '0');
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const y = now.getFullYear();
+  return `${d}/${m}/${y}`;
 }
 
-function fmtDate(dt: Date): string {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
-  const d = new Date(dt); d.setHours(0,0,0,0);
-  const time = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  if (d.getTime() === today.getTime()) return `Hoje às ${time}`;
-  if (d.getTime() === tomorrow.getTime()) return `Amanhã às ${time}`;
-  return dt.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) + ` às ${time}`;
+function parseDateBR(s: string): Date | null {
+  if (!s) return null;
+  const parts = s.split('/');
+  if (parts.length !== 3) return null;
+  const [dd, mm, yyyy] = parts.map(Number);
+  const d = new Date(yyyy, mm - 1, dd);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function fmtBRL(n: number): string {
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+interface ServiceRow {
+  id: string;
+  client_name: string | null;
+  collaborator_name: string | null;
+  type: string;
+  date: string | null;
+  time: string | null;
+  status: string | null;
+  price: number | null;
+  payment_status: string | null;
+}
+
+interface ColabRow {
+  id: string;
+  nome: string;
+  status: string;
+  data_nascimento: string | null;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -39,11 +62,113 @@ export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { colaboradoras, candidatas, avaliacoes } = useRH();
 
+  const [services, setServices] = useState<ServiceRow[]>([]);
+  const [colabs, setColabs] = useState<ColabRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [notifPerm, setNotifPerm] = useState<NotificationPermission>('default');
 
   useEffect(() => {
     if ('Notification' in window) setNotifPerm(Notification.permission);
   }, []);
+
+  useEffect(() => {
+    const fetch = async () => {
+      const now = new Date();
+      // Fetch current month's services + today's
+      const { data: svc } = await supabase
+        .from('services')
+        .select('id, client_name, collaborator_name, type, date, time, status, price, payment_status');
+      const { data: col } = await supabase
+        .from('colaboradoras_rh')
+        .select('id, nome, status, data_nascimento');
+      setServices((svc as ServiceRow[]) ?? []);
+      setColabs((col as ColabRow[]) ?? []);
+      setLoading(false);
+    };
+    fetch();
+  }, []);
+
+  // ── Date ──────────────────────────────────────────────────────────────────
+  const today = new Date();
+  const finalDateString = (() => {
+    const s = new Intl.DateTimeFormat('pt-BR', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    }).format(today);
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  })();
+
+  const todayStr = todayBR();
+  const curMonth = today.getMonth() + 1;
+  const curYear  = today.getFullYear();
+
+  // ── Derived data ──────────────────────────────────────────────────────────
+
+  const todayServices = services
+    .filter(s => s.date === todayStr && s.status !== 'CANCELLED')
+    .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''));
+
+  const monthServices = services.filter(s => {
+    if (!s.date) return false;
+    const d = parseDateBR(s.date);
+    return d && d.getMonth() + 1 === curMonth && d.getFullYear() === curYear;
+  });
+
+  const receitaMes = monthServices
+    .filter(s => s.payment_status === 'PAID')
+    .reduce((sum, s) => sum + (s.price ?? 0), 0);
+
+  const aReceber = monthServices
+    .filter(s => s.status !== 'CANCELLED' && (!s.payment_status || s.payment_status === 'PENDENTE'))
+    .reduce((sum, s) => sum + (s.price ?? 0), 0);
+
+  const ativasCount = colabs.filter(c => c.status === 'ATIVA').length;
+  const afastadasCount = colabs.filter(c => c.status === 'AFASTADA').length;
+
+  // Sem pagamento = completed past services with no payment
+  const semPagamento = services.filter(s => {
+    if (!s.date) return false;
+    const d = parseDateBR(s.date);
+    return d && d < today && s.status === 'COMPLETED' && !s.payment_status;
+  }).length;
+
+  // Candidatas em processo
+  const emProcesso = candidatas.filter(c => {
+    const p = parsePipeline(c.dadosFormulario);
+    return !!p.ligacaoData || !!p.entrevistaData;
+  }).length;
+
+  // Aniversários (próximos 2 dias — hoje e amanhã)
+  const anivAlerts = colabs.filter(c => {
+    if (!c.data_nascimento || c.status !== 'ATIVA') return false;
+    const parts = c.data_nascimento.split('-');
+    if (parts.length < 3) return false;
+    const bDay = new Date(today.getFullYear(), Number(parts[1]) - 1, Number(parts[2]));
+    const diff = Math.floor((bDay.setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000);
+    return diff >= 0 && diff <= 1;
+  });
+
+  // Bar chart — last 7 days of current month
+  const last7: { label: string; count: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    if (d.getMonth() + 1 !== curMonth) continue;
+    const dStr = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+    const count = services.filter(s => s.date === dStr && s.status !== 'CANCELLED').length;
+    last7.push({ label: String(d.getDate()), count });
+  }
+  const maxBar = Math.max(...last7.map(d => d.count), 1);
+
+  const statusLabel: Record<string, { label: string; cls: string }> = {
+    SCHEDULED:      { label: 'Agendado',    cls: 'bg-blue-500/20 text-blue-300' },
+    WAITING_SIGNAL: { label: 'Agendado',    cls: 'bg-blue-500/20 text-blue-300' },
+    PENDING:        { label: 'Agendado',    cls: 'bg-blue-500/20 text-blue-300' },
+    BUDGET_READY:   { label: 'Agendado',    cls: 'bg-blue-500/20 text-blue-300' },
+    CONFIRMED:      { label: 'Confirmado',  cls: 'bg-green-500/20 text-green-300' },
+    IN_PROGRESS:    { label: 'Em andamento',cls: 'bg-orange-500/20 text-orange-300' },
+    COMPLETED:      { label: 'Concluído',   cls: 'bg-gray-500/20 text-gray-300' },
+    CANCELLED:      { label: 'Cancelado',   cls: 'bg-red-500/20 text-red-300' },
+  };
 
   const requestNotifPermission = async () => {
     if (!('Notification' in window)) return;
@@ -51,247 +176,302 @@ export const AdminDashboard: React.FC = () => {
     setNotifPerm(perm);
   };
 
-  // ── Date ──────────────────────────────────────────────────────────────────
-  const today = new Date();
-  const finalDateString = (() => {
-    const s = new Intl.DateTimeFormat('pt-BR', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-    }).format(today);
-    return s.charAt(0).toUpperCase() + s.slice(1);
-  })();
-
-  // ── RH counters (field names match PipelineExtra in AdminRHContratacao) ───
-  const ativasCount    = colaboradoras.filter(c => c.status === 'ATIVA').length;
-  const afastadasCount = colaboradoras.filter(c => c.status === 'AFASTADA').length;
-
-  // Current month range for filtering
-  const mesAtual = today.getMonth();
-  const anoAtual = today.getFullYear();
-  const isMesAtual = (dateStr: string) => {
-    if (!dateStr) return false;
-    try {
-      const d = new Date(dateStr + 'T12:00:00');
-      return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
-    } catch { return false; }
-  };
-
-  // Em processo = candidatas com ligação OU entrevista agendada (ativamente em processo)
-  const emProcesso = candidatas.filter(c => {
-    const p = parsePipeline(c.dadosFormulario);
-    return !!p.ligacaoData || !!p.entrevistaData;
-  }).length;
-
-  // Ligações do mês atual
-  const ligacoesAgend = candidatas.filter(c => {
-    const p = parsePipeline(c.dadosFormulario);
-    return isMesAtual(p.ligacaoData);
-  }).length;
-
-  // Entrevistas do mês atual
-  const entrevistasAgend = candidatas.filter(c => {
-    const p = parsePipeline(c.dadosFormulario);
-    return isMesAtual(p.entrevistaData);
-  }).length;
-
-  // ── Aniversários próximos (hoje + próximos 7 dias, sem mostrar passados) ──
-  const hoje = new Date();
-  const aniversarios = colaboradoras.filter(c => {
-    if (!c.dataNascimento || c.status !== 'ATIVA') return false;
-    try {
-      const [, m, d] = c.dataNascimento.split('-').map(Number);
-      // Build the birthday date for this calendar year
-      const anivEsteAno = new Date(hoje.getFullYear(), m - 1, d);
-      // Days until birthday: positive = upcoming, negative = already passed
-      const diffDias = Math.floor((anivEsteAno.getTime() - hoje.setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
-      return diffDias >= 0 && diffDias <= 7;
-    } catch { return false; }
-  });
-
-  // ── Upcoming events (next 7 days) ─────────────────────────────────────────
-  const cutoffMs = Date.now() + 7 * 24 * 60 * 60 * 1000;
-  const upcomingEvents: Array<{ nome: string; tipo: 'ligacao' | 'entrevista'; dt: Date; candidataId: string }> = [];
-
-  for (const c of candidatas) {
-    const p = parsePipeline(c.dadosFormulario);
-    if (p.ligacaoData && p.ligacaoHorario) {
-      const dt = parseDateTime(p.ligacaoData, p.ligacaoHorario);
-      if (dt && dt.getTime() > Date.now() && dt.getTime() < cutoffMs) {
-        upcomingEvents.push({ nome: c.nome, tipo: 'ligacao', dt, candidataId: c.id });
-      }
-    }
-    if (p.entrevistaData && p.entrevistaHorario) {
-      const dt = parseDateTime(p.entrevistaData, p.entrevistaHorario);
-      if (dt && dt.getTime() > Date.now() && dt.getTime() < cutoffMs) {
-        upcomingEvents.push({ nome: c.nome, tipo: 'entrevista', dt, candidataId: c.id });
-      }
-    }
-  }
-  upcomingEvents.sort((a, b) => a.dt.getTime() - b.dt.getTime());
-
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <Layout role={UserRole.ADMIN}>
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto space-y-5">
 
         {/* ── Header ── */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <header className="flex items-start justify-between">
           <div>
-            <p className="text-xs font-bold text-lightText dark:text-darkTextSecondary mb-1">Dashboard</p>
-            <h1 className="text-2xl md:text-3xl font-display font-bold text-darkText dark:text-darkTextPrimary">
-              Bem-vindo de volta 👋
-            </h1>
-            <p className="text-lightText dark:text-darkTextSecondary text-xs md:text-sm mt-1">{finalDateString}</p>
+            <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+            <p className="text-gray-400 text-sm mt-0.5">{finalDateString} · Visão geral do negócio</p>
           </div>
           <button
-            className="w-10 h-10 bg-gray-200 dark:bg-darkBorder rounded-xl overflow-hidden border-2 border-white dark:border-darkBorder shadow-sm self-end md:self-auto"
             onClick={() => navigate('/admin/settings')}
+            className="w-9 h-9 rounded-xl bg-gray-700 flex items-center justify-center hover:bg-gray-600 transition-colors"
           >
-            <img src={localStorage.getItem('admin_photo') || 'https://i.pravatar.cc/150?u=admin'} alt="Admin" className="w-full h-full object-cover" />
+            <Settings size={16} className="text-gray-300" />
           </button>
         </header>
 
-        {/* ── Notification permission banner ── */}
+        {/* ── Notification banner ── */}
         {notifPerm === 'default' && (
-          <div className="flex items-center gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl px-4 py-3 mb-5">
-            <BellRing size={18} className="text-amber-600 dark:text-amber-400 shrink-0" />
-            <p className="text-sm text-amber-800 dark:text-amber-300 flex-1">
-              Ative as notificações para receber alertas de ligações e entrevistas
-            </p>
-            <button
-              onClick={requestNotifPermission}
-              className="text-xs font-bold bg-amber-500 text-white px-3 py-1.5 rounded-xl hover:bg-amber-600 transition-colors shrink-0"
-            >
+          <div className="flex items-center gap-3 bg-amber-900/20 border border-amber-800 rounded-xl px-4 py-3">
+            <BellRing size={16} className="text-amber-400 shrink-0" />
+            <p className="text-sm text-amber-300 flex-1">Ative as notificações para receber alertas de compromissos</p>
+            <button onClick={requestNotifPermission} className="text-xs font-bold bg-amber-500 text-white px-3 py-1 rounded-lg hover:bg-amber-600">
               Ativar
             </button>
           </div>
         )}
         {notifPerm === 'denied' && (
-          <div className="flex items-center gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl px-4 py-3 mb-5">
-            <BellOff size={16} className="text-red-500 shrink-0" />
-            <p className="text-xs text-red-700 dark:text-red-400">
-              Notificações bloqueadas. Ative nas configurações do navegador para receber alertas de compromissos.
-            </p>
+          <div className="flex items-center gap-3 bg-red-900/20 border border-red-800 rounded-xl px-4 py-3">
+            <BellOff size={14} className="text-red-400 shrink-0" />
+            <p className="text-xs text-red-400">Notificações bloqueadas. Ative nas configurações do navegador.</p>
           </div>
         )}
 
-        {/* ── Aniversários ── */}
-        {aniversarios.length > 0 && (
-          <div className="bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800 rounded-2xl px-4 py-3 mb-5 flex items-center gap-3">
-            <span className="text-xl">🎂</span>
-            <p className="text-sm font-bold text-pink-800 dark:text-pink-300">
-              {aniversarios.length === 1
-                ? `Aniversário de ${aniversarios[0].nome} esta semana!`
-                : `${aniversarios.length} aniversários na equipe esta semana!`}
-            </p>
-          </div>
-        )}
-
-        {/* ── RH Summary Card ── */}
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-5 mb-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-white">
-              <p className="font-bold text-lg">👥 Equipe &amp; Contratações</p>
-              <p className="text-purple-100 text-sm mt-0.5">Visão geral do RH em tempo real</p>
+        {/* ── KPI row ── */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {/* Serviços hoje */}
+          <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-gray-400 font-medium">Serviços hoje</span>
+              <Calendar size={14} className="text-blue-400" />
             </div>
-            <button
-              onClick={() => navigate('/admin/rh/colaboradoras')}
-              className="text-white/80 hover:text-white text-xs flex items-center gap-1 transition-colors"
-            >
-              Ver equipe <ArrowRight size={12}/>
-            </button>
+            {loading ? (
+              <div className="h-8 bg-gray-700 animate-pulse rounded" />
+            ) : (
+              <>
+                <p className="text-3xl font-bold text-white">{todayServices.length}</p>
+                {todayServices.length > 0 && (
+                  <p className="text-xs text-gray-400 mt-1 truncate">
+                    {todayServices.slice(0,2).map(s => s.client_name).join(', ')}
+                    {todayServices.length > 2 && ` +${todayServices.length - 2}`}
+                  </p>
+                )}
+              </>
+            )}
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {[
-              { label: 'Colaboradoras ativas',         value: ativasCount,       emoji: '✅', path: '/admin/rh/colaboradoras' },
-              { label: 'Em processo (c/ agendamento)', value: emProcesso,        emoji: '📋', path: '/admin/rh/contratacao' },
-              { label: 'Ligações este mês',            value: ligacoesAgend,     emoji: '📞', path: '/admin/rh/contratacao' },
-              { label: 'Entrevistas este mês',         value: entrevistasAgend,  emoji: '🎤', path: '/admin/rh/contratacao' },
-              { label: 'Afastadas',                    value: afastadasCount,    emoji: '⏸️',  path: '/admin/rh/colaboradoras' },
-              { label: 'Avaliações recebidas',         value: avaliacoes.length, emoji: '⭐', path: '/admin/rh/avaliacoes' },
-            ].map(item => (
-              <button
-                key={item.label}
-                onClick={() => navigate(item.path)}
-                className="bg-white/15 hover:bg-white/25 transition-colors rounded-xl p-3 text-left active:scale-95"
-              >
-                <p className="text-2xl font-bold text-white">{item.emoji} {item.value}</p>
-                <p className="text-xs text-purple-100 mt-0.5 leading-tight">{item.label}</p>
-              </button>
-            ))}
+          {/* Receita do mês */}
+          <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-gray-400 font-medium">Receita do mês</span>
+              <DollarSign size={14} className="text-green-400" />
+            </div>
+            {loading ? (
+              <div className="h-8 bg-gray-700 animate-pulse rounded" />
+            ) : (
+              <>
+                <p className="text-2xl font-bold text-green-400">{fmtBRL(receitaMes)}</p>
+                <p className="text-xs text-gray-400 mt-1">pagamentos confirmados</p>
+              </>
+            )}
+          </div>
+
+          {/* A receber */}
+          <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-gray-400 font-medium">A receber</span>
+              <TrendingUp size={14} className="text-yellow-400" />
+            </div>
+            {loading ? (
+              <div className="h-8 bg-gray-700 animate-pulse rounded" />
+            ) : (
+              <>
+                <p className="text-2xl font-bold text-yellow-400">{fmtBRL(aReceber)}</p>
+                <p className="text-xs text-gray-400 mt-1">pendente este mês</p>
+              </>
+            )}
+          </div>
+
+          {/* Colaboradoras ativas */}
+          <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-gray-400 font-medium">Colaboradoras ativas</span>
+              <Users size={14} className="text-purple-400" />
+            </div>
+            {loading ? (
+              <div className="h-8 bg-gray-700 animate-pulse rounded" />
+            ) : (
+              <>
+                <p className="text-3xl font-bold text-white">{ativasCount}</p>
+                {afastadasCount > 0 && (
+                  <p className="text-xs text-orange-400 mt-1">{afastadasCount} afastada{afastadasCount > 1 ? 's' : ''}</p>
+                )}
+              </>
+            )}
           </div>
         </div>
 
-        {/* ── Upcoming events ── */}
-        <div className="bg-white dark:bg-darkSurface border border-gray-100 dark:border-darkBorder rounded-2xl p-5 mb-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-darkText dark:text-darkTextPrimary flex items-center gap-2">
-              <Calendar size={16} className="text-primary" /> Próximos 7 dias
-            </h3>
-            <button
-              onClick={() => navigate('/admin/rh/contratacao')}
-              className="text-xs text-primary flex items-center gap-1 hover:underline"
-            >
-              Ver contratação <ArrowRight size={12}/>
+        {/* ── Agenda do dia ── */}
+        <div className="bg-gray-800 rounded-xl border border-gray-700">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+            <h2 className="font-bold text-white flex items-center gap-2">
+              <Clock size={16} className="text-blue-400" /> Agenda de Hoje
+            </h2>
+            <button onClick={() => navigate('/admin/calendar')} className="text-xs text-blue-400 flex items-center gap-1 hover:underline">
+              Ver calendário <ArrowRight size={12} />
             </button>
           </div>
-
-          {upcomingEvents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-lightText dark:text-darkTextSecondary gap-2">
-              <Calendar size={32} className="opacity-30" />
-              <p className="text-sm">Nenhuma ligação ou entrevista agendada para os próximos 7 dias</p>
+          {loading ? (
+            <div className="p-4 space-y-2">
+              {[1,2,3].map(i => <div key={i} className="h-10 bg-gray-700 animate-pulse rounded" />)}
+            </div>
+          ) : todayServices.length === 0 ? (
+            <div className="py-10 text-center text-gray-500 text-sm">
+              <Calendar size={28} className="mx-auto mb-2 opacity-30" />
+              Nenhum serviço hoje
             </div>
           ) : (
-            <div className="space-y-2">
-              {upcomingEvents.map((ev, i) => (
-                <button
-                  key={i}
-                  onClick={() => navigate('/admin/rh/contratacao')}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-darkBg hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors text-left group"
-                >
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0 ${ev.tipo === 'ligacao' ? 'bg-violet-500' : 'bg-blue-500'}`}>
-                    {ev.tipo === 'ligacao' ? <Phone size={15}/> : <MessageSquare size={15}/>}
+            <div className="divide-y divide-gray-700">
+              {todayServices.map(s => {
+                const st = statusLabel[s.status ?? ''] ?? { label: s.status ?? '—', cls: 'bg-gray-600/20 text-gray-400' };
+                return (
+                  <div key={s.id} className="flex items-center gap-3 px-4 py-3">
+                    <span className="text-xs text-gray-400 font-mono w-12 shrink-0">{s.time ?? '--:--'}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{s.client_name ?? '—'}</p>
+                      <p className="text-xs text-gray-400 truncate">{s.type} · {s.collaborator_name ?? '—'}</p>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${st.cls}`}>{st.label}</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary truncate group-hover:text-primary transition-colors">
-                      {ev.nome}
-                    </p>
-                    <p className="text-xs text-lightText dark:text-darkTextSecondary">
-                      {ev.tipo === 'ligacao' ? 'Ligação' : 'Entrevista'} · {fmtDate(ev.dt)}
-                    </p>
-                  </div>
-                  <ArrowRight size={14} className="text-lightText dark:text-darkTextSecondary shrink-0 group-hover:text-primary transition-colors" />
-                </button>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
 
+        {/* ── Two-column: chart + alerts ── */}
+        <div className="grid md:grid-cols-2 gap-4">
+
+          {/* Bar chart */}
+          <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
+            <h2 className="font-bold text-white text-sm mb-3 flex items-center gap-2">
+              <BarChart2 size={15} className="text-teal-400" /> Últimos 7 dias
+            </h2>
+            {loading ? (
+              <div className="h-28 bg-gray-700 animate-pulse rounded" />
+            ) : (
+              <>
+                <svg viewBox={`0 0 ${last7.length * 36} 80`} className="w-full" style={{ height: 80 }}>
+                  {last7.map((day, i) => {
+                    const barH = maxBar > 0 ? Math.max((day.count / maxBar) * 60, day.count > 0 ? 4 : 0) : 0;
+                    const x = i * 36 + 4;
+                    const y = 62 - barH;
+                    return (
+                      <g key={i}>
+                        <rect x={x} y={y} width={28} height={barH} rx={4} fill={day.count > 0 ? '#14b8a6' : '#374151'} />
+                        <text x={x + 14} y={78} textAnchor="middle" fontSize={9} fill="#9ca3af">{day.label}</text>
+                        {day.count > 0 && (
+                          <text x={x + 14} y={y - 3} textAnchor="middle" fontSize={9} fill="#14b8a6">{day.count}</text>
+                        )}
+                      </g>
+                    );
+                  })}
+                </svg>
+                <p className="text-xs text-gray-400 mt-2 text-center">
+                  {monthServices.length} serviço{monthServices.length !== 1 ? 's' : ''} este mês
+                </p>
+              </>
+            )}
+          </div>
+
+          {/* Alerts */}
+          <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
+            <h2 className="font-bold text-white text-sm mb-3 flex items-center gap-2">
+              <AlertCircle size={15} className="text-yellow-400" /> Atenção
+            </h2>
+            {loading ? (
+              <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-9 bg-gray-700 animate-pulse rounded" />)}</div>
+            ) : (() => {
+              const alerts: React.ReactNode[] = [];
+
+              if (semPagamento > 0)
+                alerts.push(
+                  <button key="pag" onClick={() => navigate('/admin/payments')}
+                    className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-lg bg-yellow-900/20 border border-yellow-800/40 hover:bg-yellow-900/30 transition-colors">
+                    <DollarSign size={14} className="text-yellow-400 shrink-0" />
+                    <span className="text-sm text-yellow-300 flex-1">{semPagamento} serviço{semPagamento > 1 ? 's' : ''} sem pagamento</span>
+                    <ArrowRight size={12} className="text-yellow-500" />
+                  </button>
+                );
+
+              if (afastadasCount > 0)
+                alerts.push(
+                  <button key="afas" onClick={() => navigate('/admin/rh/colaboradoras')}
+                    className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-lg bg-orange-900/20 border border-orange-800/40 hover:bg-orange-900/30 transition-colors">
+                    <Users size={14} className="text-orange-400 shrink-0" />
+                    <span className="text-sm text-orange-300 flex-1">{afastadasCount} colaboradora{afastadasCount > 1 ? 's' : ''} afastada{afastadasCount > 1 ? 's' : ''}</span>
+                    <ArrowRight size={12} className="text-orange-500" />
+                  </button>
+                );
+
+              if (emProcesso > 0)
+                alerts.push(
+                  <button key="proc" onClick={() => navigate('/admin/rh/contratacao')}
+                    className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-lg bg-purple-900/20 border border-purple-800/40 hover:bg-purple-900/30 transition-colors">
+                    <UserPlus size={14} className="text-purple-400 shrink-0" />
+                    <span className="text-sm text-purple-300 flex-1">{emProcesso} candidata{emProcesso > 1 ? 's' : ''} em processo</span>
+                    <ArrowRight size={12} className="text-purple-500" />
+                  </button>
+                );
+
+              anivAlerts.forEach(c => {
+                const parts = (c.data_nascimento ?? '').split('-');
+                const bDay = new Date(today.getFullYear(), Number(parts[1]) - 1, Number(parts[2]));
+                const diff = Math.floor((bDay.setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000);
+                alerts.push(
+                  <div key={`aniv-${c.id}`} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-pink-900/20 border border-pink-800/40">
+                    <span className="text-base">🎂</span>
+                    <span className="text-sm text-pink-300">{c.nome} — aniversário {diff === 0 ? 'hoje' : 'amanhã'}!</span>
+                  </div>
+                );
+              });
+
+              if (alerts.length === 0)
+                return (
+                  <div className="flex flex-col items-center justify-center py-6 text-gray-500 gap-2">
+                    <CheckCircle size={24} className="text-green-500 opacity-60" />
+                    <p className="text-sm">Tudo em ordem</p>
+                  </div>
+                );
+
+              return <div className="space-y-2">{alerts}</div>;
+            })()}
+          </div>
+        </div>
+
         {/* ── Quick actions ── */}
-        <div className="bg-white dark:bg-darkSurface border border-gray-100 dark:border-darkBorder rounded-2xl p-5 mb-5">
-          <h3 className="font-bold text-darkText dark:text-darkTextPrimary mb-4">⚡ Ações Rápidas</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
+          <h2 className="font-bold text-white text-sm mb-3">Ações Rápidas</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {[
-              { label: 'Colaboradoras',    icon: <Users size={20}/>,       path: '/admin/rh/colaboradoras',  color: 'bg-green-50  dark:bg-green-900/20  text-green-700  dark:text-green-400  hover:bg-green-100' },
-              { label: 'Contratação',      icon: <UserPlus size={20}/>,    path: '/admin/rh/contratacao',    color: 'bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400 hover:bg-violet-100' },
-              { label: 'Desempenho',       icon: <BarChart2 size={20}/>,   path: '/admin/rh/desempenho',     color: 'bg-blue-50   dark:bg-blue-900/20   text-blue-700   dark:text-blue-400   hover:bg-blue-100' },
-              { label: 'Avaliações',       icon: <CheckCircle size={20}/>, path: '/admin/rh/avaliacoes',     color: 'bg-cyan-50   dark:bg-cyan-900/20   text-cyan-700   dark:text-cyan-400   hover:bg-cyan-100' },
-              { label: 'Plano de Carreira',icon: <BookOpen size={20}/>,    path: '/admin/rh/plano-carreira', color: 'bg-amber-50  dark:bg-amber-900/20  text-amber-700  dark:text-amber-400  hover:bg-amber-100' },
-              { label: 'Config. RH',       icon: <Settings size={20}/>,    path: '/admin/rh/configuracoes',  color: 'bg-gray-50   dark:bg-darkBg        text-gray-700   dark:text-darkTextSecondary hover:bg-gray-100' },
+              { label: 'Nova OS',         icon: <Plus size={18}/>,         path: '/admin/os',                cls: 'text-teal-300 bg-teal-900/30 hover:bg-teal-900/50 border-teal-800/40' },
+              { label: 'Financeiro',      icon: <DollarSign size={18}/>,   path: '/admin/payments',          cls: 'text-green-300 bg-green-900/30 hover:bg-green-900/50 border-green-800/40' },
+              { label: 'Calendário',      icon: <Calendar size={18}/>,     path: '/admin/calendar',          cls: 'text-blue-300 bg-blue-900/30 hover:bg-blue-900/50 border-blue-800/40' },
+              { label: 'Clientes',        icon: <Users size={18}/>,        path: '/admin/clients',           cls: 'text-purple-300 bg-purple-900/30 hover:bg-purple-900/50 border-purple-800/40' },
+              { label: 'Colaboradoras',   icon: <UserPlus size={18}/>,     path: '/admin/rh/colaboradoras',  cls: 'text-pink-300 bg-pink-900/30 hover:bg-pink-900/50 border-pink-800/40' },
+              { label: 'Contratação',     icon: <BookOpen size={18}/>,     path: '/admin/rh/contratacao',    cls: 'text-orange-300 bg-orange-900/30 hover:bg-orange-900/50 border-orange-800/40' },
+              { label: 'Desempenho',      icon: <BarChart2 size={18}/>,    path: '/admin/rh/desempenho',     cls: 'text-yellow-300 bg-yellow-900/30 hover:bg-yellow-900/50 border-yellow-800/40' },
+              { label: 'Configurações',   icon: <Settings size={18}/>,     path: '/admin/settings',          cls: 'text-gray-300 bg-gray-700 hover:bg-gray-600 border-gray-600' },
             ].map(a => (
-              <button
-                key={a.path}
-                onClick={() => navigate(a.path)}
-                className={`flex items-center gap-3 p-3 rounded-xl transition-colors active:scale-95 ${a.color}`}
+              <button key={a.path} onClick={() => navigate(a.path)}
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border font-medium text-sm transition-colors active:scale-95 ${a.cls}`}
               >
-                {a.icon}
-                <span className="text-sm font-bold leading-tight">{a.label}</span>
+                {a.icon} {a.label}
               </button>
             ))}
           </div>
         </div>
 
+        {/* ── RH mini panel ── */}
+        <div className="bg-gradient-to-r from-purple-900/50 to-indigo-900/50 border border-purple-800/40 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-bold text-white text-sm flex items-center gap-2">
+              <Users size={15} className="text-purple-400" /> Equipe & Contratações
+            </h2>
+            <button onClick={() => navigate('/admin/rh/colaboradoras')} className="text-xs text-purple-400 flex items-center gap-1 hover:underline">
+              Ver equipe <ArrowRight size={11} />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {[
+              { label: 'Colaboradoras ativas',  value: ativasCount,        path: '/admin/rh/colaboradoras' },
+              { label: 'Em processo',           value: emProcesso,         path: '/admin/rh/contratacao'   },
+              { label: 'Avaliações',            value: avaliacoes.length,  path: '/admin/rh/avaliacoes'    },
+            ].map(item => (
+              <button key={item.label} onClick={() => navigate(item.path)}
+                className="bg-white/10 hover:bg-white/20 transition-colors rounded-xl p-3 text-left active:scale-95">
+                <p className="text-2xl font-bold text-white">{item.value}</p>
+                <p className="text-xs text-purple-200 mt-0.5 leading-tight">{item.label}</p>
+              </button>
+            ))}
+          </div>
+        </div>
 
       </div>
     </Layout>
