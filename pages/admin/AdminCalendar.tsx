@@ -5,13 +5,13 @@ import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { Modal } from '../../components/Modal';
 import {
-  Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, LayoutGrid, List,
+  Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, LayoutGrid, List, Users,
   Clock, MapPin, User, X, AlertTriangle, CheckCircle2, ArrowRight,
 } from 'lucide-react';
 import { useData, Service } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
 
-type ViewMode = 'month' | 'week';
+type ViewMode = 'month' | 'week' | 'team';
 interface RHColaboradora { id: string; nome: string; foto?: string; }
 interface SelectedCollab { id: string; nome: string; }
 
@@ -107,17 +107,24 @@ export const AdminCalendar: React.FC = () => {
 
   const prevPeriod = () => {
     if (view === 'month') setCursor(d => new Date(d.getFullYear(), d.getMonth() - 1, 1));
-    else { const d = new Date(cursor); d.setDate(d.getDate() - 7); setCursor(d); }
+    else if (view === 'week') { const d = new Date(cursor); d.setDate(d.getDate() - 7); setCursor(d); }
+    else { const d = new Date(cursor); d.setDate(d.getDate() - 1); setCursor(d); }
   };
   const nextPeriod = () => {
     if (view === 'month') setCursor(d => new Date(d.getFullYear(), d.getMonth() + 1, 1));
-    else { const d = new Date(cursor); d.setDate(d.getDate() + 7); setCursor(d); }
+    else if (view === 'week') { const d = new Date(cursor); d.setDate(d.getDate() + 7); setCursor(d); }
+    else { const d = new Date(cursor); d.setDate(d.getDate() + 1); setCursor(d); }
   };
   const goToday = () => setCursor(new Date());
 
   const periodLabel = view === 'month'
     ? cursor.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-    : `${formatDateBR(weekDays[0])} – ${formatDateBR(weekDays[6])}`;
+    : view === 'week'
+    ? `${formatDateBR(weekDays[0])} – ${formatDateBR(weekDays[6])}`
+    : (() => {
+        const s = cursor.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        return s.charAt(0).toUpperCase() + s.slice(1);
+      })();
 
   const openCreate = (date?: string) => {
     setPrefillDate(date || '');
@@ -210,6 +217,133 @@ export const AdminCalendar: React.FC = () => {
     </div>
   );
 
+  // ─── Render team view ────────────────────────────────────────────────────────
+  const renderTeam = () => {
+    const dayStr = formatDateBR(cursor);
+    const dayServices = svcByDate.get(dayStr) || [];
+    const HOURS = Array.from({ length: 13 }, (_, i) => i + 7); // 7..19
+    const ROW_H = 64;
+    const TIME_COL_W = 48;
+    const COL_W = 148;
+
+    const getServicesForCollab = (collabId: string) =>
+      dayServices.filter(s =>
+        s.status !== 'CANCELLED' && (
+          s.collaboratorId === collabId ||
+          (s.collaboratorIds || []).includes(collabId)
+        )
+      );
+
+    if (colaboradoras.length === 0) {
+      return (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Users size={40} className="mx-auto mb-3 text-gray-300" />
+            <p className="text-sm text-gray-500 font-medium">Nenhuma colaboradora ativa</p>
+            <p className="text-xs text-gray-400 mt-1">Ative colaboradoras em Recursos Humanos</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex-1 overflow-auto">
+        <div style={{ minWidth: TIME_COL_W + colaboradoras.length * COL_W }}>
+
+          {/* Sticky header */}
+          <div className="sticky top-0 z-20 flex bg-white dark:bg-darkSurface border-b border-gray-200 dark:border-darkBorder">
+            {/* Corner */}
+            <div style={{ width: TIME_COL_W, minWidth: TIME_COL_W }}
+              className="sticky left-0 z-30 bg-gray-50 dark:bg-darkBg border-r border-gray-100 dark:border-darkBorder shrink-0" />
+            {colaboradoras.map(c => (
+              <div key={c.id}
+                style={{ width: COL_W, minWidth: COL_W }}
+                className="flex flex-col items-center py-3 px-2 border-r border-gray-100 dark:border-darkBorder shrink-0">
+                {c.foto ? (
+                  <img src={c.foto} alt={c.nome}
+                    className="w-10 h-10 rounded-full object-cover border-2 border-purple-200" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-bold border-2 border-purple-200 shrink-0">
+                    {c.nome.charAt(0)}
+                  </div>
+                )}
+                <p className="text-xs font-semibold text-gray-700 dark:text-darkTextPrimary text-center mt-1.5 leading-tight line-clamp-2 w-full px-1">
+                  {c.nome.split(' ')[0]}
+                </p>
+                <p className="text-[9px] text-gray-400 mt-0.5">
+                  {getServicesForCollab(c.id).length > 0 ? `${getServicesForCollab(c.id).length} serv.` : '—'}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Body */}
+          <div className="flex">
+            {/* Sticky time column */}
+            <div style={{ width: TIME_COL_W, minWidth: TIME_COL_W }}
+              className="sticky left-0 z-10 bg-gray-50/80 dark:bg-darkBg/80 border-r border-gray-100 dark:border-darkBorder shrink-0">
+              {HOURS.map(h => (
+                <div key={h} style={{ height: ROW_H }}
+                  className="flex items-start justify-center pt-2 border-b border-gray-100 dark:border-darkBorder">
+                  <span className="text-[10px] text-gray-400 font-mono">{String(h).padStart(2, '0')}:00</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Collaborator columns */}
+            {colaboradoras.map(c => {
+              const svcs = getServicesForCollab(c.id);
+              return (
+                <div key={c.id}
+                  style={{ width: COL_W, minWidth: COL_W, height: HOURS.length * ROW_H }}
+                  className="relative border-r border-gray-100 dark:border-darkBorder shrink-0">
+                  {/* Grid lines */}
+                  {HOURS.map((h, i) => (
+                    <div key={h} style={{ top: i * ROW_H, height: ROW_H }}
+                      className="absolute inset-x-0 border-b border-gray-100 dark:border-darkBorder" />
+                  ))}
+
+                  {/* Service blocks */}
+                  {svcs.map(s => {
+                    if (!s.time) return null;
+                    const [hStr, mStr] = s.time.split(':');
+                    const startH = parseInt(hStr);
+                    const startM = parseInt(mStr || '0');
+                    if (startH < 7 || startH > 19) return null;
+                    const topPx = (startH - 7) * ROW_H + (startM / 60) * ROW_H;
+                    const dur = s.duration || 4;
+                    const heightPx = Math.max(dur * ROW_H - 6, 36);
+                    let blockCls = 'bg-blue-100 border-blue-200 text-blue-800';
+                    if (['CONFIRMED', 'SIGNAL_PAID'].includes(s.status)) blockCls = 'bg-violet-100 border-violet-200 text-violet-800';
+                    else if (s.status === 'IN_PROGRESS') blockCls = 'bg-orange-100 border-orange-200 text-orange-800';
+                    else if (s.status === 'COMPLETED') blockCls = 'bg-gray-100 border-gray-200 text-gray-600';
+                    return (
+                      <div key={s.id}
+                        style={{ top: topPx, height: heightPx, left: 3, right: 3 }}
+                        className={`absolute rounded-lg border p-1.5 cursor-pointer hover:opacity-80 transition-opacity overflow-hidden ${blockCls}`}
+                        onClick={() => { setSelectedEvent(s); setShowDetail(true); }}>
+                        <p className="text-[10px] font-bold truncate leading-tight">{s.clientName}</p>
+                        <p className="text-[9px] opacity-70 truncate leading-tight mt-0.5">{s.type}</p>
+                        <p className="text-[9px] opacity-60 mt-0.5">{s.time}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Empty state overlay */}
+          {dayServices.length === 0 && (
+            <div className="flex items-center justify-center py-16">
+              <p className="text-sm text-gray-400">Nenhum serviço agendado para esta data</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // ─── Render week view ────────────────────────────────────────────────────────
   const renderWeek = () => (
     <div className="flex-1 overflow-auto">
@@ -292,6 +426,12 @@ export const AdminCalendar: React.FC = () => {
               >
                 <List size={14} /> Semana
               </button>
+              <button
+                onClick={() => setView('team')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${view === 'team' ? 'bg-white dark:bg-darkSurface text-primary shadow-sm' : 'text-lightText dark:text-darkTextSecondary'}`}
+              >
+                <Users size={14} /> Equipe
+              </button>
             </div>
             <Button icon={<Plus size={18} />} onClick={() => openCreate()}>Agendar</Button>
           </div>
@@ -327,7 +467,7 @@ export const AdminCalendar: React.FC = () => {
 
         {/* Calendar surface */}
         <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder shadow-sm flex-1 overflow-hidden flex flex-col">
-          {view === 'month' ? renderMonth() : renderWeek()}
+          {view === 'month' ? renderMonth() : view === 'week' ? renderWeek() : renderTeam()}
         </div>
       </div>
 
