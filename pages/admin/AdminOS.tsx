@@ -436,7 +436,7 @@ export const AdminOS: React.FC = () => {
                 <button onClick={() => setCompletionToast(null)} className="text-amber-500 hover:text-amber-700"><X size={16} /></button>
               </div>
               <a
-                href={completionToast.url}
+                href={'url' in completionToast ? completionToast.url : '#'}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setCompletionToast(null)}
