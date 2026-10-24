@@ -1,6 +1,8 @@
 {
   "rewrites": [
     { "source": "/admin-start.html", "destination": "/admin-start.html" },
+    { "source": "/privacidade", "destination": "/privacidade.html" },
+    { "source": "/termos", "destination": "/termos.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
