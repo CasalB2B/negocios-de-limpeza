@@ -12,7 +12,8 @@ import { useData, Service } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
 
 type ViewMode = 'month' | 'week';
-interface RHColaboradora { id: string; nome: string; }
+interface RHColaboradora { id: string; nome: string; foto?: string; }
+interface SelectedCollab { id: string; nome: string; }
 
 const WEEKDAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const TIME_SLOTS = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
@@ -44,14 +45,25 @@ export const AdminCalendar: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<Service | null>(null);
   const [prefillDate, setPrefillDate] = useState('');
 
-  const BLANK = { clientId: '', type: '', date: '', time: '08:00', price: '', duration: '4', notes: '', addressText: '', collaboratorId: '', collaboratorName: '' };
+  const BLANK = { clientId: '', type: '', date: '', time: '08:00', price: '', duration: '4', notes: '', addressText: '' };
   const [form, setForm] = useState(BLANK);
   const setF = (p: Partial<typeof BLANK>) => setForm(f => ({ ...f, ...p }));
 
+  const [selectedCollabs, setSelectedCollabs] = useState<SelectedCollab[]>([]);
+
   useEffect(() => {
-    supabase.from('colaboradoras_rh').select('id, nome').order('nome')
+    supabase.from('colaboradoras_rh').select('id, nome, foto').eq('status', 'ATIVA').order('nome')
       .then(({ data }) => { if (data) setColaboradoras(data); });
   }, []);
+
+  const toggleCollab = (c: RHColaboradora) => {
+    setSelectedCollabs(prev => {
+      const exists = prev.find(x => x.id === c.id);
+      if (exists) return prev.filter(x => x.id !== c.id);
+      if (prev.length >= 3) return prev;
+      return [...prev, { id: c.id, nome: c.nome }];
+    });
+  };
 
   // ─── Month helpers ──────────────────────────────────────────────────────────
   const monthStart = useMemo(() => new Date(cursor.getFullYear(), cursor.getMonth(), 1), [cursor]);
@@ -110,6 +122,7 @@ export const AdminCalendar: React.FC = () => {
   const openCreate = (date?: string) => {
     setPrefillDate(date || '');
     setForm({ ...BLANK, date: date || '' });
+    setSelectedCollabs([]);
     setShowCreate(true);
   };
 
@@ -122,12 +135,15 @@ export const AdminCalendar: React.FC = () => {
       const [y, m, d] = form.date.split('-');
       dateBR = `${d}/${m}/${y}`;
     }
+    const primary = selectedCollabs[0];
     await addService({
       id: '',
       clientId: form.clientId,
       clientName: client?.name || '',
-      collaboratorId: form.collaboratorId || undefined,
-      collaboratorName: form.collaboratorName || undefined,
+      collaboratorId: primary?.id || undefined,
+      collaboratorName: primary?.nome || undefined,
+      collaboratorIds: selectedCollabs.map(c => c.id),
+      collaboratorNames: selectedCollabs.map(c => c.nome),
       type: form.type,
       date: dateBR,
       time: form.time,
@@ -140,6 +156,7 @@ export const AdminCalendar: React.FC = () => {
     });
     setShowCreate(false);
     setForm(BLANK);
+    setSelectedCollabs([]);
   };
 
   const selectedClient = clients.find(c => c.id === form.clientId);
@@ -317,12 +334,12 @@ export const AdminCalendar: React.FC = () => {
       {/* Create OS Modal */}
       <Modal
         isOpen={showCreate}
-        onClose={() => { setShowCreate(false); setForm(BLANK); }}
+        onClose={() => { setShowCreate(false); setForm(BLANK); setSelectedCollabs([]); }}
         title="Novo Agendamento"
         maxWidth="lg"
         footer={
           <>
-            <button onClick={() => { setShowCreate(false); setForm(BLANK); }} className="px-6 py-3 font-bold text-lightText hover:bg-gray-100 dark:hover:bg-darkBorder rounded-xl transition-colors">Cancelar</button>
+            <button onClick={() => { setShowCreate(false); setForm(BLANK); setSelectedCollabs([]); }} className="px-6 py-3 font-bold text-lightText hover:bg-gray-100 dark:hover:bg-darkBorder rounded-xl transition-colors">Cancelar</button>
             <Button onClick={handleCreate} disabled={!form.clientId || !form.date || !form.type}>Agendar</Button>
           </>
         }
@@ -401,18 +418,46 @@ export const AdminCalendar: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Colaboradora</label>
-            <select
-              className="w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary"
-              value={form.collaboratorId}
-              onChange={e => {
-                const col = colaboradoras.find(c => c.id === e.target.value);
-                setF({ collaboratorId: e.target.value, collaboratorName: col?.nome || '' });
-              }}
-            >
-              <option value="">A definir depois...</option>
-              {colaboradoras.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
+            <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">
+              Colaboradoras <span className="text-lightText dark:text-darkTextSecondary font-normal">(até 3)</span>
+            </label>
+            {selectedCollabs.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {selectedCollabs.map(c => (
+                  <span key={c.id} className="flex items-center gap-1 bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full">
+                    {c.nome.split(' ')[0]}
+                    <button type="button" onClick={() => toggleCollab({ id: c.id, nome: c.nome })} className="ml-1 hover:text-red-500">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="max-h-40 overflow-y-auto bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl divide-y divide-gray-100 dark:divide-darkBorder">
+              {colaboradoras.length === 0 ? (
+                <p className="text-xs text-lightText p-3">Nenhuma colaboradora ativa</p>
+              ) : colaboradoras.map(c => {
+                const checked = !!selectedCollabs.find(x => x.id === c.id);
+                const disabled = !checked && selectedCollabs.length >= 3;
+                return (
+                  <label key={c.id} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors ${checked ? 'bg-primary/5' : disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-darkBorder'}`}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={disabled}
+                      onChange={() => toggleCollab(c)}
+                      className="accent-primary w-4 h-4 rounded"
+                    />
+                    {c.foto ? (
+                      <img src={c.foto} alt={c.nome} className="w-7 h-7 rounded-full object-cover shrink-0" />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold shrink-0">
+                        {c.nome.charAt(0)}
+                      </div>
+                    )}
+                    <span className="text-sm text-darkText dark:text-darkTextPrimary">{c.nome}</span>
+                  </label>
+                );
+              })}
+            </div>
           </div>
 
           <div>

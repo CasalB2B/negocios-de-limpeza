@@ -85,6 +85,8 @@ export interface Service {
   photos?: { before: string[], after: string[] };
   collaboratorId?: string;
   collaboratorName?: string;
+  collaboratorIds?: string[];
+  collaboratorNames?: string[];
   duration: 4 | 6 | 8; // Duração estimada para cálculo de repasse
   createdAt: number;
 }
@@ -379,6 +381,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clientName: s.client_name || 'Cliente',
     collaboratorId: s.collaborator_id,
     collaboratorName: s.collaborator_name,
+    collaboratorIds: Array.isArray(s.collaborator_ids) ? s.collaborator_ids : [],
+    collaboratorNames: Array.isArray(s.collaborator_names) ? s.collaborator_names : [],
     type: s.type || 'Serviço',
     date: s.date || '',
     time: s.time || '',
@@ -613,7 +617,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         notes: service.notes,
         duration: estimatedDuration,
         collaborator_id: service.collaboratorId,
-        collaborator_name: service.collaboratorName
+        collaborator_name: service.collaboratorName,
+        collaborator_ids: service.collaboratorIds || [],
+        collaborator_names: service.collaboratorNames || [],
     };
 
     const { data, error } = await supabase.from('services').insert(dbService).select();

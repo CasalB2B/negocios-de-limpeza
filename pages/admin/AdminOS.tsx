@@ -40,11 +40,13 @@ const COL_TO_DB: Record<ColStatus, string> = {
 
 const normCol = (s: string): ColStatus => DB_TO_COL[s] ?? 'AGENDADO';
 
-interface RHColaboradora { id: string; nome: string; cargo_atual?: string; }
+interface RHColaboradora { id: string; nome: string; cargo_atual?: string; foto?: string; }
+interface SelectedCollab { id: string; nome: string; }
 
 export const AdminOS: React.FC = () => {
   const { services, clients, serviceDefinitions, addService, updateServiceStatus } = useData();
   const [colaboradoras, setColaboradoras] = useState<RHColaboradora[]>([]);
+  const [selectedCollabs, setSelectedCollabs] = useState<SelectedCollab[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [selected, setSelected] = useState<Service | null>(null);
   const [filterMonth, setFilterMonth] = useState('');
@@ -52,16 +54,25 @@ export const AdminOS: React.FC = () => {
   const BLANK = {
     clientId: '', type: '', date: '', time: '08:00',
     price: '', duration: '4', notes: '', addressText: '',
-    collaboratorId: '', collaboratorName: '',
   };
   const [form, setForm] = useState(BLANK);
 
   useEffect(() => {
     supabase.from('colaboradoras_rh')
-      .select('id, nome, cargo_atual, status')
+      .select('id, nome, cargo_atual, foto')
+      .eq('status', 'ATIVA')
       .order('nome')
       .then(({ data }) => { if (data) setColaboradoras(data); });
   }, []);
+
+  const toggleCollab = (c: RHColaboradora) => {
+    setSelectedCollabs(prev => {
+      const exists = prev.find(x => x.id === c.id);
+      if (exists) return prev.filter(x => x.id !== c.id);
+      if (prev.length >= 3) return prev;
+      return [...prev, { id: c.id, nome: c.nome }];
+    });
+  };
 
   const grouped = useMemo(() => {
     const all = filterMonth
@@ -89,12 +100,15 @@ export const AdminOS: React.FC = () => {
     if (!form.clientId || !form.date || !form.type) return;
     const client = clients.find(c => c.id === form.clientId);
     const [y, m, d] = form.date.split('-');
+    const primary = selectedCollabs[0];
     await addService({
       id: '',
       clientId: form.clientId,
       clientName: client?.name || '',
-      collaboratorId: form.collaboratorId || undefined,
-      collaboratorName: form.collaboratorName || undefined,
+      collaboratorId: primary?.id || undefined,
+      collaboratorName: primary?.nome || undefined,
+      collaboratorIds: selectedCollabs.map(c => c.id),
+      collaboratorNames: selectedCollabs.map(c => c.nome),
       type: form.type,
       date: `${d}/${m}/${y}`,
       time: form.time,
@@ -107,6 +121,7 @@ export const AdminOS: React.FC = () => {
     });
     setShowCreate(false);
     setForm(BLANK);
+    setSelectedCollabs([]);
   };
 
   const setF = (patch: Partial<typeof BLANK>) => setForm(f => ({ ...f, ...patch }));
@@ -183,7 +198,7 @@ export const AdminOS: React.FC = () => {
       </div>
 
       {/* Create OS Modal */}
-      <Modal isOpen={showCreate} onClose={() => { setShowCreate(false); setForm(BLANK); }} title="Nova Ordem de Serviço" maxWidth="lg">
+      <Modal isOpen={showCreate} onClose={() => { setShowCreate(false); setForm(BLANK); setSelectedCollabs([]); }} title="Nova Ordem de Serviço" maxWidth="lg">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Cliente *</label>
@@ -255,20 +270,46 @@ export const AdminOS: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Colaboradora</label>
-            <select
-              className="w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary"
-              value={form.collaboratorId}
-              onChange={e => {
-                const col = colaboradoras.find(c => c.id === e.target.value);
-                setF({ collaboratorId: e.target.value, collaboratorName: col?.nome || '' });
-              }}
-            >
-              <option value="">A definir depois...</option>
-              {colaboradoras.map(c => (
-                <option key={c.id} value={c.id}>{c.nome}{c.cargo_atual ? ` — ${c.cargo_atual}` : ''}</option>
-              ))}
-            </select>
+            <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">
+              Colaboradoras <span className="text-lightText dark:text-darkTextSecondary font-normal">(até 3)</span>
+            </label>
+            {selectedCollabs.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {selectedCollabs.map(c => (
+                  <span key={c.id} className="flex items-center gap-1 bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full">
+                    {c.nome.split(' ')[0]}
+                    <button type="button" onClick={() => toggleCollab({ id: c.id, nome: c.nome })} className="ml-1 hover:text-red-500">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="max-h-40 overflow-y-auto bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl divide-y divide-gray-100 dark:divide-darkBorder">
+              {colaboradoras.length === 0 ? (
+                <p className="text-xs text-lightText p-3">Nenhuma colaboradora ativa</p>
+              ) : colaboradoras.map(c => {
+                const checked = !!selectedCollabs.find(x => x.id === c.id);
+                const disabled = !checked && selectedCollabs.length >= 3;
+                return (
+                  <label key={c.id} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors ${checked ? 'bg-primary/5' : disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-darkBorder'}`}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={disabled}
+                      onChange={() => toggleCollab(c)}
+                      className="accent-primary w-4 h-4 rounded"
+                    />
+                    {c.foto ? (
+                      <img src={c.foto} alt={c.nome} className="w-7 h-7 rounded-full object-cover shrink-0" />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold shrink-0">
+                        {c.nome.charAt(0)}
+                      </div>
+                    )}
+                    <span className="text-sm text-darkText dark:text-darkTextPrimary">{c.nome}{c.cargo_atual ? ` — ${c.cargo_atual}` : ''}</span>
+                  </label>
+                );
+              })}
+            </div>
           </div>
 
           <div>
@@ -283,7 +324,7 @@ export const AdminOS: React.FC = () => {
         </div>
         <div className="flex justify-end gap-3 mt-6">
           <button
-            onClick={() => { setShowCreate(false); setForm(BLANK); }}
+            onClick={() => { setShowCreate(false); setForm(BLANK); setSelectedCollabs([]); }}
             className="px-6 py-3 font-bold text-lightText hover:text-darkText hover:bg-gray-100 dark:hover:bg-darkBorder rounded-xl transition-colors"
           >
             Cancelar

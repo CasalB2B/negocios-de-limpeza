@@ -58,7 +58,9 @@ export const CollaboratorAgenda: React.FC = () => {
     if (!currentCollaborator) return [];
     return services
       .filter(s => {
-        const isCollaborator = s.collaboratorId === currentCollaborator.id;
+        const isPrimary = s.collaboratorId === currentCollaborator.id;
+        const isInArray = Array.isArray((s as any).collaboratorIds) && (s as any).collaboratorIds.includes(currentCollaborator.id);
+        const isCollaborator = isPrimary || isInArray;
         const relevantStatus = ['SCHEDULED','CONFIRMED','WAITING_SIGNAL','IN_PROGRESS','COMPLETED'].includes(s.status);
         if (!relevantStatus) return false;
         if (tab === 'hoje') return isCollaborator && s.date === today;
