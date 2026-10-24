@@ -18,25 +18,29 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   const { data: settings } = await supabase.from('platform_settings').select('gemini_key').eq('id', 1).single();
-  const apiKey = settings?.gemini_key;
+  const apiKey = settings?.gemini_key || Deno.env.get('GEMINI_API_KEY');
   if (!apiKey) {
     return new Response(JSON.stringify({ error: 'Gemini não configurado. Adicione a chave em Configurações > Integrações.' }), { status: 503, headers: cors });
   }
 
   const { messages } = await req.json();
-  const contents = [
-    { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
-    ...messages.map((m: { role: string; content: string }) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    })),
-  ];
+  const contents = messages.map((m: { role: string; content: string }) => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }));
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents }) }
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] }, contents }),
+    }
   );
   const data = await res.json();
+  if (!res.ok) {
+    return new Response(JSON.stringify({ error: data.error?.message ?? 'Erro no Gemini' }), { status: 502, headers: { ...cors, 'Content-Type': 'application/json' } });
+  }
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Sem resposta.';
   return new Response(JSON.stringify({ reply: text }), { headers: { ...cors, 'Content-Type': 'application/json' } });
 });

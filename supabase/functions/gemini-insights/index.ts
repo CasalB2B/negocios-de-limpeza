@@ -14,7 +14,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   const { data: settings } = await supabase.from('platform_settings').select('gemini_key').eq('id', 1).single();
-  const apiKey = settings?.gemini_key;
+  const apiKey = settings?.gemini_key || Deno.env.get('GEMINI_API_KEY');
   if (!apiKey) {
     return new Response(JSON.stringify({ error: 'Gemini não configurado.' }), { status: 503, headers: cors });
   }
@@ -27,7 +27,7 @@ Formato: retorne um array JSON com 3 strings, cada uma sendo um insight.
 Dados: ${JSON.stringify(summary)}`;
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
     { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }] }) }
   );
   const data = await res.json();
