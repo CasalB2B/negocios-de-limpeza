@@ -53,9 +53,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
     startCollabPreview(collab);
     sessionStorage.setItem('ndl_preview_return_path', window.location.hash || '#/admin/dashboard');
     setShowPreviewPanel(false);
-    // Full reload needed so DataContext re-initializes with the preview auth
-    window.location.href = '/#/collab/agenda';
-    window.location.reload();
+    // Query-string change forces a TRUE full-page load (not a same-document hash navigation)
+    // so DataContext re-initializes fresh with the preview auth from localStorage
+    window.location.assign(window.location.origin + '/?_ndl=1#/collab/agenda');
   };
 
   const openClientPanel = async () => {
@@ -74,9 +74,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
     startClientPreview(client);
     sessionStorage.setItem('ndl_preview_return_path', window.location.hash || '#/admin/dashboard');
     setShowClientPanel(false);
-    // Full reload needed so DataContext re-initializes with the preview auth
-    window.location.href = '/#/client/dashboard';
-    window.location.reload();
+    // Query-string change forces a TRUE full-page load (not a same-document hash navigation)
+    // so DataContext re-initializes fresh with the preview auth from localStorage
+    window.location.assign(window.location.origin + '/?_ndl=1#/client/dashboard');
   };
 
   const handleSupportClick = () => {

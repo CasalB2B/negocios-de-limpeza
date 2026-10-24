@@ -343,7 +343,7 @@ export const AdminOS: React.FC = () => {
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {selectedCollabs.map(c => (
                   <span key={c.id} className="flex items-center gap-1 bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full">
-                    {(c.nome || '').split(' ')[0] || '—'}
+                    {(c.nome || '').trim().split(' ')[0] || '—'}
                     <button type="button" onClick={() => toggleCollab({ id: c.id, nome: c.nome })} className="ml-1 hover:text-red-500 leading-none">×</button>
                   </span>
                 ))}
