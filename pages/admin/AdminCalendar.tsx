@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { Button } from '../../components/Button';
@@ -6,7 +6,7 @@ import { Input } from '../../components/Input';
 import { Modal } from '../../components/Modal';
 import {
   Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, LayoutGrid, List, Users,
-  Clock, MapPin, User, X, AlertTriangle, CheckCircle2, ArrowRight,
+  Clock, MapPin, User, X, AlertTriangle, CheckCircle2, ArrowRight, Search,
 } from 'lucide-react';
 import { useData, Service } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
@@ -50,11 +50,29 @@ export const AdminCalendar: React.FC = () => {
   const setF = (p: Partial<typeof BLANK>) => setForm(f => ({ ...f, ...p }));
 
   const [selectedCollabs, setSelectedCollabs] = useState<SelectedCollab[]>([]);
+  const [clientSearch, setClientSearch] = useState('');
+  const [showClientDrop, setShowClientDrop] = useState(false);
+  const clientRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     supabase.from('colaboradoras_rh').select('id, nome, foto').eq('status', 'ATIVA').order('nome')
       .then(({ data }) => { if (data) setColaboradoras(data); });
   }, []);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (clientRef.current && !clientRef.current.contains(e.target as Node)) {
+        setShowClientDrop(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filteredClients = useMemo(() => {
+    if (!clientSearch) return clients.slice(0, 10);
+    return clients.filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase())).slice(0, 10);
+  }, [clients, clientSearch]);
 
   const toggleCollab = (c: RHColaboradora) => {
     setSelectedCollabs(prev => {
@@ -130,6 +148,8 @@ export const AdminCalendar: React.FC = () => {
     setPrefillDate(date || '');
     setForm({ ...BLANK, date: date || '' });
     setSelectedCollabs([]);
+    setClientSearch('');
+    setShowClientDrop(false);
     setShowCreate(true);
   };
 
@@ -164,6 +184,8 @@ export const AdminCalendar: React.FC = () => {
     setShowCreate(false);
     setForm(BLANK);
     setSelectedCollabs([]);
+    setClientSearch('');
+    setShowClientDrop(false);
   };
 
   const selectedClient = clients.find(c => c.id === form.clientId);
@@ -474,12 +496,12 @@ export const AdminCalendar: React.FC = () => {
       {/* Create OS Modal */}
       <Modal
         isOpen={showCreate}
-        onClose={() => { setShowCreate(false); setForm(BLANK); setSelectedCollabs([]); }}
+        onClose={() => { setShowCreate(false); setForm(BLANK); setSelectedCollabs([]); setClientSearch(''); setShowClientDrop(false); }}
         title="Novo Agendamento"
         maxWidth="lg"
         footer={
           <>
-            <button onClick={() => { setShowCreate(false); setForm(BLANK); setSelectedCollabs([]); }} className="px-6 py-3 font-bold text-lightText hover:bg-gray-100 dark:hover:bg-darkBorder rounded-xl transition-colors">Cancelar</button>
+            <button onClick={() => { setShowCreate(false); setForm(BLANK); setSelectedCollabs([]); setClientSearch(''); setShowClientDrop(false); }} className="px-6 py-3 font-bold text-lightText hover:bg-gray-100 dark:hover:bg-darkBorder rounded-xl transition-colors">Cancelar</button>
             <Button onClick={handleCreate} disabled={!form.clientId || !form.date || !form.type}>Agendar</Button>
           </>
         }
@@ -487,17 +509,32 @@ export const AdminCalendar: React.FC = () => {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Cliente *</label>
-            <select
-              className="w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary"
-              value={form.clientId}
-              onChange={e => {
-                const c = clients.find(c => c.id === e.target.value);
-                setF({ clientId: e.target.value, addressText: c?.address || '' });
-              }}
-            >
-              <option value="">Selecione um cliente...</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <div ref={clientRef} className="relative">
+              <div className="relative">
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <input
+                  className="w-full pl-9 pr-3.5 py-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary"
+                  placeholder="Buscar cliente..."
+                  value={clientSearch}
+                  onChange={e => { setClientSearch(e.target.value); setShowClientDrop(true); if (!e.target.value) setF({ clientId: '', addressText: '' }); }}
+                  onFocus={() => setShowClientDrop(true)}
+                />
+              </div>
+              {showClientDrop && filteredClients.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                  {filteredClients.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className="w-full text-left px-4 py-2.5 text-sm text-darkText dark:text-darkTextPrimary hover:bg-gray-50 dark:hover:bg-darkBorder transition-colors first:rounded-t-xl last:rounded-b-xl"
+                      onClick={() => { setF({ clientId: c.id, addressText: c.address || '' }); setClientSearch(c.name); setShowClientDrop(false); }}
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {selectedClient?.addresses && selectedClient.addresses.length > 0 && (

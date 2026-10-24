@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { Modal } from '../../components/Modal';
-import { Plus, X, User, Calendar, MapPin, Clock, DollarSign, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Plus, X, User, Calendar, MapPin, Clock, DollarSign, ArrowRight, AlertCircle, CheckCircle2, Search } from 'lucide-react';
 import { useData, Service } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
 
@@ -49,7 +49,10 @@ export const AdminOS: React.FC = () => {
   const [selectedCollabs, setSelectedCollabs] = useState<SelectedCollab[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [selected, setSelected] = useState<Service | null>(null);
-  const [filterMonth, setFilterMonth] = useState('');
+  const [periodFilter, setPeriodFilter] = useState<'all' | 'week' | 'month'>('all');
+  const [clientSearch, setClientSearch] = useState('');
+  const [showClientDrop, setShowClientDrop] = useState(false);
+  const clientRef = useRef<HTMLDivElement>(null);
 
   const BLANK = {
     clientId: '', type: '', date: '', time: '08:00',
@@ -65,6 +68,21 @@ export const AdminOS: React.FC = () => {
       .then(({ data }) => { if (data) setColaboradoras(data); });
   }, []);
 
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (clientRef.current && !clientRef.current.contains(e.target as Node)) {
+        setShowClientDrop(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filteredClients = useMemo(() => {
+    if (!clientSearch) return clients.slice(0, 10);
+    return clients.filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase())).slice(0, 10);
+  }, [clients, clientSearch]);
+
   const toggleCollab = (c: RHColaboradora) => {
     setSelectedCollabs(prev => {
       const exists = prev.find(x => x.id === c.id);
@@ -75,19 +93,29 @@ export const AdminOS: React.FC = () => {
   };
 
   const grouped = useMemo(() => {
-    const all = filterMonth
-      ? services.filter(s => {
-          if (!s.date) return false;
-          // date stored as DD/MM/YYYY — extract MM/YYYY
-          const parts = s.date.split('/');
-          if (parts.length < 3) return false;
-          return `${parts[2]}-${parts[1]}` === filterMonth;
-        })
-      : services;
+    const now = new Date();
+    const all = services.filter(s => {
+      if (periodFilter === 'all') return true;
+      if (!s.date) return false;
+      const parts = s.date.split('/');
+      if (parts.length < 3) return false;
+      const svcDate = new Date(+parts[2], +parts[1] - 1, +parts[0]);
+      if (periodFilter === 'week') {
+        const sun = new Date(now);
+        sun.setDate(now.getDate() - now.getDay());
+        sun.setHours(0, 0, 0, 0);
+        const sat = new Date(sun);
+        sat.setDate(sun.getDate() + 6);
+        sat.setHours(23, 59, 59, 999);
+        return svcDate >= sun && svcDate <= sat;
+      }
+      // month
+      return svcDate.getMonth() === now.getMonth() && svcDate.getFullYear() === now.getFullYear();
+    });
     const map = { AGENDADO: [] as Service[], CONFIRMADO: [] as Service[], EM_ANDAMENTO: [] as Service[], CONCLUIDO: [] as Service[], CANCELADO: [] as Service[] };
     for (const s of all) map[normCol(s.status)].push(s);
     return map;
-  }, [services, filterMonth]);
+  }, [services, periodFilter]);
 
   const selectedClient = useMemo(() => clients.find(c => c.id === form.clientId), [clients, form.clientId]);
 
@@ -122,6 +150,8 @@ export const AdminOS: React.FC = () => {
     setShowCreate(false);
     setForm(BLANK);
     setSelectedCollabs([]);
+    setClientSearch('');
+    setShowClientDrop(false);
   };
 
   const setF = (patch: Partial<typeof BLANK>) => setForm(f => ({ ...f, ...patch }));
@@ -137,12 +167,17 @@ export const AdminOS: React.FC = () => {
             <p className="text-lightText dark:text-darkTextSecondary text-sm mt-1">Pipeline de atendimento por etapa</p>
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <input
-              type="month"
-              value={filterMonth}
-              onChange={e => setFilterMonth(e.target.value)}
-              className="px-3 py-2.5 bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder rounded-xl text-sm text-darkText dark:text-darkTextPrimary outline-none focus:border-primary"
-            />
+            <div className="flex bg-gray-100 dark:bg-darkBg rounded-xl p-1 gap-0.5">
+              {(['all', 'week', 'month'] as const).map(p => (
+                <button
+                  key={p}
+                  onClick={() => setPeriodFilter(p)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${periodFilter === p ? 'bg-white dark:bg-darkSurface text-primary shadow-sm' : 'text-lightText dark:text-darkTextSecondary hover:text-darkText dark:hover:text-darkTextPrimary'}`}
+                >
+                  {p === 'all' ? 'Todos' : p === 'week' ? 'Esta semana' : 'Este mês'}
+                </button>
+              ))}
+            </div>
             <Button icon={<Plus size={18} />} onClick={() => setShowCreate(true)}>Nova OS</Button>
           </div>
         </div>
@@ -198,21 +233,36 @@ export const AdminOS: React.FC = () => {
       </div>
 
       {/* Create OS Modal */}
-      <Modal isOpen={showCreate} onClose={() => { setShowCreate(false); setForm(BLANK); setSelectedCollabs([]); }} title="Nova Ordem de Serviço" maxWidth="lg">
+      <Modal isOpen={showCreate} onClose={() => { setShowCreate(false); setForm(BLANK); setSelectedCollabs([]); setClientSearch(''); setShowClientDrop(false); }} title="Nova Ordem de Serviço" maxWidth="lg">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Cliente *</label>
-            <select
-              className="w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary"
-              value={form.clientId}
-              onChange={e => {
-                const c = clients.find(c => c.id === e.target.value);
-                setF({ clientId: e.target.value, addressText: c?.address || '' });
-              }}
-            >
-              <option value="">Selecione um cliente...</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <div ref={clientRef} className="relative">
+              <div className="relative">
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <input
+                  className="w-full pl-9 pr-3.5 py-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary"
+                  placeholder="Buscar cliente..."
+                  value={clientSearch}
+                  onChange={e => { setClientSearch(e.target.value); setShowClientDrop(true); if (!e.target.value) setF({ clientId: '', addressText: '' }); }}
+                  onFocus={() => setShowClientDrop(true)}
+                />
+              </div>
+              {showClientDrop && filteredClients.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                  {filteredClients.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className="w-full text-left px-4 py-2.5 text-sm text-darkText dark:text-darkTextPrimary hover:bg-gray-50 dark:hover:bg-darkBorder transition-colors first:rounded-t-xl last:rounded-b-xl"
+                      onClick={() => { setF({ clientId: c.id, addressText: c.address || '' }); setClientSearch(c.name); setShowClientDrop(false); }}
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {selectedClient?.addresses && selectedClient.addresses.length > 0 && (
@@ -324,7 +374,7 @@ export const AdminOS: React.FC = () => {
         </div>
         <div className="flex justify-end gap-3 mt-6">
           <button
-            onClick={() => { setShowCreate(false); setForm(BLANK); setSelectedCollabs([]); }}
+            onClick={() => { setShowCreate(false); setForm(BLANK); setSelectedCollabs([]); setClientSearch(''); setShowClientDrop(false); }}
             className="px-6 py-3 font-bold text-lightText hover:text-darkText hover:bg-gray-100 dark:hover:bg-darkBorder rounded-xl transition-colors"
           >
             Cancelar
