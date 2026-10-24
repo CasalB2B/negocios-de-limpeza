@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { generateContent } from '../_shared/gemini.ts';
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -26,11 +27,10 @@ Formato: retorne um array JSON com 3 strings, cada uma sendo um insight.
 
 Dados: ${JSON.stringify(summary)}`;
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }] }) }
-  );
-  const data = await res.json();
+  const { ok, data } = await generateContent(apiKey, { contents: [{ role: 'user', parts: [{ text: prompt }] }] });
+  if (!ok) {
+    return new Response(JSON.stringify({ error: data.error?.message ?? 'Erro no Gemini' }), { status: 502, headers: { ...cors, 'Content-Type': 'application/json' } });
+  }
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '[]';
   let insights: string[] = [];
   try {
