@@ -10,6 +10,8 @@ import {
 import { useRH } from '../../components/RHContext';
 import { supabase } from '../../lib/supabase';
 import { ClientesSumidosCard } from '../../components/ClientesSumidos';
+import { MapaColaboradoras } from '../../components/MapaColaboradoras';
+import { GeminiChat } from '../../components/GeminiChat';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -579,7 +581,15 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* ── Row 6: Mapa de Colaboradoras ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <MapaColaboradoras />
+        </div>
+
       </div>
+
+      {/* Gemini AI — floating chat button */}
+      <GeminiChat />
     </Layout>
   );
 };

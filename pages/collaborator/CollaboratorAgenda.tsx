@@ -54,8 +54,24 @@ export const CollaboratorAgenda: React.FC = () => {
   const navigate = useNavigate();
   const { services, currentCollaborator } = useData();
   const [tab, setTab] = useState<Tab>('hoje');
+  const [locationSharing, setLocationSharing] = useState(false);
   const previewMode = getCollabPreview();
   const today = todayBR();
+
+  useEffect(() => {
+    if (!navigator.geolocation || !currentCollaborator || previewMode) return;
+    const send = (pos: GeolocationPosition) => {
+      setLocationSharing(true);
+      supabase.functions.invoke('update-collab-location', {
+        body: { collab_id: currentCollaborator.id, collab_name: currentCollaborator.name, lat: pos.coords.latitude, lng: pos.coords.longitude },
+      }).catch(() => {});
+    };
+    navigator.geolocation.getCurrentPosition(send, () => {}, { enableHighAccuracy: true });
+    const timer = setInterval(() => {
+      navigator.geolocation.getCurrentPosition(send, () => {}, { enableHighAccuracy: true });
+    }, 3 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [currentCollaborator?.id, previewMode]);
 
   const myServices = useMemo(() => {
     if (!currentCollaborator) return [];
@@ -106,6 +122,11 @@ export const CollaboratorAgenda: React.FC = () => {
           >
             ← Voltar ao Admin
           </button>
+        </div>
+      )}
+      {locationSharing && (
+        <div className="text-xs text-center py-1 text-gray-400 bg-gray-50 sticky top-0">
+          📍 Compartilhando localização com a empresa durante o serviço
         </div>
       )}
       <div className="max-w-lg mx-auto space-y-5">
