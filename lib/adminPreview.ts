@@ -34,6 +34,14 @@ export function getClientPreview(): { clientId: string; clientName: string } | n
   } catch { return null; }
 }
 
+export function exitPreviewToAdmin(): void {
+  clearCollabPreview();
+  clearClientPreview();
+  const returnPath = sessionStorage.getItem('ndl_preview_return_path') || '#/admin/dashboard';
+  sessionStorage.removeItem('ndl_preview_return_path');
+  window.location.assign(window.location.origin + '/' + (returnPath.startsWith('#') ? returnPath : '#' + returnPath));
+}
+
 export interface PreviewCollab {
   id: string;
   nome: string;

@@ -6,7 +6,7 @@ import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
 import { useData } from './DataContext';
 import { supabase } from '../lib/supabase';
-import { startCollabPreview, startClientPreview, type PreviewCollab, type PreviewClient } from '../lib/adminPreview';
+import { startCollabPreview, startClientPreview, getClientPreview, exitPreviewToAdmin, type PreviewCollab, type PreviewClient } from '../lib/adminPreview';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -93,8 +93,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       { label: 'Pagamentos', path: '/client/payments', icon: <DollarSign size={20} /> },
     ];
 
+    const clientPreview = getClientPreview();
     return (
       <div className="min-h-screen bg-background dark:bg-darkBg flex flex-col font-sans transition-colors duration-300">
+        {clientPreview && (
+          <div className="bg-blue-600 text-white px-4 py-2 flex items-center justify-between gap-2 text-xs">
+            <span className="truncate"><Eye size={12} className="inline mr-1" />Visualizando como <strong>{clientPreview.clientName}</strong></span>
+            <button onClick={exitPreviewToAdmin} className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg font-medium whitespace-nowrap">
+              ← Voltar ao Admin
+            </button>
+          </div>
+        )}
         {/* Top Header */}
         <header className="bg-white dark:bg-darkSurface border-b border-gray-200 dark:border-darkBorder sticky top-0 z-50 shadow-sm transition-colors duration-300">
           <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 md:h-20 flex items-center justify-between">
@@ -193,7 +202,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
         </main>
 
         {/* Bottom Navigation for Client Mobile */}
-        <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white dark:bg-darkSurface border-t border-gray-200 dark:border-darkBorder flex justify-around p-2 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe">
+        <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white dark:bg-darkSurface border-t border-gray-200 dark:border-darkBorder flex justify-around p-2 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe">
            {navLinks.map((link) => (
             <button
               key={link.path}
@@ -308,6 +317,18 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   };
 
   const menuItems = getMenuItems();
+
+  const isAdmin = role === UserRole.ADMIN;
+  const mobileTabs = isAdmin
+    ? [
+        { icon: <LayoutDashboard size={20} />, label: 'Início', path: '/admin/dashboard' },
+        { icon: <Calendar size={20} />, label: 'Agenda', path: '/admin/calendar' },
+        { icon: <Kanban size={20} />, label: 'OS', path: '/admin/os' },
+        { icon: <Grid size={20} />, label: 'Clientes', path: '/admin/clients' },
+      ]
+    : menuItems.slice(0, 4);
+  const showMobileMenuButton = isAdmin || menuItems.length > 4;
+  const isPathActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
   return (
     <div className="flex h-screen overflow-hidden bg-background dark:bg-darkBg font-sans transition-colors duration-300">
@@ -514,12 +535,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
         </main>
 
         {/* Mobile Bottom Nav (Admin/Collab) */}
-        <nav className="md:hidden bg-white dark:bg-darkSurface border-t border-gray-200 dark:border-darkBorder flex justify-around p-2 fixed bottom-0 left-0 w-full z-50 pb-safe">
-           {/* Renderiza os primeiros 4 itens normalmente */}
-           {menuItems.slice(0, 4).map((item) => {
-            const mobileActive = item.path === '/admin/dashboard'
-              ? location.pathname === '/admin/dashboard' || location.pathname === '/admin/rh'
-              : location.pathname === item.path;
+        <nav className="md:hidden bg-white dark:bg-darkSurface border-t border-gray-200 dark:border-darkBorder flex justify-around p-2 fixed bottom-0 left-0 w-full z-40 pb-safe">
+           {mobileTabs.map((item) => {
+            const mobileActive = isPathActive(item.path);
             return (
             <button
               key={item.path}
@@ -534,8 +552,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           );})}
 
           
-          {/* Menu "Mais" se houver mais de 4 itens (Admin) */}
-          {menuItems.length > 4 && (
+          {showMobileMenuButton && (
              <button
                 onClick={() => setMobileMenuOpen(true)}
                 className={`flex flex-col items-center justify-center p-2 rounded-lg w-full transition-all active:scale-95 ${mobileMenuOpen ? 'text-primary' : 'text-lightText dark:text-darkTextSecondary'}`}
@@ -550,7 +567,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
         {mobileMenuOpen && (
            <div className="md:hidden fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm animate-in fade-in" onClick={() => setMobileMenuOpen(false)}>
               <div 
-                 className="absolute bottom-0 left-0 w-full bg-white dark:bg-darkSurface rounded-t-3xl p-6 shadow-2xl border-t border-gray-100 dark:border-darkBorder animate-in slide-in-from-bottom-10"
+                 className="absolute bottom-0 left-0 w-full max-h-[85vh] overflow-y-auto bg-white dark:bg-darkSurface rounded-t-3xl p-6 pb-safe shadow-2xl border-t border-gray-100 dark:border-darkBorder animate-in slide-in-from-bottom-10"
                  onClick={(e) => e.stopPropagation()}
               >
                  <div className="flex justify-between items-center mb-6">
@@ -563,6 +580,71 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                     </button>
                  </div>
                  
+                 {isAdmin ? (
+                   <div className="space-y-5">
+                     {adminGroups.map(group => (
+                       <div key={group.key}>
+                         <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 px-1">{group.label}</p>
+                         <div className="grid grid-cols-3 gap-2">
+                           {group.items.map(item => {
+                             const active = isPathActive(item.path);
+                             return (
+                               <button
+                                 key={item.path}
+                                 onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
+                                 className={`flex flex-col items-center gap-1.5 p-3 rounded-xl text-center transition-colors ${active ? 'bg-primary text-white' : 'bg-gray-50 dark:bg-darkBg text-darkText dark:text-darkTextPrimary active:bg-primary/10'}`}
+                               >
+                                 {item.icon}
+                                 <span className="text-[11px] font-semibold leading-tight">{item.label}</span>
+                               </button>
+                             );
+                           })}
+                         </div>
+                       </div>
+                     ))}
+
+                     <div className="border-t border-gray-100 dark:border-darkBorder pt-4 space-y-2">
+                       <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">Visualizar como</p>
+                       <div className="grid grid-cols-2 gap-2">
+                         <button
+                           onClick={() => { setShowClientPanel(false); openPreviewPanel(); }}
+                           className={`flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-semibold ${showPreviewPanel ? 'bg-purple-600 text-white' : 'bg-purple-50 text-purple-700'}`}
+                         >
+                           <Eye size={14} /> Colaboradora
+                         </button>
+                         <button
+                           onClick={openClientPanel}
+                           className={`flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-semibold ${showClientPanel ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700'}`}
+                         >
+                           <User size={14} /> Cliente
+                         </button>
+                       </div>
+                       {(showPreviewPanel || showClientPanel) && (
+                         <div className="max-h-56 overflow-y-auto rounded-xl border border-gray-100 dark:border-darkBorder divide-y divide-gray-50 dark:divide-darkBorder">
+                           {(showPreviewPanel ? loadingPreviewCollabs : loadingClientList) ? (
+                             <p className="text-xs text-gray-400 p-3 text-center">Carregando...</p>
+                           ) : (showPreviewPanel ? previewCollabs : clientPreviewList).length === 0 ? (
+                             <p className="text-xs text-gray-400 p-3 text-center">Nenhum registro encontrado</p>
+                           ) : showPreviewPanel ? previewCollabs.map(c => (
+                             <button key={c.id} onClick={() => handlePreviewCollab(c)} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-darkText dark:text-darkTextPrimary active:bg-purple-50">
+                               {c.foto
+                                 ? <img src={c.foto} alt={c.nome} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                                 : <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-xs shrink-0">{(c.nome || '?').trim().charAt(0)}</div>}
+                               <span className="truncate">{(c.nome || '').trim()}</span>
+                             </button>
+                           )) : clientPreviewList.map(c => (
+                             <button key={c.id} onClick={() => handlePreviewClient(c)} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-darkText dark:text-darkTextPrimary active:bg-blue-50">
+                               {c.photo
+                                 ? <img src={c.photo} alt={c.name} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                                 : <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs shrink-0">{(c.name || '?').trim().charAt(0)}</div>}
+                               <span className="truncate">{(c.name || '').trim()}</span>
+                             </button>
+                           ))}
+                         </div>
+                       )}
+                     </div>
+                   </div>
+                 ) : (
                  <div className="grid grid-cols-4 gap-4">
                     {menuItems.map((item) => (
                        <button 
@@ -579,6 +661,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                        </button>
                     ))}
                  </div>
+                 )}
               </div>
            </div>
         )}

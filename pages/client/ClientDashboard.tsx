@@ -6,12 +6,10 @@ import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
 import { Clock, MapPin, FileText, CheckCircle, Sparkles, Calendar as CalendarIcon, AlertCircle, Eye } from 'lucide-react';
 import { useData } from '../../components/DataContext'; // Import context
-import { getClientPreview, clearClientPreview } from '../../lib/adminPreview';
 
 export const ClientDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser, services } = useData(); // Get current user
-  const previewMode = getClientPreview();
 
   // Find next scheduled/confirmed appointment for this user
   const myServices = services.filter(s => s.clientId === currentUser?.id && (s.status === 'SCHEDULED' || s.status === 'CONFIRMED' || s.status === 'IN_PROGRESS'));
@@ -20,22 +18,6 @@ export const ClientDashboard: React.FC = () => {
 
   return (
     <Layout role={UserRole.CLIENT}>
-      {previewMode && (
-        <div className="bg-blue-600 text-white px-4 py-2 flex items-center justify-between text-xs">
-          <span><Eye size={12} className="inline mr-1 shrink-0" />Visualizando como <strong>{previewMode.clientName}</strong></span>
-          <button
-            onClick={() => {
-              clearClientPreview();
-              const returnPath = sessionStorage.getItem('ndl_preview_return_path') || '#/admin/dashboard';
-              sessionStorage.removeItem('ndl_preview_return_path');
-              window.location.hash = returnPath.replace(/^#/, '');
-            }}
-            className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg text-xs font-medium transition-colors whitespace-nowrap"
-          >
-            ← Voltar ao Admin
-          </button>
-        </div>
-      )}
       <div className="max-w-5xl mx-auto">
         <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>

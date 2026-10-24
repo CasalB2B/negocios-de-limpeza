@@ -362,10 +362,10 @@ export const AdminRHConfiguracoes: React.FC = () => {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 dark:border-darkBorder gap-1">
+        <div className="flex border-b border-gray-200 dark:border-darkBorder gap-1 overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
           {TAB_KEYS.map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-colors ${tab === t ? 'border-primary text-primary' : 'border-transparent text-lightText dark:text-darkTextSecondary hover:text-darkText dark:hover:text-darkTextPrimary'}`}>
+              className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-colors whitespace-nowrap shrink-0 ${tab === t ? 'border-primary text-primary' : 'border-transparent text-lightText dark:text-darkTextSecondary hover:text-darkText dark:hover:text-darkTextPrimary'}`}>
               {TAB_LABELS[t]}
             </button>
           ))}

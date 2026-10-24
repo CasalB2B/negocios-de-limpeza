@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, MapPin, User, CheckCircle, ChevronRight, Eye, TrendingUp } from 'lucide-react';
+import { Clock, MapPin, User, CheckCircle, ChevronRight, TrendingUp } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 import { CollabLayout } from '../../components/CollabLayout';
-import { getCollabPreview, clearCollabPreview } from '../../lib/adminPreview';
+import { getCollabPreview } from '../../lib/adminPreview';
 import { supabase } from '../../lib/supabase';
 
 type Tab = 'hoje' | 'semana';
@@ -135,22 +135,6 @@ export const CollaboratorAgenda: React.FC = () => {
 
   return (
     <CollabLayout>
-      {previewMode && (
-        <div className="bg-purple-600 text-white px-4 py-2 flex items-center justify-between text-xs z-50 sticky top-0">
-          <span><Eye size={12} className="inline mr-1 shrink-0" />Visualizando como <strong>{previewMode.collabName}</strong></span>
-          <button
-            onClick={() => {
-              clearCollabPreview();
-              const returnPath = sessionStorage.getItem('ndl_preview_return_path') || '#/admin/dashboard';
-              sessionStorage.removeItem('ndl_preview_return_path');
-              window.location.hash = returnPath.replace(/^#/, '');
-            }}
-            className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg text-xs font-medium transition-colors whitespace-nowrap"
-          >
-            ← Voltar ao Admin
-          </button>
-        </div>
-      )}
       {locationSharing && (
         <div className="text-xs text-center py-1 text-gray-400 bg-gray-50 sticky top-0">
           📍 Compartilhando localização com a empresa durante o serviço

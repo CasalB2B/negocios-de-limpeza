@@ -432,9 +432,9 @@ export const AdminCalendar: React.FC = () => {
           <div>
             <h1 className="text-2xl md:text-3xl font-display font-bold text-darkText dark:text-darkTextPrimary">Calendário</h1>
           </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
             {/* View toggle */}
-            <div className="flex bg-gray-100 dark:bg-darkBg rounded-xl p-1 gap-1">
+            <div className="flex bg-gray-100 dark:bg-darkBg rounded-xl p-1 gap-1 flex-1 sm:flex-none justify-between">
               <button
                 onClick={() => setView('month')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${view === 'month' ? 'bg-white dark:bg-darkSurface text-primary shadow-sm' : 'text-lightText dark:text-darkTextSecondary'}`}

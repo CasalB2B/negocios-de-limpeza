@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { CalendarDays, DollarSign, User, ArrowLeft } from 'lucide-react';
+import { CalendarDays, DollarSign, User, ArrowLeft, Eye } from 'lucide-react';
+import { getCollabPreview, exitPreviewToAdmin } from '../lib/adminPreview';
 
 interface CollabLayoutProps {
   children: React.ReactNode;
@@ -32,11 +33,20 @@ export const CollabLayout: React.FC<CollabLayoutProps> = ({
   ];
 
   const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/');
+  const preview = getCollabPreview();
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg, #f4f4f5)' }}>
+      {preview && (
+        <div className="sticky top-0 z-40 bg-purple-600 text-white px-4 py-2 flex items-center justify-between gap-2 text-xs">
+          <span className="truncate"><Eye size={12} className="inline mr-1" />Visualizando como <strong>{preview.collabName}</strong></span>
+          <button onClick={exitPreviewToAdmin} className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg font-medium whitespace-nowrap">
+            ← Voltar ao Admin
+          </button>
+        </div>
+      )}
       {(title || showBack) && (
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shadow-sm">
+        <header className={`sticky ${preview ? 'top-8' : 'top-0'} z-30 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shadow-sm`}>
           {showBack && (
             <button
               onClick={handleBack}
