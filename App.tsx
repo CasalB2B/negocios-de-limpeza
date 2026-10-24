@@ -56,6 +56,8 @@ import { EquipePage } from './pages/EquipePage';
 import { AdminMarketing } from './pages/admin/AdminMarketing';
 import { AdminRHPlanoCarreira } from './pages/admin/rh/AdminRHPlanoCarreira';
 import { AdminOS } from './pages/admin/AdminOS';
+import { AdminEstoque } from './pages/admin/AdminEstoque';
+import { AdminNFe } from './pages/admin/AdminNFe';
 
 // ── Troca o manifest dinamicamente conforme a rota ────────────────────────────
 function ManifestSwitcher() {
@@ -153,6 +155,8 @@ const App: React.FC = () => {
               <Route path="/admin/rh/contratacao" element={<AdminRHContratacao />} />
               <Route path="/admin/rh/plano-carreira" element={<AdminRHPlanoCarreira />} />
               <Route path="/admin/marketing" element={<AdminMarketing />} />
+              <Route path="/admin/estoque" element={<AdminEstoque />} />
+              <Route path="/admin/nfe" element={<AdminNFe />} />
             </Route>
 
             {/* Fallback */}

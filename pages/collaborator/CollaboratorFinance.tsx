@@ -1,261 +1,301 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CollabLayout } from '../../components/CollabLayout';
-import { Button } from '../../components/Button';
-import { DollarSign, Clock, Eye, FileText, X } from 'lucide-react';
+import { DollarSign, Clock, FileText, TrendingUp, AlertTriangle, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useData } from '../../components/DataContext';
+import { supabase } from '../../lib/supabase';
+
+type Period = 'mes' | 'anterior' | 'tudo';
+
+interface CollabPayment {
+  id: string;
+  tipo: 'PAGAMENTO' | 'ADIANTAMENTO';
+  valor: number;
+  data: string;
+  mes_referencia: string | null;
+  observacao: string | null;
+}
+
+function parseDateDDMMYYYY(str: string): Date | null {
+  if (!str) return null;
+  const parts = str.split('/');
+  if (parts.length === 3) {
+    const [d, m, y] = parts;
+    return new Date(Number(y), Number(m) - 1, Number(d));
+  }
+  return null;
+}
+
+function isInMonth(dateStr: string, year: number, month: number): boolean {
+  const d = parseDateDDMMYYYY(dateStr);
+  if (!d) return false;
+  return d.getFullYear() === year && d.getMonth() === month;
+}
 
 export const CollaboratorFinance: React.FC = () => {
-  const { services, currentCollaborator, platformSettings } = useData();
-  const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'PAID'>('ALL');
-  const [viewingService, setViewingService] = useState<any | null>(null);
+  const { services, currentCollaborator } = useData();
+  const [period, setPeriod] = useState<Period>('mes');
+  const [commissionRate, setCommissionRate] = useState<number>(40);
+  const [payments, setPayments] = useState<CollabPayment[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(true);
+  const [showPending, setShowPending] = useState(true);
+  const [showPayments, setShowPayments] = useState(true);
 
-  // Determina o valor fixo baseado no nível e nas horas
-  const getPayoutValue = (duration: 4 | 6 | 8) => {
-      const level = (currentCollaborator?.level || 'JUNIOR').toLowerCase() as 'junior' | 'senior' | 'master';
-      const hoursKey = `hours${duration}` as 'hours4' | 'hours6' | 'hours8';
-      
-      // Fallback seguro caso a configuração ainda não exista
-      if (platformSettings.payouts && platformSettings.payouts[level]) {
-          return platformSettings.payouts[level][hoursKey];
-      }
-      return 0;
-  };
+  // Load commission rate from colaboradoras_rh by name match
+  useEffect(() => {
+    if (!currentCollaborator?.name) return;
+    supabase
+      .from('colaboradoras_rh')
+      .select('commission_rate')
+      .ilike('nome', currentCollaborator.name)
+      .limit(1)
+      .then(({ data }) => {
+        if (data?.[0]?.commission_rate) {
+          setCommissionRate(Number(data[0].commission_rate));
+        }
+      });
+  }, [currentCollaborator?.name]);
 
-  // Filtrar apenas serviços desta colaboradora
-  const myFinanceData = services
-    .filter(s => s.collaboratorId === currentCollaborator?.id)
-    .map(s => {
-       // Lógica de Pagamento
-       const isPaid = s.status === 'COMPLETED';
-       const hasValue = s.price && s.price > 0;
-       
-       // Duração Estimada (Se não vier do banco, infere pelo preço ou padrão 4h)
-       // No DataContext atualizado, já garantimos que duration existe, mas por segurança:
-       const duration = (s.duration === 4 || s.duration === 6 || s.duration === 8) ? s.duration : 4;
+  // Load payments from collab_payments
+  useEffect(() => {
+    if (!currentCollaborator) return;
+    setLoadingPayments(true);
 
-       // CÁLCULO DO REPASSE LÍQUIDO (Valor Fixo por Nível e Horas)
-       const netValue = getPayoutValue(duration);
-       
-       return {
-          id: s.id,
-          date: s.date,
-          client: s.clientName,
-          type: s.type,
-          hours: `${duration}h`, 
-          value: netValue, // Valor líquido (Repasse Fixo)
-          status: isPaid ? 'PAID' : (hasValue ? 'PENDING' : 'OPEN'),
-          fullStatus: s.status
-       };
-    })
-    .filter(item => item.status !== 'OPEN'); 
+    // Get collab RH id by name
+    supabase
+      .from('colaboradoras_rh')
+      .select('id')
+      .ilike('nome', currentCollaborator.name)
+      .limit(1)
+      .then(({ data }) => {
+        const collabRhId = data?.[0]?.id;
+        if (!collabRhId) {
+          setLoadingPayments(false);
+          return;
+        }
+        return supabase
+          .from('collab_payments')
+          .select('*')
+          .eq('collab_id', collabRhId)
+          .order('data', { ascending: false });
+      })
+      .then((result) => {
+        if (result && !result.error && result.data) {
+          setPayments(result.data as CollabPayment[]);
+        }
+        setLoadingPayments(false);
+      });
+  }, [currentCollaborator?.name]);
 
-  const filteredData = myFinanceData.filter(item => {
-    if (activeTab === 'ALL') return true;
-    if (activeTab === 'PENDING') return item.status === 'PENDING';
-    if (activeTab === 'PAID') return item.status === 'PAID';
+  const now = new Date();
+  const thisYear = now.getFullYear();
+  const thisMonth = now.getMonth();
+  const prevYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+  const prevMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+
+  const myServices = services.filter(s => s.collaboratorId === currentCollaborator?.id);
+
+  const filtered = myServices.filter(s => {
+    if (period === 'tudo') return true;
+    if (period === 'mes') return isInMonth(s.date, thisYear, thisMonth);
+    if (period === 'anterior') return isInMonth(s.date, prevYear, prevMonth);
     return true;
   });
 
-  // KPI Calculations
-  const totalServices = myFinanceData.length;
-  const totalPendingValue = myFinanceData.filter(i => i.status === 'PENDING').reduce((acc, curr) => acc + curr.value, 0);
-  const totalHours = myFinanceData.reduce((acc, curr) => acc + parseInt(curr.hours), 0); 
+  // Pending = not yet linked to a payment (collab_payment_id is null) and service has a price
+  const pending = filtered.filter(s => !s.collab_payment_id && s.price && s.price > 0);
+  const pendingValue = pending.reduce((acc, s) => {
+    const hours = (s.duration === 4 || s.duration === 6 || s.duration === 8) ? s.duration : 4;
+    return acc + commissionRate * hours;
+  }, 0);
 
-  const handleExportPDF = () => {
-    alert("Gerando relatório de repasses...");
-  };
+  const totalHours = filtered.reduce((acc, s) => {
+    return acc + ((s.duration === 4 || s.duration === 6 || s.duration === 8) ? s.duration : 4);
+  }, 0);
 
-  const getLevelLabel = () => {
-      const lvl = currentCollaborator?.level;
-      if (lvl === 'SENIOR') return 'Sênior';
-      if (lvl === 'MASTER') return 'Mestre';
-      return 'Júnior';
-  }
+  // Adiantamentos not yet deducted (simplified: sum of ADIANTAMENTO payments in period)
+  const adiantamentos = payments.filter(p => p.tipo === 'ADIANTAMENTO');
+  const totalAdiantamento = adiantamentos.reduce((acc, p) => acc + p.valor, 0);
+  const liquidoAReceber = Math.max(0, pendingValue - totalAdiantamento);
+
+  const paidPayments = payments.filter(p => p.tipo === 'PAGAMENTO');
+
+  const periodLabel = period === 'mes' ? now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    : period === 'anterior' ? new Date(prevYear, prevMonth, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    : 'Todo o período';
 
   return (
     <CollabLayout title="Meu Financeiro">
-      <div className="max-w-lg mx-auto">
-        <div className="mb-4">
-          <p className="text-xs text-gray-400">Nível: <strong className="text-gray-700">{getLevelLabel()}</strong></p>
+      <div className="max-w-lg mx-auto space-y-4 pb-8">
+
+        {/* Period filter */}
+        <div className="flex gap-2">
+          {([
+            { key: 'mes',      label: 'Este mês' },
+            { key: 'anterior', label: 'Mês anterior' },
+            { key: 'tudo',     label: 'Tudo' },
+          ] as const).map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setPeriod(key)}
+              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-colors ${
+                period === key
+                  ? 'bg-primary text-white'
+                  : 'bg-gray-100 text-lightText hover:bg-gray-200'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
-        {/* KPIs Grid */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
-           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
-              <div className="flex justify-between items-start mb-4">
-                 <p className="text-sm text-lightText">Total de Limpezas</p>
-                 <div className="text-primary"><FileText size={20}/></div>
-              </div>
-              <h2 className="text-4xl font-bold text-darkText mb-1">{totalServices}</h2>
-              <p className="text-xs text-green-600 font-bold">Acumulado</p>
-           </div>
+        <p className="text-xs text-lightText text-center">{periodLabel} · R$ {commissionRate.toFixed(0)}/h</p>
 
-           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-              <div className="flex justify-between items-start mb-4">
-                 <p className="text-sm text-lightText">Total de Horas</p>
-                 <div className="text-primary"><Clock size={20}/></div>
-              </div>
-              <h2 className="text-4xl font-bold text-darkText mb-1">{totalHours}h</h2>
-              <p className="text-xs text-lightText">Calculado por serviço</p>
-           </div>
+        {/* KPI 2×2 grid */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+            <div className="flex justify-between items-start mb-3">
+              <p className="text-xs text-lightText">Limpezas</p>
+              <FileText size={16} className="text-primary" />
+            </div>
+            <p className="text-3xl font-bold text-darkText">{filtered.length}</p>
+            <p className="text-[10px] text-lightText mt-1">{pending.length} pendentes</p>
+          </div>
 
-           <div className="bg-white p-6 rounded-2xl border-2 border-primary/20 shadow-lg shadow-primary/5">
-              <div className="flex justify-between items-start mb-4">
-                 <p className="text-sm text-lightText">A Receber (Repasse)</p>
-                 <div className="text-primary"><DollarSign size={20}/></div>
-              </div>
-              <h2 className="text-3xl font-bold text-primary mb-1">R$ {totalPendingValue.toFixed(2)}</h2>
-              <p className="text-xs text-lightText">Baseado na sua tabela de horas</p>
-           </div>
+          <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+            <div className="flex justify-between items-start mb-3">
+              <p className="text-xs text-lightText">Total Horas</p>
+              <Clock size={16} className="text-primary" />
+            </div>
+            <p className="text-3xl font-bold text-darkText">{totalHours}h</p>
+            <p className="text-[10px] text-lightText mt-1">R$ {commissionRate}/h</p>
+          </div>
 
-           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-              <div className="flex justify-between items-start mb-2">
-                 <p className="text-sm text-lightText">Status Geral</p>
-                 <div className="text-yellow-500"><Clock size={20}/></div>
-              </div>
-              <h2 className="text-3xl font-bold text-darkText mb-2">{totalPendingValue > 0 ? 'Pendente' : 'Em dia'}</h2>
-              <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                 <div className={`h-full ${totalPendingValue > 0 ? 'bg-orange-400 w-2/3' : 'bg-green-500 w-full'}`}></div>
-              </div>
-           </div>
+          <div className="bg-white p-4 rounded-2xl border-2 border-primary/20 shadow-sm col-span-2">
+            <div className="flex justify-between items-start mb-3">
+              <p className="text-xs text-lightText">A Receber (líquido)</p>
+              <DollarSign size={16} className="text-primary" />
+            </div>
+            <p className="text-3xl font-bold text-primary">R$ {liquidoAReceber.toFixed(2)}</p>
+            {totalAdiantamento > 0 && (
+              <p className="text-[10px] text-amber-600 mt-1">Bruto R$ {pendingValue.toFixed(2)} − adiantamento R$ {totalAdiantamento.toFixed(2)}</p>
+            )}
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm col-span-2">
+            <div className="flex justify-between items-start mb-2">
+              <p className="text-xs text-lightText">Status Geral</p>
+              <TrendingUp size={16} className={pendingValue > 0 ? 'text-orange-400' : 'text-green-500'} />
+            </div>
+            <p className="text-lg font-bold text-darkText">{pendingValue > 0 ? 'Aguardando pagamento' : 'Em dia'}</p>
+            <div className="h-2 w-full bg-gray-100 rounded-full mt-2 overflow-hidden">
+              <div className={`h-full rounded-full ${pendingValue > 0 ? 'bg-orange-400 w-2/3' : 'bg-green-500 w-full'}`} />
+            </div>
+          </div>
         </div>
 
-        {/* Table Section */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-4">
-           {/* Table Tabs */}
-           <div className="flex border-b border-gray-100">
-              <button 
-                onClick={() => setActiveTab('ALL')}
-                className={`px-8 py-4 text-sm font-bold transition-colors ${activeTab === 'ALL' ? 'text-primary border-b-2 border-primary' : 'text-lightText hover:text-darkText hover:bg-gray-50'}`}
-              >
-                Todos
-              </button>
-              <button 
-                onClick={() => setActiveTab('PENDING')}
-                className={`px-8 py-4 text-sm font-bold transition-colors ${activeTab === 'PENDING' ? 'text-primary border-b-2 border-primary' : 'text-lightText hover:text-darkText hover:bg-gray-50'}`}
-              >
-                Pendentes
-              </button>
-              <button 
-                onClick={() => setActiveTab('PAID')}
-                className={`px-8 py-4 text-sm font-bold transition-colors ${activeTab === 'PAID' ? 'text-primary border-b-2 border-primary' : 'text-lightText hover:text-darkText hover:bg-gray-50'}`}
-              >
-                Pagos
-              </button>
-           </div>
-
-           {/* Table */}
-           <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                 <thead className="bg-gray-50/50 text-xs font-bold text-darkText uppercase">
-                    <tr>
-                       <th className="p-6">Data do Serviço</th>
-                       <th className="p-6">Cliente/Tipo</th>
-                       <th className="p-6">Duração</th>
-                       <th className="p-6">Valor Repasse</th>
-                       <th className="p-6">Status</th>
-                       <th className="p-6 text-right">Ações</th>
-                    </tr>
-                 </thead>
-                 <tbody className="divide-y divide-gray-100">
-                    {filteredData.map(item => (
-                      <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
-                         <td className="p-6 text-lightText text-sm">{item.date}</td>
-                         <td className="p-6">
-                            <p className="font-bold text-darkText text-sm">{item.client}</p>
-                            <p className="text-xs text-lightText">{item.type}</p>
-                         </td>
-                         <td className="p-6">
-                            <span className="bg-gray-100 text-darkText px-2 py-1 rounded text-xs font-bold">{item.hours}</span>
-                         </td>
-                         <td className="p-6 font-bold text-darkText text-sm">R$ {item.value.toFixed(2)}</td>
-                         <td className="p-6">
-                            {item.status === 'PENDING' ? (
-                              <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold">Pendente</span>
-                            ) : (
-                              <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">Pago</span>
-                            )}
-                         </td>
-                         <td className="p-6 text-right">
-                            <button 
-                              onClick={() => setViewingService(item)}
-                              className="text-primary hover:text-primaryHover hover:bg-primary/10 p-2 rounded-full transition-colors"
-                            >
-                              <Eye size={20} />
-                            </button>
-                         </td>
-                      </tr>
-                    ))}
-                    {filteredData.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="p-12 text-center text-lightText">
-                          Nenhum registro encontrado. Realize serviços para visualizar seus ganhos.
-                        </td>
-                      </tr>
-                    )}
-                 </tbody>
-              </table>
-           </div>
-        </div>
-
-        {/* Modal: Detalhes do Serviço */}
-        {viewingService && (
-           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-              <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 animate-in fade-in zoom-in duration-200">
-                 <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                    <h2 className="text-xl font-bold text-darkText">Detalhes do Repasse</h2>
-                    <button onClick={() => setViewingService(null)} className="p-2 hover:bg-gray-100 rounded-full text-lightText hover:text-darkText transition-colors">
-                       <X size={20} />
-                    </button>
-                 </div>
-                 
-                 <div className="p-6 space-y-6">
-                    <div className="text-center">
-                       <p className="text-sm text-lightText mb-1">Valor a Receber</p>
-                       <h3 className="text-4xl font-bold text-primary">R$ {viewingService.value.toFixed(2)}</h3>
-                       <div className="mt-3">
-                          {viewingService.status === 'PENDING' ? (
-                            <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold">AGUARDANDO PAGAMENTO</span>
-                          ) : (
-                            <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">PAGO</span>
-                          )}
-                       </div>
-                    </div>
-
-                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3 text-sm">
-                       <div className="flex justify-between">
-                          <span className="text-lightText">Serviço ID</span>
-                          <span className="font-bold text-darkText">{viewingService.id}</span>
-                       </div>
-                       <div className="flex justify-between">
-                          <span className="text-lightText">Data</span>
-                          <span className="font-bold text-darkText">{viewingService.date}</span>
-                       </div>
-                       <div className="flex justify-between">
-                          <span className="text-lightText">Duração</span>
-                          <span className="font-bold text-darkText">{viewingService.hours}</span>
-                       </div>
-                       <div className="flex justify-between">
-                          <span className="text-lightText">Cliente</span>
-                          <span className="font-bold text-darkText text-right">{viewingService.client}</span>
-                       </div>
-                       <div className="flex justify-between">
-                          <span className="text-lightText">Tipo</span>
-                          <span className="font-bold text-darkText">{viewingService.type}</span>
-                       </div>
-                    </div>
-
-                    <div className="text-xs text-lightText text-center px-4">
-                       O pagamento é liberado após a confirmação de conclusão do serviço. Valor tabelado para {viewingService.hours} no nível {getLevelLabel()}.
-                    </div>
-                 </div>
-
-                 <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-3xl">
-                    <Button onClick={() => setViewingService(null)} fullWidth>Fechar</Button>
-                 </div>
-              </div>
-           </div>
+        {/* Adiantamento warning */}
+        {totalAdiantamento > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3 items-start">
+            <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold text-amber-700">Adiantamento pendente</p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                Você recebeu R$ {totalAdiantamento.toFixed(2)} de adiantamento que será descontado no próximo pagamento.
+              </p>
+            </div>
+          </div>
         )}
+
+        {/* Pending services */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <button
+            onClick={() => setShowPending(v => !v)}
+            className="w-full flex items-center justify-between p-4 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-5 rounded-full bg-orange-400" />
+              <p className="text-sm font-bold text-darkText">Serviços Pendentes</p>
+              <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full">{pending.length}</span>
+            </div>
+            {showPending ? <ChevronUp size={16} className="text-lightText" /> : <ChevronDown size={16} className="text-lightText" />}
+          </button>
+
+          {showPending && (
+            <div className="border-t border-gray-100 divide-y divide-gray-50">
+              {pending.length === 0 ? (
+                <p className="text-sm text-lightText text-center py-6">Nenhum serviço pendente no período.</p>
+              ) : pending.map(s => {
+                const hours = (s.duration === 4 || s.duration === 6 || s.duration === 8) ? s.duration : 4;
+                const val = commissionRate * hours;
+                return (
+                  <div key={s.id} className="flex items-center gap-3 p-4 border-l-4 border-l-orange-400">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-darkText truncate">{s.clientName}</p>
+                      <p className="text-xs text-lightText">{s.date} · {hours}h · {s.type}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-orange-600">R$ {val.toFixed(2)}</p>
+                      <span className="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold">Pendente</span>
+                    </div>
+                  </div>
+                );
+              })}
+              {pending.length > 0 && (
+                <div className="px-4 py-3 bg-orange-50 flex justify-between items-center">
+                  <p className="text-xs text-orange-700 font-bold">Total pendente</p>
+                  <p className="text-sm font-bold text-orange-700">R$ {pendingValue.toFixed(2)}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Payments received */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <button
+            onClick={() => setShowPayments(v => !v)}
+            className="w-full flex items-center justify-between p-4 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-5 rounded-full bg-green-500" />
+              <p className="text-sm font-bold text-darkText">Pagamentos Recebidos</p>
+              <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">{payments.length}</span>
+            </div>
+            {showPayments ? <ChevronUp size={16} className="text-lightText" /> : <ChevronDown size={16} className="text-lightText" />}
+          </button>
+
+          {showPayments && (
+            <div className="border-t border-gray-100 divide-y divide-gray-50">
+              {loadingPayments ? (
+                <div className="flex justify-center py-6"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+              ) : payments.length === 0 ? (
+                <p className="text-sm text-lightText text-center py-6">Nenhum pagamento registrado ainda.</p>
+              ) : payments.slice(0, 20).map(p => (
+                <div key={p.id} className={`flex items-center gap-3 p-4 border-l-4 ${p.tipo === 'PAGAMENTO' ? 'border-l-green-500' : 'border-l-amber-400'}`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-darkText">
+                        {p.tipo === 'PAGAMENTO' ? 'Pagamento' : 'Adiantamento'}
+                      </p>
+                      {p.tipo === 'PAGAMENTO'
+                        ? <CheckCircle size={12} className="text-green-500" />
+                        : <AlertTriangle size={12} className="text-amber-500" />}
+                    </div>
+                    <p className="text-xs text-lightText">
+                      {new Date(p.data + 'T12:00:00').toLocaleDateString('pt-BR')}
+                      {p.mes_referencia && ` · ${p.mes_referencia}`}
+                    </p>
+                    {p.observacao && <p className="text-xs text-lightText mt-0.5 italic">{p.observacao}</p>}
+                  </div>
+                  <p className={`text-sm font-bold shrink-0 ${p.tipo === 'PAGAMENTO' ? 'text-green-600' : 'text-amber-600'}`}>
+                    R$ {p.valor.toFixed(2)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
       </div>
     </CollabLayout>
   );

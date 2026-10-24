@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
-import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight, Eye } from 'lucide-react';
+import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight, Eye, Package } from 'lucide-react';
 import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
 import { useData } from './DataContext';
@@ -51,14 +51,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
 
   const handlePreviewCollab = (collab: PreviewCollab) => {
     startCollabPreview(collab);
+    sessionStorage.setItem('ndl_preview_return_path', window.location.hash || '#/admin/dashboard');
     setShowPreviewPanel(false);
-    const a = document.createElement('a');
-    a.href = '/#/collab/agenda';
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    window.location.hash = '/collab/agenda';
   };
 
   const openClientPanel = async () => {
@@ -75,14 +70,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
 
   const handlePreviewClient = (client: PreviewClient) => {
     startClientPreview(client);
+    sessionStorage.setItem('ndl_preview_return_path', window.location.hash || '#/admin/dashboard');
     setShowClientPanel(false);
-    const a = document.createElement('a');
-    a.href = '/#/client/dashboard';
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    window.location.hash = '/client/dashboard';
   };
 
   const handleSupportClick = () => {
@@ -253,6 +243,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       icon: <DollarSign size={16} />,
       items: [
         { icon: <DollarSign size={15} />, label: 'Financeiro', path: '/admin/payments' },
+        { icon: <Package size={15} />,    label: 'Estoque',    path: '/admin/estoque' },
+        { icon: <FileText size={15} />,   label: 'Nota Fiscal', path: '/admin/nfe' },
       ],
     },
     {

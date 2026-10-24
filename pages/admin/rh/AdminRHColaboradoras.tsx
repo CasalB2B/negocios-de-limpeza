@@ -223,7 +223,7 @@ export const AdminRHColaboradoras: React.FC = () => {
   const [saveError, setSaveError] = useState('');   // feedback when server save fails
   const [copiedId, setCopiedId] = useState('');
   const [perfilAberto, setPerfilAberto] = useState<ColaboradoraRH | null>(null);
-  const [perfilTab, setPerfilTab] = useState<'dados' | 'comportamental' | 'diario' | 'avaliacoes' | 'onboarding' | 'introducao'>('dados');
+  const [perfilTab, setPerfilTab] = useState<'dados' | 'comportamental' | 'diario' | 'avaliacoes' | 'onboarding' | 'introducao' | 'financeiro'>('dados');
   const [onboarding, setOnboarding] = useState<Record<string, boolean>>({});
   const [ligacaoIntro, setLigacaoIntro] = useState<LigacaoIntro>({});
   const photoRef = useRef<HTMLInputElement>(null);
@@ -253,6 +253,57 @@ export const AdminRHColaboradoras: React.FC = () => {
   const [editingCommRate, setEditingCommRate] = useState(false);
   const [commRateInput, setCommRateInput] = useState('40');
   const [savingCommRate, setSavingCommRate] = useState(false);
+
+  // ── Financeiro tab state ─────────────────────────────────────────────────
+  const [finPayments, setFinPayments] = useState<{id:string;tipo:string;valor:number;data:string;mes_referencia:string|null;observacao:string|null}[]>([]);
+  const [finLoading, setFinLoading] = useState(false);
+  const [finShowPag, setFinShowPag] = useState(false);
+  const [finShowAdiant, setFinShowAdiant] = useState(false);
+  const [finFormValor, setFinFormValor] = useState('');
+  const [finFormData, setFinFormData] = useState(new Date().toLocaleDateString('sv-SE'));
+  const [finFormMes, setFinFormMes] = useState('');
+  const [finFormObs, setFinFormObs] = useState('');
+  const [finSaving, setFinSaving] = useState(false);
+  const [finMsg, setFinMsg] = useState('');
+
+  const loadFinPayments = async (collabId: string) => {
+    setFinLoading(true);
+    const { data } = await supabase.from('collab_payments').select('*').eq('collab_id', collabId).order('data', { ascending: false });
+    setFinPayments((data as any[]) ?? []);
+    setFinLoading(false);
+  };
+
+  const handleRegisterPayment = async (tipo: 'PAGAMENTO' | 'ADIANTAMENTO') => {
+    if (!perfilAberto || !finFormValor) return;
+    setFinSaving(true);
+    setFinMsg('');
+    const { error } = await supabase.from('collab_payments').insert({
+      collab_id: perfilAberto.id,
+      tipo,
+      valor: parseFloat(finFormValor),
+      data: finFormData,
+      mes_referencia: finFormMes || null,
+      observacao: finFormObs || null,
+    });
+    if (!error) {
+      setFinMsg(`✅ ${tipo === 'PAGAMENTO' ? 'Pagamento' : 'Adiantamento'} registrado!`);
+      setFinFormValor('');
+      setFinFormMes('');
+      setFinFormObs('');
+      setFinShowPag(false);
+      setFinShowAdiant(false);
+      await loadFinPayments(perfilAberto.id);
+    } else {
+      setFinMsg(`⚠️ Erro: ${error.message}`);
+    }
+    setFinSaving(false);
+    setTimeout(() => setFinMsg(''), 4000);
+  };
+
+  React.useEffect(() => {
+    if (!perfilAberto) return;
+    if (perfilTab === 'financeiro') loadFinPayments(perfilAberto.id);
+  }, [perfilTab, perfilAberto?.id]);
 
   React.useEffect(() => {
     if (!perfilAberto) return;
@@ -880,6 +931,7 @@ export const AdminRHColaboradoras: React.FC = () => {
                     { key: 'avaliacoes',     label: 'Avaliações',     icon: <Star size={14}/>, badge: colAvals.length > 0 ? { count: colAvals.length, color: 'bg-yellow-500' } : null },
                     { key: 'introducao',     label: 'Introdução',     icon: <Phone size={14}/>, badge: ligacaoIntro.realizada ? { count: '✓', color: 'bg-green-500' } : ligacaoIntro.data ? { count: '📞', color: 'bg-violet-500' } : null },
                     { key: 'onboarding',     label: 'Onboarding',     icon: <CheckSquare size={14}/>, badge: onbDone < onbTotal ? { count: `${onbPct}%`, color: onbPct === 100 ? 'bg-green-500' : 'bg-orange-400' } : { count: '✓', color: 'bg-green-500' } },
+                    { key: 'financeiro',     label: 'Financeiro',     icon: <DollarSign size={14}/>, badge: null },
                   ] as const).map(tab => (
                     <button key={tab.key} onClick={() => setPerfilTab(tab.key)}
                       className={`flex items-center gap-1.5 px-4 py-3 text-xs font-bold whitespace-nowrap border-b-2 transition-colors ${
@@ -1566,6 +1618,116 @@ export const AdminRHColaboradoras: React.FC = () => {
                     </div>
                   );
                 })()}
+
+                {/* ── Financeiro ── */}
+                {perfilTab === 'financeiro' && (
+                  <div className="space-y-4">
+                    <p className="text-xs text-lightText dark:text-darkTextSecondary">
+                      Registre pagamentos e adiantamentos. A colaboradora vê isso no app em "Meu Financeiro".
+                    </p>
+
+                    {/* Action buttons */}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => { setFinShowPag(v => !v); setFinShowAdiant(false); }}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-bold transition-colors border ${finShowPag ? 'bg-green-600 text-white border-green-600' : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800'}`}
+                      >
+                        <DollarSign size={14} /> Registrar Pagamento
+                      </button>
+                      <button
+                        onClick={() => { setFinShowAdiant(v => !v); setFinShowPag(false); }}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-bold transition-colors border ${finShowAdiant ? 'bg-amber-500 text-white border-amber-500' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'}`}
+                      >
+                        <DollarSign size={14} /> Adiantamento
+                      </button>
+                    </div>
+
+                    {/* Payment form */}
+                    {(finShowPag || finShowAdiant) && (
+                      <div className="bg-gray-50 dark:bg-darkBg rounded-2xl p-4 space-y-3 border border-gray-200 dark:border-darkBorder">
+                        <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary">
+                          {finShowPag ? '💚 Registrar Pagamento' : '🟡 Registrar Adiantamento'}
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[11px] font-bold text-lightText dark:text-darkTextSecondary block mb-1">Valor (R$) *</label>
+                            <input type="number" min="0" step="0.01" value={finFormValor} onChange={e => setFinFormValor(e.target.value)}
+                              placeholder="0,00"
+                              className="w-full border border-input bg-white dark:bg-darkSurface rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-bold text-lightText dark:text-darkTextSecondary block mb-1">Data *</label>
+                            <input type="date" value={finFormData} onChange={e => setFinFormData(e.target.value)}
+                              className="w-full border border-input bg-white dark:bg-darkSurface rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-bold text-lightText dark:text-darkTextSecondary block mb-1">Mês de referência</label>
+                          <input type="text" value={finFormMes} onChange={e => setFinFormMes(e.target.value)}
+                            placeholder="ex: Outubro/2026"
+                            className="w-full border border-input bg-white dark:bg-darkSurface rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-bold text-lightText dark:text-darkTextSecondary block mb-1">Observação</label>
+                          <input type="text" value={finFormObs} onChange={e => setFinFormObs(e.target.value)}
+                            placeholder="Opcional"
+                            className="w-full border border-input bg-white dark:bg-darkSurface rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => { setFinShowPag(false); setFinShowAdiant(false); setFinFormValor(''); }}
+                            className="flex-1 py-2 border border-gray-200 dark:border-darkBorder rounded-xl text-sm font-bold text-lightText hover:bg-gray-100 dark:hover:bg-darkBorder transition-colors">
+                            Cancelar
+                          </button>
+                          <button
+                            onClick={() => handleRegisterPayment(finShowPag ? 'PAGAMENTO' : 'ADIANTAMENTO')}
+                            disabled={finSaving || !finFormValor}
+                            className="flex-1 py-2 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary/90 disabled:opacity-60 transition-colors">
+                            {finSaving ? 'Salvando...' : 'Confirmar'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {finMsg && (
+                      <p className="text-xs font-bold text-center text-green-600 dark:text-green-400">{finMsg}</p>
+                    )}
+
+                    {/* Payment history */}
+                    <div>
+                      <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary mb-3 flex items-center gap-1.5">
+                        <DollarSign size={13} className="text-primary" /> Histórico de Pagamentos
+                      </p>
+                      {finLoading ? (
+                        <div className="flex justify-center py-6"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+                      ) : finPayments.length === 0 ? (
+                        <div className="text-center py-6 text-lightText dark:text-darkTextSecondary">
+                          <DollarSign size={24} className="mx-auto mb-2 opacity-30" />
+                          <p className="text-sm font-bold">Nenhum pagamento registrado.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {finPayments.slice(0, 20).map(p => (
+                            <div key={p.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-l-4 ${p.tipo === 'PAGAMENTO' ? 'border-l-green-500 bg-green-50 dark:bg-green-900/10' : 'border-l-amber-400 bg-amber-50 dark:bg-amber-900/10'}`}>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">
+                                  {p.tipo === 'PAGAMENTO' ? 'Pagamento' : 'Adiantamento'}
+                                </p>
+                                <p className="text-xs text-lightText dark:text-darkTextSecondary">
+                                  {new Date(p.data + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                  {p.mes_referencia && ` · ${p.mes_referencia}`}
+                                </p>
+                                {p.observacao && <p className="text-xs text-lightText mt-0.5 italic">{p.observacao}</p>}
+                              </div>
+                              <p className={`text-sm font-bold shrink-0 ${p.tipo === 'PAGAMENTO' ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                                R$ {Number(p.valor).toFixed(2)}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
               </div>
             </div>

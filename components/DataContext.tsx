@@ -88,6 +88,7 @@ export interface Service {
   collaboratorIds?: string[];
   collaboratorNames?: string[];
   duration: 4 | 6 | 8; // Duração estimada para cálculo de repasse
+  collab_payment_id?: string | null;
   createdAt: number;
 }
 
@@ -391,6 +392,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     price: s.price || 0,
     notes: s.notes || '',
     duration: s.duration || 4, // Default 4h if missing
+    collab_payment_id: s.collab_payment_id ?? null,
     createdAt: s.created_at ? new Date(s.created_at).getTime() : Date.now()
   });
 
