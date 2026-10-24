@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useRH } from '../../components/RHContext';
 import { supabase } from '../../lib/supabase';
+import { ClientesSumidosCard } from '../../components/ClientesSumidos';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -313,6 +314,9 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
         </div>
+
+        {/* ── Clientes Sumidos ── */}
+        <ClientesSumidosCard services={services} />
 
         {/* ── Row 2: Area chart + Donut ── */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
