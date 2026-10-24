@@ -281,15 +281,15 @@ export const AdminCalendar: React.FC = () => {
                 style={{ width: COL_W, minWidth: COL_W }}
                 className="flex flex-col items-center py-3 px-2 border-r border-gray-100 dark:border-darkBorder shrink-0">
                 {c.foto ? (
-                  <img src={c.foto} alt={c.nome}
+                  <img src={c.foto} alt={c.nome || ''}
                     className="w-10 h-10 rounded-full object-cover border-2 border-purple-200" />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-bold border-2 border-purple-200 shrink-0">
-                    {c.nome.charAt(0)}
+                    {(c.nome || '?').charAt(0)}
                   </div>
                 )}
                 <p className="text-xs font-semibold text-gray-700 dark:text-darkTextPrimary text-center mt-1.5 leading-tight line-clamp-2 w-full px-1">
-                  {c.nome.split(' ')[0]}
+                  {(c.nome || '').split(' ')[0] || '—'}
                 </p>
                 <p className="text-[9px] text-gray-400 mt-0.5">
                   {getServicesForCollab(c.id).length > 0 ? `${getServicesForCollab(c.id).length} serv.` : '—'}
