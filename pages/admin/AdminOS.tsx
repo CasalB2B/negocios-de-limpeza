@@ -4,7 +4,7 @@ import { UserRole } from '../../types';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { Modal } from '../../components/Modal';
-import { Plus, X, User, Calendar, MapPin, Clock, DollarSign, ArrowRight, AlertCircle, CheckCircle2, Search } from 'lucide-react';
+import { Plus, X, User, Calendar, MapPin, Clock, DollarSign, ArrowRight, AlertCircle, CheckCircle2, Search, CreditCard, Copy, ExternalLink, MessageCircle } from 'lucide-react';
 import { useData, Service } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
 
@@ -453,12 +453,50 @@ interface DrawerProps {
   onAssignCollab: (id: string, name: string) => void;
 }
 
+type PaymentState = null | 'loading' | { url: string } | { error: string };
+
 const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose, onStatusChange, onAssignCollab }) => {
   const currentCol = normCol(service.status);
   const nextStatus = NEXT[currentCol];
   const nextCol = nextStatus ? COLUMNS.find(c => c.key === nextStatus) : null;
   const [assignId, setAssignId] = useState(service.collaboratorId || '');
   const col = COLUMNS.find(c => c.key === currentCol)!;
+  const [paymentState, setPaymentState] = useState<PaymentState>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleGerarCobranca = async () => {
+    setPaymentState('loading');
+    try {
+      const res = await fetch(
+        `https://yhdxmutbreihrtlnbcaf.supabase.co/functions/v1/create-payment-link`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ service_id: service.id }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setPaymentState({ error: data.error || 'Erro ao gerar cobrança' });
+      } else {
+        setPaymentState({ url: data.checkout_url });
+      }
+    } catch {
+      setPaymentState({ error: 'Erro de conexão. Tente novamente.' });
+    }
+  };
+
+  const handleCopy = (url: string) => {
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleWhatsApp = (url: string) => {
+    const phone = ''; // sem número definido — abre seletor de contato
+    const msg = encodeURIComponent(`Olá! Segue o link para pagamento do serviço de ${service.date}:\n💰 ${url}\nVálido por 48h.`);
+    window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+  };
 
   return (
     <div className="fixed inset-0 z-[60] flex">
@@ -554,6 +592,71 @@ const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose
 
         {/* Footer actions */}
         <div className="p-6 border-t border-gray-100 dark:border-darkBorder shrink-0 space-y-2">
+          {/* Gerar Cobrança InfinityPay */}
+          {service.price && service.price > 0 && service.paymentStatus !== 'FULL_PAID' && (
+            <div>
+              {paymentState === null && (
+                <button
+                  onClick={handleGerarCobranca}
+                  className="w-full py-3 text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <CreditCard size={16} /> Gerar Cobrança
+                </button>
+              )}
+              {paymentState === 'loading' && (
+                <div className="w-full py-3 text-sm text-center text-lightText bg-gray-50 dark:bg-darkBg rounded-xl border border-gray-200 dark:border-darkBorder">
+                  <span className="animate-pulse">Gerando cobrança…</span>
+                </div>
+              )}
+              {paymentState !== null && paymentState !== 'loading' && 'url' in paymentState && (
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 rounded-xl p-3 space-y-2">
+                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                    <CheckCircle2 size={13} /> Cobrança gerada com sucesso!
+                  </p>
+                  <p className="text-xs text-emerald-800 dark:text-emerald-300 break-all font-mono bg-emerald-100 dark:bg-emerald-900/40 rounded-lg p-2">
+                    {paymentState.url}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleCopy(paymentState.url)}
+                      className="flex-1 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-white dark:bg-darkSurface border border-emerald-200 dark:border-emerald-700 rounded-lg flex items-center justify-center gap-1 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors"
+                    >
+                      <Copy size={12} /> {copied ? 'Copiado!' : 'Copiar'}
+                    </button>
+                    <button
+                      onClick={() => handleWhatsApp(paymentState.url)}
+                      className="flex-1 py-2 text-xs font-bold text-white bg-[#25D366] rounded-lg flex items-center justify-center gap-1 hover:bg-[#1fbb58] transition-colors"
+                    >
+                      <MessageCircle size={12} /> WhatsApp
+                    </button>
+                    <button
+                      onClick={() => window.open(paymentState.url, '_blank')}
+                      className="py-2 px-3 text-xs font-bold text-gray-600 dark:text-darkTextSecondary bg-gray-100 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-lg hover:bg-gray-200 dark:hover:bg-darkBorder transition-colors"
+                    >
+                      <ExternalLink size={12} />
+                    </button>
+                  </div>
+                  <button onClick={() => setPaymentState(null)} className="w-full text-xs text-lightText hover:text-darkText dark:hover:text-darkTextPrimary transition-colors">
+                    Gerar novo link
+                  </button>
+                </div>
+              )}
+              {paymentState !== null && paymentState !== 'loading' && 'error' in paymentState && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-3 space-y-2">
+                  <p className="text-xs font-bold text-red-600 dark:text-red-400 flex items-center gap-1">
+                    <AlertCircle size={13} /> {paymentState.error}
+                  </p>
+                  <button
+                    onClick={() => setPaymentState(null)}
+                    className="w-full py-2 text-xs font-bold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                  >
+                    Tentar novamente
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {nextCol && (
             <Button fullWidth onClick={() => onStatusChange(nextCol.key)} icon={<ArrowRight size={16} />}>
               Avançar para: {nextCol.label}
