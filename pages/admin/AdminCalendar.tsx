@@ -78,7 +78,6 @@ export const AdminCalendar: React.FC = () => {
     setSelectedCollabs(prev => {
       const exists = prev.find(x => x.id === c.id);
       if (exists) return prev.filter(x => x.id !== c.id);
-      if (prev.length >= 3) return prev;
       return [...prev, { id: c.id, nome: c.nome }];
     });
   };
@@ -427,7 +426,7 @@ export const AdminCalendar: React.FC = () => {
 
   return (
     <Layout role={UserRole.ADMIN}>
-      <div className="max-w-7xl mx-auto h-full flex flex-col">
+      <div className="h-full flex flex-col">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 shrink-0">
           <div>
@@ -596,14 +595,14 @@ export const AdminCalendar: React.FC = () => {
 
           <div>
             <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">
-              Colaboradoras <span className="text-lightText dark:text-darkTextSecondary font-normal">(até 3)</span>
+              Colaboradoras
             </label>
             {selectedCollabs.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {selectedCollabs.map(c => (
                   <span key={c.id} className="flex items-center gap-1 bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full">
-                    {c.nome.split(' ')[0]}
-                    <button type="button" onClick={() => toggleCollab({ id: c.id, nome: c.nome })} className="ml-1 hover:text-red-500">×</button>
+                    {(c.nome || '').split(' ')[0] || '—'}
+                    <button type="button" onClick={() => toggleCollab({ id: c.id, nome: c.nome })} className="ml-1 hover:text-red-500 leading-none">×</button>
                   </span>
                 ))}
               </div>
@@ -613,13 +612,11 @@ export const AdminCalendar: React.FC = () => {
                 <p className="text-xs text-lightText p-3">Nenhuma colaboradora ativa</p>
               ) : colaboradoras.map(c => {
                 const checked = !!selectedCollabs.find(x => x.id === c.id);
-                const disabled = !checked && selectedCollabs.length >= 3;
                 return (
-                  <label key={c.id} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors ${checked ? 'bg-primary/5' : disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-darkBorder'}`}>
+                  <label key={c.id} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors ${checked ? 'bg-primary/5' : 'hover:bg-gray-100 dark:hover:bg-darkBorder'}`}>
                     <input
                       type="checkbox"
                       checked={checked}
-                      disabled={disabled}
                       onChange={() => toggleCollab(c)}
                       className="accent-primary w-4 h-4 rounded"
                     />

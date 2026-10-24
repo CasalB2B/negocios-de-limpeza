@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, MapPin, User, CheckCircle, ChevronRight, MessageCircle, Eye } from 'lucide-react';
+import { Clock, MapPin, User, CheckCircle, ChevronRight, Eye, TrendingUp } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 import { CollabLayout } from '../../components/CollabLayout';
 import { getCollabPreview, clearCollabPreview } from '../../lib/adminPreview';
@@ -92,10 +92,37 @@ export const CollaboratorAgenda: React.FC = () => {
       });
   }, [services, currentCollaborator, tab, today]);
 
-  const handleWhatsApp = () => {
-    const msg = encodeURIComponent('Olá, sou colaboradora e preciso de suporte.');
-    window.open(`https://wa.me/5527999808013?text=${msg}`, '_blank');
-  };
+  const [commRate, setCommRate] = useState(40);
+  useEffect(() => {
+    if (!currentCollaborator?.name) return;
+    supabase.from('colaboradoras_rh').select('commission_rate').ilike('nome', `%${currentCollaborator.name.split(' ')[0]}%`).maybeSingle()
+      .then(({ data }) => { if (data?.commission_rate) setCommRate(Number(data.commission_rate)); });
+  }, [currentCollaborator?.name]);
+
+  const monthProjection = useMemo(() => {
+    if (!currentCollaborator) return { total: 0, horas: 0, estimativa: 0, concluidos: 0 };
+    const now = new Date();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const yyyy = String(now.getFullYear());
+    const monthServices = services.filter(s => {
+      const isPrimary = s.collaboratorId === currentCollaborator.id;
+      const isInArray = Array.isArray((s as any).collaboratorIds) && (s as any).collaboratorIds.includes(currentCollaborator.id);
+      if (!(isPrimary || isInArray)) return false;
+      if (!s.date) return false;
+      const parts = s.date.split('/');
+      return parts[1] === mm && parts[2] === yyyy && s.status !== 'CANCELLED';
+    });
+    const horas = monthServices.reduce((sum, s) => {
+      const m = (s.type || '').match(/(\d+)\s*h/i);
+      return sum + (m ? parseInt(m[1]) : 4);
+    }, 0);
+    return {
+      total: monthServices.length,
+      horas,
+      estimativa: horas * commRate,
+      concluidos: monthServices.filter(s => s.status === 'COMPLETED').length,
+    };
+  }, [services, currentCollaborator, commRate]);
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -227,16 +254,31 @@ export const CollaboratorAgenda: React.FC = () => {
           )}
         </div>
 
-        {/* Support */}
-        <div className="bg-gradient-to-br from-violet-600 to-purple-600 rounded-2xl p-5 text-white">
-          <p className="font-bold text-sm mb-0.5">Precisa de ajuda?</p>
-          <p className="text-xs text-white/70 mb-3">Suporte disponível agora</p>
-          <button
-            onClick={handleWhatsApp}
-            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition-colors"
-          >
-            <MessageCircle size={16} /> Chamar no WhatsApp
-          </button>
+        {/* Projeções do mês */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-1.5">
+            <TrendingUp size={15} className="text-violet-500" />
+            Projeção de {new Date().toLocaleDateString('pt-BR', { month: 'long' })}
+          </h3>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="bg-violet-50 rounded-xl py-3">
+              <p className="text-xl font-bold text-violet-600">{monthProjection.total}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">serviços</p>
+            </div>
+            <div className="bg-blue-50 rounded-xl py-3">
+              <p className="text-xl font-bold text-blue-600">{monthProjection.horas}h</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">horas</p>
+            </div>
+            <div className="bg-green-50 rounded-xl py-3">
+              <p className="text-lg font-bold text-green-600">R${monthProjection.estimativa}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">estimado</p>
+            </div>
+          </div>
+          {monthProjection.concluidos > 0 && (
+            <p className="text-[10px] text-gray-400 text-center mt-2">
+              {monthProjection.concluidos} concluído(s) · {monthProjection.total - monthProjection.concluidos} restante(s)
+            </p>
+          )}
         </div>
 
         <div className="h-2" />
