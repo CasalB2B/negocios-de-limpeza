@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, MapPin, User, CheckCircle, ChevronRight, MessageCircle, Eye } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 import { CollabLayout } from '../../components/CollabLayout';
 import { getCollabPreview, clearCollabPreview } from '../../lib/adminPreview';
+import { supabase } from '../../lib/supabase';
 
 type Tab = 'hoje' | 'semana';
 
