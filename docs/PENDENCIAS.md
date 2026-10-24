@@ -63,7 +63,10 @@ Marque com `[x]` conforme for fazendo. Quando terminar a sua parte, é só me ch
 
 ## 🤖 Próximas construções (não dependem de você)
 
-- [ ] Botão Gemini com dois modos: **Ajuda** (como usar a plataforma) e **Gestão** (faturamento, relatórios e análises com os dados da empresa)
+- [x] Botão Gemini com dois modos: **Ajuda** (como usar a plataforma) e **Gestão** (faturamento, relatórios e análises com os dados da empresa) — feito em 24/10/2026
+- [ ] 💡 *Ideia para o SaaS (na gaveta):* **guia de implantação com IA** — quando uma empresa nova criar conta, o assistente conduz a configuração: pergunta como é a operação hoje (quantas colaboradoras, serviços, preços, como agenda e cobra) e leva passo a passo até tudo funcionar (cadastrar equipe e serviços, conectar WhatsApp, Google, nota fiscal). Prioridade baixa enquanto só o administrador usa.
+- [ ] Gestão: botão "Exportar para Google Planilhas" nas respostas (depois do "Conectar com Google")
+- [ ] Gestão: gráficos nas respostas (ex.: faturamento mês a mês)
 - [ ] Tela do bot do WhatsApp com 3 modos: **Só lembretes / Menu / IA** (modelo do Gendo: abas Geral, Assistente IA e Menu)
 - [ ] Botão **"Conectar com Google"** (Agenda, Planilhas, Analytics, Meu Negócio)
 - [ ] Mapa ao vivo das colaboradoras e endereço automático (a chave do Maps já está funcionando)

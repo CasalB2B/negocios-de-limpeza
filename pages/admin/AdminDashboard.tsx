@@ -11,7 +11,6 @@ import { useRH } from '../../components/RHContext';
 import { supabase } from '../../lib/supabase';
 import { ClientesSumidosCard } from '../../components/ClientesSumidos';
 import { MapaColaboradoras } from '../../components/MapaColaboradoras';
-import { GeminiChat } from '../../components/GeminiChat';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -587,9 +586,6 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
       </div>
-
-      {/* Gemini AI — floating chat button */}
-      <GeminiChat />
     </Layout>
   );
 };

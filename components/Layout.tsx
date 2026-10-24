@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
-import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight, Eye, Package } from 'lucide-react';
+import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight, Eye, Package, Contact } from 'lucide-react';
+import { GeminiChat } from './GeminiChat';
 import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
 import { useData } from './DataContext';
@@ -197,12 +198,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           )}
         </header>
 
-        <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 mb-24 md:mb-0">
+        <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 mobile-pb-nav md:pb-8">
           {children}
         </main>
 
         {/* Bottom Navigation for Client Mobile */}
-        <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white dark:bg-darkSurface border-t border-gray-200 dark:border-darkBorder flex justify-around p-2 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe">
+        <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white dark:bg-darkSurface border-t border-gray-200 dark:border-darkBorder flex justify-around px-2 pt-2 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-nav-safe">
            {navLinks.map((link) => (
             <button
               key={link.path}
@@ -233,7 +234,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       items: [
         { icon: <Calendar size={15} />,   label: 'Agendamento',   path: '/admin/calendar' },
         { icon: <Kanban size={15} />,     label: 'OS / Pipeline', path: '/admin/os' },
-        { icon: <Grid size={15} />,       label: 'Clientes',      path: '/admin/clients' },
+        { icon: <Contact size={15} />,    label: 'Clientes',      path: '/admin/clients' },
         { icon: <Sparkles size={15} />,   label: 'Serviços',      path: '/admin/services' },
       ],
     },
@@ -324,7 +325,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
         { icon: <LayoutDashboard size={20} />, label: 'Início', path: '/admin/dashboard' },
         { icon: <Calendar size={20} />, label: 'Agenda', path: '/admin/calendar' },
         { icon: <Kanban size={20} />, label: 'OS', path: '/admin/os' },
-        { icon: <Grid size={20} />, label: 'Clientes', path: '/admin/clients' },
+        { icon: <Contact size={20} />, label: 'Clientes', path: '/admin/clients' },
       ]
     : menuItems.slice(0, 4);
   const showMobileMenuButton = isAdmin || menuItems.length > 4;
@@ -534,8 +535,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           {children}
         </main>
 
+        {isAdmin && <GeminiChat />}
+
         {/* Mobile Bottom Nav (Admin/Collab) */}
-        <nav className="md:hidden bg-white dark:bg-darkSurface border-t border-gray-200 dark:border-darkBorder flex justify-around p-2 fixed bottom-0 left-0 w-full z-40 pb-safe">
+        <nav className="md:hidden bg-white dark:bg-darkSurface border-t border-gray-200 dark:border-darkBorder flex justify-around px-2 pt-2 fixed bottom-0 left-0 w-full z-40 pb-nav-safe">
            {mobileTabs.map((item) => {
             const mobileActive = isPathActive(item.path);
             return (

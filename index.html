@@ -146,6 +146,10 @@
       .pt-safe {
         padding-top: max(0px, env(safe-area-inset-top));
       }
+      /* Bottom tab bars: keep icons clear of the iPhone home indicator (swipe-to-close bar) */
+      .pb-nav-safe {
+        padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+      }
 
       /* Prevent double-tap zoom on buttons */
       button, a {
@@ -196,7 +200,7 @@
       /* ── Mobile: clear bottom nav + iOS safe area ───────────────────────── */
       @media (max-width: 767px) {
         .mobile-pb-nav {
-          padding-bottom: max(7rem, calc(5rem + env(safe-area-inset-bottom))) !important;
+          padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px)) !important;
         }
         /* Full-screen drawer: footer accounts for home-indicator */
         .drawer-footer-safe {
