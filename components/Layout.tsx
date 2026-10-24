@@ -36,13 +36,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   };
 
   const openPreviewPanel = async () => {
-    if (!showPreviewPanel && previewCollabs.length === 0) {
+    const next = !showPreviewPanel;
+    setShowPreviewPanel(next);
+    if (next) {
       setLoadingPreviewCollabs(true);
       const { data } = await supabase.from('colaboradoras_rh').select('id, nome, foto').eq('status', 'ATIVA').order('nome');
       setPreviewCollabs((data as PreviewCollab[]) ?? []);
       setLoadingPreviewCollabs(false);
     }
-    setShowPreviewPanel(prev => !prev);
   };
 
   const handlePreviewCollab = (collab: PreviewCollab) => {

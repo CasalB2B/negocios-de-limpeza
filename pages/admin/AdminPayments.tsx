@@ -96,7 +96,7 @@ export const AdminPayments: React.FC = () => {
     const { data } = await supabase
       .from('colaboradoras_rh')
       .select('nome,commission_rate')
-      .eq('status', 'ATIVO');
+      .eq('status', 'ATIVA');
     if (data) setColabRates(data as ColabRate[]);
   }, []);
 
@@ -120,8 +120,8 @@ export const AdminPayments: React.FC = () => {
         const comissoes = mData
           .filter(s => s.status === 'COMPLETED' || s.status === 'CONCLUIDO')
           .reduce((acc, s) => {
-            const rate = colabRates.find(c => c.nome === s.collaborator_name)?.commission_rate ?? 40;
-            return acc + (s.price || 0) * rate / 100;
+            const rate = colabRates.find(c => c.nome === s.collaborator_name)?.commission_rate ?? 0;
+            return acc + rate;
           }, 0);
         months.push({ label: MESES[m - 1].slice(0, 3), receita, comissoes });
       }
@@ -144,8 +144,8 @@ export const AdminPayments: React.FC = () => {
   const receita = paidServices.reduce((a, s) => a + (s.price || 0), 0);
   const aReceber = pendingServices.reduce((a, s) => a + (s.price || 0), 0);
   const comissoes = completedServices.reduce((acc, s) => {
-    const rate = colabRates.find(c => c.nome === s.collaborator_name)?.commission_rate ?? 40;
-    return acc + (s.price || 0) * rate / 100;
+    const rate = colabRates.find(c => c.nome === s.collaborator_name)?.commission_rate ?? 0;
+    return acc + rate;
   }, 0);
   const ticketMedio = paidServices.length > 0 ? receita / paidServices.length : 0;
 
@@ -320,14 +320,14 @@ export const AdminPayments: React.FC = () => {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 dark:border-darkBorder">
-                      {['Colaboradora', 'Serviços Concluídos', 'Total Serviços', 'Taxa %', 'Comissão'].map(h => (
+                      {['Colaboradora', 'Serviços Concluídos', 'Total Serviços', 'R$/hora', 'Comissão'].map(h => (
                         <th key={h} className="text-left text-xs font-bold text-lightText dark:text-darkTextSecondary px-4 py-3">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {Object.entries(commissionByColab).map(([nome, data]) => {
-                      const commission = data.total * data.rate / 100;
+                      const commission = data.qtd * data.rate;
                       return (
                         <tr key={nome} className="border-b border-gray-50 dark:border-darkBorder">
                           <td className="px-4 py-3 font-bold text-darkText dark:text-darkTextPrimary">{nome}</td>
@@ -336,13 +336,13 @@ export const AdminPayments: React.FC = () => {
                           <td className="px-4 py-3">
                             {editingRate?.nome === nome ? (
                               <div className="flex items-center gap-1">
+                                <span className="text-xs text-lightText">R$</span>
                                 <input
-                                  type="number" min="0" max="100" step="1"
+                                  type="number" min="0" max="9999" step="0.01"
                                   value={editingRate.value}
                                   onChange={e => setEditingRate({ nome, value: e.target.value })}
-                                  className="w-16 text-sm border border-gray-200 dark:border-darkBorder rounded-lg px-2 py-1 bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary"
+                                  className="w-20 text-sm border border-gray-200 dark:border-darkBorder rounded-lg px-2 py-1 bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary"
                                 />
-                                <span className="text-xs text-lightText">%</span>
                                 <button onClick={handleSaveRate} disabled={savingRate}
                                   className="p-1 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors">
                                   <Check size={14} />
@@ -356,7 +356,7 @@ export const AdminPayments: React.FC = () => {
                               <button
                                 onClick={() => setEditingRate({ nome, value: String(data.rate) })}
                                 className="text-sm font-bold text-primary hover:underline">
-                                {data.rate}%
+                                R$ {data.rate.toFixed(2)}
                               </button>
                             )}
                           </td>
@@ -369,7 +369,7 @@ export const AdminPayments: React.FC = () => {
                     <tr className="bg-gray-50 dark:bg-darkBg border-t-2 border-gray-200 dark:border-darkBorder">
                       <td colSpan={4} className="px-4 py-3 text-sm font-bold text-darkText dark:text-darkTextPrimary">Total de comissões</td>
                       <td className="px-4 py-3 text-base font-extrabold text-violet-600">
-                        {fmtBRL(Object.values(commissionByColab).reduce((a, d) => a + d.total * d.rate / 100, 0))}
+                        {fmtBRL(Object.values(commissionByColab).reduce((a, d) => a + d.qtd * d.rate, 0))}
                       </td>
                     </tr>
                   </tfoot>

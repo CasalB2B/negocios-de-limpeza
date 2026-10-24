@@ -13,7 +13,7 @@ import {
   TrendingUp, AlertCircle, ThumbsUp, Minus, ExternalLink,
   Phone, MapPin, FileText, Upload, Download, Award, DollarSign,
   CloudUpload, Target, CheckSquare, Square, PartyPopper,
-  Pencil, ChevronDown, ChevronUp, KeyRound, Smartphone,
+  Pencil, ChevronDown, ChevronUp, KeyRound, Smartphone, Eye, EyeOff,
 } from 'lucide-react';
 
 // ─── Ligação de Introdução ────────────────────────────────────────────────────
@@ -240,6 +240,13 @@ export const AdminRHColaboradoras: React.FC = () => {
   const [acessoSenha, setAcessoSenha] = useState('');
   const [acessoStatus, setAcessoStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [acessoLoading, setAcessoLoading] = useState(false);
+  const [acessoShowPwd, setAcessoShowPwd] = useState(false);
+  const [acessoCreatedPwd, setAcessoCreatedPwd] = useState('');
+  const [acessoExistente, setAcessoExistente] = useState<{ id: string; email: string } | null>(null);
+  const [acessoCheckingExist, setAcessoCheckingExist] = useState(false);
+  const [altSenha, setAltSenha] = useState('');
+  const [altSenhaLoading, setAltSenhaLoading] = useState(false);
+  const [altSenhaMsg, setAltSenhaMsg] = useState<{ ok: boolean; msg: string } | null>(null);
 
   // Commission rate inline edit in drawer
   const [drawerCommRate, setDrawerCommRate] = useState<number>(40);
@@ -266,11 +273,20 @@ export const AdminRHColaboradoras: React.FC = () => {
     setSavingCommRate(false);
   };
 
-  const openAcessoModal = (col: ColaboradoraRH) => {
+  const openAcessoModal = async (col: ColaboradoraRH) => {
     setAcessoModal(col);
     setAcessoEmail('');
     setAcessoSenha('');
     setAcessoStatus(null);
+    setAcessoShowPwd(false);
+    setAcessoCreatedPwd('');
+    setAltSenha('');
+    setAltSenhaMsg(null);
+    setAcessoExistente(null);
+    setAcessoCheckingExist(true);
+    const { data } = await supabase.from('app_users').select('id, email').eq('name', col.nome).eq('role', 'COLLABORATOR').limit(1);
+    setAcessoExistente((data as any[])?.[0] ?? null);
+    setAcessoCheckingExist(false);
   };
 
   const handleDarAcesso = async () => {
@@ -301,9 +317,30 @@ export const AdminRHColaboradoras: React.FC = () => {
     if (error) {
       setAcessoStatus({ ok: false, msg: `Erro: ${error.message}` });
     } else {
+      setAcessoCreatedPwd(acessoSenha);
+      setAcessoExistente({ id: '(new)', email: acessoEmail.trim().toLowerCase() });
       setAcessoStatus({ ok: true, msg: `Acesso criado! Login: ${acessoEmail.trim().toLowerCase()}` });
-      setAcessoEmail('');
-      setAcessoSenha('');
+    }
+  };
+
+  const handleAlterarSenha = async () => {
+    if (!acessoModal || !altSenha.trim()) {
+      setAltSenhaMsg({ ok: false, msg: 'Digite a nova senha.' });
+      return;
+    }
+    setAltSenhaLoading(true);
+    setAltSenhaMsg(null);
+    const { error } = await supabase
+      .from('app_users')
+      .update({ password: altSenha })
+      .eq('name', acessoModal.nome)
+      .eq('role', 'COLLABORATOR');
+    setAltSenhaLoading(false);
+    if (error) {
+      setAltSenhaMsg({ ok: false, msg: `Erro: ${error.message}` });
+    } else {
+      setAltSenhaMsg({ ok: true, msg: 'Senha alterada com sucesso!' });
+      setAltSenha('');
     }
   };
 
@@ -791,7 +828,7 @@ export const AdminRHColaboradoras: React.FC = () => {
             {/* Backdrop */}
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setPerfilAberto(null)} />
             {/* Drawer */}
-            <div className="relative w-full max-w-xl bg-white dark:bg-darkSurface shadow-2xl flex flex-col h-full overflow-hidden animate-in slide-in-from-right-10">
+            <div className="relative w-full md:w-[calc(100%-200px)] bg-white dark:bg-darkSurface shadow-2xl flex flex-col h-full overflow-hidden animate-in slide-in-from-right-10">
               {/* Drawer header */}
               <div className="flex items-center gap-4 p-5 border-b border-gray-100 dark:border-darkBorder shrink-0">
                 <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-darkBg flex items-center justify-center text-2xl font-bold overflow-hidden shrink-0">
@@ -1054,7 +1091,7 @@ export const AdminRHColaboradoras: React.FC = () => {
                     <div className="bg-violet-50 dark:bg-violet-900/10 border border-violet-100 dark:border-violet-800/30 rounded-xl p-4">
                       <div className="flex items-center justify-between mb-1">
                         <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary flex items-center gap-1.5">
-                          <DollarSign size={13} className="text-violet-500" /> Taxa de Comissão
+                          <DollarSign size={13} className="text-violet-500" /> Remuneração por hora (R$)
                         </p>
                         {!editingCommRate && (
                           <button onClick={() => setEditingCommRate(true)}
@@ -1065,11 +1102,11 @@ export const AdminRHColaboradoras: React.FC = () => {
                       </div>
                       {editingCommRate ? (
                         <div className="flex items-center gap-2 mt-1">
-                          <input type="number" min="0" max="100" step="1"
+                          <span className="text-sm text-lightText">R$</span>
+                          <input type="number" min="0" max="9999" step="0.01"
                             value={commRateInput}
                             onChange={e => setCommRateInput(e.target.value)}
-                            className="w-20 text-sm border border-gray-200 dark:border-darkBorder rounded-lg px-2 py-1 bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary" />
-                          <span className="text-sm text-lightText">%</span>
+                            className="w-24 text-sm border border-gray-200 dark:border-darkBorder rounded-lg px-2 py-1 bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary" />
                           <button onClick={handleSaveCommRate} disabled={savingCommRate}
                             className="text-xs font-bold text-white bg-primary px-3 py-1 rounded-lg hover:bg-primary/90 disabled:opacity-60 transition-colors">
                             {savingCommRate ? 'Salvando…' : 'Salvar'}
@@ -1081,8 +1118,8 @@ export const AdminRHColaboradoras: React.FC = () => {
                         </div>
                       ) : (
                         <p className="text-2xl font-extrabold text-violet-600">
-                          {drawerCommRate}%
-                          <span className="text-sm font-normal text-lightText dark:text-darkTextSecondary ml-1">de comissão</span>
+                          R$ {drawerCommRate.toFixed(2)}
+                          <span className="text-sm font-normal text-lightText dark:text-darkTextSecondary ml-1">/hora</span>
                         </p>
                       )}
                     </div>
@@ -1538,7 +1575,7 @@ export const AdminRHColaboradoras: React.FC = () => {
 
       {/* Modal — Dar Acesso ao App */}
       {acessoModal && (
-        <Modal isOpen={!!acessoModal} onClose={() => setAcessoModal(null)} title="Dar Acesso ao App">
+        <Modal isOpen={!!acessoModal} onClose={() => setAcessoModal(null)} title="Acesso ao App">
           <div className="flex items-center gap-3 mb-5 p-3 bg-gray-50 dark:bg-darkBg rounded-xl">
             <div className="w-10 h-10 rounded-xl bg-gray-200 dark:bg-darkBorder flex items-center justify-center overflow-hidden shrink-0 text-lg font-bold">
               {acessoModal.foto ? <img src={acessoModal.foto} alt={acessoModal.nome} className="w-full h-full object-cover" /> : acessoModal.nome[0]}
@@ -1548,24 +1585,83 @@ export const AdminRHColaboradoras: React.FC = () => {
               {acessoModal.telefone && <p className="text-xs text-lightText dark:text-darkTextSecondary">{acessoModal.telefone}</p>}
             </div>
           </div>
-          <p className="text-xs text-lightText dark:text-darkTextSecondary mb-4">
-            Crie um login para esta colaboradora acessar o app mobile. Informe um e-mail e uma senha temporária.
-          </p>
-          <div className="space-y-3">
-            <Input label="E-mail de acesso" type="email" value={acessoEmail} onChange={e => setAcessoEmail(e.target.value)} placeholder="colaboradora@email.com" />
-            <Input label="Senha temporária" type="password" value={acessoSenha} onChange={e => setAcessoSenha(e.target.value)} placeholder="mínimo 6 caracteres" />
-          </div>
-          {acessoStatus && (
-            <div className={`mt-3 flex items-center gap-2 text-sm font-bold px-3 py-2 rounded-xl ${acessoStatus.ok ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600'}`}>
-              {acessoStatus.ok ? <Check size={14} /> : <AlertCircle size={14} />}
-              {acessoStatus.msg}
+
+          {acessoCheckingExist ? (
+            <p className="text-center text-xs text-lightText py-4">Verificando acesso existente...</p>
+          ) : acessoExistente ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-3 py-2.5 text-xs font-bold text-green-700 dark:text-green-400">
+                <Check size={13} />
+                Acesso ativo — {acessoExistente.email}
+              </div>
+              {acessoStatus?.ok && acessoCreatedPwd && (
+                <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/30 rounded-xl px-3 py-2 text-xs">
+                  <span className="text-blue-700 dark:text-blue-400 font-bold">Senha definida:</span>
+                  <code className="font-mono text-blue-900 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded">{acessoCreatedPwd}</code>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <p className="text-xs text-lightText dark:text-darkTextSecondary mb-4">
+                Crie um login para esta colaboradora acessar o app mobile.
+              </p>
+              <div className="space-y-3">
+                <Input label="E-mail de acesso" type="email" value={acessoEmail} onChange={e => setAcessoEmail(e.target.value)} placeholder="colaboradora@email.com" />
+                <div className="relative">
+                  <Input label="Senha temporária" type={acessoShowPwd ? 'text' : 'password'} value={acessoSenha} onChange={e => setAcessoSenha(e.target.value)} placeholder="mínimo 6 caracteres" />
+                  <button type="button" onClick={() => setAcessoShowPwd(p => !p)} className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors">
+                    {acessoShowPwd ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+              {acessoStatus && !acessoStatus.ok && (
+                <div className="mt-3 flex items-center gap-2 text-sm font-bold px-3 py-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600">
+                  <AlertCircle size={14} />
+                  {acessoStatus.msg}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Alterar Senha — visível quando já tem acesso */}
+          {acessoExistente && !acessoCheckingExist && (
+            <div className="mt-4 border-t border-gray-100 dark:border-darkBorder pt-4 space-y-2">
+              <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary flex items-center gap-1.5">
+                <KeyRound size={13} className="text-primary" /> Alterar Senha
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={altSenha}
+                  onChange={e => setAltSenha(e.target.value)}
+                  placeholder="Nova senha"
+                  className="flex-1 border border-gray-200 dark:border-darkBorder rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary bg-white dark:bg-darkBg focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <button
+                  onClick={handleAlterarSenha}
+                  disabled={altSenhaLoading || !altSenha.trim()}
+                  className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary/90 disabled:opacity-60 transition-colors whitespace-nowrap"
+                >
+                  {altSenhaLoading ? 'Salvando...' : 'Salvar senha'}
+                </button>
+              </div>
+              {altSenhaMsg && (
+                <div className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl ${altSenhaMsg.ok ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600'}`}>
+                  {altSenhaMsg.ok ? <Check size={12} /> : <AlertCircle size={12} />}
+                  {altSenhaMsg.msg}
+                </div>
+              )}
             </div>
           )}
+
           <div className="flex gap-3 mt-5">
-            <Button variant="outline" fullWidth onClick={() => setAcessoModal(null)}>Cancelar</Button>
-            <Button fullWidth onClick={handleDarAcesso} disabled={acessoLoading} icon={<KeyRound size={14} />}>
-              {acessoLoading ? 'Criando...' : 'Criar Acesso'}
-            </Button>
+            <Button variant="outline" fullWidth onClick={() => setAcessoModal(null)}>Fechar</Button>
+            {!acessoExistente && !acessoCheckingExist && (
+              <Button fullWidth onClick={handleDarAcesso} disabled={acessoLoading} icon={<KeyRound size={14} />}>
+                {acessoLoading ? 'Criando...' : 'Criar Acesso'}
+              </Button>
+            )}
           </div>
         </Modal>
       )}
