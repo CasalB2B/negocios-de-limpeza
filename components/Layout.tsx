@@ -48,8 +48,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
 
   const handlePreviewCollab = (collab: PreviewCollab) => {
     startCollabPreview(collab);
-    window.open('/#/collab/agenda', '_blank');
     setShowPreviewPanel(false);
+    // Use anchor click — window.open can be blocked by browsers
+    const a = document.createElement('a');
+    a.href = '/#/collab/agenda';
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const handleSupportClick = () => {
