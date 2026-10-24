@@ -18,20 +18,26 @@ export const AdminSettings: React.FC = () => {
   const [waToken, setWaToken] = useState('');
   const [waPhoneId, setWaPhoneId] = useState('');
   const [ipKey, setIpKey] = useState('');
+  const [mapsKey, setMapsKey] = useState('');
+  const [geminiKey, setGeminiKey] = useState('');
   const [integLoading, setIntegLoading] = useState(false);
   const [waSaved, setWaSaved] = useState(false);
   const [ipSaved, setIpSaved] = useState(false);
+  const [mapsSaved, setMapsSaved] = useState(false);
+  const [geminiSaved, setGeminiSaved] = useState(false);
 
   useEffect(() => {
     if (activeTab !== 'integracoes') return;
     (async () => {
       setIntegLoading(true);
       try {
-        const { data } = await supabase.from('platform_settings').select('whatsapp_token, whatsapp_phone_id, infinitepay_key').eq('id', 1).single();
+        const { data } = await supabase.from('platform_settings').select('whatsapp_token, whatsapp_phone_id, infinitepay_key, google_maps_key, gemini_key').eq('id', 1).single();
         if (data) {
           if (data.whatsapp_token) setWaToken(data.whatsapp_token);
           if (data.whatsapp_phone_id) setWaPhoneId(data.whatsapp_phone_id);
           if (data.infinitepay_key) setIpKey(data.infinitepay_key);
+          if (data.google_maps_key) setMapsKey(data.google_maps_key);
+          if (data.gemini_key) setGeminiKey(data.gemini_key);
         }
       } catch { /* columns may not exist yet */ }
       setIntegLoading(false);
@@ -48,6 +54,18 @@ export const AdminSettings: React.FC = () => {
     await supabase.from('platform_settings').upsert({ id: 1, infinitepay_key: ipKey });
     setIpSaved(true);
     setTimeout(() => setIpSaved(false), 2000);
+  };
+
+  const handleSaveMaps = async () => {
+    await supabase.from('platform_settings').upsert({ id: 1, google_maps_key: mapsKey });
+    setMapsSaved(true);
+    setTimeout(() => setMapsSaved(false), 2000);
+  };
+
+  const handleSaveGemini = async () => {
+    await supabase.from('platform_settings').upsert({ id: 1, gemini_key: geminiKey });
+    setGeminiSaved(true);
+    setTimeout(() => setGeminiSaved(false), 2000);
   };
   const [notifSaved, setNotifSaved] = useState(false);
 
@@ -556,6 +574,82 @@ export const AdminSettings: React.FC = () => {
               <div className="mt-4 flex justify-end">
                 <Button onClick={handleSaveInfinityPay} icon={ipSaved ? <CheckCircle size={16}/> : <Save size={16}/>}>
                   {ipSaved ? 'Salvo!' : 'Salvar'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Google Maps */}
+            <div className="bg-gray-50 dark:bg-darkBg rounded-2xl border border-gray-200 dark:border-darkBorder p-6">
+              <div className="flex items-start justify-between mb-5">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 text-2xl">
+                    🗺️
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-darkText dark:text-darkTextPrimary text-base">Google Maps</h4>
+                    <p className="text-xs text-lightText dark:text-darkTextSecondary">Mapa de localização em tempo real das colaboradoras</p>
+                  </div>
+                </div>
+                <span className={`flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${mapsKey ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400'}`}>
+                  {mapsKey ? '● Configurado' : '● Não configurado'}
+                </span>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1.5 uppercase tracking-wide">Chave API Google Maps</label>
+                  <input
+                    type="password"
+                    value={mapsKey}
+                    onChange={e => setMapsKey(e.target.value)}
+                    placeholder="AIzaSy..."
+                    className="w-full p-3 rounded-xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkSurface text-sm text-darkText dark:text-darkTextPrimary focus:border-primary outline-none transition-colors"
+                  />
+                </div>
+                <p className="text-xs text-lightText dark:text-darkTextSecondary">
+                  Obtenha em <span className="font-medium text-darkText dark:text-darkTextPrimary">Google Cloud Console → APIs & Services → Credentials</span>. Ative a Maps JavaScript API.
+                </p>
+              </div>
+              <div className="mt-4 flex justify-end">
+                <Button onClick={handleSaveMaps} icon={mapsSaved ? <CheckCircle size={16}/> : <Save size={16}/>}>
+                  {mapsSaved ? 'Salvo!' : 'Salvar'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Gemini AI */}
+            <div className="bg-gray-50 dark:bg-darkBg rounded-2xl border border-gray-200 dark:border-darkBorder p-6">
+              <div className="flex items-start justify-between mb-5">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0 text-2xl">
+                    🤖
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-darkText dark:text-darkTextPrimary text-base">Gemini AI</h4>
+                    <p className="text-xs text-lightText dark:text-darkTextSecondary">Assistente inteligente e análise automática de dados</p>
+                  </div>
+                </div>
+                <span className={`flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${geminiKey ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400'}`}>
+                  {geminiKey ? '● Configurado' : '● Não configurado'}
+                </span>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1.5 uppercase tracking-wide">Chave API Gemini</label>
+                  <input
+                    type="password"
+                    value={geminiKey}
+                    onChange={e => setGeminiKey(e.target.value)}
+                    placeholder="AIzaSy..."
+                    className="w-full p-3 rounded-xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkSurface text-sm text-darkText dark:text-darkTextPrimary focus:border-primary outline-none transition-colors"
+                  />
+                </div>
+                <p className="text-xs text-lightText dark:text-darkTextSecondary">
+                  Obtenha gratuitamente em <span className="font-medium text-darkText dark:text-darkTextPrimary">Google AI Studio → Get API Key</span> (aistudio.google.com)
+                </p>
+              </div>
+              <div className="mt-4 flex justify-end">
+                <Button onClick={handleSaveGemini} icon={geminiSaved ? <CheckCircle size={16}/> : <Save size={16}/>}>
+                  {geminiSaved ? 'Salvo!' : 'Salvar'}
                 </Button>
               </div>
             </div>
