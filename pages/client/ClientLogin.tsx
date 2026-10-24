@@ -56,18 +56,7 @@ export const ClientLogin: React.FC = () => {
         
         {/* Logo Area */}
         <div className="relative z-10 flex items-center gap-3">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-lg text-primary">
-                {/* Logo Icon */}
-                <svg viewBox="0 0 24 24" className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 21h18" />
-                    <path d="M5 21V7l8-4 8 4v14" />
-                    <path d="M19 10l-9 5-9-5" className="opacity-50" />
-                    <path d="M9 21v-8a3 3 0 0 1 6 0v8" />
-                </svg>
-            </div>
-            <div>
-                <h2 className="font-display font-bold text-white text-xl leading-none">Negócios de<br/>Limpeza</h2>
-            </div>
+            <img src="/img/logo.png" alt="Negócios de Limpeza" className="h-12 w-auto object-contain drop-shadow-lg" />
         </div>
 
         {/* Main Text */}
@@ -137,9 +126,6 @@ export const ClientLogin: React.FC = () => {
             </Button>
           </form>
 
-          <p className="text-center text-sm text-gray-500 mt-8">
-             Ainda não tem conta? <button onClick={() => navigate('/client/quote-chat')} className="text-primary font-bold hover:underline">Faça um orçamento grátis</button> para se cadastrar.
-          </p>
         </div>
       </div>
     </div>
