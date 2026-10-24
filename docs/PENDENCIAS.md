@@ -31,26 +31,33 @@ Marque com `[x]` conforme for fazendo. Quando terminar a sua parte, é só me ch
 
 ## 💬 WhatsApp — API oficial da Meta (Cloud API)
 
-**Status:** aguardando você · **Decisão (24/10/2026):** usar a API oficial da Meta direto, sem Evolution/QR Code, para não correr risco de bloqueio. O servidor Evolution atual (ngrok no seu PC) será desativado.
+**Status:** aguardando você · **Decisões (24/10/2026):**
+- API oficial da Meta (sem Evolution/QR não oficial) para não correr risco de bloqueio. O servidor Evolution atual (ngrok no seu PC) será desativado.
+- **Coexistência obrigatória**: cada empresa cliente do SaaS continua usando o WhatsApp Business no próprio celular, e os lembretes saem pelo número dela.
+- Começar com um **parceiro oficial da Meta (BSP)** que ofereça Cadastro incorporado + coexistência. Avaliar virar **Tech Provider** da Meta depois, para tirar a taxa do parceiro.
+
+**Limitações da coexistência:** só funciona com o app **WhatsApp Business** (não o pessoal); listas de transmissão e mensagens temporárias ficam desligadas; grupos não funcionam pela API. Mensagens digitadas no celular continuam grátis.
 
 ### Sua parte
+- [ ] Pedir proposta a parceiros (primeiro candidato: **360dialog**; avaliar também Gupshup, Twilio, Zenvia, Blip) com estas 4 perguntas:
+  1. Suportam **coexistência com o app WhatsApp Business** via **Cadastro incorporado** para números do **Brasil**?
+  2. Têm programa para **SaaS/ISV** (vários clientes conectando os próprios números)?
+  3. Cobram **taxa por mensagem em cima da Meta** ou só mensalidade por número?
+  4. Quem paga a Meta: o seu cliente direto ou o parceiro repassa?
+- [ ] Me mandar as respostas para compararmos e escolher
 - [ ] **Gerenciador de Negócios da Meta** (business.facebook.com) com a empresa cadastrada
 - [ ] **Verificar a empresa** na Meta (Central de Segurança → Verificação da empresa) — cartão CNPJ e um documento com endereço/telefone da empresa
-- [ ] Decidir o **número**: um chip novo só para o sistema (mais simples) ou o número atual (precisa sair do app WhatsApp Business, ou usar "coexistência" via parceiro)
-- [ ] developers.facebook.com → **Criar app** → tipo *Empresa* → adicionar o produto **WhatsApp**
-- [ ] Em WhatsApp → Configuração da API: **adicionar o número**, confirmar por SMS e enviar o **nome de exibição** ("Negócios de Limpeza") para aprovação
-- [ ] **Forma de pagamento** no Gerenciador do WhatsApp (cartão)
-- [ ] **Usuário do sistema** (Configurações do negócio → Usuários do sistema) com permissões `whatsapp_business_messaging` e `whatsapp_business_management` → gerar **token permanente**
-- [ ] Anotar o **Phone Number ID** e o **WhatsApp Business Account ID**
-- [ ] Me chamar para colar o token no painel e criarmos os modelos de mensagem
+- [ ] Garantir que o seu número de teste está no **WhatsApp Business** (não no pessoal)
+- [ ] Assinar o parceiro escolhido e me passar o acesso à documentação/painel de parceiro
 
 ### Minha parte
 - [ ] ⚠️ Mover o token da tela Configurações → Integrações para armazenamento só do servidor (hoje ficaria legível pelo navegador)
+- [ ] Botão **"Conectar WhatsApp"** no painel com o Cadastro incorporado do parceiro (login Facebook + QR no app WhatsApp Business)
 - [ ] Webhook oficial (receber mensagens e status de entrega) numa Edge Function
 - [ ] Criar e enviar para aprovação os **modelos de mensagem**: lembrete D-1, confirmação de agendamento, pós-serviço/avaliação
 - [ ] Migrar lembretes, mensagem pós-serviço, follow-up e bot para a API oficial
 - [ ] Desativar Evolution/ngrok
-- [ ] SaaS: virar **Tech Provider** da Meta e usar o "Cadastro incorporado" (cada empresa conecta o próprio número num pop-up e paga a própria conta na Meta)
+- [ ] Multi-empresa: cada empresa com o próprio número conectado e a própria conta de cobrança na Meta
 
 ---
 
