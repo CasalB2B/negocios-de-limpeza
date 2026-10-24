@@ -272,14 +272,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           </div>
         </div>
 
-        <nav className="flex-1 px-3 mt-2 overflow-y-auto space-y-1 pb-4">
+        <nav className="flex-1 px-3 mt-2 overflow-y-auto pb-4">
           {/* Dashboard — top-level item */}
           <button
             onClick={() => navigate('/admin/dashboard')}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl w-full transition-colors mb-2 ${
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl w-full transition-colors mb-2 ${
               location.pathname === '/admin/dashboard'
                 ? 'bg-primary/10 text-primary font-bold'
-                : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder'
+                : 'text-lightText dark:text-darkTextSecondary hover:bg-purple-50 dark:hover:bg-darkBorder'
             }`}
           >
             <LayoutDashboard size={16} />
@@ -295,36 +295,36 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                 {/* Group header — clickable block */}
                 <button
                   onClick={() => toggleGroup(group.key)}
-                  className={`flex items-center justify-between w-full px-3 py-2.5 rounded-xl transition-colors group ${
+                  className={`flex items-center justify-between w-full px-4 py-3 rounded-xl transition-colors group ${
                     hasActive && !isOpen
                       ? 'bg-primary/5 text-primary'
-                      : 'hover:bg-gray-50 dark:hover:bg-darkBorder text-darkText dark:text-darkTextPrimary'
+                      : 'hover:bg-purple-50 dark:hover:bg-darkBorder text-darkText dark:text-darkTextPrimary'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <span className={`${hasActive ? 'text-primary' : 'text-lightText dark:text-darkTextSecondary'}`}>
+                  <div className="flex items-center gap-3">
+                    <span className={`${hasActive ? 'text-primary' : 'text-gray-400 dark:text-darkTextSecondary'}`}>
                       {group.icon}
                     </span>
                     <span className="text-sm font-bold">{group.label}</span>
                   </div>
-                  <span className={`transition-transform duration-200 text-lightText dark:text-darkTextSecondary ${isOpen ? 'rotate-180' : ''}`}>
-                    <ChevronDown size={14} />
+                  <span className={`transition-transform duration-200 text-gray-400 dark:text-darkTextSecondary ${isOpen ? 'rotate-180' : ''}`}>
+                    <ChevronDown size={16} />
                   </span>
                 </button>
 
                 {/* Sub-items */}
                 {isOpen && (
-                  <div className="mt-0.5 ml-2 pl-3 border-l-2 border-gray-100 dark:border-darkBorder space-y-0.5">
+                  <div className="mt-1 ml-3 pl-3 border-l-2 border-gray-100 dark:border-darkBorder space-y-0.5">
                     {group.items.map(item => {
                       const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
                       return (
                         <button
                           key={item.path}
                           onClick={() => navigate(item.path)}
-                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg w-full transition-colors text-sm ${
+                          className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg w-full transition-colors text-sm ${
                             isActive
                               ? 'bg-primary/10 text-primary font-bold'
-                              : 'text-lightText dark:text-darkTextSecondary hover:bg-gray-50 dark:hover:bg-darkBorder'
+                              : 'text-lightText dark:text-darkTextSecondary hover:bg-purple-50 dark:hover:bg-darkBorder'
                           }`}
                         >
                           {item.icon}
