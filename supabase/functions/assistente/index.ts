@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { generateContent } from '../_shared/gemini.ts';
+import { demote, generateContent } from '../_shared/gemini.ts';
 import { AJUDA_BASE } from './ajuda.ts';
 import { DECLARACOES_AJUDA, DECLARACOES_GESTAO, ROTULOS, executar } from './ferramentas.ts';
 
@@ -38,8 +38,8 @@ ${AJUDA_BASE}`;
 }
 
 function promptGestao(hoje: string, hojeIso: string) {
-  return `Você é o assistente de GESTÃO da plataforma Negócios de Limpeza, uma empresa de limpeza residencial em Guarapari/ES. Hoje é ${hoje} (${hojeIso}).
-Sua função: ajudar o dono a entender e gerir o negócio com base nos dados registrados na plataforma.
+  return `Você é o assistente de GESTÃO da plataforma Negócios de Limpeza, um sistema usado por empresas de limpeza para gerir agenda, equipe, clientes e financeiro. Hoje é ${hoje} (${hojeIso}).
+Sua função: ajudar o dono da empresa a entender e gerir o negócio com base nos dados registrados na plataforma.
 
 Regras:
 - TODO número que você citar deve vir de uma ferramenta. Nunca estime nem invente valores.
@@ -49,6 +49,8 @@ Regras:
 - Responda em português do Brasil, direto ao ponto: primeiro a resposta, depois 2 a 4 tópicos curtos com os números principais e, se fizer sentido, uma sugestão prática de gestão.
 - Valores em reais no formato R$ 1.234,56. Use **negrito** só nos números mais importantes.
 - Se perguntarem como usar alguma tela, responda brevemente e indique o modo "Ajuda".
+- Sugestões devem ser sobre a operação: agenda e ocupação, produtividade e custo da equipe, retenção de clientes, cobranças e preços. Não sugira campanhas de site, tráfego pago ou agendamento online: a plataforma não tem isso.
+- Para "quanto cada colaboradora dá de retorno", use retorno_por_colaboradora e explique em uma linha como o cálculo é feito.
 - Você só lê dados; não consegue criar, alterar ou apagar nada. Se pedirem, explique onde fazer isso no painel.`;
 }
 
@@ -71,49 +73,68 @@ Deno.serve(async (req) => {
     const permitidas = declaracoes.map(d => d.name);
     const ctx = { db, hoje: hoje.iso };
 
-    const contents: any[] = messages.slice(-20).map(m => ({
+    const historico: any[] = messages.slice(-20).map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: String(m.content).slice(0, 4000) }],
     }));
+    const systemInstruction = { parts: [{ text: gestao ? promptGestao(hoje.extenso, hoje.iso) : promptAjuda(hoje.extenso) }] };
 
-    const usadas = new Set<string>();
-    let modelo: string | undefined;
+    let ultimoErro = 'Erro no Gemini';
+    // If a model fails mid-conversation (overload/timeout), start over once on the next model.
+    for (let tentativa = 0; tentativa < 2; tentativa++) {
+      const contents = [...historico];
+      const usadas = new Set<string>();
+      let modelo: string | undefined;
+      let falhou = false;
 
-    for (let volta = 0; volta < MAX_VOLTAS; volta++) {
-      const { ok, data, model } = await generateContent(apiKey, {
-        systemInstruction: { parts: [{ text: gestao ? promptGestao(hoje.extenso, hoje.iso) : promptAjuda(hoje.extenso) }] },
-        contents,
-        tools: [{ functionDeclarations: declaracoes }],
-        generationConfig: { temperature: gestao ? 0.2 : 0.4 },
-      }, modelo);
-      if (!ok) return json({ error: data?.error?.message ?? 'Erro no Gemini' }, 502);
-      modelo = model;
+      for (let volta = 0; volta < MAX_VOLTAS; volta++) {
+        const { ok, data, model } = await generateContent(apiKey, {
+          systemInstruction,
+          contents,
+          tools: [{ functionDeclarations: declaracoes }],
+          generationConfig: { temperature: gestao ? 0.2 : 0.4 },
+        }, modelo);
+        if (!ok) {
+          ultimoErro = data?.error?.message ?? ultimoErro;
+          console.error(`[assistente] ${modo} tentativa ${tentativa + 1} volta ${volta + 1} modelo ${model}: ${ultimoErro}`);
+          if (model) demote(model);
+          falhou = true;
+          break;
+        }
+        modelo = model;
 
-      const conteudo = data.candidates?.[0]?.content;
-      const partes: any[] = conteudo?.parts ?? [];
-      const chamadas = partes.filter(p => p.functionCall);
+        const conteudo = data.candidates?.[0]?.content;
+        const partes: any[] = conteudo?.parts ?? [];
+        const chamadas = partes.filter(p => p.functionCall);
 
-      if (chamadas.length === 0) {
-        const texto = partes.map(p => p.text ?? '').join('').trim();
-        return json({
-          reply: texto || 'Não consegui gerar uma resposta. Pode reformular a pergunta?',
-          fontes: [...usadas].map(n => ROTULOS[n] ?? n),
-          model,
-        });
+        if (chamadas.length === 0) {
+          const texto = partes.map(p => p.text ?? '').join('').trim();
+          if (!texto) {
+            ultimoErro = `Resposta vazia (${data.candidates?.[0]?.finishReason ?? 'sem motivo'})`;
+            console.error(`[assistente] ${modo} modelo ${model}: ${ultimoErro}`);
+            falhou = true;
+            break;
+          }
+          return json({ reply: texto, fontes: [...usadas].map(n => ROTULOS[n] ?? n), model });
+        }
+
+        // The model's turn must be sent back unchanged (it carries thought signatures).
+        contents.push(conteudo);
+        const respostas = await Promise.all(chamadas.map(async (p) => {
+          const { name, args } = p.functionCall;
+          usadas.add(name);
+          const resultado = await executar(name, args ?? {}, ctx, permitidas);
+          return { functionResponse: { name, response: { resultado } } };
+        }));
+        contents.push({ role: 'user', parts: respostas });
       }
 
-      // The model's turn must be sent back unchanged (it carries thought signatures).
-      contents.push(conteudo);
-      const respostas = await Promise.all(chamadas.map(async (p) => {
-        const { name, args } = p.functionCall;
-        usadas.add(name);
-        const resultado = await executar(name, args ?? {}, ctx, permitidas);
-        return { functionResponse: { name, response: { resultado } } };
-      }));
-      contents.push({ role: 'user', parts: respostas });
+      if (!falhou) {
+        return json({ reply: 'A pergunta exigiu consultas demais. Tente algo mais específico (ex.: um mês só).', fontes: [...usadas].map(n => ROTULOS[n] ?? n) });
+      }
     }
 
-    return json({ reply: 'A pergunta exigiu consultas demais. Tente algo mais específico (ex.: um mês só).', fontes: [...usadas].map(n => ROTULOS[n] ?? n) });
+    return json({ error: ultimoErro }, 502);
   } catch (e) {
     return json({ error: String((e as Error)?.message ?? e) }, 500);
   }

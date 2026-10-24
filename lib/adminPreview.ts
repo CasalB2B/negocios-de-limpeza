@@ -1,4 +1,34 @@
+import { semFotosEmbutidas } from './storage';
+
 export const PREVIEW_MODE_KEY = 'ndl_preview_mode';
+
+// Only keep photos that are links; base64 photos are huge and can overflow browser storage.
+const fotoLeve = (foto?: string | null) => (foto && /^https?:\/\//.test(foto) ? foto : '');
+
+// Frees space taken by caches that are rebuilt from the database on the next load.
+function liberarEspaco(nivel: number) {
+  try {
+    Object.keys(localStorage).filter(k => k.startsWith('ndl_cache_')).forEach(k => localStorage.removeItem(k));
+    const cols = JSON.parse(localStorage.getItem('rh_colaboradoras') || 'null');
+    if (Array.isArray(cols)) localStorage.setItem('rh_colaboradoras', JSON.stringify(semFotosEmbutidas(cols)));
+  } catch {}
+  if (nivel > 0) {
+    try { localStorage.removeItem('rh_candidatas'); } catch {}
+  }
+}
+
+function gravar(chave: string, valor: unknown) {
+  const texto = JSON.stringify(valor);
+  for (let tentativa = 0; tentativa < 3; tentativa++) {
+    try {
+      localStorage.setItem(chave, texto);
+      return;
+    } catch (e) {
+      if (tentativa === 2) throw e;
+      liberarEspaco(tentativa);
+    }
+  }
+}
 export const PREVIEW_CLIENT_KEY = 'ndl_preview_client_mode';
 export const CLIENT_AUTH_KEY = 'auth_client';
 
@@ -15,11 +45,11 @@ export function startClientPreview(client: PreviewClient): void {
     name: client.name,
     email: client.email || 'preview@ndl.internal',
     phone: '',
-    photo: client.photo || '',
+    photo: fotoLeve(client.photo),
     role: 'CLIENT',
   };
-  localStorage.setItem(CLIENT_AUTH_KEY, JSON.stringify(fakeAuth));
-  localStorage.setItem(PREVIEW_CLIENT_KEY, JSON.stringify({ clientId: client.id, clientName: client.name }));
+  gravar(CLIENT_AUTH_KEY, fakeAuth);
+  gravar(PREVIEW_CLIENT_KEY, { clientId: client.id, clientName: client.name });
 }
 
 export function clearClientPreview(): void {
@@ -54,12 +84,12 @@ export function startCollabPreview(collab: PreviewCollab): void {
     name: collab.nome,
     email: 'preview@ndl.internal',
     phone: '',
-    photo: collab.foto || '',
+    photo: fotoLeve(collab.foto),
     status: 'AVAILABLE',
     level: 'JUNIOR',
   };
-  localStorage.setItem('auth_collab', JSON.stringify(fakeAuth));
-  localStorage.setItem(PREVIEW_MODE_KEY, JSON.stringify({ collabId: collab.id, collabName: collab.nome }));
+  gravar('auth_collab', fakeAuth);
+  gravar(PREVIEW_MODE_KEY, { collabId: collab.id, collabName: collab.nome });
 }
 
 export function clearCollabPreview(): void {

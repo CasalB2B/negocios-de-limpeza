@@ -50,8 +50,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
     }
   };
 
+  const avisarFalhaPreview = () =>
+    window.alert('Não foi possível abrir a visualização: o armazenamento do navegador está cheio. Feche outras abas do sistema ou limpe os dados do site e tente de novo.');
+
   const handlePreviewCollab = (collab: PreviewCollab) => {
-    startCollabPreview(collab);
+    try { startCollabPreview(collab); } catch { avisarFalhaPreview(); return; }
     sessionStorage.setItem('ndl_preview_return_path', window.location.hash || '#/admin/dashboard');
     setShowPreviewPanel(false);
     // Query-string change forces a TRUE full-page load (not a same-document hash navigation)
@@ -72,7 +75,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   };
 
   const handlePreviewClient = (client: PreviewClient) => {
-    startClientPreview(client);
+    try { startClientPreview(client); } catch { avisarFalhaPreview(); return; }
     sessionStorage.setItem('ndl_preview_return_path', window.location.hash || '#/admin/dashboard');
     setShowClientPanel(false);
     // Query-string change forces a TRUE full-page load (not a same-document hash navigation)

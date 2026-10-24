@@ -21,7 +21,7 @@ async function listFlashModels(apiKey: string): Promise<string[]> {
 }
 
 // A slow or overloaded model goes to the back of the line for the rest of this instance's life.
-function demote(model: string) {
+export function demote(model: string) {
   if (cachedModels.includes(model)) cachedModels = [...cachedModels.filter(m => m !== model), model];
 }
 

@@ -46,5 +46,5 @@ Pedir orçamento, ver agendamentos, endereços e pagamentos.
 ## Este assistente
 Fica no botão roxo com estrelinhas, no canto inferior direito de todas as telas do painel. Ao abrir, escolha o modo; dá para trocar pelas abas no topo do chat. O ícone de lixeira limpa a conversa.
 - Modo **Ajuda**: dúvidas de uso da plataforma.
-- Modo **Gestão**: perguntas sobre os números da empresa registrados na plataforma (faturamento, agenda, colaboradoras, clientes, leads do CRM, avaliações, acessos do site, estoque, pagamentos). Os números vêm só do que foi cadastrado aqui: se ainda não há agendamentos registrados, o faturamento aparece zerado.
+- Modo **Gestão**: perguntas sobre os números da empresa registrados na plataforma (faturamento, agenda, retorno de cada colaboradora, equipe, clientes, avaliações, contratação, estoque, pagamentos). Os números vêm só do que foi cadastrado aqui: se ainda não há agendamentos registrados, o faturamento aparece zerado.
 `;

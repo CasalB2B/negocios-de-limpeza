@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { semFotosEmbutidas } from '../lib/storage';
 import { CargoRH, StatusColaboradoraRH, ElegibilidadeRH } from '../types';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
@@ -325,7 +326,8 @@ function lsGet<T>(key: string, fallback: T): T {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
 }
 function lsSet(key: string, value: unknown) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+  const v = key === 'rh_colaboradoras' && Array.isArray(value) ? semFotosEmbutidas(value) : value;
+  try { localStorage.setItem(key, JSON.stringify(v)); } catch {}
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -567,7 +569,8 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
           ?? lsColsNameMap.get(c.nome?.trim().toLowerCase());
         if (lsVersion && (lsVersion.updatedAt ?? '') > (c.updatedAt ?? '')) {
           // LS won — use LS data but replace the ID with the real Supabase UUID
-          const merged = { ...lsVersion, id: c.id };
+          // The local cache no longer stores photos, so never let it erase the photo from the DB.
+          const merged = { ...lsVersion, id: c.id, foto: lsVersion.foto || c.foto };
           staleInSupabase.push(merged); // needs to be pushed to Supabase with correct UUID
           return merged;
         }

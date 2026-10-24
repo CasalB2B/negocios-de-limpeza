@@ -17,7 +17,7 @@ const periodo = {
 export const DECLARACOES_GESTAO = [
   {
     name: 'resumo_negocio',
-    description: 'Panorama geral: quantos clientes, colaboradoras, leads, candidatas, avaliações e serviços existem no sistema. Use primeiro quando a pergunta for ampla.',
+    description: 'Panorama geral: quantos clientes, colaboradoras, candidatas, avaliações, serviços e lançamentos existem no sistema. Use primeiro quando a pergunta for ampla.',
     parameters: { type: 'OBJECT', properties: {} },
   },
   {
@@ -36,14 +36,14 @@ export const DECLARACOES_GESTAO = [
     parameters: { type: 'OBJECT', properties: { dias: { type: 'INTEGER', description: 'Padrão 45' } } },
   },
   {
-    name: 'leads_crm',
-    description: 'Orçamentos/leads do CRM num período: por status, origem e serviço, valor estimado total e os mais recentes.',
-    parameters: { type: 'OBJECT', properties: periodo, required: ['inicio', 'fim'] },
-  },
-  {
     name: 'colaboradoras',
     description: 'Equipe: colaboradoras por status, cargo, tempo de casa, valor por hora, média de avaliação e próximos aniversários.',
     parameters: { type: 'OBJECT', properties: {} },
+  },
+  {
+    name: 'retorno_por_colaboradora',
+    description: 'Quanto cada colaboradora gerou de retorno num período: serviços, horas, faturamento gerado (valor do serviço dividido entre as colaboradoras escaladas), custo estimado (horas × valor/hora dela), margem estimada e quanto foi efetivamente pago a ela.',
+    parameters: { type: 'OBJECT', properties: periodo, required: ['inicio', 'fim'] },
   },
   {
     name: 'avaliacoes',
@@ -54,11 +54,6 @@ export const DECLARACOES_GESTAO = [
     name: 'contratacao',
     description: 'Candidatas a vaga: total por status e as mais recentes.',
     parameters: { type: 'OBJECT', properties: {} },
-  },
-  {
-    name: 'acessos_site',
-    description: 'Acessos e eventos do site/página de captação num período: por tipo de evento, origem e campanha (UTM), e sessões únicas.',
-    parameters: { type: 'OBJECT', properties: periodo, required: ['inicio', 'fim'] },
   },
   {
     name: 'estoque',
@@ -85,11 +80,10 @@ export const ROTULOS: Record<string, string> = {
   servicos_sistema: 'Agenda',
   financeiro: 'Financeiro',
   clientes_sumidos: 'Clientes',
-  leads_crm: 'CRM',
   colaboradoras: 'Equipe',
+  retorno_por_colaboradora: 'Retorno da equipe',
   avaliacoes: 'Avaliações',
   contratacao: 'Contratação',
-  acessos_site: 'Site',
   estoque: 'Estoque',
   pagamentos_colaboradoras: 'Pagamentos',
   status_integracoes: 'Integrações',
@@ -127,7 +121,6 @@ async function resumo_negocio(ctx: Contexto) {
     colaboradoras_ativas: await n('colaboradoras_rh', q => q.eq('status', 'ATIVA')),
     colaboradoras_total: await n('colaboradoras_rh'),
     servicos_na_plataforma: await n('services'),
-    leads_crm: await n('quotes'),
     candidatas: await n('candidatas_rh'),
     avaliacoes: await n('avaliacoes_clientes'),
     itens_estoque: await n('estoque'),
@@ -208,24 +201,6 @@ async function clientes_sumidos(ctx: Contexto, a: Args) {
   };
 }
 
-async function leads_crm(ctx: Contexto, a: Args) {
-  const { data } = await ctx.db.from('quotes')
-    .select('name, status, source, service_option, estimated_value, created_at, address_district')
-    .order('created_at', { ascending: false }).limit(2000);
-  const lista = (data ?? []).filter(q => noPeriodo(isoDate(q.created_at), a));
-  return {
-    total: lista.length,
-    por_status: conta(lista, q => q.status),
-    por_origem: conta(lista, q => q.source),
-    por_servico: conta(lista, q => q.service_option),
-    por_bairro: top(conta(lista, q => q.address_district), 8),
-    valor_estimado_total: r2(lista.reduce((t, q) => t + Number(q.estimated_value || 0), 0)),
-    mais_recentes: lista.slice(0, 10).map(q => ({
-      nome: q.name, status: q.status, servico: q.service_option, valor_estimado: q.estimated_value, data: isoDate(q.created_at),
-    })),
-  };
-}
-
 async function colaboradoras(ctx: Contexto) {
   const [{ data: equipe }, { data: notas }] = await Promise.all([
     ctx.db.from('colaboradoras_rh').select('id, nome, status, cargo_atual, data_admissao, data_nascimento, commission_rate'),
@@ -262,6 +237,82 @@ async function colaboradoras(ctx: Contexto) {
   };
 }
 
+const normaliza = (n: any) =>
+  String(n ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+function horasDoServico(s: { duration?: string | null; type?: string | null }): number {
+  for (const fonte of [s.duration, s.type]) {
+    const m = String(fonte ?? '').match(/(\d+(?:[.,]\d+)?)\s*h/i);
+    if (m) return Number(m[1].replace(',', '.'));
+  }
+  return 0;
+}
+
+async function retorno_por_colaboradora(ctx: Contexto, a: Args) {
+  const [{ data: servicos }, { data: equipe }, { data: pagamentos }] = await Promise.all([
+    ctx.db.from('services').select('date, status, price, type, duration, collaborator_name, collaborator_names').limit(5000),
+    ctx.db.from('colaboradoras_rh').select('id, nome, status, commission_rate'),
+    ctx.db.from('collab_payments').select('collab_id, tipo, valor, data').gte('data', a.inicio).lte('data', a.fim),
+  ]);
+  const porNome = new Map((equipe ?? []).map(c => [normaliza(c.nome), c]));
+  const porId = new Map((equipe ?? []).map(c => [c.id, c]));
+  const linhas: Record<string, { servicos: number; horas: number; faturamento: number; valor_hora: number | null; pago: number; adiantado: number }> = {};
+  const linha = (nome: string) => {
+    const c = porNome.get(normaliza(nome));
+    return (linhas[(c?.nome ?? nome).trim()] ??= {
+      servicos: 0, horas: 0, faturamento: 0, valor_hora: c?.commission_rate != null ? Number(c.commission_rate) : null, pago: 0, adiantado: 0,
+    });
+  };
+
+  const validos = (servicos ?? [])
+    .map(s => ({ ...s, iso: brToIso(s.date) }))
+    .filter(s => noPeriodo(s.iso, a) && s.status !== 'CANCELLED');
+  let semHoras = 0;
+  for (const s of validos) {
+    const nomes: string[] = (Array.isArray(s.collaborator_names) && s.collaborator_names.length
+      ? s.collaborator_names : [s.collaborator_name]).filter(Boolean).map(String);
+    if (!nomes.length) continue;
+    const horas = horasDoServico(s);
+    if (!horas) semHoras++;
+    for (const n of nomes) {
+      const l = linha(n);
+      l.servicos++;
+      l.horas += horas;
+      l.faturamento += Number(s.price || 0) / nomes.length;
+    }
+  }
+  for (const p of pagamentos ?? []) {
+    const c = porId.get(p.collab_id);
+    if (!c) continue;
+    const l = linha(c.nome);
+    if (String(p.tipo).toLowerCase().startsWith('adiant')) l.adiantado += Number(p.valor || 0);
+    else l.pago += Number(p.valor || 0);
+  }
+
+  const resultado = Object.entries(linhas).map(([nome, l]) => {
+    const custo = l.valor_hora != null ? l.horas * l.valor_hora : null;
+    return {
+      colaboradora: nome,
+      servicos: l.servicos,
+      horas: r2(l.horas),
+      faturamento_gerado: r2(l.faturamento),
+      valor_hora: l.valor_hora,
+      custo_estimado: custo != null ? r2(custo) : null,
+      margem_estimada: custo != null ? r2(l.faturamento - custo) : null,
+      pago_no_periodo: r2(l.pago),
+      adiantado_no_periodo: r2(l.adiantado),
+    };
+  }).sort((x, y) => y.faturamento_gerado - x.faturamento_gerado);
+
+  return {
+    colaboradoras: resultado,
+    servicos_considerados: validos.length,
+    servicos_sem_horas_identificadas: semHoras,
+    como_calcula: 'Faturamento = valor do serviço dividido igualmente entre as colaboradoras escaladas. Custo estimado = horas × valor por hora cadastrado no RH. Horas vêm da duração ou do nome do serviço (ex.: "Faxina 6h").',
+    observacao: validos.length === 0 ? 'Nenhum serviço registrado na plataforma neste período, então ainda não dá para calcular o retorno por colaboradora.' : undefined,
+  };
+}
+
 async function avaliacoes(ctx: Contexto, a: Args) {
   const [{ data }, { data: equipe }] = await Promise.all([
     ctx.db.from('avaliacoes_clientes').select('colaboradora_id, nome_cliente, data_faxina, estrelas, comentario, created_at'),
@@ -294,20 +345,6 @@ async function contratacao(ctx: Contexto) {
     total: data?.length ?? 0,
     por_status: conta(data ?? [], c => c.status),
     mais_recentes: (data ?? []).slice(0, 10).map(c => ({ nome: c.nome, status: c.status, data: c.data || isoDate(c.created_at) })),
-  };
-}
-
-async function acessos_site(ctx: Contexto, a: Args) {
-  const { data } = await ctx.db.from('page_analytics')
-    .select('event_type, source, session_id, utm_source, utm_campaign, created_at')
-    .gte('created_at', `${a.inicio}T00:00:00-03:00`).lte('created_at', `${a.fim}T23:59:59-03:00`).limit(20000);
-  const lista = data ?? [];
-  return {
-    eventos: lista.length,
-    sessoes_unicas: new Set(lista.map(x => x.session_id).filter(Boolean)).size,
-    por_evento: conta(lista, x => x.event_type),
-    por_origem: top(conta(lista, x => x.utm_source || x.source), 10),
-    por_campanha: top(conta(lista.filter(x => x.utm_campaign), x => x.utm_campaign), 10),
   };
 }
 
@@ -359,8 +396,8 @@ async function status_integracoes(ctx: Contexto) {
 }
 
 const IMPLEMENTACOES: Record<string, (ctx: Contexto, a: Args) => Promise<unknown>> = {
-  resumo_negocio, servicos_sistema, financeiro, clientes_sumidos, leads_crm, colaboradoras,
-  avaliacoes, contratacao, acessos_site, estoque, pagamentos_colaboradoras, status_integracoes,
+  resumo_negocio, servicos_sistema, financeiro, clientes_sumidos, colaboradoras, retorno_por_colaboradora,
+  avaliacoes, contratacao, estoque, pagamentos_colaboradoras, status_integracoes,
 };
 
 export async function executar(nome: string, args: Args, ctx: Contexto, permitidas: string[]) {
