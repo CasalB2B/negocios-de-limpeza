@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
-import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight } from 'lucide-react';
+import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight, Eye } from 'lucide-react';
 import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
 import { useData } from './DataContext';
+import { supabase } from '../lib/supabase';
+import { startCollabPreview, type PreviewCollab } from '../lib/adminPreview';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,6 +17,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showPreviewPanel, setShowPreviewPanel] = useState(false);
+  const [previewCollabs, setPreviewCollabs] = useState<PreviewCollab[]>([]);
+  const [loadingPreviewCollabs, setLoadingPreviewCollabs] = useState(false);
   const { currentUser, logoutClient, logoutCollaborator, logoutAdmin, platformSettings } = useData();
   const mainRef = useRef<HTMLElement>(null);
 
@@ -28,6 +33,22 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
     else if (role === UserRole.COLLABORATOR) logoutCollaborator();
     else logoutClient();
     navigate('/');
+  };
+
+  const openPreviewPanel = async () => {
+    if (!showPreviewPanel && previewCollabs.length === 0) {
+      setLoadingPreviewCollabs(true);
+      const { data } = await supabase.from('colaboradoras_rh').select('id, nome, foto').eq('status', 'ATIVA').order('nome');
+      setPreviewCollabs((data as PreviewCollab[]) ?? []);
+      setLoadingPreviewCollabs(false);
+    }
+    setShowPreviewPanel(prev => !prev);
+  };
+
+  const handlePreviewCollab = (collab: PreviewCollab) => {
+    startCollabPreview(collab);
+    window.open('/#/collab/agenda', '_blank');
+    setShowPreviewPanel(false);
   };
 
   const handleSupportClick = () => {
@@ -361,6 +382,43 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
             <LogOut size={16} />
             Sair
           </button>
+
+          {/* Vista Rápida — Super Admin only */}
+          {role === UserRole.ADMIN && (
+            <div className="relative mt-2 border-t border-gray-100 pt-2">
+              <button
+                onClick={openPreviewPanel}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-400 hover:bg-purple-50 hover:text-purple-600 rounded-lg transition-colors"
+              >
+                <Eye size={13} />
+                Ver como colaboradora...
+              </button>
+              {showPreviewPanel && (
+                <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-gray-100 dark:bg-darkSurface dark:border-darkBorder rounded-xl shadow-xl overflow-hidden">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">Escolha uma colaboradora</p>
+                  <div className="max-h-44 overflow-y-auto">
+                    {loadingPreviewCollabs ? (
+                      <p className="text-xs text-gray-400 p-3 text-center">Carregando...</p>
+                    ) : previewCollabs.length === 0 ? (
+                      <p className="text-xs text-gray-400 p-3 text-center">Nenhuma ativa</p>
+                    ) : previewCollabs.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => handlePreviewCollab(c)}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors"
+                      >
+                        {c.foto
+                          ? <img src={c.foto} alt={c.nome} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                          : <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-[10px] flex-shrink-0">{c.nome[0]}</div>
+                        }
+                        <span className="truncate">{c.nome}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </aside>
 

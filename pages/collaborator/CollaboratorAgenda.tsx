@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, MapPin, User, CheckCircle, ChevronRight, MessageCircle } from 'lucide-react';
+import { Clock, MapPin, User, CheckCircle, ChevronRight, MessageCircle, Eye } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 import { CollabLayout } from '../../components/CollabLayout';
+import { getCollabPreview, clearCollabPreview } from '../../lib/adminPreview';
 
 type Tab = 'hoje' | 'semana';
 
@@ -52,6 +53,7 @@ export const CollaboratorAgenda: React.FC = () => {
   const navigate = useNavigate();
   const { services, currentCollaborator } = useData();
   const [tab, setTab] = useState<Tab>('hoje');
+  const previewMode = getCollabPreview();
   const today = todayBR();
 
   const myServices = useMemo(() => {
@@ -89,6 +91,18 @@ export const CollaboratorAgenda: React.FC = () => {
 
   return (
     <CollabLayout>
+      {previewMode && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-700 flex items-center gap-2">
+          <Eye size={12} className="shrink-0" />
+          <span>Modo preview — vendo como <strong>{previewMode.collabName}</strong></span>
+          <button
+            onClick={() => { clearCollabPreview(); window.close(); }}
+            className="ml-auto text-amber-600 hover:underline font-semibold whitespace-nowrap"
+          >
+            Fechar
+          </button>
+        </div>
+      )}
       <div className="max-w-lg mx-auto space-y-5">
 
         {/* Header */}
