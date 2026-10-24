@@ -180,6 +180,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           { icon: <BarChart2 size={16} />,       label: 'Desempenho',   path: '/admin/rh/desempenho',       group: 'RH' },
           { icon: <BookOpen size={16} />,        label: 'Plano de Carreira', path: '/admin/rh/plano-carreira', group: 'RH' },
           { icon: <Settings size={16} />,        label: 'Config. RH',   path: '/admin/rh/configuracoes',    group: 'RH' },
+          { icon: <DollarSign size={16} />,      label: 'Financeiro',   path: '/admin/payments',            group: 'FINANCEIRO' },
           { icon: <Settings size={20} />,        label: 'Configurações',path: '/admin/settings',            group: 'CONFIG' },
         ];
       case UserRole.COLLABORATOR:
@@ -211,8 +212,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
 
         <nav className="flex-1 px-4 mt-4 overflow-y-auto">
           {(() => {
-            const groups = ['OPERAÇÕES', 'RH', 'VENDAS', 'CONFIG'] as const;
-            const groupLabels: Record<string, string> = { 'OPERAÇÕES': 'Operações', RH: 'Recursos Humanos', VENDAS: 'Vendas', CONFIG: 'Configurações' };
+            const groups = ['OPERAÇÕES', 'RH', 'VENDAS', 'FINANCEIRO', 'CONFIG'] as const;
+            const groupLabels: Record<string, string> = { 'OPERAÇÕES': 'Operações', RH: 'Recursos Humanos', VENDAS: 'Vendas', FINANCEIRO: 'Financeiro', CONFIG: 'Configurações' };
             return groups.map(group => {
               const items = menuItems.filter((i: any) => i.group === group);
               if (!items.length) return null;

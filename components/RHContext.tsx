@@ -25,6 +25,8 @@ export interface ColaboradoraRH {
   perfilComportamental?: string;
   // Metas individuais
   metaMensalFaxinas?: number;
+  // Financeiro
+  commissionRate?: number;
   // Dados pessoais
   dataNascimento?: string;
   createdAt: string;
@@ -287,7 +289,7 @@ const SEED_COLABORADORAS: ColaboradoraRH[] = [
 // ─── Supabase ↔ camelCase mappers ─────────────────────────────────────────────
 
 function mapColaboradora(r: any): ColaboradoraRH {
-  return { id: r.id, nome: r.nome, telefone: r.telefone, foto: r.foto, dataAdmissao: r.data_admissao, cargoAtual: r.cargo_atual as CargoRH, status: r.status as StatusColaboradoraRH, observacoes: r.observacoes, endereco: r.endereco, cep: r.cep, contratoUrl: r.contrato_url, contratoNome: r.contrato_nome, pontosFortes: r.pontos_fortes, areasDesenvolvimento: r.areas_desenvolvimento, perfilComportamental: r.perfil_comportamental, metaMensalFaxinas: r.meta_mensal_faxinas ?? undefined, dataNascimento: r.data_nascimento ?? undefined, createdAt: r.created_at, updatedAt: r.updated_at };
+  return { id: r.id, nome: r.nome, telefone: r.telefone, foto: r.foto, dataAdmissao: r.data_admissao, cargoAtual: r.cargo_atual as CargoRH, status: r.status as StatusColaboradoraRH, observacoes: r.observacoes, endereco: r.endereco, cep: r.cep, contratoUrl: r.contrato_url, contratoNome: r.contrato_nome, pontosFortes: r.pontos_fortes, areasDesenvolvimento: r.areas_desenvolvimento, perfilComportamental: r.perfil_comportamental, metaMensalFaxinas: r.meta_mensal_faxinas ?? undefined, commissionRate: r.commission_rate ?? undefined, dataNascimento: r.data_nascimento ?? undefined, createdAt: r.created_at, updatedAt: r.updated_at };
 }
 function mapObservacao(r: any): ObservacaoColaboradora {
   return { id: r.id, colaboradoraId: r.colaboradora_id, data: r.data, tipo: r.tipo, titulo: r.titulo, descricao: r.descricao, registradoPor: r.registrado_por, createdAt: r.created_at };

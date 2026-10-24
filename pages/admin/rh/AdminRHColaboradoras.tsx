@@ -241,6 +241,31 @@ export const AdminRHColaboradoras: React.FC = () => {
   const [acessoStatus, setAcessoStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [acessoLoading, setAcessoLoading] = useState(false);
 
+  // Commission rate inline edit in drawer
+  const [drawerCommRate, setDrawerCommRate] = useState<number>(40);
+  const [editingCommRate, setEditingCommRate] = useState(false);
+  const [commRateInput, setCommRateInput] = useState('40');
+  const [savingCommRate, setSavingCommRate] = useState(false);
+
+  React.useEffect(() => {
+    if (!perfilAberto) return;
+    const rate = perfilAberto.commissionRate ?? 40;
+    setDrawerCommRate(rate);
+    setCommRateInput(String(rate));
+    setEditingCommRate(false);
+  }, [perfilAberto?.id]);
+
+  const handleSaveCommRate = async () => {
+    if (!perfilAberto) return;
+    setSavingCommRate(true);
+    const rate = parseFloat(commRateInput) || 40;
+    await supabase.from('colaboradoras_rh').update({ commission_rate: rate }).eq('id', perfilAberto.id);
+    setDrawerCommRate(rate);
+    setPerfilAberto(prev => prev ? { ...prev, commissionRate: rate } : prev);
+    setEditingCommRate(false);
+    setSavingCommRate(false);
+  };
+
   const openAcessoModal = (col: ColaboradoraRH) => {
     setAcessoModal(col);
     setAcessoEmail('');
@@ -1021,6 +1046,43 @@ export const AdminRHColaboradoras: React.FC = () => {
                       ) : (
                         <p className="text-xs text-lightText dark:text-darkTextSecondary italic">
                           Não definida — clique em Editar para configurar
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Taxa de Comissão */}
+                    <div className="bg-violet-50 dark:bg-violet-900/10 border border-violet-100 dark:border-violet-800/30 rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary flex items-center gap-1.5">
+                          <DollarSign size={13} className="text-violet-500" /> Taxa de Comissão
+                        </p>
+                        {!editingCommRate && (
+                          <button onClick={() => setEditingCommRate(true)}
+                            className="text-[10px] text-primary font-bold hover:underline">
+                            Editar
+                          </button>
+                        )}
+                      </div>
+                      {editingCommRate ? (
+                        <div className="flex items-center gap-2 mt-1">
+                          <input type="number" min="0" max="100" step="1"
+                            value={commRateInput}
+                            onChange={e => setCommRateInput(e.target.value)}
+                            className="w-20 text-sm border border-gray-200 dark:border-darkBorder rounded-lg px-2 py-1 bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary" />
+                          <span className="text-sm text-lightText">%</span>
+                          <button onClick={handleSaveCommRate} disabled={savingCommRate}
+                            className="text-xs font-bold text-white bg-primary px-3 py-1 rounded-lg hover:bg-primary/90 disabled:opacity-60 transition-colors">
+                            {savingCommRate ? 'Salvando…' : 'Salvar'}
+                          </button>
+                          <button onClick={() => setEditingCommRate(false)}
+                            className="text-xs text-lightText hover:text-darkText transition-colors">
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-2xl font-extrabold text-violet-600">
+                          {drawerCommRate}%
+                          <span className="text-sm font-normal text-lightText dark:text-darkTextSecondary ml-1">de comissão</span>
                         </p>
                       )}
                     </div>
