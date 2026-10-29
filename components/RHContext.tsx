@@ -357,6 +357,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
   // ── Load + auto-sync ────────────────────────────────────────────────────────
   const lastSyncAt = useRef<number>(0);
+  const bgSyncRunning = useRef(false);
 
   // A server snapshot fetched before an add/delete finished would undo it on screen.
   // Recent local adds/deletes are re-applied on top of every server list for a short while.
@@ -396,7 +397,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         const age = Date.now() - lastSyncAt.current;
-        if (age > 5_000) { // 5 s — refresh as soon as user returns to app
+        if (age > 60_000) { // only if the last sync is older than 1 min
           loadAll(true); // background-only: skip Phase 1 to avoid stale flash
         }
       }
@@ -410,7 +411,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       if (document.visibilityState === 'visible') {
         loadAll(true);
       }
-    }, 30_000); // every 30 s
+    }, 120_000); // every 2 min
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility);
@@ -424,6 +425,9 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     // data flash — Phase 1 would just re-set the same values that are already
     // in React state. Only needed on the very first load when state is empty.
     if (backgroundOnly) {
+      // A full RH sync can take several seconds; never stack a second one on top.
+      if (bgSyncRunning.current) return;
+      bgSyncRunning.current = true;
       // Jump straight to Phase 2 — skip Phase 1 localStorage flash
       setRhSyncing(true);
       try {
@@ -463,7 +467,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         if (obs.length)   { setObsColaboradoras(obs);  lsSet('rh_obs_colaboradoras', obs); }
         if (cands.length) { const m = mergeRecentCands(cands); setCandidatas(m); lsSet('rh_candidatas', m); }
         lastSyncAt.current = Date.now();
-      } catch { /* Supabase offline — stay on current state */ } finally { setRhSyncing(false); }
+      } catch { /* Supabase offline — stay on current state */ } finally { setRhSyncing(false); bgSyncRunning.current = false; }
       return;
     }
 

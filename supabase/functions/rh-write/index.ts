@@ -23,6 +23,29 @@ function isUUID(id: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 
+// Base64 data URLs (photos/contracts) stored in table rows made colaboradoras_rh ~17 MB for
+// 18 people and every RH sync slow. Files go to Storage; the row keeps only the public link.
+async function storeDataUrl(supabase: any, value: unknown, folder: string): Promise<unknown> {
+  if (typeof value !== 'string' || !value.startsWith('data:')) return value;
+  const m = value.match(/^data:([^;,]+)?(;base64)?,(.*)$/s);
+  if (!m) return value;
+  const mime = m[1] || 'application/octet-stream';
+  const bytes = m[2]
+    ? Uint8Array.from(atob(m[3]), ch => ch.charCodeAt(0))
+    : new TextEncoder().encode(decodeURIComponent(m[3]));
+  const ext = (mime.split('/')[1] || 'bin').replace('jpeg', 'jpg').replace(/[^a-z0-9]/gi, '').slice(0, 5) || 'bin';
+  const path = `${folder}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from('rh-files').upload(path, bytes, { contentType: mime, upsert: false });
+  if (error) return value; // keep the original rather than lose the file
+  return supabase.storage.from('rh-files').getPublicUrl(path).data.publicUrl;
+}
+
+async function withStoredFiles(supabase: any, row: Record<string, unknown>) {
+  if (row.foto) row.foto = await storeDataUrl(supabase, row.foto, 'colaboradoras/fotos');
+  if (row.contrato_url) row.contrato_url = await storeDataUrl(supabase, row.contrato_url, 'colaboradoras/contratos');
+  return row;
+}
+
 // Build a colaboradora row — use || null so empty strings don't break DATE columns.
 // IMPORTANT: foto is ONLY included when non-empty so we never accidentally overwrite
 // an existing photo with null (patch semantics for the foto field).
@@ -66,7 +89,7 @@ Deno.serve(async (req) => {
     // ── Upsert a single colaboradora ──────────────────────────────────────────
     if (action === 'upsert_colaboradora') {
       const c = data;
-      const row = buildColRow(c);
+      const row = await withStoredFiles(supabase, buildColRow(c));
 
       if (isUUID(c.id)) {
         // Real Supabase ID → upsert by id
@@ -92,7 +115,7 @@ Deno.serve(async (req) => {
     if (action === 'sync_colaboradoras') {
       const results = [];
       for (const c of (data as any[])) {
-        const row = buildColRow(c);
+        const row = await withStoredFiles(supabase, buildColRow(c));
         if (isUUID(c.id)) {
           // Real UUID → upsert directly
           const { data: r, error } = await supabase.from('colaboradoras_rh').upsert({ id: c.id, ...row }).select().single();
