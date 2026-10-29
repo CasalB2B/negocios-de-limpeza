@@ -11,111 +11,37 @@ import {
   FileText, ClipboardList, ChevronRight, ChevronLeft, Edit, CheckCircle,
   Clock, StickyNote, Plus, ChevronDown, ChevronUp, Briefcase,
   AlertCircle, Sparkles, ImageIcon, Upload,
-  Mic, MicOff, Paperclip, Copy,
+  Mic, MicOff, Paperclip, Copy, SlidersHorizontal,
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { RichNoteEditor } from '../../../components/RichNoteEditor';
 
-// ─── Gemini AI extraction ─────────────────────────────────────────────────────
-
-const GEMINI_KEY = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
-
-const EXTRACTION_PROMPT = `Você é um assistente de RH de uma empresa de limpeza doméstica.
-Analise este documento ou imagem e extraia TODOS os dados da candidata.
-
-Formate a resposta assim (inclua apenas campos que existem no documento):
-
-Nome:
-Idade:
-E-mail:
-WhatsApp/Telefone:
-Bairro/Cidade:
-CEP:
-Estado civil:
-Tem filhos:
-Escolaridade:
-Experiência profissional:
-Disponibilidade de horários:
-Tem transporte próprio:
-Como conheceu a empresa:
-Pretensão salarial:
-Observações:
-
-Não invente informações. Omita campos que não aparecem no documento.
-Se houver outras informações relevantes, adicione livremente ao final.`;
+// ─── Gemini (via server function rh-ia: uses the key saved in Configurações) ──
 
 async function extractWithGemini(file: File): Promise<string> {
-  if (!GEMINI_KEY) throw new Error('VITE_GEMINI_API_KEY não configurada.');
-
-  // Convert file to base64
   const base64 = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(',')[1]); // remove "data:...;base64," prefix
-    };
+    reader.onload = () => resolve(String(reader.result).split(',')[1]); // strip "data:...;base64,"
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-
-  const mimeType = file.type || 'image/jpeg';
-
-  const body = {
-    contents: [{
-      parts: [
-        { inline_data: { mime_type: mimeType, data: base64 } },
-        { text: EXTRACTION_PROMPT },
-      ],
-    }],
-    generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
-  };
-
-  const res = await fetch(GEMINI_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+  const { data, error } = await supabase.functions.invoke('rh-ia', {
+    body: { acao: 'extrair', mimeType: file.type || 'image/jpeg', base64 },
   });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `Gemini error ${res.status}`);
+  if (error || !data) {
+    let detalhe = '';
+    try { detalhe = (await (error as any)?.context?.json())?.error ?? ''; } catch {}
+    throw new Error(detalhe || 'Não foi possível ler o arquivo com a IA. Tente de novo.');
   }
-
-  const json = await res.json();
-  const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('Resposta vazia do Gemini.');
-  return text.trim();
+  if (data.error) throw new Error(data.error);
+  return String(data.texto).trim();
 }
 
-// ─── Gemini: pontuação automática de transcrição de voz ──────────────────────
-
 async function punctuateWithGemini(rawText: string): Promise<string> {
-  if (!GEMINI_KEY || !rawText.trim()) return rawText;
-  const body = {
-    contents: [{
-      parts: [{ text:
-        `Corrija a pontuação, maiúsculas e espaçamento do texto abaixo, que foi transcrito por voz.\n` +
-        `Regras:\n` +
-        `- Adicione maiúscula no início de cada frase\n` +
-        `- Adicione ponto final, vírgulas e outros sinais onde fizer sentido\n` +
-        `- Corrija palavras que ficaram grudadas ou sem espaço\n` +
-        `- Mantenha o significado original — não resuma nem reescreva\n` +
-        `- Responda APENAS com o texto corrigido, sem explicação\n\n` +
-        `Texto:\n${rawText}`,
-      }],
-    }],
-    generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
-  };
+  if (!rawText.trim()) return rawText;
   try {
-    const res = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) return rawText;
-    const json = await res.json();
-    return json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || rawText;
+    const { data } = await supabase.functions.invoke('rh-ia', { body: { acao: 'pontuar', texto: rawText } });
+    return data?.texto?.trim() || rawText;
   } catch {
     return rawText; // se Gemini falhar, mantém o texto original
   }
@@ -150,6 +76,8 @@ interface PipelineExtra {
   ligacaoIntroData?: string;
   ligacaoIntroHorario?: string;
   ligacaoIntroNotas?: string;
+  // Banco de freelas: good profile who doesn't want a contract but takes one-off jobs
+  freela?: { dias: string[]; turnos: string[]; valorDiaria?: string; obs?: string };
 }
 
 const ETAPA_CONFIG: Record<EtapaCandidatura, { label: string; short: string; color: string; icon: string }> = {
@@ -229,11 +157,18 @@ const STATUS_CONFIG: Record<StatusCandidataRH, { label: string; bg: string; text
   NOVA:        { label: 'Nova',        bg: 'bg-gray-100   dark:bg-gray-800',     text: 'text-gray-600   dark:text-gray-400',  dot: 'bg-gray-400' },
   EM_PROCESSO: { label: 'Em processo', bg: 'bg-blue-50    dark:bg-blue-900/20',  text: 'text-blue-700   dark:text-blue-400',  dot: 'bg-blue-500' },
   APROVADA:    { label: 'Aprovada',    bg: 'bg-green-50   dark:bg-green-900/20', text: 'text-green-700  dark:text-green-400', dot: 'bg-green-500' },
+  FREELANCER:  { label: 'Banco de Freelas', bg: 'bg-teal-50 dark:bg-teal-900/20', text: 'text-teal-700 dark:text-teal-400', dot: 'bg-teal-500' },
   REPROVADA:   { label: 'Reprovada',   bg: 'bg-red-50     dark:bg-red-900/20',   text: 'text-red-700    dark:text-red-400',   dot: 'bg-red-500' },
   DESISTIU:    { label: 'Desistiu',    bg: 'bg-orange-50  dark:bg-orange-900/20',text: 'text-orange-700 dark:text-orange-400',dot: 'bg-orange-400' },
 };
 
-const STATUS_ORDER: StatusCandidataRH[] = ['NOVA', 'EM_PROCESSO', 'APROVADA', 'REPROVADA', 'DESISTIU'];
+const STATUS_ORDER: StatusCandidataRH[] = ['NOVA', 'EM_PROCESSO', 'APROVADA', 'FREELANCER', 'REPROVADA', 'DESISTIU'];
+// Always visible as tabs; the rest live behind the "Filtros" button to keep the screen clean.
+const STATUS_PRINCIPAIS: StatusCandidataRH[] = ['NOVA', 'EM_PROCESSO', 'APROVADA', 'FREELANCER'];
+const STATUS_ARQUIVO: StatusCandidataRH[] = ['REPROVADA', 'DESISTIU'];
+
+const DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+const TURNOS = ['Manhã', 'Tarde', 'Dia todo'];
 
 type FormData = Omit<CandidataRH, 'id' | 'createdAt' | 'updatedAt'>;
 
@@ -319,6 +254,10 @@ export const AdminRHContratacao: React.FC = () => {
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<StatusCandidataRH | 'TODAS'>('NOVA');
+  const [filterEtapa, setFilterEtapa] = useState<EtapaCandidatura | 'TODAS'>('TODAS');
+  const [duplicando, setDuplicando] = useState<string | null>(null);
+  const [showFiltros, setShowFiltros] = useState(false);
+  const [aviso, setAviso] = useState('');
   const [pipelineVersion, setPipelineVersion] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState<FormData>({ ...BLANK });
@@ -359,6 +298,7 @@ export const AdminRHContratacao: React.FC = () => {
   const filtered = useMemo(() => {
     const base = candidatas
       .filter(c => filterStatus === 'TODAS' || c.status === filterStatus)
+      .filter(c => filterEtapa === 'TODAS' || getPipeline(c.id, c.dadosFormulario).etapa === filterEtapa)
       .filter(c => c.nome.toLowerCase().includes(search.toLowerCase()));
 
     // Sort: scheduled (ligação or entrevista) come first sorted asc by datetime,
@@ -379,13 +319,22 @@ export const AdminRHContratacao: React.FC = () => {
       if (dtB !== null) return 1;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [candidatas, search, filterStatus]);
+  }, [candidatas, search, filterStatus, filterEtapa]);
 
   const counts = useMemo(() => {
     const r: Record<string, number> = {};
     STATUS_ORDER.forEach(s => { r[s] = candidatas.filter(c => c.status === s).length; });
     return r;
   }, [candidatas]);
+
+  // Stage counts within the selected status tab
+  const etapaCounts = useMemo(() => {
+    const r: Record<string, number> = {};
+    candidatas
+      .filter(c => filterStatus === 'TODAS' || c.status === filterStatus)
+      .forEach(c => { const e = getPipeline(c.id, c.dadosFormulario).etapa; r[e] = (r[e] || 0) + 1; });
+    return r;
+  }, [candidatas, filterStatus]);
 
   // Fast candidatas sync on page mount — fetches only the candidatas table
   // so the list is fresh without waiting for the full get_admin_data payload.
@@ -435,6 +384,9 @@ export const AdminRHContratacao: React.FC = () => {
 
   const duplicarCandidatura = async (c: CandidataRH, e: React.MouseEvent) => {
     e.stopPropagation(); // don't open the original card's drawer
+    if (duplicando) return;
+    setDuplicando(c.id);
+    setFilterEtapa('TODAS'); // the copy restarts at "Contato" and must stay visible
     // Copy all data from original; reset status to NOVA and keep pipeline content
     // (etapa reset to CONTATO_INICIAL but preserve bairro, anotacoes, dadosFormulario text)
     const origPipeline = getPipeline(c.id, c.dadosFormulario);
@@ -446,15 +398,21 @@ export const AdminRHContratacao: React.FC = () => {
       entrevistaData: undefined, entrevistaHorario: undefined, entrevistaConfirmada: false,
       demandasRealizadas: 0,
     };
-    await addCandidatura({
-      nome: c.nome + ' (cópia)',
+    // Keep the original status so the copy stays in the tab the user is looking at.
+    const copia = await addCandidatura({
+      nome: c.nome.trim() + ' (cópia)',
       data: new Date().toISOString().split('T')[0],
       telefone: c.telefone,
-      status: 'NOVA',
+      status: c.status,
       dadosFormulario: JSON.stringify(copiaPipeline),
       notasEntrevista: c.notasEntrevista || '',
       observacoes: c.observacoes || '',
     });
+    setDuplicando(null);
+    setAviso(copia.id.startsWith('cand_')
+      ? 'Cópia criada só neste aparelho (sem conexão). Ela será enviada quando a conexão voltar.'
+      : `Cópia criada: "${copia.nome}"`);
+    setTimeout(() => setAviso(''), 4000);
   };
 
   const handleSaveDoc = async () => {
@@ -462,7 +420,7 @@ export const AdminRHContratacao: React.FC = () => {
     setSaving(true);
     setSaveError(false);
     // Serialize pipeline to dados_formulario so it persists in Supabase (survives cache clear)
-    const withPipeline = { ...docForm, dadosFormulario: JSON.stringify(pipeline) };
+    const withPipeline = { ...aberta, ...docForm, dadosFormulario: JSON.stringify(pipeline) };
     const ok = await updateCandidatura(aberta.id, withPipeline);
     savePipeline(aberta.id, pipeline); // keep localStorage copy as fast-read cache
     setAberta(prev => prev ? { ...prev, ...withPipeline } : prev);
@@ -723,31 +681,116 @@ export const AdminRHContratacao: React.FC = () => {
           <Button icon={<UserPlus size={16} />} onClick={() => { setForm({ ...BLANK }); setShowAdd(true); }}>Nova</Button>
         </div>
 
-        {/* Filtros de status */}
-        <div className="flex flex-wrap gap-2">
-          {STATUS_ORDER.map(s => (
-            <button key={s}
-              onClick={() => setFilterStatus(s)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterStatus === s ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-gray-200 dark:hover:bg-darkBorder'}`}>
-              {STATUS_CONFIG[s].label}{counts[s] > 0 ? ` (${counts[s]})` : ''}
+        {/* Filtros: abas principais + painel "Filtros" para o resto */}
+        <div className="space-y-2">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap">
+            {STATUS_PRINCIPAIS.map(s => (
+              <button key={s}
+                onClick={() => setFilterStatus(s)}
+                className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterStatus === s ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-gray-200 dark:hover:bg-darkBorder'}`}>
+                {STATUS_CONFIG[s].label}{counts[s] > 0 ? ` (${counts[s]})` : ''}
+              </button>
+            ))}
+            <button
+              onClick={() => setShowFiltros(v => !v)}
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+                showFiltros || !STATUS_PRINCIPAIS.includes(filterStatus as StatusCandidataRH) || filterEtapa !== 'TODAS'
+                  ? 'border-primary text-primary bg-primary/5'
+                  : 'border-gray-200 dark:border-darkBorder text-lightText dark:text-darkTextSecondary'
+              }`}>
+              <SlidersHorizontal size={13} /> Filtros
+              {(!STATUS_PRINCIPAIS.includes(filterStatus as StatusCandidataRH) ? 1 : 0) + (filterEtapa !== 'TODAS' ? 1 : 0) > 0 && (
+                <span className="ml-0.5 w-4 h-4 rounded-full bg-primary text-white text-[10px] flex items-center justify-center">
+                  {(!STATUS_PRINCIPAIS.includes(filterStatus as StatusCandidataRH) ? 1 : 0) + (filterEtapa !== 'TODAS' ? 1 : 0)}
+                </span>
+              )}
             </button>
-          ))}
-          <button
-            onClick={() => setFilterStatus('TODAS')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterStatus === 'TODAS' ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary hover:bg-gray-200 dark:hover:bg-darkBorder'}`}>
-            Todas ({candidatas.length})
-          </button>
+          </div>
+
+          {/* Filtros ativos fora das abas principais */}
+          {(!STATUS_PRINCIPAIS.includes(filterStatus as StatusCandidataRH) || filterEtapa !== 'TODAS') && !showFiltros && (
+            <div className="flex flex-wrap gap-2">
+              {!STATUS_PRINCIPAIS.includes(filterStatus as StatusCandidataRH) && (
+                <button onClick={() => setFilterStatus('NOVA')}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-primary/10 text-primary">
+                  {filterStatus === 'TODAS' ? 'Todas' : STATUS_CONFIG[filterStatus as StatusCandidataRH].label} <X size={12} />
+                </button>
+              )}
+              {filterEtapa !== 'TODAS' && (
+                <button onClick={() => setFilterEtapa('TODAS')}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-primary/10 text-primary">
+                  {ETAPA_CONFIG[filterEtapa].icon} {ETAPA_CONFIG[filterEtapa].label} <X size={12} />
+                </button>
+              )}
+            </div>
+          )}
+
+          {showFiltros && (
+            <div className="rounded-2xl border border-gray-100 dark:border-darkBorder bg-white dark:bg-darkSurface p-4 space-y-4 shadow-sm">
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-lightText dark:text-darkTextSecondary">Arquivo</p>
+                <div className="flex flex-wrap gap-2">
+                  {STATUS_ARQUIVO.map(s => (
+                    <button key={s}
+                      onClick={() => { setFilterStatus(s); setShowFiltros(false); }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterStatus === s ? 'bg-primary text-white' : 'bg-gray-50 dark:bg-darkBg text-darkText dark:text-darkTextPrimary hover:bg-gray-100 dark:hover:bg-darkBorder'}`}>
+                      {STATUS_CONFIG[s].label}{counts[s] > 0 ? ` (${counts[s]})` : ''}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => { setFilterStatus('TODAS'); setShowFiltros(false); }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterStatus === 'TODAS' ? 'bg-primary text-white' : 'bg-gray-50 dark:bg-darkBg text-darkText dark:text-darkTextPrimary hover:bg-gray-100 dark:hover:bg-darkBorder'}`}>
+                    Todas ({candidatas.length})
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-lightText dark:text-darkTextSecondary">
+                  Etapa do processo {filterStatus !== 'TODAS' ? `· em "${STATUS_CONFIG[filterStatus as StatusCandidataRH].label}"` : ''}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => { setFilterEtapa('TODAS'); setShowFiltros(false); }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterEtapa === 'TODAS' ? 'bg-primary text-white' : 'bg-gray-50 dark:bg-darkBg text-darkText dark:text-darkTextPrimary hover:bg-gray-100 dark:hover:bg-darkBorder'}`}>
+                    Todas as etapas
+                  </button>
+                  {ETAPA_ORDER.filter(e => etapaCounts[e] || filterEtapa === e).map(e => (
+                    <button key={e}
+                      onClick={() => { setFilterEtapa(e); setShowFiltros(false); }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${filterEtapa === e ? 'bg-primary text-white' : 'bg-gray-50 dark:bg-darkBg text-darkText dark:text-darkTextPrimary hover:bg-gray-100 dark:hover:bg-darkBorder'}`}>
+                      {ETAPA_CONFIG[e].icon} {ETAPA_CONFIG[e].short} ({etapaCounts[e] || 0})
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {(filterStatus !== 'NOVA' || filterEtapa !== 'TODAS') && (
+                <button
+                  onClick={() => { setFilterStatus('NOVA'); setFilterEtapa('TODAS'); setShowFiltros(false); }}
+                  className="text-xs font-bold text-primary hover:underline">
+                  Limpar filtros
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Search */}
         <Input placeholder="Buscar por nome..." value={search} onChange={e => setSearch(e.target.value)} icon={<Search size={16} />} />
+
+        {aviso && (
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-sm font-semibold text-green-700 dark:text-green-400">
+            <CheckCircle size={15} className="shrink-0" /> {aviso}
+          </div>
+        )}
 
         {/* ── LISTA ─────────────────────────────────────────────────────── */}
         {filtered.length === 0 ? (
             <div className="text-center py-16 text-lightText dark:text-darkTextSecondary">
               <ClipboardList size={32} className="mx-auto mb-3 opacity-30" />
               <p className="font-bold">Nenhuma candidata encontrada.</p>
-              <p className="text-sm mt-1">Clique em "Nova" para registrar uma candidatura.</p>
+              <p className="text-sm mt-1">
+                {filterEtapa !== 'TODAS' ? 'Nenhuma nesta etapa. Troque o filtro de etapa ou de status.' : 'Clique em "Nova" para registrar uma candidatura.'}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -771,10 +814,11 @@ export const AdminRHContratacao: React.FC = () => {
                     {/* Duplicate button — top-right corner, only visible on hover */}
                     <button
                       onClick={e => duplicarCandidatura(c, e)}
+                      disabled={!!duplicando}
                       title="Duplicar candidata"
-                      className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg bg-gray-100 dark:bg-darkBg hover:bg-primary/10 dark:hover:bg-primary/20 text-lightText hover:text-primary z-10"
+                      className={`absolute top-3 right-3 transition-opacity p-1.5 rounded-lg bg-gray-100 dark:bg-darkBg hover:bg-primary/10 dark:hover:bg-primary/20 text-lightText hover:text-primary z-10 ${duplicando === c.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
                     >
-                      <Copy size={13} />
+                      {duplicando === c.id ? <Clock size={13} className="animate-spin" /> : <Copy size={13} />}
                     </button>
                     {/* Main card click area */}
                     <button onClick={() => openAberta(c)} className="w-full p-4 text-left hover:bg-gray-50/50 dark:hover:bg-white/[0.02] rounded-2xl flex items-center gap-4 transition-colors">
@@ -785,6 +829,9 @@ export const AdminRHContratacao: React.FC = () => {
                         <p className="font-bold text-darkText dark:text-darkTextPrimary truncate">{c.nome}</p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <StatusBadge status={c.status} />
+                          {c.status === 'FREELANCER' && pl.freela?.dias?.length ? (
+                            <span className="text-[10px] font-bold text-teal-700 dark:text-teal-400">{pl.freela.dias.join(' · ')}</span>
+                          ) : null}
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-white ${eCfg.color}`}>
                             {eCfg.short}
                           </span>
@@ -1190,6 +1237,86 @@ export const AdminRHContratacao: React.FC = () => {
                       <div className="flex items-center gap-2 text-green-700 dark:text-green-400"><CheckCircle size={15} /><p className="text-sm font-bold">🎉 Contratada com sucesso!</p></div>
                       <p className="text-xs text-green-600 dark:text-green-500 mt-1">Lembre de cadastrar a nova colaboradora na aba Colaboradoras.</p>
                     </div>
+                  )}
+
+                  {/* ── Banco de freelas ───────────────────────────────────────── */}
+                  {(docForm.status ?? aberta.status) === 'FREELANCER' ? (
+                    <div className="rounded-2xl border border-teal-200 dark:border-teal-800 bg-teal-50/60 dark:bg-teal-900/10 p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-bold text-teal-800 dark:text-teal-300">⭐ Banco de Freelas</p>
+                          <p className="text-xs text-teal-700/80 dark:text-teal-400/80">Bom perfil, não quer contrato. Chame para diárias avulsas.</p>
+                        </div>
+                        <button
+                          onClick={() => setDocForm(p => ({ ...p, status: 'NOVA' }))}
+                          className="shrink-0 text-[11px] font-bold text-teal-700 dark:text-teal-400 hover:underline"
+                        >
+                          Tirar do banco
+                        </button>
+                      </div>
+                      <div className="space-y-1.5">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-teal-800/70 dark:text-teal-300/70">Dias disponíveis</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {DIAS_SEMANA.map(d => {
+                            const on = !!pipeline.freela?.dias?.includes(d);
+                            return (
+                              <button key={d}
+                                onClick={() => setPipeline(p => {
+                                  const f = p.freela ?? { dias: [], turnos: [] };
+                                  const dias = on ? f.dias.filter(x => x !== d) : DIAS_SEMANA.filter(x => x === d || f.dias.includes(x));
+                                  return { ...p, freela: { ...f, dias } };
+                                })}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${on ? 'bg-teal-600 text-white' : 'bg-white dark:bg-darkBg text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800'}`}>
+                                {d}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-teal-800/70 dark:text-teal-300/70">Turno</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {TURNOS.map(t => {
+                            const on = !!pipeline.freela?.turnos?.includes(t);
+                            return (
+                              <button key={t}
+                                onClick={() => setPipeline(p => {
+                                  const f = p.freela ?? { dias: [], turnos: [] };
+                                  const turnos = on ? (f.turnos ?? []).filter(x => x !== t) : [...(f.turnos ?? []), t];
+                                  return { ...p, freela: { ...f, turnos } };
+                                })}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${on ? 'bg-teal-600 text-white' : 'bg-white dark:bg-darkBg text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800'}`}>
+                                {t}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={pipeline.freela?.valorDiaria ?? ''}
+                          onChange={e => setPipeline(p => ({ ...p, freela: { dias: [], turnos: [], ...p.freela, valorDiaria: e.target.value } }))}
+                          placeholder="Valor combinado da diária (R$)"
+                          className="w-full border border-teal-200 dark:border-teal-800 bg-white dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                        />
+                        <input
+                          type="text"
+                          value={pipeline.freela?.obs ?? ''}
+                          onChange={e => setPipeline(p => ({ ...p, freela: { dias: [], turnos: [], ...p.freela, obs: e.target.value } }))}
+                          placeholder="Observação (ex.: só região central)"
+                          className="w-full border border-teal-200 dark:border-teal-800 bg-white dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setDocForm(p => ({ ...p, status: 'FREELANCER' }))}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-teal-300 dark:border-teal-800 text-xs font-bold text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/10 transition-colors"
+                    >
+                      ⭐ Não quer contrato, mas é bom perfil? Guardar no Banco de Freelas
+                    </button>
                   )}
 
                   {/* ── Bairro ──────────────────────────────────────────────────── */}

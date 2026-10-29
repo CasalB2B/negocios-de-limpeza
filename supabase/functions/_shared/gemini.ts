@@ -41,7 +41,7 @@ export async function generateContent(
   const available = await listFlashModels(apiKey);
   // Tool-calling turns must stay on one model: thought signatures don't transfer between models.
   const models = preferredModel ? [preferredModel] : available.slice(0, 4);
-  const timeoutMs = preferredModel ? 45000 : 12000;
+  const timeoutMs = preferredModel ? 45000 : 8000;
   let last = { ok: false, data: { error: { message: 'Nenhum modelo disponível' } } as any, model: '' };
   for (const model of models) {
     let res: Response;

@@ -143,7 +143,7 @@ export interface AvaliacaoCliente {
   createdAt: string;
 }
 
-export type StatusCandidataRH = 'NOVA' | 'EM_PROCESSO' | 'APROVADA' | 'REPROVADA' | 'DESISTIU';
+export type StatusCandidataRH = 'NOVA' | 'EM_PROCESSO' | 'APROVADA' | 'FREELANCER' | 'REPROVADA' | 'DESISTIU';
 
 export interface CandidataRH {
   id: string;
@@ -201,7 +201,7 @@ interface RHContextType {
   deleteAvaliacao: (id: string) => Promise<void>;
 
   candidatas: CandidataRH[];
-  addCandidatura: (data: Omit<CandidataRH, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  addCandidatura: (data: Omit<CandidataRH, 'id' | 'createdAt' | 'updatedAt'>) => Promise<CandidataRH>;
   updateCandidatura: (id: string, data: Partial<CandidataRH>) => Promise<boolean>;
   deleteCandidatura: (id: string) => Promise<void>;
   syncCandidatasOnly: () => Promise<void>;
@@ -358,6 +358,34 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   // ── Load + auto-sync ────────────────────────────────────────────────────────
   const lastSyncAt = useRef<number>(0);
 
+  // A server snapshot fetched before an add/delete finished would undo it on screen.
+  // Recent local adds/deletes are re-applied on top of every server list for a short while.
+  const recentCands = useRef(new Map<string, { item: CandidataRH; at: number }>());
+  const recentDeletes = useRef(new Map<string, number>());
+  const RECENT_MS = 2 * 60_000;
+  // New cards get a temporary cand_ id until the server insert returns the real one.
+  // Every later save must target the real id, or each autosave inserts a duplicate row.
+  const candAlias = useRef(new Map<string, string>());
+  const candInserting = useRef(new Map<string, Promise<string | null>>());
+  const candidatasRef = useRef<CandidataRH[]>([]);
+  const resolveCandId = async (id: string): Promise<string> => {
+    const pending = candInserting.current.get(id);
+    if (pending) { const real = await pending; if (real) return real; }
+    return candAlias.current.get(id) ?? id;
+  };
+  candidatasRef.current = candidatas;
+  const mergeRecentCands = (server: CandidataRH[]): CandidataRH[] => {
+    const now = Date.now();
+    for (const [id, t] of recentDeletes.current) if (now - t > RECENT_MS) recentDeletes.current.delete(id);
+    const ids = new Set(server.map(c => c.id));
+    const extra: CandidataRH[] = [];
+    for (const [id, { item, at }] of recentCands.current) {
+      if (ids.has(id) || now - at > RECENT_MS) recentCands.current.delete(id);
+      else extra.push(item);
+    }
+    return [...extra, ...server].filter(c => !recentDeletes.current.has(c.id));
+  };
+
   useEffect(() => {
     loadAll();
 
@@ -433,7 +461,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
           setAvaliacoes(fresh); lsSet('rh_avaliacoes', fresh);
         }
         if (obs.length)   { setObsColaboradoras(obs);  lsSet('rh_obs_colaboradoras', obs); }
-        if (cands.length) { setCandidatas(cands);       lsSet('rh_candidatas', cands); }
+        if (cands.length) { const m = mergeRecentCands(cands); setCandidatas(m); lsSet('rh_candidatas', m); }
         lastSyncAt.current = Date.now();
       } catch { /* Supabase offline — stay on current state */ } finally { setRhSyncing(false); }
       return;
@@ -643,7 +671,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const lsCands2 = lsGet<CandidataRH[]>('rh_candidatas', []);
       const sbCandIds = new Set(cands.map((c: CandidataRH) => c.id));
       const localOnlyCands = lsCands2.filter(c => c.id.startsWith('cand_') && !sbCandIds.has(c.id));
-      const finalCands = cands.length > 0 ? [...cands, ...localOnlyCands] : lsCands2;
+      const finalCands = mergeRecentCands(cands.length > 0 ? [...cands, ...localOnlyCands] : lsCands2);
       setCandidatas(finalCands);
 
       // Só sobrescreve localStorage com dados do Supabase se Supabase retornou algo
@@ -919,41 +947,97 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
   // ── Candidatas (Contratação) ───────────────────────────────────────────────
 
-  const addCandidatura = useCallback(async (data: Omit<CandidataRH, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const rowToCandidata = (r: any): CandidataRH => ({
+    id: r.id, nome: r.nome, data: r.data, telefone: r.telefone, status: r.status, dadosFormulario: r.dados_formulario,
+    notasEntrevista: r.notas_entrevista, observacoes: r.observacoes, createdAt: r.created_at, updatedAt: r.updated_at,
+  });
+
+  const addCandidatura = useCallback(async (data: Omit<CandidataRH, 'id' | 'createdAt' | 'updatedAt'>): Promise<CandidataRH> => {
     const now = new Date().toISOString();
-    const newId = `cand_${Date.now()}`;
-    const item: CandidataRH = { ...data, id: newId, createdAt: now, updatedAt: now };
-    try {
-      const res = await supabase.functions.invoke('rh-write', {
-        body: { action: 'upsert_candidatura', data: { ...data, id: newId } },
-      });
-      if (res.data?.ok && res.data.id) {
-        const r = res.data.row;
-        const saved: CandidataRH = r
-          ? { id: r.id, nome: r.nome, data: r.data, telefone: r.telefone, status: r.status, dadosFormulario: r.dados_formulario, notasEntrevista: r.notas_entrevista, observacoes: r.observacoes, createdAt: r.created_at, updatedAt: r.updated_at }
-          : { ...item, id: res.data.id };
-        setCandidatas(prev => { const next = [saved, ...prev]; lsSet('rh_candidatas', next); return next; });
-        return;
-      }
-    } catch {}
+    const tempId = `cand_${Date.now()}`;
+    const item: CandidataRH = { ...data, id: tempId, createdAt: now, updatedAt: now };
+    // Show it right away; the server round-trip takes a few seconds.
+    recentCands.current.set(tempId, { item, at: Date.now() });
     setCandidatas(prev => { const next = [item, ...prev]; lsSet('rh_candidatas', next); return next; });
+
+    let saved: CandidataRH | null = null;
+    const insert = (async () => {
+      try {
+        const res = await supabase.functions.invoke('rh-write', {
+          body: { action: 'upsert_candidatura', data: { ...data, id: tempId } },
+        });
+        if (res.data?.ok && res.data.id) {
+          saved = res.data.row ? rowToCandidata(res.data.row) : { ...item, id: res.data.id };
+          candAlias.current.set(tempId, saved.id);
+          return saved.id as string;
+        }
+      } catch {}
+      return null;
+    })();
+    candInserting.current.set(tempId, insert);
+    await insert;
+    candInserting.current.delete(tempId);
+    recentCands.current.delete(tempId);
+
+    if (saved) {
+      const s2: CandidataRH = saved;
+      recentCands.current.set(s2.id, { item: s2, at: Date.now() });
+      // Keep any edits made while the insert was in flight.
+      setCandidatas(prev => {
+        const local = prev.find(c => c.id === tempId);
+        const merged = local ? { ...s2, ...local, id: s2.id, createdAt: s2.createdAt } : s2;
+        const next = [merged, ...prev.filter(c => c.id !== tempId && c.id !== s2.id)];
+        lsSet('rh_candidatas', next);
+        return next;
+      });
+      return s2;
+    }
+    // Server unavailable: keep the local copy (synced later as a local-only cand_ record).
+    return item;
   }, []);
 
   const updateCandidatura = useCallback(async (id: string, data: Partial<CandidataRH>): Promise<boolean> => {
-    const upd = (prev: CandidataRH[]) => { const next = prev.map(c => c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c); lsSet('rh_candidatas', next); return next; };
-    let sbOk = false;
-    try {
-      const current = candidatas.find(c => c.id === id);
-      if (current) {
-        const res = await supabase.functions.invoke('rh-write', {
-          body: { action: 'upsert_candidatura', data: { ...current, ...data, id } },
-        });
-        sbOk = res.data?.ok === true;
-      }
-    } catch {}
-    setCandidatas(upd);
-    return sbOk;
-  }, [candidatas]);
+    const realId = await resolveCandId(id);
+    const sameCard = (c: CandidataRH) => c.id === id || c.id === realId;
+    const base = candidatasRef.current.find(sameCard) ?? recentCands.current.get(realId)?.item;
+    setCandidatas(prev => {
+      const next = prev.map(c => sameCard(c) ? { ...c, ...data, id: realId, updatedAt: new Date().toISOString() } : c);
+      lsSet('rh_candidatas', next);
+      return next;
+    });
+    // Without the full record an upsert could blank the name; keep it local and report failure.
+    if (!base && !data.nome) return false;
+
+    const payload = { ...base, ...data, id: realId };
+    const send = async (): Promise<string | null> => {
+      try {
+        const res = await supabase.functions.invoke('rh-write', { body: { action: 'upsert_candidatura', data: payload } });
+        return res.data?.ok ? (res.data.id as string) : null;
+      } catch { return null; }
+    };
+
+    let savedId: string | null;
+    if (realId.startsWith('cand_')) {
+      // Local-only record (an earlier insert failed): insert once, then alias.
+      const insert = send();
+      candInserting.current.set(realId, insert);
+      savedId = await insert;
+      candInserting.current.delete(realId);
+      if (savedId) candAlias.current.set(realId, savedId);
+    } else {
+      savedId = await send();
+    }
+
+    if (savedId && savedId !== realId) {
+      candAlias.current.set(id, savedId);
+      setCandidatas(prev => {
+        const next = prev.map(c => sameCard(c) ? { ...c, id: savedId! } : c);
+        lsSet('rh_candidatas', next);
+        return next;
+      });
+    }
+    return !!savedId;
+  }, []);
 
   // Fast candidatas-only sync — fetches just the candidatas_rh table instead of all
   // 10 tables. Use this on the Contratação page for a quick refresh on mount/focus.
@@ -962,15 +1046,19 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const res = await supabase.functions.invoke('rh-write', { body: { action: 'get_candidatas' } });
       if (!res.data?.ok) return;
       const cands = (res.data.candidatas || []).map(mapCandidatura);
-      if (cands.length) { setCandidatas(cands); lsSet('rh_candidatas', cands); }
+      if (cands.length) { const m = mergeRecentCands(cands); setCandidatas(m); lsSet('rh_candidatas', m); }
     } catch {}
   }, []);
 
   const deleteCandidatura = useCallback(async (id: string) => {
-    try {
-      await supabase.functions.invoke('rh-write', { body: { action: 'delete_candidatura', data: { id } } });
-    } catch {}
-    setCandidatas(prev => { const next = prev.filter(c => c.id !== id); lsSet('rh_candidatas', next); return next; });
+    const realId = await resolveCandId(id);
+    for (const k of [id, realId]) { recentDeletes.current.set(k, Date.now()); recentCands.current.delete(k); }
+    setCandidatas(prev => { const next = prev.filter(c => c.id !== id && c.id !== realId); lsSet('rh_candidatas', next); return next; });
+    if (!realId.startsWith('cand_')) {
+      try {
+        await supabase.functions.invoke('rh-write', { body: { action: 'delete_candidatura', data: { id: realId } } });
+      } catch {}
+    }
   }, []);
 
   const getMediaAvaliacoesMes = useCallback((colaboradoraId: string, mes: number, ano: number): number | null => {
