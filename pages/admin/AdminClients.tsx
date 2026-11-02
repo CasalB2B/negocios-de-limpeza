@@ -11,17 +11,39 @@ import {
 import { useData, ClientUser } from '../../components/DataContext';
 import { Address } from '../../types';
 
-type ClientType = 'AVULSO' | 'FIXO' | 'POS_OBRA' | 'PRIMEIRA_LIMPEZA';
+// Client type describes the relationship (new, fixed with a frequency, occasional) — not the service.
+// Stored in app_users.type; frequency travels in the value (FIXO_QUINZENAL…).
+type ClientType = string;
 type DrawerTab = 'info' | 'enderecos' | 'historico';
 
+const FIXO_CLS = 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300';
+const TYPE_OPTIONS: { value: string; label: string; hint: string }[] = [
+  { value: 'NOVO',           label: 'Novo',              hint: 'Ainda não fez a primeira limpeza' },
+  { value: 'FIXO_SEMANAL',   label: 'Fixo · semanal',    hint: 'Limpeza toda semana' },
+  { value: 'FIXO_QUINZENAL', label: 'Fixo · quinzenal',  hint: 'Limpeza a cada 15 dias' },
+  { value: 'FIXO_MENSAL',    label: 'Fixo · mensal',     hint: 'Limpeza uma vez por mês' },
+  { value: 'EVENTUAL',       label: 'Eventual',          hint: 'Já é cliente, mas agenda de vez em quando' },
+];
 const TYPE_LABELS: Record<string, { label: string; cls: string }> = {
-  FIXO:            { label: 'Fixo',           cls: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300' },
-  AVULSO:          { label: 'Avulso',         cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
-  POS_OBRA:        { label: 'Pós-Obra',       cls: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' },
-  PRIMEIRA_LIMPEZA:{ label: '1ª Limpeza',     cls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
+  NOVO:            { label: 'Novo',             cls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
+  FIXO_SEMANAL:    { label: 'Fixo · semanal',   cls: FIXO_CLS },
+  FIXO_QUINZENAL:  { label: 'Fixo · quinzenal', cls: FIXO_CLS },
+  FIXO_MENSAL:     { label: 'Fixo · mensal',    cls: FIXO_CLS },
+  EVENTUAL:        { label: 'Eventual',         cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
+  // Older values, before frequency existed and when service types were mixed in.
+  FIXO:            { label: 'Fixo',             cls: FIXO_CLS },
+  AVULSO:          { label: 'Eventual',         cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
+  POS_OBRA:        { label: 'Eventual',         cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
+  PRIMEIRA_LIMPEZA:{ label: 'Novo',             cls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
+};
+// Maps older values onto the current options so filters and forms stay consistent.
+const normalizaTipo = (t?: string): string => {
+  if (!t || t === 'AVULSO' || t === 'POS_OBRA') return 'EVENTUAL';
+  if (t === 'PRIMEIRA_LIMPEZA') return 'NOVO';
+  return t;
 };
 
-const BLANK_CLIENT = { name: '', email: '', phone: '', address: '', type: 'AVULSO' as ClientType };
+const BLANK_CLIENT = { name: '', email: '', phone: '', address: '', type: 'NOVO' as ClientType };
 const BLANK_ADDR: Partial<Address> = { alias: '', street: '', number: '', complement: '', district: '', city: '', state: '', cep: '', type: 'HOUSE' as const, isMain: false };
 
 export const AdminClients: React.FC = () => {
@@ -54,7 +76,8 @@ export const AdminClients: React.FC = () => {
     const q = search.toLowerCase();
     return clients.filter(c => {
       const matchSearch = !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || (c.phone || '').includes(q);
-      const matchType = !filterType || c.type === filterType;
+      const tipo = normalizaTipo(c.type);
+      const matchType = !filterType || tipo === filterType || (filterType === 'FIXO' && tipo.startsWith('FIXO'));
       return matchSearch && matchType;
     });
   }, [clients, search, filterType]);
@@ -68,7 +91,7 @@ export const AdminClients: React.FC = () => {
     setOpen(c);
     setTab('info');
     setEditInfo(false);
-    setInfoForm({ name: c.name, email: c.email, phone: c.phone || '', address: c.address || '', type: (c.type || 'AVULSO') as ClientType });
+    setInfoForm({ name: c.name, email: c.email, phone: c.phone || '', address: c.address || '', type: normalizaTipo(c.type) });
     setAddingAddr(false);
     setEditingAddrId(null);
   };
@@ -163,7 +186,10 @@ export const AdminClients: React.FC = () => {
             onChange={e => setFilterType(e.target.value)}
           >
             <option value="">Todos os tipos</option>
-            {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+            <option value="NOVO">Novos</option>
+            <option value="FIXO">Fixos (todos)</option>
+            {TYPE_OPTIONS.filter(o => o.value.startsWith('FIXO_')).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            <option value="EVENTUAL">Eventuais</option>
           </select>
         </div>
 
@@ -285,8 +311,9 @@ export const AdminClients: React.FC = () => {
               value={addForm.type}
               onChange={e => setAF({ type: e.target.value as ClientType })}
             >
-              {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+              {TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label} — {o.hint}</option>)}
             </select>
+            <p className="text-xs text-lightText dark:text-darkTextSecondary mt-1.5">O tipo de serviço (1ª limpeza, pós-obra, passadoria…) é escolhido no agendamento.</p>
           </div>
         </div>
       </Modal>
@@ -355,7 +382,7 @@ export const AdminClients: React.FC = () => {
                           value={infoForm.type}
                           onChange={e => setInfoForm(f => ({ ...f, type: e.target.value as ClientType }))}
                         >
-                          {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                          {TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label} — {o.hint}</option>)}
                         </select>
                       </div>
                       <div className="flex gap-3 pt-2">

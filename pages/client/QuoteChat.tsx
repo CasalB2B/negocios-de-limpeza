@@ -233,7 +233,7 @@ export const QuoteChat: React.FC = () => {
             password: loginPassword,
             addresses: [],
             address: '',
-            type: 'AVULSO',
+            type: 'NOVO',
             createdAt: Date.now(),
           });
           realClientId = registeredClient.id;

@@ -144,8 +144,11 @@ export const AdminCalendar: React.FC = () => {
       })();
 
   const openCreate = (date?: string) => {
-    setPrefillDate(date || '');
-    setForm({ ...BLANK, date: date || '' });
+    // Calendar days come as DD/MM/YYYY; <input type="date"> only accepts YYYY-MM-DD.
+    const m = (date || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    const iso = m ? `${m[3]}-${m[2]}-${m[1]}` : (date || '');
+    setPrefillDate(iso);
+    setForm({ ...BLANK, date: iso });
     setSelectedCollabs([]);
     setClientSearch('');
     setShowClientDrop(false);
@@ -217,16 +220,36 @@ export const AdminCalendar: React.FC = () => {
               }`}>
                 {day.getDate()}
               </div>
-              <div className="space-y-0.5">
-                {svcs.slice(0, 3).map(s => (
-                  <div
-                    key={s.id}
-                    onClick={e => { e.stopPropagation(); setSelectedEvent(s); setShowDetail(true); }}
-                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold text-white truncate ${STATUS_COLOR[s.status] || 'bg-gray-400'}`}
-                  >
-                    <span className="truncate">{s.clientName.split(' ')[0]}</span>
-                  </div>
-                ))}
+              <div className="space-y-1">
+                {svcs.slice(0, 3).map(s => {
+                  const ids = (s.collaboratorIds && s.collaboratorIds.length ? s.collaboratorIds : [s.collaboratorId]).filter(Boolean) as string[];
+                  const equipe = ids.map(id => colaboradoras.find(c => c.id === id)).filter(Boolean) as RHColaboradora[];
+                  return (
+                    <div
+                      key={s.id}
+                      onClick={e => { e.stopPropagation(); setSelectedEvent(s); setShowDetail(true); }}
+                      title={[s.time, s.clientName, s.type, s.notes].filter(Boolean).join(' · ')}
+                      className={`px-1.5 py-1 rounded-md text-white ${STATUS_COLOR[s.status] || 'bg-gray-400'} hover:brightness-110`}
+                    >
+                      <p className="text-[10px] font-bold leading-tight truncate">
+                        {s.time ? `${s.time} ` : ''}{(s.clientName || '').trim().split(' ')[0]}
+                      </p>
+                      <p className="hidden sm:block text-[9px] leading-tight truncate opacity-90">{s.type}</p>
+                      {s.notes && <p className="hidden md:block text-[9px] leading-tight truncate opacity-75">{s.notes}</p>}
+                      {equipe.length > 0 && (
+                        <div className="hidden sm:flex -space-x-1.5 mt-0.5">
+                          {equipe.slice(0, 4).map(c => c.foto ? (
+                            <img key={c.id} src={c.foto} alt={c.nome} title={c.nome} className="w-4 h-4 rounded-full object-cover ring-1 ring-white" />
+                          ) : (
+                            <span key={c.id} title={c.nome} className="w-4 h-4 rounded-full bg-white/30 ring-1 ring-white text-[8px] font-bold flex items-center justify-center">
+                              {(c.nome || '?').trim().charAt(0)}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
                 {svcs.length > 3 && (
                   <p className="text-[9px] text-lightText dark:text-darkTextSecondary font-bold px-1">+{svcs.length - 3} mais</p>
                 )}

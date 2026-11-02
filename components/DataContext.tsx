@@ -127,7 +127,7 @@ export interface ClientUser {
   phone: string;
   address: string;
   addresses: Address[];
-  type: 'FIXO' | 'AVULSO' | 'POS_OBRA' | 'PRIMEIRA_LIMPEZA' | string;
+  type: 'NOVO' | 'FIXO_SEMANAL' | 'FIXO_QUINZENAL' | 'FIXO_MENSAL' | 'EVENTUAL' | string;
   password?: string;
   photo?: string;
   createdAt: number;
@@ -689,7 +689,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         clearCache();
         if (['SCHEDULED', 'CONFIRMED'].includes(service.status)) sendBookingConfirmation(data[0].id);
     } else {
-        console.warn("Fallback: Serviço salvo apenas localmente.");
+        // A booking that only exists on screen can't be charged, reminded or seen by the team.
+        setServices(prev => prev.filter(s => s.id !== service.id));
+        console.error('[addService]', error);
+        window.alert(`Não foi possível salvar o agendamento. Nada foi gravado.\n\nDetalhe: ${error?.message || 'sem resposta do servidor'}`);
     }
   };
 
@@ -768,7 +771,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         address: client.address,
         role: 'CLIENT',
         password: client.password,
-        type: 'AVULSO',
+        type: 'NOVO',
     }).select().single();
 
     if (!error && userData) {
