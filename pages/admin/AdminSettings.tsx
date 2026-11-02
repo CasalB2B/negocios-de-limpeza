@@ -501,7 +501,10 @@ export const AdminSettings: React.FC = () => {
                   O <strong>segredo do app</strong> nunca é colado aqui: ele vai nos Secrets do Supabase (<code>META_APP_SECRET</code>), e o token de cada número fica guardado só no servidor.
                 </p>
               </div>
-              <div className="mt-4 flex justify-end">
+              <div className="mt-4 flex flex-wrap justify-end gap-2">
+                <a href="#/admin/whatsapp" className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkSurface text-sm font-bold text-darkText dark:text-darkTextPrimary hover:border-green-400 hover:text-green-600">
+                  <MessageCircle size={16} /> Abrir Automação WhatsApp
+                </a>
                 <Button onClick={handleSaveWhatsApp} icon={waSaved ? <CheckCircle size={16}/> : <Save size={16}/>}>
                   {waSaved ? 'Salvo!' : 'Salvar'}
                 </Button>
