@@ -10,6 +10,7 @@
 //   templates_create envia para aprovação os modelos que ainda não existem
 //   simulate        conversa de teste com a assistente (mesmo prompt do bot real)
 //   send_test       mensagem de teste para um número
+//   manual_connect  alternativa ao botão: IDs do número + token permanente colado pelo dono (fica só no servidor)
 
 import { GRAPH, supabase, json, cors, getConnection, sendTextOrTemplate } from '../_shared/whatsapp.ts';
 import { WA_TEMPLATES, templateCreatePayload } from '../_shared/waTemplates.ts';
@@ -116,6 +117,31 @@ Deno.serve(async (req) => {
       await syncTemplates(companyId, waba_id, token);
 
       return json({ ok: true, display_phone: info.data?.display_phone_number, verified_name: info.data?.verified_name, webhook: sub.ok, sync, registerError });
+    }
+
+    // Alternativa ao botão: o número foi conectado pela página da Meta (Construtor de cadastro integrado)
+    // e o dono cola aqui o token permanente de um usuário do sistema do próprio Gerenciador de Negócios.
+    if (action === 'manual_connect') {
+      const token = String(body.token || '').trim();
+      const wabaId = String(body.waba_id || '').trim();
+      const phoneId = String(body.phone_number_id || '').trim();
+      if (!token || !wabaId || !phoneId) return json({ ok: false, error: 'Preencha o ID da conta do WhatsApp, o ID do número e o token.' }, 400);
+
+      const info = await graph(`${phoneId}?fields=display_phone_number,verified_name,platform_type`, token);
+      if (!info.ok) return json({ ok: false, error: `A Meta recusou o token ou o ID do número: ${errMsg(info.data)}` }, 400);
+      const sub = await graph(`${wabaId}/subscribed_apps`, token, { method: 'POST' });
+
+      await supabase.from('whatsapp_connections').upsert({
+        company_id: companyId, waba_id: wabaId, phone_number_id: phoneId,
+        display_phone: info.data?.display_phone_number || null, verified_name: info.data?.verified_name || null,
+        access_token: token, coexistence: !!body.coexistence, status: 'connected', two_step_pin: null,
+        last_error: sub.ok ? null : `Webhook: ${errMsg(sub.data)}`,
+        connected_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      }, { onConflict: 'company_id' });
+
+      const sync = body.coexistence ? await requestSync(companyId, phoneId, token) : null;
+      await syncTemplates(companyId, wabaId, token);
+      return json({ ok: true, display_phone: info.data?.display_phone_number, verified_name: info.data?.verified_name, webhook: sub.ok, sync });
     }
 
     const conn = await getConnection(companyId);

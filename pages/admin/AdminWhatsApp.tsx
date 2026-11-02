@@ -134,6 +134,9 @@ export const AdminWhatsApp: React.FC = () => {
   const [loadingConn, setLoadingConn] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [connMsg, setConnMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [showManual, setShowManual] = useState(false);
+  const [manual, setManual] = useState({ waba_id: '', phone_number_id: '', token: '', coexistence: true });
+  const [manualBusy, setManualBusy] = useState(false);
   const signupInfo = useRef<{ event?: string; waba_id?: string; phone_number_id?: string; business_id?: string }>({});
 
   // Modelos
@@ -292,6 +295,19 @@ export const AdminWhatsApp: React.FC = () => {
     if (!window.confirm('Desconectar o WhatsApp da plataforma? Os lembretes e o bot param até você conectar de novo. O WhatsApp do celular continua funcionando.')) return;
     await waAdmin('disconnect');
     fetchStatus();
+  };
+
+  // O token vai direto para o servidor e o campo é limpo em seguida; nada fica guardado no navegador.
+  const handleManualConnect = async () => {
+    setManualBusy(true);
+    setConnMsg(null);
+    const r = await waAdmin('manual_connect', manual);
+    setManual(m => ({ ...m, token: '' }));
+    setConnMsg(r?.ok
+      ? { ok: true, text: `WhatsApp conectado: ${r.display_phone || ''} ${r.verified_name ? `(${r.verified_name})` : ''}` }
+      : { ok: false, text: r?.error || 'Não foi possível conectar.' });
+    setManualBusy(false);
+    if (r?.ok) { setShowManual(false); fetchStatus(); fetchTemplates(); }
   };
 
   const handleSync = async () => {
@@ -479,6 +495,37 @@ export const AdminWhatsApp: React.FC = () => {
                   <li>Aceite compartilhar as conversas. Deixe o app aberto por alguns minutos enquanto sincroniza.</li>
                 </ol>
                 <p className="text-xs text-gray-500 mt-3">Precisa ser o app <strong>WhatsApp Business</strong> (não o pessoal), versão 2.24.17 ou mais nova. Depois de conectar, listas de transmissão e mensagens temporárias ficam desligadas e grupos não passam pela plataforma. Abra o app no celular pelo menos a cada 14 dias para a conexão não cair.</p>
+              </div>
+            )}
+
+            {!connected && (
+              <div className={card}>
+                <button onClick={() => setShowManual(s => !s)} className="w-full flex items-center justify-between text-left">
+                  <div>
+                    <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Conectei pela página da Meta</p>
+                    <p className="text-xs text-gray-500 dark:text-darkTextSecondary">Alternativa ao botão: cole os IDs do número e o token permanente do usuário do sistema.</p>
+                  </div>
+                  {showManual ? <ChevronUp size={18} className="text-gray-400 shrink-0" /> : <ChevronDown size={18} className="text-gray-400 shrink-0" />}
+                </button>
+                {showManual && (
+                  <div className="mt-3 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Field label="ID da conta do WhatsApp (WABA)" value={manual.waba_id} onChange={v => setManual({ ...manual, waba_id: v.replace(/\D/g, '') })} />
+                      <Field label="ID do número de telefone" value={manual.phone_number_id} onChange={v => setManual({ ...manual, phone_number_id: v.replace(/\D/g, '') })} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Token permanente (usuário do sistema)</label>
+                      <input type="password" autoComplete="off" value={manual.token} onChange={e => setManual({ ...manual, token: e.target.value })} className={input} placeholder="Cole aqui" />
+                      <p className="text-[11px] text-gray-400 mt-1">Vai direto para o servidor e não fica salvo no navegador.</p>
+                    </div>
+                    <ToggleRow title="O número continua no app WhatsApp Business do celular" desc="Deixe ligado se você conectou com coexistência."
+                      on={manual.coexistence} onChange={v => setManual({ ...manual, coexistence: v })} />
+                    <button onClick={handleManualConnect} disabled={manualBusy || !manual.waba_id || !manual.phone_number_id || !manual.token}
+                      className="w-full py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                      {manualBusy && <Loader2 size={15} className="animate-spin" />} Conectar
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
