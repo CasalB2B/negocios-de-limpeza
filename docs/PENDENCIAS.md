@@ -65,6 +65,7 @@ Marque com `[x]` conforme for fazendo. Quando terminar a sua parte, é só me ch
 - [ ] Testar de ponta a ponta com o seu número assim que você conectar (lembrete, botão Confirmo, confirmação, pós-serviço)
 - [ ] Multi-empresa de verdade: hoje tudo usa a empresa 1; falta ligar cada login de empresa ao seu `company_id`
 - [ ] Planos do SaaS: contar lembretes enviados por empresa e travar no limite do plano; liberar o bot só para quem contratar o adicional
+- [ ] Tela de conexão para clientes do SaaS: explicar que as mensagens saem do número da própria empresa e que a Meta cobra no cartão dela só o que for enviado (ex.: 200 lembretes ≈ R$ 7/mês). Decidido em 02/11/2026: cada empresa paga a Meta direto; "créditos inclusos no plano" fica para quando os planos forem definidos
 
 ---
 
