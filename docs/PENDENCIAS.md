@@ -86,3 +86,8 @@ Marque com `[x]` conforme for fazendo. Quando terminar a sua parte, é só me ch
 - [ ] Lembrete da véspera à tarde com o nome da colaboradora (ajustar o modelo de mensagem quando a Meta liberar)
 - [ ] Passadoria como serviço: cadastrar em **Serviços** (você mesmo faz, é só adicionar)
 - [ ] Apagar tabelas de backup antigas (backup_colaboradoras_arquivos, backup_candidatas_notas) e a função sem uso create-payment-link — só quando você confirmar
+- [x] Calendário: visão **Pessoa** (uma colaboradora por vez, arrasta pro lado para a próxima) — feito em 02/11/2026
+- [x] App para Android e iOS preparado (Capacitor) — o passo a passo das lojas está em **docs/LOJAS.md**
+- [ ] **A decidir com você:** valor que a colaboradora recebe por serviço. A Areta está cadastrada no RH com R$ 40/h; por um defeito antigo o sistema conta toda faxina como 4h (a duração fica salva como texto e não é reconhecida), por isso uma faxina de 8h dá R$ 160. Se o certo é R$ 160 por 8h, a taxa dela deveria ser R$ 20/h; se o certo é R$ 40/h, deveria dar R$ 320. Corrijo assim que você confirmar.
+- [ ] Segurança do banco (senhas sem criptografia e tabelas legíveis pela chave pública) — obrigatório antes de abrir para outras empresas; detalhes em docs/LOJAS.md
+
