@@ -40,6 +40,8 @@ export interface BotConfig {
   menu_items: MenuItem[];
   script: string | null;
   send_booking_confirmation: boolean;
+  send_reminder_d1: boolean;
+  send_post_service: boolean;
 }
 
 export const TONES: { value: string; label: string; desc: string; instruction: string }[] = [

@@ -528,12 +528,28 @@ export const AdminWhatsApp: React.FC = () => {
                   desc={cfg.enabled ? 'O WhatsApp responde sozinho conforme o modo escolhido.' : 'Ninguém recebe resposta automática; lembretes continuam saindo.'}
                   on={cfg.enabled} onChange={v => patch({ enabled: v })}
                 />
-                <div className="border-t border-gray-100 dark:border-darkBorder my-4" />
-                <ToggleRow
-                  title="Confirmação de agendamento"
-                  desc="Envia a confirmação para o cliente quando um serviço é agendado no painel."
-                  on={cfg.send_booking_confirmation !== false} onChange={v => patch({ send_booking_confirmation: v })}
-                />
+              </div>
+
+              <div className={card}>
+                <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary mb-1 flex items-center gap-2"><Bell size={15} className="text-green-600" /> Lembretes e avisos ao cliente</p>
+                <p className="text-xs text-gray-500 dark:text-darkTextSecondary mb-4">Escolha quais mensagens saem sozinhas. Cada uma liga e desliga separado.</p>
+                <div className="space-y-4">
+                  <ToggleRow
+                    title="Confirmação de agendamento"
+                    desc="Quando um serviço é agendado no painel."
+                    on={cfg.send_booking_confirmation !== false} onChange={v => patch({ send_booking_confirmation: v })}
+                  />
+                  <ToggleRow
+                    title="Lembrete 1 dia antes"
+                    desc="Todo dia às 9h, para os serviços do dia seguinte, com os botões Confirmo / Preciso reagendar."
+                    on={cfg.send_reminder_d1 !== false} onChange={v => patch({ send_reminder_d1: v })}
+                  />
+                  <ToggleRow
+                    title="Pós-serviço e avaliação"
+                    desc="Quando o serviço é marcado como concluído, pede uma nota de 1 a 5."
+                    on={cfg.send_post_service !== false} onChange={v => patch({ send_post_service: v })}
+                  />
+                </div>
               </div>
 
               <div className={card}>

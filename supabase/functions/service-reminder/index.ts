@@ -27,6 +27,8 @@ Deno.serve(async (req) => {
 
     const conn = await getConnection(1);
     if (!conn) return json({ sent: 0, date: targetDate, error: 'WhatsApp não conectado' });
+    const { data: bot } = await supabase.from('whatsapp_bot_config').select('send_reminder_d1').eq('company_id', conn.company_id).maybeSingle();
+    if (bot?.send_reminder_d1 === false) return json({ sent: 0, date: targetDate, message: 'Lembrete D-1 desligado.' });
 
     const { data: services, error } = await supabase
       .from('services')

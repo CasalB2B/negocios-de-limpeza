@@ -122,3 +122,7 @@ update public.platform_settings set follow_up_enabled = false where id = 1;
 -- Agendamentos: sai o follow-up da Evolution; entra o lembrete D-1 todo dia às 9h (12h UTC).
 select cron.unschedule('whatsapp-followup');
 select cron.schedule('service-reminder', '0 12 * * *', $$ select net.http_post(url := 'https://yhdxmutbreihrtlnbcaf.supabase.co/functions/v1/service-reminder', headers := '{"Content-Type": "application/json"}'::jsonb, body := '{}'::jsonb); $$);
+
+-- Cada lembrete liga e desliga separado.
+alter table public.whatsapp_bot_config add column if not exists send_reminder_d1 boolean not null default true;
+alter table public.whatsapp_bot_config add column if not exists send_post_service boolean not null default true;

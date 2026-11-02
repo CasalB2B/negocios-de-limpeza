@@ -59,7 +59,7 @@ Marque com `[x]` conforme for fazendo. Quando terminar a sua parte, é só me ch
 - [x] Botão **"Conectar WhatsApp"** (Automação WhatsApp → Conexão) com o Cadastro incorporado da Meta e coexistência (função `whatsapp-admin`)
 - [x] Webhook oficial `whatsapp-webhook`: mensagens recebidas, status de entrega, mensagens digitadas no celular, modelo aprovado/rejeitado, número desconectado
 - [x] Modelos de mensagem prontos para enviar à Meta com um clique: lembrete D-1 (com botões Confirmo / Preciso reagendar), confirmação de agendamento, pós-serviço/avaliação, aviso para a equipe, retomar conversa
-- [x] Lembrete D-1 agendado todo dia às 9h; confirmação automática ao agendar serviço; pós-serviço com nota de 1 a 5; follow-up e bot migrados para a API oficial
+- [x] Lembrete D-1 agendado todo dia às 9h; confirmação automática ao agendar serviço; pós-serviço com nota de 1 a 5 — cada um com seu interruptor em Automação WhatsApp → Geral; follow-up e bot migrados para a API oficial
 - [x] Evolution/ngrok desativados (funções antigas respondem "desativada"; agendamento antigo removido)
 - [x] Tabelas com coluna de empresa (`company_id`) para o multi-empresa
 - [ ] Testar de ponta a ponta com o seu número assim que você conectar (lembrete, botão Confirmo, confirmação, pós-serviço)

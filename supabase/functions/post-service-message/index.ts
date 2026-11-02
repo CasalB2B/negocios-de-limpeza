@@ -16,7 +16,8 @@ Deno.serve(async (req) => {
     const { data: client } = await supabase.from('app_users').select('phone').eq('id', service.client_id).maybeSingle();
     if (!client?.phone) return json({ sent: false, error: 'Cliente sem telefone cadastrado' }, 400);
 
-    const { data: cfg } = await supabase.from('whatsapp_bot_config').select('feedback_message').eq('company_id', 1).maybeSingle();
+    const { data: cfg } = await supabase.from('whatsapp_bot_config').select('feedback_message, send_post_service').eq('company_id', 1).maybeSingle();
+    if (cfg?.send_post_service === false) return json({ sent: false, reason: 'desligado' });
     const firstName = (service.client_name || '').split(' ')[0];
     const msg = fillName(cfg?.feedback_message || 'Oi, [Nome]! Como foi a limpeza de hoje? Dá uma nota de 1 a 5 pra gente.', service.client_name || '');
     const phone = toWaNumber(client.phone);
