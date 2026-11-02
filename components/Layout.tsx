@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
-import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight, Eye, Package, Contact } from 'lucide-react';
+import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight, Eye, Package, Contact, Lock } from 'lucide-react';
 import { GeminiChat } from './GeminiChat';
 import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
@@ -24,7 +24,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   const [showClientPanel, setShowClientPanel] = useState(false);
   const [clientPreviewList, setClientPreviewList] = useState<PreviewClient[]>([]);
   const [loadingClientList, setLoadingClientList] = useState(false);
-  const { currentUser, logoutClient, logoutCollaborator, logoutAdmin, platformSettings, isRefreshing } = useData();
+  const { currentUser, logoutClient, logoutCollaborator, logoutAdmin, platformSettings, isRefreshing, reviewerMode } = useData();
   const mainRef = useRef<HTMLElement>(null);
 
   // Reset scroll to top on every route change
@@ -279,7 +279,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   const getInitialExpanded = () => {
     const set = new Set<string>();
     adminGroups.forEach(g => {
-      if (g.items.some(i => location.pathname.startsWith(i.path) || location.pathname === i.path)) {
+      if (reviewerMode || g.items.some(i => location.pathname.startsWith(i.path) || location.pathname === i.path)) {
         set.add(g.key);
       }
     });
@@ -324,7 +324,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   const menuItems = getMenuItems();
 
   const isAdmin = role === UserRole.ADMIN;
-  const mobileTabs = isAdmin
+  // Modo revisor: tudo fica visível no menu, mas bloqueado, menos o WhatsApp.
+  const isLocked = (path: string) => reviewerMode && path !== '/admin/whatsapp';
+  const mobileTabs = reviewerMode
+    ? [{ icon: <MessageCircle size={20} />, label: 'WhatsApp', path: '/admin/whatsapp' }]
+    : isAdmin
     ? [
         { icon: <LayoutDashboard size={20} />, label: 'Início', path: '/admin/dashboard' },
         { icon: <Calendar size={20} />, label: 'Agenda', path: '/admin/calendar' },
@@ -358,15 +362,20 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
         <nav className="flex-1 px-3 mt-2 overflow-y-auto pb-4">
           {/* Dashboard — top-level item */}
           <button
-            onClick={() => navigate('/admin/dashboard')}
+            onClick={() => !isLocked('/admin/dashboard') && navigate('/admin/dashboard')}
+            disabled={isLocked('/admin/dashboard')}
+            title={isLocked('/admin/dashboard') ? 'Indisponível no modo revisor' : undefined}
             className={`flex items-center gap-3 px-4 py-3 rounded-xl w-full transition-colors mb-2 ${
-              location.pathname === '/admin/dashboard'
+              isLocked('/admin/dashboard')
+                ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                : location.pathname === '/admin/dashboard'
                 ? 'bg-primary/10 text-primary font-bold'
                 : 'text-lightText dark:text-darkTextSecondary hover:bg-purple-50 dark:hover:bg-darkBorder'
             }`}
           >
             <LayoutDashboard size={16} />
             <span className="text-sm font-semibold">Dashboard</span>
+            {isLocked('/admin/dashboard') && <Lock size={13} className="ml-auto" />}
           </button>
 
           {/* Collapsible groups */}
@@ -400,18 +409,24 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                   <div className="mt-1 ml-3 pl-3 border-l-2 border-gray-100 dark:border-darkBorder space-y-0.5">
                     {group.items.map(item => {
                       const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+                      const locked = isLocked(item.path);
                       return (
                         <button
                           key={item.path}
-                          onClick={() => navigate(item.path)}
+                          onClick={() => !locked && navigate(item.path)}
+                          disabled={locked}
+                          title={locked ? 'Indisponível no modo revisor' : undefined}
                           className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg w-full transition-colors text-sm ${
-                            isActive
+                            locked
+                              ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                              : isActive
                               ? 'bg-primary/10 text-primary font-bold'
                               : 'text-lightText dark:text-darkTextSecondary hover:bg-purple-50 dark:hover:bg-darkBorder'
                           }`}
                         >
                           {item.icon}
                           <span>{item.label}</span>
+                          {locked && <Lock size={12} className="ml-auto" />}
                         </button>
                       );
                     })}
@@ -426,6 +441,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           <div className="flex justify-between items-center mb-4 px-2">
              <ThemeToggle />
           </div>
+          {reviewerMode ? (
+            <div className="flex items-center gap-3 mb-4 px-2">
+              <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-darkBorder flex items-center justify-center shrink-0"><Lock size={16} className="text-gray-500" /></div>
+              <div>
+                <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">Revisor</p>
+                <p className="text-xs text-lightText dark:text-darkTextSecondary">Acesso só ao WhatsApp</p>
+              </div>
+            </div>
+          ) : (
           <div className="flex items-center gap-3 mb-4 px-2 cursor-pointer" onClick={() => navigate('/admin/settings')}>
              <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-darkBorder flex items-center justify-center overflow-hidden shrink-0">
                 {(platformSettings.adminPhoto || localStorage.getItem('admin_photo'))
@@ -437,6 +461,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                 <p className="text-xs text-lightText dark:text-darkTextSecondary">Super Admin</p>
              </div>
           </div>
+          )}
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-4 py-2 rounded-xl w-full text-lightText dark:text-darkTextSecondary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs font-bold"
@@ -446,7 +471,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           </button>
 
           {/* Vista Rápida — Super Admin only */}
-          {role === UserRole.ADMIN && (
+          {role === UserRole.ADMIN && !reviewerMode && (
             <div className="relative mt-2 border-t border-gray-100 pt-2">
               <button
                 onClick={openPreviewPanel}
@@ -539,7 +564,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           {children}
         </main>
 
-        {isAdmin && <GeminiChat />}
+        {isAdmin && !reviewerMode && <GeminiChat />}
 
         {/* Mobile Bottom Nav (Admin/Collab) */}
         <nav className="md:hidden bg-white dark:bg-darkSurface border-t border-gray-200 dark:border-darkBorder flex justify-around px-2 pt-2 fixed bottom-0 left-0 w-full z-40 pb-nav-safe">
@@ -595,12 +620,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                          <div className="grid grid-cols-3 gap-2">
                            {group.items.map(item => {
                              const active = isPathActive(item.path);
+                             const locked = isLocked(item.path);
                              return (
                                <button
                                  key={item.path}
-                                 onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
-                                 className={`flex flex-col items-center gap-1.5 p-3 rounded-xl text-center transition-colors ${active ? 'bg-primary text-white' : 'bg-gray-50 dark:bg-darkBg text-darkText dark:text-darkTextPrimary active:bg-primary/10'}`}
+                                 onClick={() => { if (locked) return; navigate(item.path); setMobileMenuOpen(false); }}
+                                 disabled={locked}
+                                 className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl text-center transition-colors ${locked ? 'bg-gray-50 dark:bg-darkBg text-gray-300 dark:text-gray-600 cursor-not-allowed' : active ? 'bg-primary text-white' : 'bg-gray-50 dark:bg-darkBg text-darkText dark:text-darkTextPrimary active:bg-primary/10'}`}
                                >
+                                 {locked && <Lock size={11} className="absolute top-2 right-2" />}
                                  {item.icon}
                                  <span className="text-[11px] font-semibold leading-tight">{item.label}</span>
                                </button>
@@ -610,6 +638,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                        </div>
                      ))}
 
+                     {!reviewerMode && (
                      <div className="border-t border-gray-100 dark:border-darkBorder pt-4 space-y-2">
                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">Visualizar como</p>
                        <div className="grid grid-cols-2 gap-2">
@@ -650,6 +679,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                          </div>
                        )}
                      </div>
+                     )}
                    </div>
                  ) : (
                  <div className="grid grid-cols-4 gap-4">

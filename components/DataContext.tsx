@@ -211,6 +211,7 @@ interface DataContextType {
   currentUser: ClientUser | null;
   currentCollaborator: CollaboratorUser | null;
   adminLoggedIn: boolean;
+  reviewerMode: boolean;
   loading: boolean;
   isRefreshing: boolean;
 
@@ -369,6 +370,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return localStorage.getItem('auth_admin') === 'true';
   });
 
+  // Login de revisor (ex.: análise do app pela Meta): só enxerga a tela do WhatsApp e não carrega dados internos.
+  const [reviewerMode, setReviewerMode] = useState<boolean>(() => localStorage.getItem('auth_reviewer') === 'true');
+
   // --- MAPPERS ---
   const mapDbUserToClient = (u: any, addresses: any[] = []): ClientUser => ({
     id: u.id,
@@ -449,6 +453,29 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // --- FETCH DATA (parallel + stale-while-revalidate) ---
   const fetchData = async () => {
+    // Revisor: nada de clientes, colaboradoras, serviços ou finanças — só o necessário para a tela do WhatsApp.
+    if (localStorage.getItem('auth_reviewer') === 'true') {
+      const { data: sd } = await supabase.from('platform_settings').select('working_hours_enabled, working_hours_start, working_hours_end, working_hours_days, away_message, follow_up_enabled, follow_up_hours, follow_up_hours_2, follow_up_steps, template_welcome, template_proposal, template_confirmation').eq('id', 1).single();
+      if (sd) {
+        setPlatformSettings(prev => ({
+          ...prev,
+          workingHoursEnabled: sd.working_hours_enabled || false,
+          workingHoursStart: sd.working_hours_start || '08:00',
+          workingHoursEnd: sd.working_hours_end || '18:00',
+          workingHoursDays: sd.working_hours_days || '1,2,3,4,5,6',
+          awayMessage: sd.away_message || undefined,
+          followUpEnabled: sd.follow_up_enabled || false,
+          followUpChatHours: sd.follow_up_hours ?? 2,
+          followUpChatHours2: sd.follow_up_hours_2 ?? 26,
+          templateWelcome: sd.template_welcome || undefined,
+          templateProposal: sd.template_proposal || undefined,
+          templateConfirmation: sd.template_confirmation || undefined,
+        }));
+      }
+      setLoading(false);
+      return;
+    }
+
     // 1. Serve cached data immediately — zero perceived latency on repeat visits
     const cachedServices = getCached<Service[]>('services');
     const cachedClients = getCached<ClientUser[]>('clients');
@@ -590,6 +617,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const sendBrowserNotif = (title: string, body: string, url = '/admin/crm') => {
       if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      if (localStorage.getItem('auth_reviewer') === 'true') return;
       // Use Service Worker when available (works in background too)
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage({
@@ -979,18 +1007,30 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .from('app_users')
       .select('*')
       .eq('email', user.trim().toLowerCase())
-      .eq('role', 'ADMIN')
+      .in('role', ['ADMIN', 'REVIEWER'])
       .single();
     if (!error && dbUser && dbUser.password === pass) {
+        const isReviewer = dbUser.role === 'REVIEWER';
+        if (isReviewer) {
+            localStorage.setItem('auth_reviewer', 'true');
+            clearCache();
+            setServices([]); setClients([]); setCollaborators([]); setTransactions([]); setQuotes([]); setNotifications([]);
+        } else {
+            localStorage.removeItem('auth_reviewer');
+        }
+        setReviewerMode(isReviewer);
         setAdminLoggedIn(true);
         localStorage.setItem('auth_admin', 'true');
+        fetchData();
         return true;
     }
     return false;
   };
   const logoutAdmin = () => {
       setAdminLoggedIn(false);
+      setReviewerMode(false);
       localStorage.removeItem('auth_admin');
+      localStorage.removeItem('auth_reviewer');
   }
 
   // --- MISC & SETTINGS ---
@@ -999,6 +1039,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Atualiza as configurações e grava no DB
   const updatePlatformSettings = async (s: PlatformSettings) => {
       setPlatformSettings(s);
+      if (reviewerMode) return; // revisor só visualiza
       const { error } = await supabase.from('platform_settings').upsert({
           id: 1,
           hourly_rate: s.hourlyRate,
@@ -1130,7 +1171,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <DataContext.Provider value={{ 
       services, clients, collaborators, notifications, serviceDefinitions, transactions, platformSettings,
-      currentUser, currentCollaborator, adminLoggedIn, loading, isRefreshing,
+      currentUser, currentCollaborator, adminLoggedIn, reviewerMode, loading, isRefreshing,
       addService, updateServiceStatus, 
       addServiceDefinition, updateServiceDefinition, deleteServiceDefinition,
       registerClient, updateClient, deleteClient, loginClient, logoutClient,
