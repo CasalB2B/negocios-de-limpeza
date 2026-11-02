@@ -365,7 +365,7 @@ export const AdminWhatsApp: React.FC = () => {
 
   return (
     <Layout role={UserRole.ADMIN}>
-      <div className={`p-4 md:p-6 max-w-5xl mx-auto ${showSaveBar ? 'pb-24' : ''}`}>
+      <div className={`p-4 md:p-6 max-w-5xl mx-auto ${showSaveBar ? 'pb-28 md:pb-28' : ''}`}>
         {/* Cabeçalho */}
         <div className="flex items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-3 min-w-0">
