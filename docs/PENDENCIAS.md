@@ -41,18 +41,16 @@ Marque com `[x]` conforme for fazendo. Quando terminar a sua parte, é só me ch
 
 ### Sua parte
 - [x] ~~Pedir proposta a parceiros~~ — decidido: Tech Provider direto, sem parceiro
-- [ ] **Gerenciador de Negócios da Meta** (business.facebook.com) com a empresa cadastrada
-- [ ] **Verificar a empresa** na Meta (Central de Segurança → Verificação da empresa) — cartão CNPJ e um documento com endereço/telefone da empresa
-- [ ] Garantir que o seu número de teste está no **WhatsApp Business** (não no pessoal) e atualizado
-- [ ] Criar o **app na Meta** (developers.facebook.com → Criar app → caso de uso "WhatsApp") ligado ao seu Gerenciador de Negócios — eu te guio tela por tela
-- [ ] No app: **Login do Facebook para Empresas → Configurações** — criar a configuração do Cadastro incorporado (WhatsApp) e adicionar `app.negociosdelimpeza.com.br` nos domínios permitidos
-- [ ] No app: **WhatsApp → Configuração → Webhook** — URL `https://yhdxmutbreihrtlnbcaf.supabase.co/functions/v1/whatsapp-webhook`, token de verificação inventado por você; assinar os campos `messages`, `smb_message_echoes`, `history`, `smb_app_state_sync`, `account_update`, `message_template_status_update`
-- [ ] Colar nos **Secrets do Supabase** (Edge Functions → Secrets): `META_APP_SECRET` (segredo do app) e `WA_WEBHOOK_VERIFY_TOKEN` (o mesmo token do webhook)
-- [ ] Em Configurações → Integrações → WhatsApp: colar o **ID do app** e o **ID da configuração** (não são senhas)
-- [ ] Clicar em **Conectar WhatsApp** (Automação WhatsApp → Conexão) e ler o QR no WhatsApp Business do celular
-- [ ] Em Automação WhatsApp → Modelos: clicar em **Enviar modelos para aprovação** e aguardar a Meta aprovar
-- [ ] No Gerenciador do WhatsApp: **adicionar forma de pagamento** (cartão) da empresa
-- [ ] Revisão da Meta para virar Tech Provider: gravar os 2 vídeos curtos (mensagem enviada pela plataforma chegando no WhatsApp; criação de um modelo) e pedir **acesso avançado** a `whatsapp_business_messaging` e `whatsapp_business_management` — só é necessário para conectar números de **outras** empresas
+- [x] Gerenciador de Negócios com a empresa cadastrada e **verificada** (verificação concluída)
+- [x] Número 27 99980-8013 no **WhatsApp Business** e atualizado
+- [x] **App na Meta** criado (ID `1489896329688879`), publicado, com Política de Privacidade, Termos, exclusão de dados (`/privacidade#excluir`) e plataforma Site
+- [x] Configuração do Cadastro incorporado "Conectar WhatsApp NDL" (ID `2286110222168572`); domínio `https://app.negociosdelimpeza.com.br` liberado no Login do Facebook para Empresas (SDK JS + URI de redirecionamento)
+- [x] Webhook verificado (`whatsapp-webhook`) e os 6 campos assinados
+- [x] Secrets do Supabase: `META_APP_SECRET` e `WA_WEBHOOK_VERIFY_TOKEN`; IDs salvos em Integrações
+- [ ] **Análise do app (02/11/2026, em andamento):** vídeos gravados, Manipulação de dados e Instruções para o revisor preenchidas. Falta só o "Uso permitido": esperar a coluna "Chamadas de API" (Casos de uso → Personalizar → Permissões e funcionalidades) sair de 0, marcar os certificados e clicar em **Submeter para revisão**. Motivo: a Meta só libera a coexistência (número que continua no app do celular) com **acesso avançado**, mesmo para o próprio número — sem isso o botão dá "Recurso indisponível" e a página da Meta avisa que faltam permissões
+- [ ] Depois da aprovação: clicar em **Conectar WhatsApp** (Configurações → WhatsApp → Conexão), escolher o número e confirmar no app WhatsApp Business do celular
+- [ ] Em Configurações → WhatsApp → Modelos: clicar em **Enviar modelos para aprovação** e aguardar a Meta aprovar
+- [ ] No Gerenciador de Negócios → Faturação e pagamentos → **Contas de mensagens**: colocar o cartão da empresa (aparece depois de conectar)
 
 ### Minha parte
 - [x] Token fora do navegador: o card de Integrações agora só pede o ID do app e o ID da configuração; o token de cada número fica na tabela `whatsapp_connections`, que só o servidor lê
