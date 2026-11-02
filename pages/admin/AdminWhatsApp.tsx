@@ -280,7 +280,7 @@ export const AdminWhatsApp: React.FC = () => {
         config_id: metaIds.configId,
         response_type: 'code',
         override_default_response_type: true,
-        extras: { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3' },
+        extras: { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3', version: 'v4' },
       });
     } catch (e: any) {
       setConnMsg({ ok: false, text: e?.message || 'Erro ao abrir o login do Facebook.' });

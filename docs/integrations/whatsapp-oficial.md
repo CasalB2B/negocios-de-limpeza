@@ -36,7 +36,7 @@
 Texto livre só é entregue até 24h depois da última mensagem do cliente. A Meta aceita o envio e só avisa a falha depois (erro 131047 no webhook), então `isWindowOpen` confere a janela em `whatsapp_messages` antes de enviar; fora dela vai o modelo aprovado. Números do Brasil são comparados pelos 8 últimos dígitos (o `wa_id` às vezes vem sem o 9).
 
 ## Cadastro incorporado (front)
-`pages/admin/AdminWhatsApp.tsx` carrega o SDK do Facebook, chama `FB.login` com `config_id`, `response_type: 'code'`, `override_default_response_type: true` e `extras: { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3' }`. Os IDs chegam pelo evento `WA_EMBEDDED_SIGNUP` (`FINISH` ou `FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING`); o código vale 30s e vai para `whatsapp-admin` (`exchange_code`).
+`pages/admin/AdminWhatsApp.tsx` carrega o SDK do Facebook, chama `FB.login` com `config_id`, `response_type: 'code'`, `override_default_response_type: true` e `extras: { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3', version: 'v4' }`. Os IDs chegam pelo evento `WA_EMBEDDED_SIGNUP` (`FINISH` ou `FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING`); o código vale 30s e vai para `whatsapp-admin` (`exchange_code`).
 
 ## Referências
 - https://developers.facebook.com/docs/whatsapp/embedded-signup/implementation
