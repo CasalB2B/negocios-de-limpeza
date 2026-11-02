@@ -3,7 +3,7 @@ import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import {
   MessageCircle, Wifi, Send, Save, RefreshCw, CheckCircle, XCircle, Bell, Bot, Trash2, Loader2, Settings,
-  Plus, Clock, Zap, List, FileText, Users, AlertTriangle, ChevronDown, ChevronUp, Link2,
+  Plus, Clock, Zap, List, FileText, Users, AlertTriangle, ChevronDown, ChevronUp, Link2, Lock,
 } from 'lucide-react';
 import { buildMessage, DEFAULT_TEMPLATES, waAdmin } from '../../lib/whatsapp';
 import { supabase } from '../../lib/supabase';
@@ -120,7 +120,7 @@ function loadFacebookSdk(appId: string): Promise<any> {
 }
 
 export const AdminWhatsApp: React.FC = () => {
-  const { platformSettings, updatePlatformSettings } = useData();
+  const { platformSettings, updatePlatformSettings, reviewerMode } = useData();
   const [tab, setTab] = useState('conexao');
   const [cfg, setCfg] = useState<BotConfig | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -228,7 +228,7 @@ export const AdminWhatsApp: React.FC = () => {
   const patch = (p: Partial<BotConfig>) => { setCfg(c => (c ? { ...c, ...p } : c)); setDirty(true); };
 
   const saveConfig = async (override?: Partial<BotConfig>) => {
-    if (!cfg) return;
+    if (!cfg || reviewerMode) return; // revisor só visualiza
     setSaving(true);
     const { company_id, ...rest } = { ...cfg, ...override } as any;
     await supabase.from('whatsapp_bot_config').update({ ...rest, updated_at: new Date().toISOString() }).eq('company_id', company_id ?? 1);
@@ -369,7 +369,7 @@ export const AdminWhatsApp: React.FC = () => {
     patch({ menu_items: items });
   };
 
-  const showSaveBar = ['geral', 'ia', 'menu'].includes(tab);
+  const showSaveBar = !reviewerMode && ['geral', 'ia', 'menu'].includes(tab);
 
   if (!cfg) {
     return (
@@ -397,6 +397,13 @@ export const AdminWhatsApp: React.FC = () => {
             {loadingConn ? '...' : connected ? '● Conectado' : '● Desconectado'}
           </span>
         </div>
+
+        {reviewerMode && (
+          <div className="mb-5 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-3 text-xs text-blue-800 dark:text-blue-300 flex items-start gap-2">
+            <Lock size={14} className="shrink-0 mt-0.5" />
+            <span>Reviewer access: only the WhatsApp integration is available. Settings are view-only. / Acesso de revisor: só a integração do WhatsApp; configurações apenas para visualização.</span>
+          </div>
+        )}
 
         {/* Seletor de modo */}
         <div className="mb-5">
@@ -476,7 +483,7 @@ export const AdminWhatsApp: React.FC = () => {
                     Sincronizar contatos e conversas
                   </button>
                 )}
-                {connected && (
+                {connected && !reviewerMode && (
                   <button onClick={handleDisconnect} className="px-4 py-2.5 rounded-xl text-sm font-bold text-red-600 bg-white dark:bg-darkSurface border border-red-200 hover:bg-red-50">
                     Desconectar
                   </button>
@@ -498,7 +505,7 @@ export const AdminWhatsApp: React.FC = () => {
               </div>
             )}
 
-            {!connected && (
+            {!connected && !reviewerMode && (
               <div className={card}>
                 <button onClick={() => setShowManual(s => !s)} className="w-full flex items-center justify-between text-left">
                   <div>
