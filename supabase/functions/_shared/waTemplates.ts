@@ -30,6 +30,14 @@ export const WA_TEMPLATES: WaTemplateDef[] = [
     usedFor: 'Enviado quando o orçamento vira agendamento e o cliente não conversou nas últimas 24h.',
   },
   {
+    name: 'cobranca_sinal',
+    label: 'Cobrança do sinal',
+    category: 'UTILITY',
+    body: 'Olá, {{1}}! Recebemos seu agendamento de {{2}} para {{3}} às {{4}}.\n\nPara garantir a data, pedimos um sinal de {{5}}. Você pode pagar por Pix ou cartão neste link:\n{{6}}\n\nAssim que o pagamento for confirmado, seu horário fica reservado.',
+    example: ['Ana', 'Limpeza Residencial', '05/11/2026', '09:00', 'R$ 90,00', 'https://checkout.infinitepay.io/suaempresa?lenc=exemplo'],
+    usedFor: 'Enviado alguns minutos depois do agendamento, com o link do sinal (InfinitePay).',
+  },
+  {
     name: 'pos_servico_avaliacao',
     label: 'Pós-serviço / avaliação',
     category: 'UTILITY',

@@ -103,6 +103,11 @@ export interface Service {
   address: string;
   status: ServiceStatus | string;
   paymentStatus?: 'PENDING' | 'SIGNAL_PAID' | 'FULL_PAID';
+  paymentMethod?: string;
+  signalAmount?: number;
+  signalStatus?: 'sending' | 'sent' | 'paid' | 'failed' | 'skipped' | null;
+  signalSentAt?: string | null;
+  signalError?: string | null;
   price?: number;
   notes?: string;
   photos?: { before: string[], after: string[] };
@@ -415,6 +420,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     address: s.address || '',
     status: s.status || 'PENDING',
     price: s.price || 0,
+    paymentStatus: s.payment_status || undefined,
+    paymentMethod: s.payment_method || undefined,
+    signalAmount: s.signal_amount != null ? Number(s.signal_amount) : undefined,
+    signalStatus: s.signal_status ?? null,
+    signalSentAt: s.signal_sent_at ?? null,
+    signalError: s.signal_error ?? null,
     notes: s.notes || '',
     duration: s.duration || 4, // Default 4h if missing
     collab_payment_id: s.collab_payment_id ?? null,
@@ -597,12 +608,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sendBrowserNotif('📋 Novo Lead!', `${name} chegou pelo WhatsApp.`);
         fetchData();
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'services' }, (payload) => {
-        const clientName = (payload.new as any)?.client_name || 'Cliente';
-        const type = (payload.new as any)?.type || 'Serviço';
-        sendBrowserNotif('🧹 Nova Solicitação!', `${clientName} pediu: ${type}`);
-        fetchData();
-      })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'whatsapp_sessions' }, (payload) => {
         // Dispara evento customizado para o CRM ouvir em tempo real
         const phone = (payload.new as any)?.phone || '';
@@ -615,12 +620,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }));
         }
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'services' }, () => fetchData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_users' }, () => fetchData())
+      .subscribe();
+
+    // Own channel: if any table in a channel isn't published for realtime, Supabase drops the
+    // whole channel. Payment confirmations (webhook → services/transactions) must always arrive.
+    const paymentsChannel = supabase
+      .channel('realtime-payments')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'services' }, (payload) => {
+        const clientName = (payload.new as any)?.client_name || 'Cliente';
+        const type = (payload.new as any)?.type || 'Serviço';
+        sendBrowserNotif('🧹 Nova Solicitação!', `${clientName} pediu: ${type}`);
+        fetchData();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'services' }, () => fetchData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchData())
       .subscribe();
 
-    return () => { supabase.removeChannel(servicesChannel); };
+    return () => { supabase.removeChannel(servicesChannel); supabase.removeChannel(paymentsChannel); };
   }, []);
 
   const addNotificationInternal = async (notif: Omit<Notification, 'id' | 'read' | 'time'>) => {

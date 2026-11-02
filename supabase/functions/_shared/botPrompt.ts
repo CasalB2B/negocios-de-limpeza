@@ -42,6 +42,12 @@ export interface BotConfig {
   send_booking_confirmation: boolean;
   send_reminder_d1: boolean;
   send_post_service: boolean;
+  // Deposit (sinal) charged over WhatsApp with an InfinitePay link after a booking.
+  send_signal_link?: boolean;
+  signal_percent?: number;
+  signal_delay_minutes?: number;
+  signal_enabled_at?: string | null;
+  booking_confirmation_when?: 'agendar' | 'sinal';
 }
 
 export const TONES: { value: string; label: string; desc: string; instruction: string }[] = [

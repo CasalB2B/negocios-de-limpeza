@@ -451,7 +451,8 @@ export const AdminOS: React.FC = () => {
       {/* Detail drawer */}
       {selected && (
         <OSDetailDrawer
-          service={selected}
+          // Payment/deposit status changes on the server (webhook); show the live row, not the copy taken on open.
+          service={{ ...selected, ...(services.find(s => s.id === selected.id) ?? {}) }}
           colaboradoras={colaboradoras}
           onClose={() => setSelected(null)}
           onStatusChange={next => handleAdvance(selected, next)}
@@ -520,6 +521,8 @@ interface DrawerProps {
 
 type PaymentState = null | 'loading' | { url: string; phone: string | null } | { error: string };
 
+const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
 const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose, onStatusChange, onAssignCollab }) => {
   const currentCol = normCol(service.status);
   const nextStatus = NEXT[currentCol];
@@ -529,11 +532,11 @@ const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose
   const [paymentState, setPaymentState] = useState<PaymentState>(null);
   const [copied, setCopied] = useState(false);
 
-  const handleGerarCobranca = async () => {
+  const handleGerarCobranca = async (tipo: 'sinal' | 'restante' | 'total') => {
     setPaymentState('loading');
     try {
       const { data, error } = await supabase.functions.invoke('infinitepay', {
-        body: { acao: 'gerar_link', service_id: service.id },
+        body: { acao: 'gerar_link', service_id: service.id, tipo },
       });
       let msg = data?.error as string | undefined;
       if (error && !msg) {
@@ -657,22 +660,51 @@ const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose
 
         {/* Footer actions */}
         <div className="p-6 border-t border-gray-100 dark:border-darkBorder shrink-0 space-y-2">
-          {service.paymentStatus === 'FULL_PAID' && (
+          {service.paymentStatus === 'FULL_PAID' ? (
             <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 rounded-xl p-3 text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-              <CheckCircle2 size={14} /> Pago
+              <CheckCircle2 size={14} /> Pago{service.paymentMethod ? ` · ${service.paymentMethod}` : ''}
             </div>
-          )}
+          ) : service.paymentStatus === 'SIGNAL_PAID' ? (
+            <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-700 rounded-xl p-3 text-xs font-bold text-teal-700 dark:text-teal-400 flex items-center gap-1.5">
+              <CheckCircle2 size={14} /> Sinal pago{service.signalAmount ? ` (${brl(service.signalAmount)})` : ''}
+              {service.price && service.signalAmount ? ` · falta ${brl(service.price - service.signalAmount)}` : ''}
+            </div>
+          ) : service.signalStatus === 'sent' ? (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl p-3 text-xs font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+              <MessageCircle size={14} /> Link do sinal enviado pelo WhatsApp
+              {service.signalSentAt ? ` às ${new Date(service.signalSentAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''} · aguardando pagamento
+            </div>
+          ) : service.signalStatus === 'failed' ? (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-3 text-xs font-bold text-amber-700 dark:text-amber-400 flex items-start gap-1.5">
+              <AlertCircle size={14} className="shrink-0 mt-px" /> Sinal não enviado automaticamente{service.signalError ? `: ${service.signalError}` : ''}. Envie pelo botão abaixo.
+            </div>
+          ) : null}
           {/* Gerar Cobrança InfinitePay */}
           {service.price && service.price > 0 && service.paymentStatus !== 'FULL_PAID' && (
             <div>
-              {paymentState === null && (
+              {paymentState === null && (service.paymentStatus === 'SIGNAL_PAID' ? (
                 <button
-                  onClick={handleGerarCobranca}
+                  onClick={() => handleGerarCobranca('restante')}
                   className="w-full py-3 text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm"
                 >
-                  <CreditCard size={16} /> Gerar Cobrança
+                  <CreditCard size={16} /> Cobrar restante{service.signalAmount ? ` (${brl(service.price - service.signalAmount)})` : ''}
                 </button>
-              )}
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleGerarCobranca('sinal')}
+                    className="py-3 text-sm font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 rounded-xl transition-all flex items-center justify-center gap-2"
+                  >
+                    <CreditCard size={16} /> Cobrar sinal
+                  </button>
+                  <button
+                    onClick={() => handleGerarCobranca('total')}
+                    className="py-3 text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    <CreditCard size={16} /> Cobrar total
+                  </button>
+                </div>
+              ))}
               {paymentState === 'loading' && (
                 <div className="w-full py-3 text-sm text-center text-lightText bg-gray-50 dark:bg-darkBg rounded-xl border border-gray-200 dark:border-darkBorder">
                   <span className="animate-pulse">Gerando cobrança…</span>

@@ -549,6 +549,58 @@ export const AdminWhatsApp: React.FC = () => {
                     desc="Quando o serviço é marcado como concluído, pede uma nota de 1 a 5."
                     on={cfg.send_post_service !== false} onChange={v => patch({ send_post_service: v })}
                   />
+                  <div className="pt-4 border-t border-gray-100 dark:border-darkBorder space-y-3">
+                    <ToggleRow
+                      title="Cobrar sinal pelo WhatsApp"
+                      desc="Depois que o serviço é agendado, envia ao cliente o link de pagamento do sinal (InfinitePay, Pix ou cartão). Quando o cliente paga, a OS fica como “Sinal pago” sozinha."
+                      on={!!cfg.send_signal_link}
+                      onChange={v => patch(v
+                        ? { send_signal_link: true, signal_enabled_at: new Date().toISOString() }
+                        : { send_signal_link: false })}
+                    />
+                    {cfg.send_signal_link && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-1">
+                        <label className="block">
+                          <span className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1">Valor do sinal</span>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number" min={1} max={100} inputMode="numeric"
+                              value={cfg.signal_percent ?? 50}
+                              onChange={e => patch({ signal_percent: Math.min(100, Math.max(1, Number(e.target.value) || 50)) })}
+                              className="w-20 p-2.5 rounded-xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkBg text-sm text-darkText dark:text-darkTextPrimary"
+                            />
+                            <span className="text-sm text-gray-500 dark:text-darkTextSecondary">% do valor do serviço</span>
+                          </div>
+                        </label>
+                        <label className="block">
+                          <span className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1">Enviar o link</span>
+                          <select
+                            value={cfg.signal_delay_minutes ?? 10}
+                            onChange={e => patch({ signal_delay_minutes: Number(e.target.value) })}
+                            className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkBg text-sm text-darkText dark:text-darkTextPrimary"
+                          >
+                            {[0, 5, 10, 15, 30, 60].map(m => (
+                              <option key={m} value={m}>{m === 0 ? 'Assim que agendar' : `${m} minutos depois de agendar`}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="block sm:col-span-2">
+                          <span className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1">Mensagem “agendamento confirmado”</span>
+                          <select
+                            value={cfg.booking_confirmation_when ?? 'agendar'}
+                            onChange={e => patch({ booking_confirmation_when: e.target.value as 'agendar' | 'sinal' })}
+                            className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkBg text-sm text-darkText dark:text-darkTextPrimary"
+                          >
+                            <option value="agendar">Enviar logo ao agendar</option>
+                            <option value="sinal">Enviar só quando o sinal for pago</option>
+                          </select>
+                        </label>
+                        <p className="text-[11px] text-gray-500 dark:text-darkTextSecondary sm:col-span-2">
+                          Vale só para agendamentos criados depois de ligar esta opção. Precisa da InfinitePay conectada (Configurações → Integrações) e do modelo “Cobrança do sinal” aprovado pela Meta.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

@@ -31,8 +31,10 @@ Deno.serve(async (req) => {
     if (!conn) return fail('WhatsApp não conectado. Conecte em Automação WhatsApp → Conexão.');
     // Confirmação automática quando um serviço é agendado no painel.
     if (action === 'bookingConfirmation') {
-      const { data: bot } = await supabase.from('whatsapp_bot_config').select('send_booking_confirmation').eq('company_id', conn.company_id).maybeSingle();
+      const { data: bot } = await supabase.from('whatsapp_bot_config').select('send_booking_confirmation, send_signal_link, booking_confirmation_when').eq('company_id', conn.company_id).maybeSingle();
       if (bot?.send_booking_confirmation === false) return json({ ok: true, skipped: 'desligado' });
+      // With the deposit flow on, the confirmation can wait for the payment (sent by the infinitepay function).
+      if (bot?.send_signal_link && bot?.booking_confirmation_when === 'sinal') return json({ ok: true, skipped: 'aguarda sinal' });
       const { data: svc } = await supabase.from('services').select('client_id, client_name, type, date, time, address').eq('id', payload.service_id).maybeSingle();
       const { data: client } = svc ? await supabase.from('app_users').select('phone').eq('id', svc.client_id).maybeSingle() : { data: null };
       if (!svc || !client?.phone) return fail('Serviço ou telefone do cliente não encontrado.');
