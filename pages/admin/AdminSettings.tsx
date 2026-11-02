@@ -19,23 +19,20 @@ export const AdminSettings: React.FC = () => {
   const [metaAppId, setMetaAppId] = useState('');
   const [metaConfigId, setMetaConfigId] = useState('');
   const [mapsKey, setMapsKey] = useState('');
-  const [geminiKey, setGeminiKey] = useState('');
   const [integLoading, setIntegLoading] = useState(false);
   const [waSaved, setWaSaved] = useState(false);
   const [mapsSaved, setMapsSaved] = useState(false);
-  const [geminiSaved, setGeminiSaved] = useState(false);
 
   useEffect(() => {
     if (activeTab !== 'integracoes') return;
     (async () => {
       setIntegLoading(true);
       try {
-        const { data } = await supabase.from('platform_settings').select('meta_app_id, meta_es_config_id, google_maps_key, gemini_key').eq('id', 1).single();
+        const { data } = await supabase.from('platform_settings').select('meta_app_id, meta_es_config_id, google_maps_key').eq('id', 1).single();
         if (data) {
           if (data.meta_app_id) setMetaAppId(data.meta_app_id);
           if (data.meta_es_config_id) setMetaConfigId(data.meta_es_config_id);
           if (data.google_maps_key) setMapsKey(data.google_maps_key);
-          if (data.gemini_key) setGeminiKey(data.gemini_key);
         }
       } catch { /* columns may not exist yet */ }
       setIntegLoading(false);
@@ -54,11 +51,6 @@ export const AdminSettings: React.FC = () => {
     setTimeout(() => setMapsSaved(false), 2000);
   };
 
-  const handleSaveGemini = async () => {
-    await supabase.from('platform_settings').upsert({ id: 1, gemini_key: geminiKey });
-    setGeminiSaved(true);
-    setTimeout(() => setGeminiSaved(false), 2000);
-  };
   const [notifSaved, setNotifSaved] = useState(false);
 
   const handleSaveNotifications = () => {
@@ -591,30 +583,14 @@ export const AdminSettings: React.FC = () => {
                     <p className="text-xs text-lightText dark:text-darkTextSecondary">Assistente inteligente e análise automática de dados</p>
                   </div>
                 </div>
-                <span className={`flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${geminiKey ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400'}`}>
-                  {geminiKey ? '● Configurado' : '● Não configurado'}
+                <span className="flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                  ● Ativo
                 </span>
               </div>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1.5 uppercase tracking-wide">Chave API Gemini</label>
-                  <input
-                    type="password"
-                    value={geminiKey}
-                    onChange={e => setGeminiKey(e.target.value)}
-                    placeholder="AIzaSy..."
-                    className="w-full p-3 rounded-xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkSurface text-sm text-darkText dark:text-darkTextPrimary focus:border-primary outline-none transition-colors"
-                  />
-                </div>
-                <p className="text-xs text-lightText dark:text-darkTextSecondary">
-                  Obtenha gratuitamente em <span className="font-medium text-darkText dark:text-darkTextPrimary">Google AI Studio → Get API Key</span> (aistudio.google.com)
-                </p>
-              </div>
-              <div className="mt-4 flex justify-end">
-                <Button onClick={handleSaveGemini} icon={geminiSaved ? <CheckCircle size={16}/> : <Save size={16}/>}>
-                  {geminiSaved ? 'Salvo!' : 'Salvar'}
-                </Button>
-              </div>
+              {/* The AI key lives only on the server (Supabase secret); it is never stored where the browser can read it. */}
+              <p className="text-xs text-lightText dark:text-darkTextSecondary">
+                A IA já vem incluída na plataforma. Não é preciso colar nenhuma chave aqui.
+              </p>
             </div>
           </div>
         );
