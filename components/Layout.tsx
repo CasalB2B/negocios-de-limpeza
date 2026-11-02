@@ -270,6 +270,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       icon: <Settings size={16} />,
       items: [
         { icon: <Settings size={15} />,   label: 'Configurações', path: '/admin/settings' },
+        { icon: <HelpCircle size={15} />, label: 'Central de Ajuda', path: '/ajuda' },
+        { icon: <Sparkles size={15} />, label: 'Aprendizado da IA', path: '/admin/ajuda-ia' },
         { icon: <MessageCircle size={15} />, label: 'WhatsApp',   path: '/admin/whatsapp' },
       ],
     },

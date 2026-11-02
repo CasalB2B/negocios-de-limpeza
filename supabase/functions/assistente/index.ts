@@ -22,19 +22,27 @@ function hojeSP(): { iso: string; extenso: string } {
   };
 }
 
-function promptAjuda(hoje: string) {
+function promptAjuda(hoje: string, aprendidos: string) {
   return `Você é o assistente de AJUDA da plataforma Negócios de Limpeza. Hoje é ${hoje}.
 Sua função: explicar como usar a plataforma, onde fica cada coisa e como configurar integrações.
 
 Regras:
 - Responda em português do Brasil, de forma curta, clara e amigável, como para alguém que não é técnico.
 - Use passo a passo numerado quando for um "como faço".
-- Baseie-se SOMENTE no guia abaixo. Se algo não estiver no guia, diga que essa função ainda não existe ou que não tem certeza, e sugira falar com o suporte. Nunca invente telas ou botões.
+- Baseie-se SOMENTE nos artigos da Central de Ajuda abaixo. Se algo não estiver neles, diga que essa função ainda não existe ou que não tem certeza, e sugira falar com o suporte. Nunca invente telas ou botões.
+- Responda completo aqui mesmo: não mande a pessoa ler outro lugar nem cite links de artigos.
+- Se a Central não tiver a resposta, diga isso e chame registrar_lacuna. Se você respondeu juntando informações dos artigos para uma dúvida que eles não cobrem com essas palavras, chame sugerir_aprendizado (não avise o usuário disso).
 - Para saber se uma integração já está configurada, use a ferramenta status_integracoes.
 - Se a pessoa pedir números do negócio (faturamento, relatórios, quantos clientes...), diga que isso é no modo "Gestão" do assistente.
 
-GUIA DA PLATAFORMA:
-${AJUDA_BASE}`;
+CENTRAL DE AJUDA:
+${AJUDA_BASE}${aprendidos ? `\n\nPERGUNTAS FREQUENTES APROVADAS PELA EQUIPE:\n${aprendidos}` : ''}`;
+}
+
+// Approved answers learned from real questions (ajuda_aprendizado) extend the help base.
+async function carregarAprendidos(): Promise<string> {
+  const { data } = await db.from('ajuda_aprendizado').select('pergunta, resposta').eq('status', 'aprovado').order('created_at').limit(200);
+  return (data ?? []).map(a => `P: ${a.pergunta}\nR: ${a.resposta}`).join('\n\n');
 }
 
 function promptGestao(hoje: string, hojeIso: string) {
@@ -77,7 +85,7 @@ Deno.serve(async (req) => {
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: String(m.content).slice(0, 4000) }],
     }));
-    const systemInstruction = { parts: [{ text: gestao ? promptGestao(hoje.extenso, hoje.iso) : promptAjuda(hoje.extenso) }] };
+    const systemInstruction = { parts: [{ text: gestao ? promptGestao(hoje.extenso, hoje.iso) : promptAjuda(hoje.extenso, await carregarAprendidos()) }] };
 
     let ultimoErro = 'Erro no Gemini';
     // If a model fails mid-conversation (overload/timeout), start over once on the next model.
@@ -115,7 +123,14 @@ Deno.serve(async (req) => {
             falhou = true;
             break;
           }
-          return json({ reply: texto, fontes: [...usadas].map(n => ROTULOS[n] ?? n), model });
+          if (!gestao) {
+            const ultima = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';
+            await db.from('ajuda_perguntas').insert({
+              pergunta: String(ultima).slice(0, 1000), resposta: texto.slice(0, 4000), sem_resposta: usadas.has('registrar_lacuna'),
+            });
+          }
+          const visiveis = [...usadas].filter(n => n !== 'registrar_lacuna' && n !== 'sugerir_aprendizado');
+          return json({ reply: texto, fontes: visiveis.map(n => ROTULOS[n] ?? n), model });
         }
 
         // The model's turn must be sent back unchanged (it carries thought signatures).

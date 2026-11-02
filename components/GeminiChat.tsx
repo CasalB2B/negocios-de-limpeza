@@ -37,10 +37,10 @@ const MODOS: Record<Modo, {
     icon: <BarChart3 size={18} />,
     saudacao: 'Pergunte sobre faturamento, agenda, equipe, clientes e pagamentos. Eu consulto os dados registrados na plataforma.',
     sugestoes: [
+      'Quanto tenho a receber este mês?',
+      'Quais links de pagamento ainda não foram pagos?',
       'Quanto faturei este mês comparado ao mês passado?',
       'Quanto cada colaboradora está me dando de retorno este mês?',
-      'Quais clientes estão há mais tempo sem agendar?',
-      'Quais dias da semana têm mais e menos serviços?',
     ],
     carregando: 'Consultando os dados...',
   },
@@ -67,7 +67,18 @@ function inline(text: string, key: string): React.ReactNode[] {
     if (part.length > 2 && ((part.startsWith('*') && part.endsWith('*')) || (part.startsWith('_') && part.endsWith('_')))) {
       return <em key={k} className="text-lightText dark:text-darkTextSecondary">{part.slice(1, -1)}</em>;
     }
-    return <React.Fragment key={k}>{part}</React.Fragment>;
+    // Help-center links (and other https links) become clickable; help links open inside the app.
+    const pedacos = part.split(/((?:https?:\/\/)?app\.negociosdelimpeza\.com\.br\/ajuda\/[\w-]+|https:\/\/[^\s)]+)/g);
+    return (
+      <React.Fragment key={k}>
+        {pedacos.map((p, j) => {
+          const ajuda = p.match(/app\.negociosdelimpeza\.com\.br\/ajuda\/([\w-]+)/);
+          if (ajuda) return <a key={j} href={`/#/ajuda/${ajuda[1]}`} target="_blank" rel="noopener noreferrer" className="text-primary font-semibold underline break-all">Abrir artigo na Central de Ajuda</a>;
+          if (/^https:\/\//.test(p)) return <a key={j} href={p} target="_blank" rel="noopener noreferrer" className="text-primary underline break-all">{p}</a>;
+          return <React.Fragment key={j}>{p}</React.Fragment>;
+        })}
+      </React.Fragment>
+    );
   });
 }
 

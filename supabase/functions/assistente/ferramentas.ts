@@ -26,6 +26,11 @@ export const DECLARACOES_GESTAO = [
     parameters: { type: 'OBJECT', properties: periodo, required: ['inicio', 'fim'] },
   },
   {
+    name: 'cobrancas',
+    description: 'Situação das cobranças dos serviços num período (pela data do serviço): valor total, quanto já foi recebido (sinais e pagamentos totais), quanto falta receber, links de pagamento enviados e ainda não pagos, pré-agendamentos aguardando sinal, horários liberados por sinal não pago e a lista de quem deve. Use para "quanto tenho a receber", "links não pagos", "quem não pagou".',
+    parameters: { type: 'OBJECT', properties: periodo, required: ['inicio', 'fim'] },
+  },
+  {
     name: 'financeiro',
     description: 'Lançamentos financeiros (entradas e saídas registradas no Financeiro) num período: totais por tipo, status e forma de pagamento.',
     parameters: { type: 'OBJECT', properties: periodo, required: ['inicio', 'fim'] },
@@ -69,6 +74,23 @@ export const DECLARACOES_GESTAO = [
 
 export const DECLARACOES_AJUDA = [
   {
+    name: 'registrar_lacuna',
+    description: 'Chame quando a Central de Ajuda NÃO tiver a resposta para a dúvida (para a equipe documentar depois).',
+    parameters: { type: 'OBJECT', properties: { pergunta: { type: 'STRING', description: 'A dúvida do usuário, resumida' } }, required: ['pergunta'] },
+  },
+  {
+    name: 'sugerir_aprendizado',
+    description: 'Chame quando você respondeu uma dúvida que a Central não cobria com essas palavras, juntando informações dos artigos. Proponha uma pergunta genérica e uma resposta curta, baseada SOMENTE nos artigos. Fica pendente até o administrador aprovar.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        pergunta: { type: 'STRING', description: 'Pergunta genérica, como um usuário faria' },
+        resposta: { type: 'STRING', description: 'Resposta curta e correta, só com o que está nos artigos' },
+      },
+      required: ['pergunta', 'resposta'],
+    },
+  },
+  {
     name: 'status_integracoes',
     description: 'Mostra quais integrações já estão configuradas na plataforma (Google Maps, Gemini, WhatsApp, InfinitePay).',
     parameters: { type: 'OBJECT', properties: {} },
@@ -79,6 +101,7 @@ export const ROTULOS: Record<string, string> = {
   resumo_negocio: 'Resumo',
   servicos_sistema: 'Agenda',
   financeiro: 'Financeiro',
+  cobrancas: 'Cobranças',
   clientes_sumidos: 'Clientes',
   colaboradoras: 'Equipe',
   retorno_por_colaboradora: 'Retorno da equipe',
@@ -87,6 +110,8 @@ export const ROTULOS: Record<string, string> = {
   estoque: 'Estoque',
   pagamentos_colaboradoras: 'Pagamentos',
   status_integracoes: 'Integrações',
+  registrar_lacuna: 'Dúvida registrada',
+  sugerir_aprendizado: 'Aprendizado sugerido',
 };
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -156,6 +181,45 @@ async function servicos_sistema(ctx: Contexto, a: Args) {
     por_dia_da_semana: conta(validos, s => diaSemana(s.iso)),
     por_situacao_pagamento: conta(validos, s => s.payment_status),
     observacao: lista.length === 0 ? 'Nenhum agendamento registrado na plataforma neste período.' : undefined,
+  };
+}
+
+async function cobrancas(ctx: Contexto, a: Args) {
+  const { data } = await ctx.db.from('services')
+    .select('date, time, status, price, type, client_name, payment_status, signal_amount, signal_status, signal_sent_at, signal_reminders, payment_link_signal, payment_link_final, remainder_status')
+    .limit(5000);
+  const lista = (data ?? []).map(s => ({ ...s, iso: brToIso(s.date) })).filter(s => noPeriodo(s.iso, a));
+  const ativos = lista.filter(s => s.status !== 'CANCELLED');
+  const recebido = (s: any) => s.payment_status === 'FULL_PAID' ? Number(s.price || 0)
+    : s.payment_status === 'SIGNAL_PAID' ? Number(s.signal_amount || 0) : 0;
+  const total = ativos.reduce((t, s) => t + Number(s.price || 0), 0);
+  const jaRecebido = ativos.reduce((t, s) => t + recebido(s), 0);
+  const devendo = ativos
+    .filter(s => s.payment_status !== 'FULL_PAID' && Number(s.price || 0) > 0)
+    .map(s => ({
+      cliente: String(s.client_name || '').trim(),
+      data: s.date, servico: s.type,
+      falta: r2(Number(s.price || 0) - recebido(s)),
+      situacao: s.status === 'PRE_SCHEDULED' ? 'aguardando sinal'
+        : s.payment_status === 'SIGNAL_PAID' ? (s.remainder_status === 'sent' ? 'sinal pago, link do restante enviado' : 'sinal pago, falta o restante')
+        : (s.payment_link_final || s.payment_link_signal) ? 'link enviado, não pago' : 'sem cobrança gerada',
+    }))
+    .sort((x, y) => y.falta - x.falta);
+  const linksNaoPagos = ativos.filter(s =>
+    (s.payment_link_signal && s.payment_status !== 'SIGNAL_PAID' && s.payment_status !== 'FULL_PAID') ||
+    (s.payment_link_final && s.payment_status !== 'FULL_PAID'));
+  return {
+    servicos: ativos.length,
+    valor_total: r2(total),
+    ja_recebido: r2(jaRecebido),
+    falta_receber: r2(total - jaRecebido),
+    links_enviados_nao_pagos: linksNaoPagos.length,
+    aguardando_sinal: ativos.filter(s => s.status === 'PRE_SCHEDULED').length,
+    sinal_pago_falta_restante: ativos.filter(s => s.payment_status === 'SIGNAL_PAID').length,
+    pagos_totalmente: ativos.filter(s => s.payment_status === 'FULL_PAID').length,
+    horarios_liberados_por_falta_de_sinal: lista.filter(s => s.signal_status === 'expired').length,
+    quem_deve: devendo.slice(0, 25),
+    observacao: lista.length === 0 ? 'Nenhum serviço registrado na plataforma neste período.' : undefined,
   };
 }
 
@@ -397,8 +461,22 @@ async function status_integracoes(ctx: Contexto) {
   };
 }
 
+async function registrar_lacuna(_ctx: Contexto, a: Args) {
+  return { ok: true, registrado: String(a.pergunta || '').slice(0, 300) };
+}
+
+async function sugerir_aprendizado(ctx: Contexto, a: Args) {
+  const pergunta = String(a.pergunta || '').trim().slice(0, 300);
+  const resposta = String(a.resposta || '').trim().slice(0, 2000);
+  if (!pergunta || !resposta) return { ok: false };
+  const { data: igual } = await ctx.db.from('ajuda_aprendizado').select('id').ilike('pergunta', pergunta).limit(1);
+  if (!igual?.length) await ctx.db.from('ajuda_aprendizado').insert({ pergunta, resposta });
+  return { ok: true, status: 'pendente de aprovação' };
+}
+
 const IMPLEMENTACOES: Record<string, (ctx: Contexto, a: Args) => Promise<unknown>> = {
-  resumo_negocio, servicos_sistema, financeiro, clientes_sumidos, colaboradoras, retorno_por_colaboradora,
+  registrar_lacuna, sugerir_aprendizado,
+  resumo_negocio, servicos_sistema, financeiro, cobrancas, clientes_sumidos, colaboradoras, retorno_por_colaboradora,
   avaliacoes, contratacao, estoque, pagamentos_colaboradoras, status_integracoes,
 };
 

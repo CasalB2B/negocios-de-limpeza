@@ -36,6 +36,7 @@ import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminServices } from './pages/admin/AdminServices';
 import { AdminQuotes } from './pages/admin/AdminQuotes';
 import { AdminWhatsApp } from './pages/admin/AdminWhatsApp';
+import { AdminAjudaIA } from './pages/admin/AdminAjudaIA';
 import { AdminCRM } from './pages/admin/AdminCRM';
 import { AdminInbox } from './pages/admin/AdminInbox';
 import { AdminAnalytics } from './pages/admin/AdminAnalytics';
@@ -53,6 +54,7 @@ import { AdminRHAvaliacoes } from './pages/admin/rh/AdminRHAvaliacoes';
 import { AdminRHContratacao } from './pages/admin/rh/AdminRHContratacao';
 import { AvaliacaoPage } from './pages/AvaliacaoPage';
 import { EquipePage } from './pages/EquipePage';
+import { AjudaPage } from './pages/AjudaPage';
 import { AdminMarketing } from './pages/admin/AdminMarketing';
 import { AdminRHPlanoCarreira } from './pages/admin/rh/AdminRHPlanoCarreira';
 import { AdminOS } from './pages/admin/AdminOS';
@@ -98,6 +100,8 @@ const App: React.FC = () => {
             <Route path="/avaliar" element={<AvaliacaoPage />} />
             {/* Página pública da equipe + avaliações — embeddable */}
             <Route path="/equipe" element={<EquipePage />} />
+            <Route path="/ajuda" element={<AjudaPage />} />
+            <Route path="/ajuda/:id" element={<AjudaPage />} />
 
             {/* Rota pública para fazer orçamento (pode ser acessada sem login, mas exige no final) */}
             <Route path="/client/new-request" element={<ClientRequest />} />
@@ -145,6 +149,7 @@ const App: React.FC = () => {
               <Route path="/admin/payments" element={<AdminPayments />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
               <Route path="/admin/whatsapp" element={<AdminWhatsApp />} />
+              <Route path="/admin/ajuda-ia" element={<AdminAjudaIA />} />
               <Route path="/admin/rh" element={<AdminRHDashboard />} />
               <Route path="/admin/rh/colaboradoras" element={<AdminRHColaboradoras />} />
               <Route path="/admin/rh/desempenho" element={<AdminRHDesempenho />} />
