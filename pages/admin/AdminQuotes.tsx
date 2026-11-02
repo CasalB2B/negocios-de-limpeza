@@ -7,7 +7,7 @@ import {
   CheckCircle, Clock, TrendingUp, X, FileText, UserPlus,
   Loader2, Send, Trash2,
 } from 'lucide-react';
-import { sendMessage as sendWhatsApp, sendDocument, buildMessage, DEFAULT_TEMPLATES } from '../../lib/evolution';
+import { sendMessage as sendWhatsApp, sendDocument, buildMessage, DEFAULT_TEMPLATES } from '../../lib/whatsapp';
 import jsPDF from 'jspdf';
 
 // --- STATUS ---

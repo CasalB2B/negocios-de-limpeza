@@ -1,247 +1,122 @@
-// Supabase Edge Function — Follow-up Inteligente com Nina
-// Chamada a cada 30 minutos via pg_cron
-// Nina lê o histórico e gera mensagens contextuais — sem templates fixos
+// Supabase Edge Function — Follow-up Inteligente (WhatsApp Cloud API)
+// Chamada a cada 30 minutos via pg_cron. Só roda com o bot no modo "IA".
 //
-// Cenário 1: Cliente parou no meio do fluxo (step: chat)
-//   → após `follow_up_hours` horas, Nina retoma naturalmente (1 tentativa)
+// Cenário 1: Cliente parou no meio da conversa (step: chat) — até 2 tentativas
+// Cenário 2: Cliente recebeu orçamento e sumiu (step: human) — delays de `follow_up_steps` (ex.: [24, 48])
 //
-// Cenário 2: Cliente recebeu orçamento e sumiu (step: human)
-//   → após delays configurados em `follow_up_steps` (JSON array [24, 48]), Nina faz follow-up (até 2 tentativas)
+// Dentro de 24h da última mensagem do cliente vai uma mensagem escrita pela IA lendo o histórico;
+// depois disso a Meta só aceita o modelo aprovado "retomar_atendimento" (categoria marketing).
 
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { supabase, json, getConnection, isWindowOpen, sendText, sendTemplate, Connection } from '../_shared/whatsapp.ts';
+import { generateContent } from '../_shared/gemini.ts';
 
-const GEMINI_API_KEY     = Deno.env.get('GEMINI_API_KEY') || '';
-const GEMINI_MODEL       = 'gemini-2.5-flash';
-const EVOLUTION_URL      = Deno.env.get('EVOLUTION_URL') || '';
-const EVOLUTION_KEY      = Deno.env.get('EVOLUTION_KEY') || '';
-const EVOLUTION_INSTANCE = Deno.env.get('EVOLUTION_INSTANCE') || '';
+type Turn = { role: string; parts: { text: string }[] };
 
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-);
-
-// ── Envia mensagem via Evolution API ────────────────────────────────────────
-async function sendWhatsApp(phone: string, text: string): Promise<boolean> {
-  if (phone.includes('@lid')) {
-    console.warn('[FOLLOWUP] pulando @lid:', phone);
-    return false;
-  }
-  const number = phone.startsWith('55') ? phone : `55${phone}`;
-  try {
-    const res = await fetch(`${EVOLUTION_URL}/message/sendText/${EVOLUTION_INSTANCE}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_KEY },
-      body: JSON.stringify({ number, textMessage: { text }, delay: 2000 }),
-    });
-    const body = await res.text().catch(() => '');
-    if (!res.ok) {
-      console.error('[FOLLOWUP] sendWhatsApp error:', res.status, body.slice(0, 200));
-      return false;
-    }
-    console.log('[FOLLOWUP] enviado para:', number);
-    return true;
-  } catch (e) {
-    console.error('[FOLLOWUP] sendWhatsApp exception:', e);
-    return false;
-  }
-}
-
-// ── Gera mensagem de follow-up via Gemini ────────────────────────────────────
-async function generateFollowUp(
-  history: Array<{ role: string; parts: { text: string }[] }>,
-  scenario: 'chat' | 'human',
-  hoursElapsed: number,
-  pushName: string,
-): Promise<string> {
-  if (!GEMINI_API_KEY) {
-    console.error('[FOLLOWUP] GEMINI_API_KEY não configurada');
-    return '';
-  }
-
+async function generateFollowUp(apiKey: string, assistant: string, business: string, history: Turn[], scenario: 'chat' | 'human', hoursElapsed: number, pushName: string): Promise<string> {
   const firstName = pushName.split(' ')[0] || '';
-
-  // Monta o histórico como texto para contexto
   const historyText = (history || [])
     .filter(m => m.parts?.[0]?.text)
     .slice(-12)
     .map(m => {
-      const txt = m.parts[0].text
-        .replace(/<<QUOTE_DATA>>[\s\S]*?<<END_QUOTE>>/g, '[orçamento coletado]')
-        .replace(/<<HUMAN_HANDOFF>>/g, '')
-        .trim();
-      return txt ? `${m.role === 'user' ? 'Cliente' : 'Nina'}: ${txt}` : null;
+      const txt = m.parts[0].text.replace(/<<QUOTE_DATA>>[\s\S]*?<<END_QUOTE>>/g, '[orçamento coletado]').replace(/<<HUMAN_HANDOFF>>/g, '').trim();
+      return txt ? `${m.role === 'user' ? 'Cliente' : assistant}: ${txt}` : null;
     })
     .filter(Boolean)
     .join('\n');
 
   const scenarioInstruction = scenario === 'chat'
-    ? `O cliente ${firstName ? `(${firstName}) ` : ''}parou de responder há ${Math.round(hoursElapsed)} hora(s) no meio da conversa de orçamento. Escreva UMA mensagem curta e natural para retomar a conversa de onde parou. Não se apresente novamente. Seja genuína e interessada em ajudar. Máximo 2 linhas.`
-    : `O cliente ${firstName ? `(${firstName}) ` : ''}recebeu o orçamento há ${Math.round(hoursElapsed)} hora(s) e não respondeu. Escreva UMA mensagem de follow-up natural. Pergunte se surgiu alguma dúvida ou se pode ajudar. Não pressione, seja amigável. Máximo 2 linhas.`;
+    ? `O cliente ${firstName ? `(${firstName}) ` : ''}parou de responder há ${Math.round(hoursElapsed)} hora(s) no meio da conversa de orçamento. Escreva UMA mensagem curta e natural para retomar de onde parou. Não se apresente de novo. Máximo 2 linhas.`
+    : `O cliente ${firstName ? `(${firstName}) ` : ''}recebeu o orçamento há ${Math.round(hoursElapsed)} hora(s) e não respondeu. Escreva UMA mensagem de follow-up natural perguntando se surgiu alguma dúvida. Não pressione. Máximo 2 linhas.`;
 
-  const systemInstruction = `Você é a Nina, assistente da Negócios de Limpeza (empresa de limpeza profissional em Guarapari, ES). Você está fazendo um follow-up pelo WhatsApp.
+  const { ok, data } = await generateContent(apiKey, {
+    systemInstruction: { parts: [{ text: `Você é a ${assistant}, do atendimento da ${business}, fazendo um follow-up pelo WhatsApp.
 
 ${scenarioInstruction}
 
 REGRAS:
-- Escreva APENAS a mensagem, sem aspas, sem explicação, sem prefixo
-- Tom casual e humano, como num WhatsApp de verdade
-- No máximo 1 emoji — ou nenhum
+- Escreva APENAS a mensagem, sem aspas nem explicação
+- Tom humano, como num WhatsApp de verdade; no máximo 1 emoji
 - Nunca diga que é robô ou IA
 - Use o nome do cliente se souber
 
 HISTÓRICO DA CONVERSA:
-${historyText || '(sem histórico)'}`;
-
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemInstruction }] },
-          contents: [{ role: 'user', parts: [{ text: 'Escreva a mensagem de follow-up agora.' }] }],
-          generationConfig: { temperature: 0.75, maxOutputTokens: 150 },
-        }),
-      }
-    );
-    const data = await res.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-    if (!text) console.warn('[FOLLOWUP] Gemini retornou texto vazio:', JSON.stringify(data).slice(0, 300));
-    return text;
-  } catch (e) {
-    console.error('[FOLLOWUP] Gemini exception:', e);
-    return '';
-  }
+${historyText || '(sem histórico)'}` }] },
+    contents: [{ role: 'user', parts: [{ text: 'Escreva a mensagem de follow-up agora.' }] }],
+    generationConfig: { temperature: 0.75, maxOutputTokens: 150 },
+  });
+  return ok ? (data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '') : '';
 }
 
-// ── Main handler ─────────────────────────────────────────────────────────────
-Deno.serve(async (req) => {
-  if (req.method !== 'GET' && req.method !== 'POST')
-    return new Response('Method not allowed', { status: 405 });
-
-  console.log('[FOLLOWUP] iniciando varredura...');
-
-  // Busca configurações
-  const { data: cfg } = await supabase
-    .from('platform_settings')
-    .select('follow_up_enabled, follow_up_hours, follow_up_hours_2, follow_up_steps')
-    .eq('id', 1)
-    .single();
-
-  const followUpEnabled = cfg?.follow_up_enabled ?? false;
-  if (!followUpEnabled) {
-    console.log('[FOLLOWUP] desativado nas configurações.');
-    return new Response(JSON.stringify({ ok: true, sent: 0, reason: 'disabled' }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+async function sendFollowUp(conn: Connection, phone: string, aiText: () => Promise<string>, firstName: string): Promise<string | null> {
+  if (await isWindowOpen(conn, phone)) {
+    const text = await aiText();
+    if (!text) return null;
+    return (await sendText(conn, phone, text)).ok ? text : null;
   }
+  const name = firstName || 'tudo bem';
+  const preview = `Olá, ${name}! Ficou alguma dúvida sobre o orçamento de limpeza? É só responder esta mensagem que continuamos de onde paramos.`;
+  return (await sendTemplate(conn, phone, 'retomar_atendimento', [name], preview)).ok ? preview : null;
+}
 
-  // Cenário 1: horas para re-engajar quem parou no meio do fluxo (até 2 tentativas)
-  const chatHours: number  = cfg?.follow_up_hours ?? 2;
-  const chatHours2: number = cfg?.follow_up_hours_2 ?? (chatHours + 24);
+Deno.serve(async (req) => {
+  if (req.method !== 'GET' && req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
-  // Cenário 2: delays (em horas) para follow-up pós-orçamento
+  const { data: cfg } = await supabase.from('platform_settings')
+    .select('follow_up_enabled, follow_up_hours, follow_up_hours_2, follow_up_steps, gemini_key').eq('id', 1).single();
+  const { data: bot } = await supabase.from('whatsapp_bot_config').select('mode, enabled, assistant_name, business_name').eq('company_id', 1).maybeSingle();
+  if (!cfg?.follow_up_enabled || bot?.mode !== 'ai' || bot?.enabled === false) return json({ ok: true, sent: 0, reason: 'disabled' });
+
+  const conn = await getConnection(1);
+  if (!conn) return json({ ok: true, sent: 0, reason: 'whatsapp não conectado' });
+  const apiKey = cfg.gemini_key || Deno.env.get('GEMINI_API_KEY') || '';
+  const assistant = bot.assistant_name || 'Nina';
+  const business = bot.business_name || 'empresa';
+
+  const chatHours: number = cfg.follow_up_hours ?? 2;
+  const chatHours2: number = cfg.follow_up_hours_2 ?? chatHours + 24;
   let humanDelays: number[] = [24, 48];
   try {
-    const parsed = JSON.parse(cfg?.follow_up_steps || '');
-    if (Array.isArray(parsed) && parsed.every((n: unknown) => typeof n === 'number')) {
-      humanDelays = parsed;
-    }
-  } catch { /* usa default */ }
+    const parsed = JSON.parse(cfg.follow_up_steps || '');
+    if (Array.isArray(parsed) && parsed.every((n: unknown) => typeof n === 'number')) humanDelays = parsed;
+  } catch { /* padrão */ }
 
-  // Busca todas as sessões
-  const { data: sessions, error } = await supabase
-    .from('whatsapp_sessions')
-    .select('phone, history, meta, updated_at');
-
-  if (error) {
-    console.error('[FOLLOWUP] erro ao buscar sessões:', error.message);
-    return new Response(JSON.stringify({ ok: false, error: error.message }), { status: 500 });
-  }
+  const { data: sessions, error } = await supabase.from('whatsapp_sessions').select('phone, history, meta, updated_at');
+  if (error) return json({ ok: false, error: error.message }, 500);
 
   const now = Date.now();
   let sent = 0;
-
-  for (const session of (sessions || [])) {
+  for (const session of sessions ?? []) {
     const meta = session.meta || {};
     const phone: string = session.phone;
+    if (phone.includes('@') || meta.adminReplied || meta.awaitingFeedback) continue;
 
-    if (phone.includes('@lid')) continue;       // não envia para @lid
-    if (meta.adminReplied)       continue;       // admin no controle — Nina não interfere
-
-    const step       = (meta.step as string) || 'chat';
-    // Usa lastUserMessageAt do meta; fallback para updated_at da sessão (sessões antigas)
+    const step = (meta.step as string) || 'chat';
     const lastUserAt = meta.lastUserMessageAt || session.updated_at;
     if (!lastUserAt) continue;
+    const hoursElapsed = (now - new Date(lastUserAt).getTime()) / 3600000;
+    const pushName = (meta.pushName as string) || '';
+    const history: Turn[] = session.history || [];
 
-    const hoursElapsed = (now - new Date(lastUserAt).getTime()) / (1000 * 60 * 60);
-    const pushName     = (meta.pushName as string) || '';
-    const history      = session.history || [];
+    const [delays, key, scenario] = step === 'chat'
+      ? [[chatHours, chatHours2], 'reengageSentSteps', 'chat' as const]
+      : step === 'human' ? [humanDelays, 'followUpSentSteps', 'human' as const] : [[], '', 'chat' as const];
+    const done: number[] = Array.isArray(meta[key]) ? meta[key] : [];
 
-    // ── CENÁRIO 1: parou no meio do fluxo — até 2 tentativas ─────────────────
-    if (step === 'chat') {
-      // Tentativa 1: após chatHours (ex: 2h)
-      // Tentativa 2: após chatHours + 24h
-      const reengageSteps: number[] = Array.isArray(meta.reengageSentSteps) ? meta.reengageSentSteps : [];
-      const chatDelays = [chatHours, chatHours2];
-
-      for (let i = 0; i < chatDelays.length; i++) {
-        if (reengageSteps.includes(i)) continue; // já enviou esta tentativa
-        if (hoursElapsed < chatDelays[i]) break;  // ainda não chegou na hora
-
-        console.log(`[FOLLOWUP] re-engajamento tentativa ${i + 1} para ${phone} (${hoursElapsed.toFixed(1)}h)`);
-        const msg = await generateFollowUp(history, 'chat', hoursElapsed, pushName);
-        if (!msg) { console.warn('[FOLLOWUP] Gemini não gerou mensagem para', phone); break; }
-
-        const ok = await sendWhatsApp(phone, msg);
-        if (ok) {
-          const newHistory = [...history, { role: 'model', parts: [{ text: msg }] }];
-          await supabase.from('whatsapp_sessions')
-            .update({
-              history: newHistory,
-              meta: { ...meta, reengageSentSteps: [...reengageSteps, i], lastBotMessageAt: new Date().toISOString() },
-            })
-            .eq('phone', phone);
-          sent++;
-        }
-        break; // uma tentativa por ciclo de 30 min
+    for (let i = 0; i < delays.length; i++) {
+      if (done.includes(i)) continue;
+      if (hoursElapsed < delays[i]) break;
+      const text = await sendFollowUp(conn, phone, () => generateFollowUp(apiKey, assistant, business, history, scenario, hoursElapsed, pushName), pushName.split(' ')[0]);
+      if (text) {
+        await supabase.from('whatsapp_sessions').update({
+          history: [...history, { role: 'model', parts: [{ text }] }],
+          meta: { ...meta, [key]: [...done, i], lastBotMessageAt: new Date().toISOString() },
+        }).eq('phone', phone);
+        sent++;
       }
-      continue; // follow-up pós-orçamento não se aplica aqui
-    }
-
-    // ── CENÁRIO 2: orçamento enviado, cliente sumiu ─────────────────────────
-    if (step === 'human') {
-      const sentSteps: number[] = meta.followUpSentSteps || [];
-
-      for (let i = 0; i < humanDelays.length; i++) {
-        if (sentSteps.includes(i)) continue;
-        if (hoursElapsed >= humanDelays[i]) {
-          console.log(`[FOLLOWUP] gerando follow-up ${i + 1} pós-orçamento para ${phone} (${hoursElapsed.toFixed(1)}h)`);
-          const msg = await generateFollowUp(history, 'human', hoursElapsed, pushName);
-          if (!msg) { console.warn('[FOLLOWUP] Gemini não gerou mensagem para', phone); break; }
-
-          const ok = await sendWhatsApp(phone, msg);
-          if (ok) {
-            const newHistory = [...history, { role: 'model', parts: [{ text: msg }] }];
-            await supabase.from('whatsapp_sessions')
-              .update({
-                history: newHistory,
-                meta: { ...meta, followUpSentSteps: [...sentSteps, i], lastBotMessageAt: new Date().toISOString() },
-              })
-              .eq('phone', phone);
-            sent++;
-          }
-          break; // uma tentativa por ciclo de 30 min
-        }
-      }
+      break; // uma tentativa por ciclo de 30 min
     }
   }
 
   console.log(`[FOLLOWUP] concluído. ${sent} mensagens enviadas.`);
-  return new Response(JSON.stringify({ ok: true, sent }), {
-    headers: { 'Content-Type': 'application/json' },
-    status: 200,
-  });
+  return json({ ok: true, sent });
 });

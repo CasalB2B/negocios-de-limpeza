@@ -1,78 +1,44 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+// Supabase Edge Function — Mensagem pós-serviço / avaliação (WhatsApp Cloud API)
+// Chamada pelo painel quando o serviço é marcado como concluído: POST { service_id }.
+// Dentro da janela de 24h manda a "mensagem de feedback" configurada no bot;
+// fora dela, o modelo aprovado "pos_servico_avaliacao". A nota (1 a 5) é tratada no whatsapp-webhook.
 
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { supabase, json, cors, getConnection, sendTextOrTemplate, toWaNumber } from '../_shared/whatsapp.ts';
+import { fillName } from '../_shared/botPrompt.ts';
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
-
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
-    const { service_id } = await req.json()
+    const { service_id } = await req.json();
+    const { data: service } = await supabase.from('services').select('id, client_id, client_name, type').eq('id', service_id).maybeSingle();
+    if (!service) return json({ sent: false, error: 'Serviço não encontrado' }, 400);
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
+    const { data: client } = await supabase.from('app_users').select('phone').eq('id', service.client_id).maybeSingle();
+    if (!client?.phone) return json({ sent: false, error: 'Cliente sem telefone cadastrado' }, 400);
 
-    const { data: service } = await supabase
-      .from('services')
-      .select('id, client_name, client_phone, type, date, collaborator_name')
-      .eq('id', service_id)
-      .single()
+    const { data: cfg } = await supabase.from('whatsapp_bot_config').select('feedback_message').eq('company_id', 1).maybeSingle();
+    const firstName = (service.client_name || '').split(' ')[0];
+    const msg = fillName(cfg?.feedback_message || 'Oi, [Nome]! Como foi a limpeza de hoje? Dá uma nota de 1 a 5 pra gente.', service.client_name || '');
+    const phone = toWaNumber(client.phone);
 
-    if (!service) throw new Error('Serviço não encontrado')
-    if (!service.client_phone) throw new Error('Cliente sem telefone cadastrado')
-
-    const { data: settings } = await supabase
-      .from('platform_settings')
-      .select('whatsapp_token, whatsapp_phone_id')
-      .eq('id', 1)
-      .single()
-
-    const phone = service.client_phone.replace(/\D/g, '')
-    const intlPhone = phone.startsWith('55') ? phone : `55${phone}`
-
-    const msg = `Olá ${service.client_name}! ✅\n\nSeu serviço de ${service.type} foi concluído com sucesso!\n\nObrigada pela confiança 💜\n— Equipe Negócios de Limpeza`
-
-    if (!settings?.whatsapp_token || !settings?.whatsapp_phone_id) {
-      const waUrl = `https://wa.me/${intlPhone}?text=${encodeURIComponent(msg)}`
-      return new Response(JSON.stringify({
-        sent: false,
-        reason: 'whatsapp_not_configured',
-        wa_fallback_url: waUrl,
-        message: msg,
-      }), { headers: { ...cors, 'Content-Type': 'application/json' } })
+    const conn = await getConnection(1);
+    if (!conn) {
+      return json({ sent: false, reason: 'whatsapp_not_configured', wa_fallback_url: `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, message: msg });
     }
 
-    const apiRes = await fetch(
-      `https://graph.facebook.com/v19.0/${settings.whatsapp_phone_id}/messages`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${settings.whatsapp_token}`,
-        },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          to: intlPhone,
-          type: 'text',
-          text: { body: msg },
-        }),
-      }
-    )
-
-    const result = await apiRes.json()
-
-    return new Response(JSON.stringify({ sent: true, result }), {
-      headers: { ...cors, 'Content-Type': 'application/json' },
-    })
+    const r = await sendTextOrTemplate(conn, phone, msg, { name: 'pos_servico_avaliacao', params: [firstName || 'cliente', service.type || 'limpeza'] });
+    if (r.ok) {
+      const { data: rows } = await supabase.from('whatsapp_sessions').select('history, meta').eq('phone', phone).limit(1);
+      const sess = rows?.[0];
+      await supabase.from('whatsapp_sessions').upsert({
+        phone,
+        history: [...(sess?.history || []), { role: 'model', parts: [{ text: msg }] }],
+        meta: { ...(sess?.meta || {}), awaitingFeedback: true, feedbackServiceId: service.id },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'phone' });
+    }
+    return json({ sent: r.ok, viaTemplate: r.viaTemplate, error: r.error, wa_fallback_url: r.ok ? undefined : `https://wa.me/${phone}?text=${encodeURIComponent(msg)}` });
   } catch (err) {
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
-      status: 400,
-      headers: { ...cors, 'Content-Type': 'application/json' },
-    })
+    return json({ error: (err as Error).message }, 400);
   }
-})
+});

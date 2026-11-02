@@ -69,3 +69,39 @@ export async function generateContent(
   }
   return last;
 }
+
+// Voz da assistente: modelo de fala (TTS) mais novo que a chave consegue usar.
+let cachedTtsModel = '';
+
+async function pickTtsModel(apiKey: string): Promise<string> {
+  if (cachedTtsModel) return cachedTtsModel;
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=${apiKey}`);
+  const data = await res.json();
+  const tts: string[] = (data.models ?? [])
+    .map((m: any) => String(m.name).replace('models/', ''))
+    .filter((n: string) => /^gemini-[\d.]+-flash.*-tts$/.test(n))
+    .sort((a: string, b: string) => parseFloat(b.split('-')[1]) - parseFloat(a.split('-')[1]));
+  cachedTtsModel = tts[0] ?? '';
+  return cachedTtsModel;
+}
+
+// Devolve PCM 16-bit mono 24 kHz, ou null se a chave não tiver modelo de voz.
+export async function generateSpeech(apiKey: string, text: string, voiceName = 'Kore'): Promise<Int16Array | null> {
+  const model = await pickTtsModel(apiKey);
+  if (!model) return null;
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: `Fale em português do Brasil, com tom simpático e natural: ${text}` }] }],
+      generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } } },
+    }),
+  });
+  const data = await res.json();
+  const b64: string | undefined = data?.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData)?.inlineData?.data;
+  if (!b64) return null;
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Int16Array(bytes.buffer, 0, Math.floor(bytes.length / 2));
+}

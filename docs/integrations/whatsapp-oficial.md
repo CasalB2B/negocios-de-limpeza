@@ -1,158 +1,44 @@
-# WhatsApp Business API Oficial — Spec de Integração
+# WhatsApp oficial (Meta Cloud API) com coexistência
 
-## Decisão
-Usar a API oficial do WhatsApp (Meta Cloud API), provavelmente via BSP como **Twilio**.
-Descartada: Evolution API (não-oficial, risco de ban).
+## Decisão (02/11/2026)
+- API oficial da Meta, **sem parceiro (BSP)**: a plataforma é **Tech Provider** da Meta. Cada empresa paga a Meta direto, em reais, só pelas mensagens.
+- **Coexistência**: o número continua no app WhatsApp Business do celular; a API envia pelo mesmo número.
+- Lançamento só com **lembretes, confirmações, pós-serviço e avisos**. O bot (Menu/IA) está pronto, mas fica no modo "Só lembretes" até virar adicional pago.
+- Evolution API (não oficial) desativada.
 
----
+## Peças
 
-## Opções de BSP (Business Solution Provider)
+| Peça | O que faz |
+|------|-----------|
+| `whatsapp-admin` | Conexão (Cadastro incorporado → troca do código por token, assina o webhook, registra o número ou pede a sincronização da coexistência), status, desconectar, modelos (criar/sincronizar), simulador da IA, mensagem de teste |
+| `whatsapp-webhook` | Webhook da Meta (assinatura `X-Hub-Signature-256` com `META_APP_SECRET`). Trata `messages`, `smb_message_echoes`, `history`, `smb_app_state_sync`, `account_update`, `message_template_status_update` |
+| `whatsapp-send` | Envios do painel (texto, mídia, modelo, confirmação de agendamento). Substitui o `evolution-proxy` |
+| `service-reminder` | Lembrete D-1 com o modelo `lembrete_servico` (cron `0 12 * * *` UTC = 9h) |
+| `post-service-message` | Pós-serviço: texto livre dentro de 24h, senão modelo `pos_servico_avaliacao`; a nota (1 a 5) volta pelo webhook |
+| `follow-up-sender` | Follow-up da IA (só no modo IA) |
+| `_shared/whatsapp.ts` | Cliente da Graph API, janela de 24h, registro em `whatsapp_messages` |
+| `_shared/waBot.ts` | Lógica dos modos Só lembretes / Menu / IA, fila humana, botões do lembrete, avaliação |
+| `_shared/botPrompt.ts`, `_shared/waTemplates.ts` | Prompt da IA e modelos; usados também pelo painel (sem imports) |
 
-| BSP | Modelo | Prós |
-|-----|--------|------|
-| **Twilio** | Créditos por mensagem | Docs excelentes, SDK Node/Deno, webhook nativo |
-| **Zenvia** | Nacional (BR) | Suporte em PT, pagamento em R$ |
-| **360dialog** | Acesso direto Meta | Mais barato em volume |
-| **Gupshup** | Nacional + internacional | Templates fáceis |
+## Tabelas
+- `whatsapp_connections` — token e IDs por empresa (`company_id`). RLS ligado e **sem política**: só o servidor lê.
+- `whatsapp_bot_config` — configuração do bot (modo, dados do negócio, IA, menu). Lida pelo painel.
+- `whatsapp_messages` — mensagens enviadas/recebidas e status de entrega. Usada para saber se a janela de 24h está aberta.
+- `whatsapp_templates` — status de aprovação dos modelos.
+- `platform_settings.meta_app_id` / `meta_es_config_id` — IDs públicos do app (não são segredos).
 
-**A confirmar**: qual provider será usado. Até lá, o design da integração é agnóstico.
+## Segredos (Supabase → Edge Functions → Secrets)
+- `META_APP_SECRET` — segredo do app (troca do código e assinatura do webhook)
+- `WA_WEBHOOK_VERIFY_TOKEN` — o mesmo texto cadastrado no webhook da Meta
+- Opcionais: `META_APP_ID` (senão usa o de `platform_settings`), `META_GRAPH_VERSION` (padrão `v26.0`)
 
----
+## Regra das 24h
+Texto livre só é entregue até 24h depois da última mensagem do cliente. A Meta aceita o envio e só avisa a falha depois (erro 131047 no webhook), então `isWindowOpen` confere a janela em `whatsapp_messages` antes de enviar; fora dela vai o modelo aprovado. Números do Brasil são comparados pelos 8 últimos dígitos (o `wa_id` às vezes vem sem o 9).
 
-## Fluxo geral (Meta Cloud API)
+## Cadastro incorporado (front)
+`pages/admin/AdminWhatsApp.tsx` carrega o SDK do Facebook, chama `FB.login` com `config_id`, `response_type: 'code'`, `override_default_response_type: true` e `extras: { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3' }`. Os IDs chegam pelo evento `WA_EMBEDDED_SIGNUP` (`FINISH` ou `FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING`); o código vale 30s e vai para `whatsapp-admin` (`exchange_code`).
 
-```
-Empresa configura:
-  1. Meta Business Manager → criar conta Business
-  2. WhatsApp Business Platform → adicionar número
-  3. Verificar número (código por ligação/SMS)
-  4. Gerar Access Token permanente
-  5. Cadastrar webhook URL (nossa Edge Function)
-
-Plataforma usa:
-  POST https://graph.facebook.com/v19.0/{phone_number_id}/messages
-  Headers: Authorization: Bearer {ACCESS_TOKEN}
-  Body: { to, type: "template", template: { name, language, components } }
-```
-
----
-
-## Templates (precisam ser aprovados pela Meta)
-
-Antes de enviar qualquer mensagem, cada template deve ser aprovado.
-Processo: cadastrar no Meta Business Manager → aprovação em ~24h.
-
-### Templates planejados
-
-**1. lembrete_confirmacao** (D-1)
-```
-Olá {{1}}! Lembrando que amanhã, dia {{2}}, tem faxina às {{3}}.
-Nossa equipe estará na porta! Qualquer dúvida, responda aqui. 🧹
-```
-
-**2. link_pagamento**
-```
-Olá {{1}}! Segue o link para pagamento do serviço de {{2}}:
-💰 {{3}}
-Válido por 48h.
-```
-
-**3. servico_concluido**
-```
-Olá {{1}}! Seu serviço foi concluído ✅
-Avalie nossa equipe: {{2}}
-Obrigada pela confiança!
-```
-
-**4. cliente_sumido**
-```
-Olá {{1}}! Sentimos sua falta 😊
-Faz {{2}} dias desde sua última faxina.
-Que tal agendar? {{3}}
-```
-
----
-
-## Armazenamento
-
-| O que | Onde |
-|-------|------|
-| Access Token | Supabase Secret `WHATSAPP_ACCESS_TOKEN` |
-| Phone Number ID | Supabase Secret `WHATSAPP_PHONE_ID` |
-| Business Account ID | `platform_settings.whatsapp_business_id` |
-| Webhook verify token | Supabase Secret `WHATSAPP_WEBHOOK_TOKEN` |
-
-**Sem UI para configurar token/phone_id** — essas credenciais são fixas por empresa, configuradas pelo admin técnico (dono da plataforma). No SaaS multi-tenant, cada empresa terá suas próprias credenciais.
-
----
-
-## Edge Functions
-
-| Função | Trigger | Migração de |
-|--------|---------|------------|
-| `service-reminder` | Cron diário 9h | ⚠️ Reescrever (atual usa Evolution) |
-| `send-whatsapp` | Chamada interna | ⬜ Criar — fn genérica de envio |
-| `whatsapp-webhook` | POST do Meta | ⬜ Criar — receber status updates |
-| `post-service-message` | services UPDATE COMPLETED | ⬜ Criar |
-| `clientes-sumidos` | Cron semanal | ⬜ Criar |
-
----
-
-## Webhook do Meta (receber status das mensagens)
-
-```
-GET /functions/v1/whatsapp-webhook?hub.verify_token=X&hub.challenge=Y
-  → Verificação inicial: retorna hub.challenge
-
-POST /functions/v1/whatsapp-webhook
-  Body: { entry: [{ changes: [{ value: { statuses: [{ id, status, timestamp }] } }] }] }
-  → Atualizar status de entrega/leitura no DB
-```
-
----
-
-## Formato do número
-
-```typescript
-// Converter número BR para formato international E.164
-function formatWhatsApp(phone: string): string {
-  const digits = phone.replace(/\D/g, '');
-  if (digits.startsWith('55')) return digits;
-  return `55${digits}`;
-}
-// Exemplo: (28) 99999-9999 → 5528999999999
-```
-
----
-
-## Configuração na UI (Settings > Integrações > WhatsApp)
-
-Status da integração:
-- 🟢 Configurado — número `+55 28 XXXXX` ativo
-- 🔴 Não configurado — aguardando credenciais
-
-**Sem campo para o usuário digitar credenciais** (são Supabase Secrets, configuradas pelo admin técnico).
-
-Mostrar apenas:
-- Status da conexão
-- Templates cadastrados e status de aprovação
-- Logs de envio recentes (últimas 10 mensagens)
-
----
-
-## Próximos passos
-
-1. **Decidir BSP** — Twilio vs Zenvia vs outro
-2. **Criar Meta Business Manager** com o número da empresa
-3. **Aprovar templates** (pelo menos lembrete_confirmacao primeiro)
-4. **Reescrever service-reminder** — trocar chamada Evolution → Meta Cloud API
-5. **Criar send-whatsapp Edge Function** — shared utility
-
----
-
-## Nota sobre service-reminder atual
-
-`supabase/functions/service-reminder/index.ts` usa Evolution API.
-**Não apagar ainda** — funciona em produção. Reescrever só após:
-- BSP definido e credenciais em Supabase Secrets
-- Template `lembrete_confirmacao` aprovado pela Meta
+## Referências
+- https://developers.facebook.com/docs/whatsapp/embedded-signup/implementation
+- https://developers.facebook.com/docs/whatsapp/embedded-signup/custom-flows/onboarding-business-app-users
+- https://developers.facebook.com/docs/whatsapp/solution-providers/get-started-for-tech-providers

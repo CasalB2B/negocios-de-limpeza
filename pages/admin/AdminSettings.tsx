@@ -15,8 +15,8 @@ export const AdminSettings: React.FC = () => {
     whatsapp: localStorage.getItem('notif_whatsapp') !== 'false',
   }));
 
-  const [waToken, setWaToken] = useState('');
-  const [waPhoneId, setWaPhoneId] = useState('');
+  const [metaAppId, setMetaAppId] = useState('');
+  const [metaConfigId, setMetaConfigId] = useState('');
   const [ipKey, setIpKey] = useState('');
   const [mapsKey, setMapsKey] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
@@ -31,10 +31,10 @@ export const AdminSettings: React.FC = () => {
     (async () => {
       setIntegLoading(true);
       try {
-        const { data } = await supabase.from('platform_settings').select('whatsapp_token, whatsapp_phone_id, infinitepay_key, google_maps_key, gemini_key').eq('id', 1).single();
+        const { data } = await supabase.from('platform_settings').select('meta_app_id, meta_es_config_id, infinitepay_key, google_maps_key, gemini_key').eq('id', 1).single();
         if (data) {
-          if (data.whatsapp_token) setWaToken(data.whatsapp_token);
-          if (data.whatsapp_phone_id) setWaPhoneId(data.whatsapp_phone_id);
+          if (data.meta_app_id) setMetaAppId(data.meta_app_id);
+          if (data.meta_es_config_id) setMetaConfigId(data.meta_es_config_id);
           if (data.infinitepay_key) setIpKey(data.infinitepay_key);
           if (data.google_maps_key) setMapsKey(data.google_maps_key);
           if (data.gemini_key) setGeminiKey(data.gemini_key);
@@ -45,7 +45,7 @@ export const AdminSettings: React.FC = () => {
   }, [activeTab]);
 
   const handleSaveWhatsApp = async () => {
-    await supabase.from('platform_settings').upsert({ id: 1, whatsapp_token: waToken, whatsapp_phone_id: waPhoneId });
+    await supabase.from('platform_settings').upsert({ id: 1, meta_app_id: metaAppId.trim() || null, meta_es_config_id: metaConfigId.trim() || null });
     setWaSaved(true);
     setTimeout(() => setWaSaved(false), 2000);
   };
@@ -467,37 +467,38 @@ export const AdminSettings: React.FC = () => {
                     <MessageCircle size={22} className="text-green-600" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-darkText dark:text-darkTextPrimary text-base">WhatsApp Business API</h4>
-                    <p className="text-xs text-lightText dark:text-darkTextSecondary">Mensagens automáticas via Meta Cloud API (oficial)</p>
+                    <h4 className="font-bold text-darkText dark:text-darkTextPrimary text-base">WhatsApp oficial (Meta)</h4>
+                    <p className="text-xs text-lightText dark:text-darkTextSecondary">Dados do app da Meta usados pelo botão "Conectar WhatsApp"</p>
                   </div>
                 </div>
-                <span className={`flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${waToken && waPhoneId ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400'}`}>
-                  {waToken && waPhoneId ? '● Configurado' : '● Não configurado'}
+                <span className={`flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${metaAppId && metaConfigId ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400'}`}>
+                  {metaAppId && metaConfigId ? '● Configurado' : '● Não configurado'}
                 </span>
               </div>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1.5 uppercase tracking-wide">Access Token</label>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1.5 uppercase tracking-wide">ID do app</label>
                   <input
-                    type="password"
-                    value={waToken}
-                    onChange={e => setWaToken(e.target.value)}
-                    placeholder="EAAxxxxxxxxx..."
+                    inputMode="numeric"
+                    value={metaAppId}
+                    onChange={e => setMetaAppId(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Ex.: 1234567890123456"
                     className="w-full p-3 rounded-xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkSurface text-sm text-darkText dark:text-darkTextPrimary focus:border-primary outline-none transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1.5 uppercase tracking-wide">Phone Number ID</label>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1.5 uppercase tracking-wide">ID da configuração do Cadastro incorporado</label>
                   <input
-                    type="password"
-                    value={waPhoneId}
-                    onChange={e => setWaPhoneId(e.target.value)}
-                    placeholder="1234567890"
+                    inputMode="numeric"
+                    value={metaConfigId}
+                    onChange={e => setMetaConfigId(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Ex.: 987654321098765"
                     className="w-full p-3 rounded-xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkSurface text-sm text-darkText dark:text-darkTextPrimary focus:border-primary outline-none transition-colors"
                   />
                 </div>
                 <p className="text-xs text-lightText dark:text-darkTextSecondary">
-                  Obtenha em <span className="font-medium text-darkText dark:text-darkTextPrimary">Meta Business Manager → WhatsApp → Configurações de API</span>
+                  Os dois números ficam em <span className="font-medium text-darkText dark:text-darkTextPrimary">developers.facebook.com → seu app</span> (painel e Login do Facebook para Empresas → Configurações). Não são senhas.
+                  O <strong>segredo do app</strong> nunca é colado aqui: ele vai nos Secrets do Supabase (<code>META_APP_SECRET</code>), e o token de cada número fica guardado só no servidor.
                 </p>
               </div>
               <div className="mt-4 flex justify-end">

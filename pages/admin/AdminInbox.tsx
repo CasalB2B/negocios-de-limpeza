@@ -17,7 +17,7 @@ interface WaSession  {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-proxy`;
+const PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-send`;
 const ANON_KEY  =  import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 async function sendViaProxy(phone: string, text: string): Promise<boolean> {

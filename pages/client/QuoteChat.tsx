@@ -4,7 +4,7 @@ import { Send, ArrowLeft, Bot, Loader, CheckCircle, Phone, Sparkles, Camera, X, 
 import { useData } from '../../components/DataContext';
 import { UserRole } from '../../types';
 import { sendMessage, GeminiMessage, extractQuoteData, cleanAIResponse } from '../../lib/gemini';
-import { sendMessage as sendWhatsApp, buildMessage } from '../../lib/evolution';
+import { sendMessage as sendWhatsApp, buildMessage } from '../../lib/whatsapp';
 import { supabase } from '../../lib/supabase';
 
 // ── UTM helpers ──────────────────────────────────────────────────────────────

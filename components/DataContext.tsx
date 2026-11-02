@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ServiceStatus, Address } from '../types';
 import { supabase } from '../lib/supabase';
+import { sendBookingConfirmation } from '../lib/whatsapp';
 
 // --- CACHE HELPERS (stale-while-revalidate) ---
 const CACHE_VER = '2';
@@ -669,6 +670,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (data && !error) {
         setServices(prev => [mapDbServiceToApp(data[0]), ...prev.filter(s => s.id !== service.id)]);
         clearCache();
+        if (['SCHEDULED', 'CONFIRMED'].includes(service.status)) sendBookingConfirmation(data[0].id);
     } else {
         console.warn("Fallback: Serviço salvo apenas localmente.");
     }
