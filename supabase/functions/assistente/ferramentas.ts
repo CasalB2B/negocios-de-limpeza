@@ -382,13 +382,15 @@ async function pagamentos_colaboradoras(ctx: Contexto, a: Args) {
 }
 
 async function status_integracoes(ctx: Contexto) {
-  const { data } = await ctx.db.from('platform_settings')
-    .select('google_maps_key, gemini_key, whatsapp_token, whatsapp_phone_id, infinitepay_handle').eq('id', 1).single();
+  const [{ data }, { data: wa }] = await Promise.all([
+    ctx.db.from('platform_settings').select('google_maps_key, gemini_key, infinitepay_handle').eq('id', 1).single(),
+    ctx.db.from('whatsapp_connections').select('status, display_phone').limit(1).maybeSingle(),
+  ]);
   const ok = (v: any) => !!(v && String(v).trim());
   return {
     google_maps: ok(data?.google_maps_key) ? 'configurado' : 'não configurado',
     gemini: ok(data?.gemini_key) || ok(Deno.env.get('GEMINI_API_KEY')) ? 'configurado' : 'não configurado',
-    whatsapp_api_oficial: ok(data?.whatsapp_token) && ok(data?.whatsapp_phone_id) ? 'configurado' : 'não configurado (migração para API oficial em andamento)',
+    whatsapp: wa?.status === 'connected' ? `conectado${wa.display_phone ? ` (${wa.display_phone})` : ''}` : 'não conectado (Configurações → WhatsApp)',
     infinitepay: ok(data?.infinitepay_handle) ? `conectado ($${data?.infinitepay_handle})` : 'não conectado',
     conectar_com_google: 'em construção',
     nota_fiscal: 'em implantação',

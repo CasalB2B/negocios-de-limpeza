@@ -133,6 +133,7 @@ export const AdminOS: React.FC = () => {
       })
         .then(r => r.json())
         .then(data => {
+          if (data.reason === 'desligado') { setCompletionToast(null); return; }
           setCompletionToast(data.sent ? { sent: true } : { sent: false, url: data.wa_fallback_url || '' });
           setTimeout(() => setCompletionToast(null), 6000);
         })

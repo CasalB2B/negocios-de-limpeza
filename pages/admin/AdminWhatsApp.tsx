@@ -1,825 +1,985 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
-import { MessageCircle, Wifi, Send, Save, RefreshCw, CheckCircle, XCircle, Smartphone, Bell, FileText, ThumbsUp, Bot, Trash2, Loader2, Settings, Plus, ChevronDown, Clock, Zap } from 'lucide-react';
-import { getStatus, getQrCode, sendMessage, buildMessage, DEFAULT_TEMPLATES, EvolutionStatus, disconnectInstance } from '../../lib/evolution';
-import { sendMessage as askNina, GeminiMessage, QUOTE_SYSTEM_PROMPT } from '../../lib/gemini';
+import {
+  MessageCircle, Wifi, Send, Save, RefreshCw, CheckCircle, XCircle, Bell, Bot, Trash2, Loader2, Settings,
+  Plus, Clock, Zap, List, FileText, Users, AlertTriangle, ChevronDown, ChevronUp, Link2,
+} from 'lucide-react';
+import { buildMessage, DEFAULT_TEMPLATES, waAdmin } from '../../lib/whatsapp';
+import { supabase } from '../../lib/supabase';
 import { useData } from '../../components/DataContext';
+import { BotConfig, BotMode, MenuItem, TONES, DEFAULT_SCRIPT, buildBotPrompt } from '../../supabase/functions/_shared/botPrompt';
+import { WA_TEMPLATES, fillTemplate } from '../../supabase/functions/_shared/waTemplates';
 
-const CHAT_HOUR_OPTIONS  = [1, 2, 4, 6, 12, 24];
+declare global {
+  interface Window { FB?: any; fbAsyncInit?: () => void }
+}
+
 const HUMAN_HOUR_OPTIONS = [12, 24, 48, 72, 96, 168];
+const CHAT_HOUR_OPTIONS = [1, 2, 4, 6, 12, 24, 26, 48, 72];
+
+const MODES: { id: BotMode; label: string; desc: string; icon: React.ReactNode }[] = [
+  { id: 'reminders', label: 'Só lembretes', desc: 'Envia lembretes, confirmações e pós-serviço. Não responde sozinho.', icon: <Bell size={18} /> },
+  { id: 'menu', label: 'Menu', desc: 'Responde com uma lista de opções (botões do WhatsApp).', icon: <List size={18} /> },
+  { id: 'ai', label: 'IA', desc: 'A assistente conversa, tira dúvidas e monta o orçamento.', icon: <Bot size={18} /> },
+];
 
 const TABS = [
-  { id: 'status',       label: 'Conexão',     icon: <Wifi size={18} />,      color: 'text-green-600',  bg: 'bg-green-100 dark:bg-green-900/30' },
-  { id: 'nina',         label: 'Treinar Nina', icon: <Bot size={18} />,       color: 'text-purple-600', bg: 'bg-purple-100 dark:bg-purple-900/30' },
-  { id: 'config',       label: 'Personalizar', icon: <Settings size={18} />,  color: 'text-blue-600',   bg: 'bg-blue-100 dark:bg-blue-900/30' },
-  { id: 'welcome',      label: 'Boas-vindas',  icon: <Bell size={18} />,      color: 'text-yellow-600', bg: 'bg-yellow-100 dark:bg-yellow-900/30' },
-  { id: 'proposal',     label: 'Proposta',     icon: <FileText size={18} />,  color: 'text-orange-600', bg: 'bg-orange-100 dark:bg-orange-900/30' },
-  { id: 'confirmation', label: 'Confirmação',  icon: <ThumbsUp size={18} />,  color: 'text-pink-600',   bg: 'bg-pink-100 dark:bg-pink-900/30' },
+  { id: 'conexao', label: 'Conexão', icon: <Wifi size={16} /> },
+  { id: 'geral', label: 'Geral', icon: <Settings size={16} /> },
+  { id: 'ia', label: 'Assistente IA', icon: <Bot size={16} /> },
+  { id: 'menu', label: 'Menu', icon: <List size={16} /> },
+  { id: 'modelos', label: 'Modelos', icon: <FileText size={16} /> },
+  { id: 'mensagens', label: 'Mensagens', icon: <MessageCircle size={16} /> },
+  { id: 'testar', label: 'Testar', icon: <Send size={16} /> },
 ];
 
 const PLACEHOLDERS: Record<string, { key: string; desc: string }[]> = {
-  welcome: [
-    { key: '[Nome]', desc: 'Nome do cliente' },
-    { key: '[Servico]', desc: 'Tipo de serviço' },
-  ],
+  welcome: [{ key: '[Nome]', desc: 'Nome do cliente' }, { key: '[Servico]', desc: 'Tipo de serviço' }],
   proposal: [
-    { key: '[Nome]', desc: 'Nome do cliente' },
-    { key: '[Servico]', desc: 'Tipo de serviço' },
-    { key: '[Endereco]', desc: 'Endereço' },
-    { key: '[Valor]', desc: 'Valor da proposta' },
-    { key: '[Data]', desc: 'Data disponível' },
+    { key: '[Nome]', desc: 'Nome do cliente' }, { key: '[Servico]', desc: 'Tipo de serviço' },
+    { key: '[Endereco]', desc: 'Endereço' }, { key: '[Valor]', desc: 'Valor da proposta' }, { key: '[Data]', desc: 'Data disponível' },
   ],
-  confirmation: [
-    { key: '[Nome]', desc: 'Nome do cliente' },
-  ],
+  confirmation: [{ key: '[Nome]', desc: 'Nome do cliente' }],
 };
+
+const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+  APPROVED: { label: 'Aprovado', cls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
+  PENDING: { label: 'Em análise', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  IN_APPEAL: { label: 'Em recurso', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  REJECTED: { label: 'Rejeitado', cls: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' },
+  PAUSED: { label: 'Pausado', cls: 'bg-gray-200 text-gray-600' },
+  DISABLED: { label: 'Desativado', cls: 'bg-gray-200 text-gray-600' },
+};
+
+const card = 'bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-4 md:p-5';
+const input = 'w-full p-2.5 border border-gray-200 dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-green-300';
+const labelCls = 'text-[11px] font-bold text-gray-500 dark:text-darkTextSecondary uppercase block mb-1';
+
+const Toggle: React.FC<{ on: boolean; onChange: (v: boolean) => void; label?: string }> = ({ on, onChange, label }) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={on}
+    aria-label={label}
+    onClick={() => onChange(!on)}
+    className={`relative w-12 h-6 rounded-full transition-colors shrink-0 overflow-hidden ${on ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+  >
+    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${on ? 'translate-x-6' : 'translate-x-0.5'}`} />
+  </button>
+);
+
+const ToggleRow: React.FC<{ title: string; desc?: string; on: boolean; onChange: (v: boolean) => void }> = ({ title, desc, on, onChange }) => (
+  <div className="flex items-start justify-between gap-3">
+    <div className="min-w-0">
+      <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">{title}</p>
+      {desc && <p className="text-xs text-gray-500 dark:text-darkTextSecondary mt-0.5">{desc}</p>}
+    </div>
+    <Toggle on={on} onChange={onChange} label={title} />
+  </div>
+);
+
+const Field: React.FC<{ label: string; value: string; onChange: (v: string) => void; placeholder?: string; rows?: number; max?: number; hint?: string }> =
+  ({ label, value, onChange, placeholder, rows, max, hint }) => (
+    <div>
+      <label className={labelCls}>{label}{max ? <span className="font-normal normal-case text-gray-400"> · {value.length}/{max}</span> : null}</label>
+      {rows
+        ? <textarea rows={rows} value={value} maxLength={max} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={`${input} resize-y`} />
+        : <input value={value} maxLength={max} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={input} />}
+      {hint && <p className="text-[11px] text-gray-400 mt-1">{hint}</p>}
+    </div>
+  );
+
+interface ConnectionInfo {
+  status: string;
+  display_phone?: string;
+  verified_name?: string;
+  coexistence?: boolean;
+  connected_at?: string;
+  last_error?: string | null;
+  contacts_sync_requested_at?: string | null;
+  history_sync_requested_at?: string | null;
+}
+
+type ChatMsg = { role: 'user' | 'model'; text: string };
+
+function loadFacebookSdk(appId: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const init = () => {
+      window.FB.init({ appId, autoLogAppEvents: true, xfbml: false, version: 'v26.0' });
+      resolve(window.FB);
+    };
+    if (window.FB) { init(); return; }
+    window.fbAsyncInit = init;
+    const s = document.createElement('script');
+    s.src = 'https://connect.facebook.net/pt_BR/sdk.js';
+    s.async = true; s.defer = true; s.crossOrigin = 'anonymous';
+    s.onerror = () => reject(new Error('Não foi possível carregar o login do Facebook.'));
+    document.body.appendChild(s);
+  });
+}
 
 export const AdminWhatsApp: React.FC = () => {
   const { platformSettings, updatePlatformSettings } = useData();
-  const [tab, setTab] = useState('status');
-  const [status, setStatus] = useState<EvolutionStatus>({ connected: false, profileName: null, profilePic: null });
-  const [qrCode, setQrCode] = useState<string | null>(null);
-  const [loadingStatus, setLoadingStatus] = useState(true);
-  const [loadingQr, setLoadingQr] = useState(false);
-  const [templates, setTemplates] = useState({ ...DEFAULT_TEMPLATES });
-  const [saved, setSaved] = useState(false);
-  const [testPhone, setTestPhone] = useState('');
-  const [testMessageText, setTestMessageText] = useState('');
-  const [testResult, setTestResult] = useState<'ok' | 'err' | null>(null);
-  const [sending, setSending] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
-  const [followUpChatHours,    setFollowUpChatHours]    = useState<number>(2);
-  const [followUpChatHours2,   setFollowUpChatHours2]   = useState<number>(26);
-  const [followUpHumanDelays,  setFollowUpHumanDelays]  = useState<number[]>([24, 48]);
-  const [followUpSaved,        setFollowUpSaved]        = useState(false);
+  const [tab, setTab] = useState('conexao');
+  const [cfg, setCfg] = useState<BotConfig | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState(0);
 
-  // Nina trainer
-  const [ninaHistory, setNinaHistory] = useState<GeminiMessage[]>([]);
-  const [ninaInput, setNinaInput] = useState('');
-  const [ninaLoading, setNinaLoading] = useState(false);
-  const [ninaPrompt, setNinaPrompt] = useState<string>(QUOTE_SYSTEM_PROMPT);
-  const [editingPrompt, setEditingPrompt] = useState(false);
-  const [promptSaved, setPromptSaved] = useState(false);
+  // Conexão
+  const [conn, setConn] = useState<ConnectionInfo>({ status: 'disconnected' });
+  const [server, setServer] = useState({ appId: false, appSecret: false, verifyToken: false });
+  const [metaIds, setMetaIds] = useState({ appId: '', configId: '' });
+  const [loadingConn, setLoadingConn] = useState(true);
+  const [connecting, setConnecting] = useState(false);
+  const [connMsg, setConnMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const signupInfo = useRef<{ event?: string; waba_id?: string; phone_number_id?: string; business_id?: string }>({});
+
+  // Modelos
+  const [tplStatus, setTplStatus] = useState<Record<string, { status: string; rejected_reason?: string | null }>>({});
+  const [tplBusy, setTplBusy] = useState(false);
+  const [tplMsg, setTplMsg] = useState('');
+
+  // Mensagens (textos livres usados no painel)
+  const [templates, setTemplates] = useState({ ...DEFAULT_TEMPLATES });
+  const [msgSaved, setMsgSaved] = useState(false);
+
+  // Follow-up
+  const [fuChat1, setFuChat1] = useState(2);
+  const [fuChat2, setFuChat2] = useState(26);
+  const [fuHuman, setFuHuman] = useState<number[]>([24, 48]);
+
+  // Teste
+  const [testPhone, setTestPhone] = useState('');
+  const [testText, setTestText] = useState('');
+  const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [sim, setSim] = useState<ChatMsg[]>([]);
+  const [simInput, setSimInput] = useState('');
+  const [simLoading, setSimLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Sync prompt from Supabase when settings load
-  useEffect(() => {
-    if (platformSettings.botPrompt) setNinaPrompt(platformSettings.botPrompt);
-  }, [platformSettings.botPrompt]);
+  const [showScript, setShowScript] = useState(false);
+  const [showPrompt, setShowPrompt] = useState(false);
 
-  // Sync follow-up config from Supabase
-  useEffect(() => {
-    if (platformSettings.followUpChatHours)   setFollowUpChatHours(platformSettings.followUpChatHours);
-    if (platformSettings.followUpChatHours2)  setFollowUpChatHours2(platformSettings.followUpChatHours2);
-    if (platformSettings.followUpHumanDelays) setFollowUpHumanDelays(platformSettings.followUpHumanDelays);
-  }, [platformSettings.followUpChatHours, platformSettings.followUpChatHours2, platformSettings.followUpHumanDelays]);
+  const connected = conn.status === 'connected';
 
-  // Sync templates from Supabase
-  useEffect(() => {
-    setTemplates({
-      welcome:      platformSettings.templateWelcome      ?? DEFAULT_TEMPLATES.welcome,
-      proposal:     platformSettings.templateProposal     ?? DEFAULT_TEMPLATES.proposal,
-      confirmation: platformSettings.templateConfirmation ?? DEFAULT_TEMPLATES.confirmation,
-    });
-  }, [platformSettings.templateWelcome, platformSettings.templateProposal, platformSettings.templateConfirmation]);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [ninaHistory, ninaLoading]);
-
-  const handleSavePrompt = async () => {
-    await updatePlatformSettings({ ...platformSettings, botPrompt: ninaPrompt });
-    setPromptSaved(true);
-    setTimeout(() => setPromptSaved(false), 2500);
-  };
-
-  const handleResetPrompt = async () => {
-    setNinaPrompt(QUOTE_SYSTEM_PROMPT);
-    await updatePlatformSettings({ ...platformSettings, botPrompt: QUOTE_SYSTEM_PROMPT });
-  };
-
-  const handleNinaSend = async () => {
-    if (!ninaInput.trim() || ninaLoading) return;
-    const userMsg: GeminiMessage = { role: 'user', parts: [{ text: ninaInput.trim() }] };
-    const newHistory = [...ninaHistory, userMsg];
-    setNinaHistory(newHistory);
-    setNinaInput('');
-    setNinaLoading(true);
-    try {
-      const reply = await askNina(newHistory, ninaPrompt);
-      const finalHistory: GeminiMessage[] = [...newHistory, { role: 'model' as const, parts: [{ text: reply }] }];
-      // Check if quote was finalized
-      const quoteMatch = reply.match(/<<QUOTE_DATA>>([\s\S]*?)<<END_QUOTE>>/);
-      if (quoteMatch) {
-        // Add a system confirmation card into the chat
-        const confirmCard = `__QUOTE_FINALIZED__${quoteMatch[1].trim()}`;
-        setNinaHistory([...finalHistory, { role: 'system' as any, parts: [{ text: confirmCard }] }]);
-      } else {
-        setNinaHistory(finalHistory);
-      }
-    } catch {
-      setNinaHistory([...newHistory, { role: 'model', parts: [{ text: '⚠️ Erro ao conectar com a Nina. Verifique a chave do Gemini.' }] }]);
-    } finally {
-      setNinaLoading(false);
-    }
-  };
-
-  const handleDisconnect = async () => {
-    if (!window.confirm('Desconectar o WhatsApp? Será necessário escanear um novo QR Code para reconectar.')) return;
-    setDisconnecting(true);
-    await disconnectInstance();
-    setDisconnecting(false);
-    setQrCode(null);
-    await fetchStatus();
-  };
-
+  // ── Carregamento ──
   const fetchStatus = async () => {
-    setLoadingStatus(true);
-    const s = await getStatus();
-    setStatus(s);
-    setLoadingStatus(false);
+    setLoadingConn(true);
+    const r = await waAdmin('status');
+    if (r?.ok) { setConn(r.connection); setServer(r.server); }
+    setLoadingConn(false);
   };
 
-  const fetchQr = async () => {
-    setLoadingQr(true);
-    setQrCode(null);
-    const qr = await getQrCode();
-    setQrCode(qr);
-    setLoadingQr(false);
+  const fetchTemplates = async () => {
+    const { data } = await supabase.from('whatsapp_templates').select('name, status, rejected_reason').eq('company_id', 1);
+    const map: Record<string, { status: string; rejected_reason?: string | null }> = {};
+    for (const t of data ?? []) map[t.name] = { status: t.status, rejected_reason: t.rejected_reason };
+    setTplStatus(map);
   };
 
   useEffect(() => {
     fetchStatus();
+    fetchTemplates();
+    supabase.from('whatsapp_bot_config').select('*').eq('company_id', 1).maybeSingle().then(({ data }) => {
+      if (data) setCfg({ ...data, menu_items: Array.isArray(data.menu_items) ? data.menu_items : [] } as BotConfig);
+    });
+    supabase.from('platform_settings').select('meta_app_id, meta_es_config_id').eq('id', 1).single().then(({ data }) => {
+      setMetaIds({ appId: data?.meta_app_id || '', configId: data?.meta_es_config_id || '' });
+    });
   }, []);
 
   useEffect(() => {
-    if (!status.connected) {
-      const interval = setInterval(fetchStatus, 8000);
-      return () => clearInterval(interval);
-    }
-  }, [status.connected]);
-
-  const handleSave = async () => {
-    await updatePlatformSettings({
-      ...platformSettings,
-      templateWelcome:      templates.welcome,
-      templateProposal:     templates.proposal,
-      templateConfirmation: templates.confirmation,
+    setTemplates({
+      welcome: platformSettings.templateWelcome ?? DEFAULT_TEMPLATES.welcome,
+      proposal: platformSettings.templateProposal ?? DEFAULT_TEMPLATES.proposal,
+      confirmation: platformSettings.templateConfirmation ?? DEFAULT_TEMPLATES.confirmation,
     });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setFuChat1(platformSettings.followUpChatHours ?? 2);
+    setFuChat2(platformSettings.followUpChatHours2 ?? 26);
+    setFuHuman(platformSettings.followUpHumanDelays ?? [24, 48]);
+  }, [platformSettings.templateWelcome, platformSettings.templateProposal, platformSettings.templateConfirmation,
+      platformSettings.followUpChatHours, platformSettings.followUpChatHours2, platformSettings.followUpHumanDelays]);
+
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [sim, simLoading]);
+
+  // Recebe os IDs do número escolhido no Cadastro incorporado (janela da Meta).
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (!event.origin.endsWith('facebook.com')) return;
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        if (data?.type !== 'WA_EMBEDDED_SIGNUP') return;
+        if (String(data.event).startsWith('FINISH')) signupInfo.current = { event: data.event, ...data.data };
+        else if (data.event === 'CANCEL') setConnMsg({ ok: false, text: `Conexão cancelada na etapa "${data.data?.current_step || '?'}".` });
+        else if (data.event === 'ERROR') setConnMsg({ ok: false, text: `A Meta retornou um erro: ${data.data?.error_message || 'desconhecido'}` });
+      } catch { /* mensagens que não são do cadastro */ }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
+
+  // ── Configuração do bot ──
+  const patch = (p: Partial<BotConfig>) => { setCfg(c => (c ? { ...c, ...p } : c)); setDirty(true); };
+
+  const saveConfig = async (override?: Partial<BotConfig>) => {
+    if (!cfg) return;
+    setSaving(true);
+    const { company_id, ...rest } = { ...cfg, ...override } as any;
+    await supabase.from('whatsapp_bot_config').update({ ...rest, updated_at: new Date().toISOString() }).eq('company_id', company_id ?? 1);
+    if (tab === 'ia') {
+      await updatePlatformSettings({ ...platformSettings, followUpChatHours: fuChat1, followUpChatHours2: fuChat2, followUpHumanDelays: fuHuman });
+    }
+    setSaving(false);
+    setDirty(false);
+    setSavedAt(Date.now());
   };
 
-  const handleSaveFollowUp = async () => {
-    await updatePlatformSettings({
-      ...platformSettings,
-      followUpChatHours: followUpChatHours,
-      followUpChatHours2: followUpChatHours2,
-      followUpHumanDelays: followUpHumanDelays,
-    });
-    setFollowUpSaved(true);
-    setTimeout(() => setFollowUpSaved(false), 2500);
+  const setMode = (mode: BotMode) => {
+    if (!cfg) return;
+    setCfg({ ...cfg, mode });
+    saveConfig({ mode });
+  };
+
+  const promptPreview = useMemo(() => (cfg ? buildBotPrompt(cfg, cfg.script, '+55 27 99999-0000') : ''), [cfg]);
+
+  // ── Conectar WhatsApp (Cadastro incorporado) ──
+  const handleConnect = async () => {
+    setConnMsg(null);
+    if (!metaIds.appId || !metaIds.configId) {
+      setConnMsg({ ok: false, text: 'Falta o ID do app e o ID da configuração em Configurações → Integrações.' });
+      return;
+    }
+    setConnecting(true);
+    signupInfo.current = {};
+    try {
+      const FB = await loadFacebookSdk(metaIds.appId);
+      FB.login((response: any) => {
+        const code = response?.authResponse?.code;
+        if (!code) { setConnecting(false); return; }
+        // A janela da Meta manda os IDs por mensagem; espera até 5s por eles (o código vale 30s).
+        const started = Date.now();
+        const finish = async () => {
+          const info = signupInfo.current;
+          if (!info.phone_number_id && Date.now() - started < 5000) { setTimeout(finish, 300); return; }
+          const r = await waAdmin('exchange_code', {
+            code, waba_id: info.waba_id, phone_number_id: info.phone_number_id, business_id: info.business_id,
+            coexistence: info.event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
+          });
+          setConnMsg(r?.ok
+            ? { ok: true, text: `WhatsApp conectado: ${r.display_phone || ''} ${r.verified_name ? `(${r.verified_name})` : ''}${r.registerError ? ` — atenção: ${r.registerError}` : ''}` }
+            : { ok: false, text: r?.error || 'Não foi possível concluir a conexão.' });
+          setConnecting(false);
+          fetchStatus();
+          fetchTemplates();
+        };
+        finish();
+      }, {
+        config_id: metaIds.configId,
+        response_type: 'code',
+        override_default_response_type: true,
+        extras: { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3', version: 'v4' },
+      });
+    } catch (e: any) {
+      setConnMsg({ ok: false, text: e?.message || 'Erro ao abrir o login do Facebook.' });
+      setConnecting(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!window.confirm('Desconectar o WhatsApp da plataforma? Os lembretes e o bot param até você conectar de novo. O WhatsApp do celular continua funcionando.')) return;
+    await waAdmin('disconnect');
+    fetchStatus();
+  };
+
+  const handleSync = async () => {
+    const r = await waAdmin('sync');
+    setConnMsg(r?.ok ? { ok: true, text: 'Sincronização pedida. Deixe o WhatsApp Business aberto no celular por alguns minutos.' } : { ok: false, text: r?.error || 'Falhou' });
+    fetchStatus();
   };
 
   const handleTest = async () => {
     if (!testPhone) return;
-    setSending(true);
+    setSendingTest(true);
     setTestResult(null);
-    const msg = testMessageText.trim()
-      ? testMessageText.trim()
-      : buildMessage(templates[tab === 'status' ? 'welcome' : tab], {
-          Nome: 'Cliente Teste',
-          Servico: 'Limpeza Residencial',
-          Endereco: 'Rua Exemplo, 123',
-          Valor: '280,00',
-          Data: 'Segunda-feira às 09h',
-        });
-    const ok = await sendMessage(testPhone, msg);
-    setTestResult(ok ? 'ok' : 'err');
-    setSending(false);
+    const r = await waAdmin('send_test', { phone: testPhone, text: testText.trim() || undefined });
+    setTestResult(r?.ok
+      ? { ok: true, text: r.viaTemplate ? 'Enviado pelo modelo "aviso_equipe" (esse número não falou com você nas últimas 24h).' : 'Mensagem enviada!' }
+      : { ok: false, text: r?.error || 'Falha ao enviar.' });
+    setSendingTest(false);
   };
+
+  // ── Modelos ──
+  const handleCreateTemplates = async () => {
+    setTplBusy(true); setTplMsg('');
+    const r = await waAdmin('templates_create');
+    if (r?.ok) {
+      const errors = Object.entries(r.results || {}).filter(([, v]) => !['já existe', 'PENDING', 'APPROVED'].includes(String(v)));
+      setTplMsg(errors.length ? `Alguns modelos deram erro: ${errors.map(([k, v]) => `${k}: ${v}`).join(' · ')}` : 'Modelos enviados. A Meta costuma responder em minutos ou até 24h.');
+    } else setTplMsg(r?.error || 'Não foi possível enviar.');
+    await fetchTemplates();
+    setTplBusy(false);
+  };
+
+  const handleSyncTemplates = async () => {
+    setTplBusy(true);
+    await waAdmin('templates_sync');
+    await fetchTemplates();
+    setTplBusy(false);
+  };
+
+  // ── Simulador ──
+  const handleSimSend = async () => {
+    if (!simInput.trim() || simLoading || !cfg) return;
+    const next: ChatMsg[] = [...sim, { role: 'user', text: simInput.trim() }];
+    setSim(next); setSimInput(''); setSimLoading(true);
+    const r = await waAdmin('simulate', { history: next, config: cfg });
+    setSim([...next, { role: 'model', text: r?.ok ? r.reply : `⚠️ ${r?.error || 'Erro ao falar com a assistente.'}` }]);
+    setSimLoading(false);
+  };
+
+  const handleSaveMessages = async () => {
+    await updatePlatformSettings({ ...platformSettings, templateWelcome: templates.welcome, templateProposal: templates.proposal, templateConfirmation: templates.confirmation });
+    setMsgSaved(true);
+    setTimeout(() => setMsgSaved(false), 2500);
+  };
+
+  // ── Menu ──
+  const setItem = (i: number, p: Partial<MenuItem>) => {
+    if (!cfg) return;
+    const items = cfg.menu_items.map((it, idx) => (idx === i ? { ...it, ...p } : it));
+    patch({ menu_items: items });
+  };
+
+  const showSaveBar = ['geral', 'ia', 'menu'].includes(tab);
+
+  if (!cfg) {
+    return (
+      <Layout role={UserRole.ADMIN}>
+        <div className="p-6 flex items-center gap-2 text-gray-500"><Loader2 className="animate-spin" size={18} /> Carregando...</div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout role={UserRole.ADMIN}>
-      <div className="p-4 md:p-6 max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center">
-            <MessageCircle size={24} className="text-green-600" />
+      <div className={`p-4 md:p-6 max-w-5xl mx-auto ${showSaveBar ? 'pb-28 md:pb-28' : ''}`}>
+        {/* Cabeçalho */}
+        <div className="flex items-center justify-between gap-3 mb-5">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 bg-green-100 dark:bg-green-900/30 rounded-2xl flex items-center justify-center shrink-0">
+              <MessageCircle size={22} className="text-green-600" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold text-darkText dark:text-darkTextPrimary">Automação WhatsApp</h1>
+              <p className="text-xs text-lightText dark:text-darkTextSecondary truncate">API oficial da Meta · seu WhatsApp Business continua no celular</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-darkText dark:text-darkTextPrimary">Automação WhatsApp</h1>
-            <p className="text-sm text-lightText dark:text-darkTextSecondary">Configure as mensagens automáticas para clientes</p>
-          </div>
+          <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${connected ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400'}`}>
+            {loadingConn ? '...' : connected ? '● Conectado' : '● Desconectado'}
+          </span>
         </div>
 
-        {/* Tabs */}
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-6">
+        {/* Seletor de modo */}
+        <div className="mb-5">
+          <p className={labelCls}>Como o WhatsApp responde</p>
+          <div className="grid grid-cols-3 gap-2">
+            {MODES.map(m => (
+              <button
+                key={m.id}
+                onClick={() => setMode(m.id)}
+                className={`text-left p-3 rounded-2xl border-2 transition-all ${cfg.mode === m.id
+                  ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                  : 'border-gray-200 dark:border-darkBorder bg-white dark:bg-darkSurface hover:border-green-300'}`}
+              >
+                <div className={`flex items-center gap-1.5 font-bold text-sm ${cfg.mode === m.id ? 'text-green-700 dark:text-green-400' : 'text-darkText dark:text-darkTextPrimary'}`}>
+                  {m.icon}<span>{m.label}</span>
+                </div>
+                <p className="hidden sm:block text-[11px] text-gray-500 dark:text-darkTextSecondary mt-1 leading-snug">{m.desc}</p>
+              </button>
+            ))}
+          </div>
+          <p className="sm:hidden text-[11px] text-gray-500 mt-1.5">{MODES.find(m => m.id === cfg.mode)?.desc}</p>
+        </div>
+
+        {/* Abas */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 mb-5 -mx-4 px-4 md:mx-0 md:px-0" role="tablist">
           {TABS.map(t => (
             <button
               key={t.id}
+              role="tab"
+              aria-selected={tab === t.id}
               onClick={() => setTab(t.id)}
-              className={`flex flex-col items-center gap-2 py-3 px-2 rounded-2xl font-bold transition-all ${
-                tab === t.id
-                  ? 'bg-green-600 text-white shadow-lg shadow-green-200 dark:shadow-green-900/40 scale-[1.03]'
-                  : 'bg-white dark:bg-darkSurface text-gray-500 dark:text-darkTextSecondary border border-gray-200 dark:border-darkBorder hover:border-green-300 hover:text-green-600'
-              }`}
+              className={`flex items-center gap-1.5 whitespace-nowrap px-3.5 py-2 rounded-xl text-sm font-bold transition-colors ${tab === t.id
+                ? 'bg-green-600 text-white'
+                : 'bg-white dark:bg-darkSurface text-gray-600 dark:text-darkTextSecondary border border-gray-200 dark:border-darkBorder hover:text-green-600'}`}
             >
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
-                tab === t.id ? 'bg-white/20' : t.bg + ' ' + t.color
-              }`}>
-                {t.icon}
-              </div>
-              <span className="text-[11px] leading-tight text-center">{t.label}</span>
+              {t.icon}{t.label}
             </button>
           ))}
         </div>
 
-        {/* Tab: Conexão */}
-        {tab === 'status' && (
+        {/* ── Conexão ── */}
+        {tab === 'conexao' && (
           <div className="space-y-4">
-            {/* Nina Toggle */}
-            <div className={`rounded-2xl border-2 p-4 flex items-center justify-between ${platformSettings.ninaEnabled !== false ? 'border-green-200 bg-green-50 dark:bg-green-900/20' : 'border-gray-200 bg-gray-50 dark:bg-darkBorder'}`}>
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${platformSettings.ninaEnabled !== false ? 'bg-green-500' : 'bg-gray-300'}`}>
-                  <Bot size={20} className="text-white" />
+            <div className={`rounded-2xl p-4 md:p-5 border-2 ${connected ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800' : 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0">
+                  {connected ? <CheckCircle size={26} className="text-green-600 shrink-0" /> : <XCircle size={26} className="text-red-500 shrink-0" />}
+                  <div className="min-w-0">
+                    <p className="font-bold text-darkText dark:text-darkTextPrimary">{connected ? 'WhatsApp conectado' : 'WhatsApp não conectado'}</p>
+                    {connected ? (
+                      <div className="text-sm text-gray-600 dark:text-darkTextSecondary space-y-0.5 mt-0.5">
+                        <p className="break-words">{conn.display_phone}{conn.verified_name ? ` · ${conn.verified_name}` : ''}</p>
+                        <p className="text-xs">{conn.coexistence ? 'Coexistência: o app WhatsApp Business do celular continua funcionando.' : 'Número só na API (sem app no celular).'}</p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-600 dark:text-darkTextSecondary mt-0.5">Conecte o número do WhatsApp Business da empresa para enviar lembretes e ligar o atendimento automático.</p>
+                    )}
+                    {conn.last_error && <p className="text-xs text-red-600 mt-1 flex items-start gap-1"><AlertTriangle size={13} className="shrink-0 mt-0.5" />{conn.last_error}</p>}
+                  </div>
                 </div>
-                <div>
-                  <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">
-                    Nina {platformSettings.ninaEnabled !== false ? 'Ativa' : 'Pausada'}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {platformSettings.ninaEnabled !== false ? 'Respondendo automaticamente' : 'Bot desativado — atendimento manual'}
-                  </p>
-                </div>
+                <button onClick={fetchStatus} className="p-2 rounded-xl hover:bg-white/60 dark:hover:bg-darkBg shrink-0" title="Atualizar" aria-label="Atualizar status">
+                  <RefreshCw size={18} className={`text-gray-500 ${loadingConn ? 'animate-spin' : ''}`} />
+                </button>
               </div>
-              <button
-                onClick={() => updatePlatformSettings({ ...platformSettings, ninaEnabled: platformSettings.ninaEnabled === false })}
-                className={`relative w-12 h-6 rounded-full transition-colors shrink-0 overflow-hidden ${platformSettings.ninaEnabled !== false ? 'bg-green-500' : 'bg-gray-300'}`}
-              >
-                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${platformSettings.ninaEnabled !== false ? 'translate-x-6' : 'translate-x-0.5'}`} />
-              </button>
-            </div>
 
-            {/* Status Card */}
-            <div className={`rounded-2xl p-5 border-2 ${status.connected ? 'bg-green-50 border-green-200 dark:bg-green-900/20' : 'bg-red-50 border-red-200 dark:bg-red-900/20'}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {status.connected
-                    ? <CheckCircle size={28} className="text-green-600" />
-                    : <XCircle size={28} className="text-red-500" />}
-                  <div>
-                    <p className="font-bold text-darkText dark:text-darkTextPrimary">
-                      {status.connected ? 'WhatsApp Conectado' : 'WhatsApp Desconectado'}
-                    </p>
-                    <p className="text-sm text-lightText dark:text-darkTextSecondary">
-                      {status.connected
-                        ? (status.profileName ? `Conectado como: ${status.profileName}` : 'Sessão ativa')
-                        : 'Escaneie o QR Code para conectar'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {status.connected && (
-                    <button
-                      onClick={handleDisconnect}
-                      disabled={disconnecting}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 disabled:opacity-50 transition-colors"
-                      title="Desconectar WhatsApp"
-                    >
-                      {disconnecting
-                        ? <RefreshCw size={13} className="animate-spin" />
-                        : <XCircle size={13} />}
-                      {disconnecting ? 'Desconectando...' : 'Desconectar'}
-                    </button>
-                  )}
-                  <button onClick={fetchStatus} className="p-2 rounded-xl hover:bg-white/50 transition-colors" title="Atualizar">
-                    <RefreshCw size={18} className={`text-gray-500 ${loadingStatus ? 'animate-spin' : ''}`} />
+              <div className="flex flex-wrap gap-2 mt-4">
+                <button
+                  onClick={handleConnect}
+                  disabled={connecting}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1877F2] text-white text-sm font-bold hover:opacity-90 disabled:opacity-60"
+                >
+                  {connecting ? <Loader2 size={16} className="animate-spin" /> : <Link2 size={16} />}
+                  {connected ? 'Conectar outro número' : 'Conectar WhatsApp'}
+                </button>
+                {connected && conn.coexistence && (!conn.contacts_sync_requested_at || !conn.history_sync_requested_at) && (
+                  <button onClick={handleSync} className="px-4 py-2.5 rounded-xl text-sm font-bold border border-gray-300 dark:border-darkBorder bg-white dark:bg-darkSurface text-darkText dark:text-darkTextPrimary">
+                    Sincronizar contatos e conversas
                   </button>
-                </div>
-              </div>
-            </div>
-
-            {/* QR Code */}
-            {!status.connected && (
-              <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Smartphone size={18} className="text-gray-500" />
-                    <p className="font-bold text-darkText dark:text-darkTextPrimary">Conectar via QR Code</p>
-                  </div>
-                  <button
-                    onClick={fetchQr}
-                    disabled={loadingQr}
-                    className="flex items-center gap-2 text-sm font-bold text-green-600 hover:text-green-700 disabled:opacity-50"
-                  >
-                    <RefreshCw size={14} className={loadingQr ? 'animate-spin' : ''} />
-                    {qrCode ? 'Atualizar' : 'Gerar QR Code'}
-                  </button>
-                </div>
-
-                {qrCode ? (
-                  <div className="flex flex-col items-center gap-3">
-                    <img src={qrCode} alt="QR Code WhatsApp" className="w-56 h-56 rounded-xl border border-gray-200" />
-                    <p className="text-xs text-center text-lightText dark:text-darkTextSecondary">
-                      Abra o WhatsApp → 3 pontinhos → <strong>Dispositivos conectados</strong> → Escaneie
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-3 py-6 text-gray-400">
-                    <Smartphone size={40} />
-                    <p className="text-sm">Clique em "Gerar QR Code" para conectar</p>
-                  </div>
                 )}
+                {connected && (
+                  <button onClick={handleDisconnect} className="px-4 py-2.5 rounded-xl text-sm font-bold text-red-600 bg-white dark:bg-darkSurface border border-red-200 hover:bg-red-50">
+                    Desconectar
+                  </button>
+                )}
+              </div>
+              {connMsg && <p className={`text-sm font-bold mt-3 ${connMsg.ok ? 'text-green-700' : 'text-red-600'}`}>{connMsg.ok ? '✅ ' : '❌ '}{connMsg.text}</p>}
+            </div>
+
+            {!connected && (
+              <div className={card}>
+                <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary mb-2">Como funciona a conexão</p>
+                <ol className="text-sm text-gray-600 dark:text-darkTextSecondary space-y-1.5 list-decimal pl-5">
+                  <li>Clique em <strong>Conectar WhatsApp</strong> e entre com o Facebook de quem administra a empresa.</li>
+                  <li>Escolha a opção de <strong>conectar o app WhatsApp Business que você já usa</strong>.</li>
+                  <li>No celular, abra o WhatsApp Business e leia o QR Code que aparece na tela.</li>
+                  <li>Aceite compartilhar as conversas. Deixe o app aberto por alguns minutos enquanto sincroniza.</li>
+                </ol>
+                <p className="text-xs text-gray-500 mt-3">Precisa ser o app <strong>WhatsApp Business</strong> (não o pessoal), versão 2.24.17 ou mais nova. Depois de conectar, listas de transmissão e mensagens temporárias ficam desligadas e grupos não passam pela plataforma. Abra o app no celular pelo menos a cada 14 dias para a conexão não cair.</p>
               </div>
             )}
 
-            {/* Envio de teste */}
-            {status.connected && (
-              <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-5">
-                <p className="font-bold text-darkText dark:text-darkTextPrimary mb-3 flex items-center gap-2">
-                  <Send size={16} className="text-green-600" /> Enviar mensagem de teste
-                </p>
+            <div className={card}>
+              <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary mb-3">Checklist da configuração</p>
+              <ul className="space-y-2 text-sm">
+                {[
+                  { ok: !!metaIds.appId, label: 'ID do app da Meta (Configurações → Integrações)' },
+                  { ok: !!metaIds.configId, label: 'ID da configuração do Cadastro incorporado (Configurações → Integrações)' },
+                  { ok: server.appSecret, label: 'Segredo do app nos Secrets do Supabase (META_APP_SECRET)' },
+                  { ok: server.verifyToken, label: 'Token do webhook nos Secrets do Supabase (WA_WEBHOOK_VERIFY_TOKEN)' },
+                  { ok: connected, label: 'Número conectado' },
+                  { ok: tplStatus.lembrete_servico?.status === 'APPROVED', label: 'Modelo de lembrete aprovado pela Meta (aba Modelos)' },
+                ].map(i => (
+                  <li key={i.label} className="flex items-start gap-2">
+                    {i.ok ? <CheckCircle size={16} className="text-green-600 shrink-0 mt-0.5" /> : <XCircle size={16} className="text-gray-300 shrink-0 mt-0.5" />}
+                    <span className={i.ok ? 'text-darkText dark:text-darkTextPrimary' : 'text-gray-500'}>{i.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {connected && (
+              <div className={card}>
+                <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary mb-3 flex items-center gap-2"><Send size={15} className="text-green-600" /> Enviar mensagem de teste</p>
                 <div className="space-y-2">
-                  <input
-                    type="tel"
-                    placeholder="27 99999-0000"
-                    value={testPhone}
-                    onChange={e => setTestPhone(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-gray-200 dark:border-darkBorder bg-gray-50 dark:bg-darkBg text-sm text-darkText dark:text-darkTextPrimary"
-                  />
-                  <textarea
-                    rows={3}
-                    placeholder="Digite a mensagem de teste... (deixe em branco para usar o template de boas-vindas)"
-                    value={testMessageText}
-                    onChange={e => setTestMessageText(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-gray-200 dark:border-darkBorder bg-gray-50 dark:bg-darkBg text-sm text-darkText dark:text-darkTextPrimary resize-none"
-                  />
-                  <button
-                    onClick={handleTest}
-                    disabled={sending || !testPhone}
-                    className="w-full px-5 py-3 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 disabled:opacity-50 transition-colors"
-                  >
-                    {sending ? '...' : 'Enviar'}
+                  <input type="tel" placeholder="27 99999-0000" value={testPhone} onChange={e => setTestPhone(e.target.value)} className={input} />
+                  <textarea rows={2} placeholder="Mensagem (opcional)" value={testText} onChange={e => setTestText(e.target.value)} className={`${input} resize-none`} />
+                  <button onClick={handleTest} disabled={sendingTest || !testPhone} className="w-full py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 disabled:opacity-50">
+                    {sendingTest ? 'Enviando...' : 'Enviar'}
                   </button>
                 </div>
-                {testResult === 'ok' && <p className="text-xs text-green-600 mt-2 font-bold">✅ Mensagem enviada com sucesso!</p>}
-                {testResult === 'err' && <p className="text-xs text-red-500 mt-2 font-bold">❌ Falha ao enviar. Verifique a conexão.</p>}
+                <p className="text-[11px] text-gray-400 mt-2">Pela regra da Meta, texto livre só chega a quem te mandou mensagem nas últimas 24h. Para os outros números vai o modelo "aviso_equipe".</p>
+                {testResult && <p className={`text-xs font-bold mt-2 ${testResult.ok ? 'text-green-600' : 'text-red-500'}`}>{testResult.ok ? '✅ ' : '❌ '}{testResult.text}</p>}
               </div>
             )}
           </div>
         )}
 
-        {/* Tab: Treinar Nina */}
-        {tab === 'nina' && (
-          <div className="space-y-4">
-            {/* Prompt editor toggle */}
-            <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-bold text-gray-700 dark:text-darkTextPrimary">Prompt da Nina</p>
-                <button onClick={() => setEditingPrompt(e => !e)} className="text-xs text-primary font-bold hover:underline">
-                  {editingPrompt ? 'Fechar' : 'Editar prompt'}
-                </button>
+        {/* ── Geral ── */}
+        {tab === 'geral' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+            <div className="space-y-4">
+              <div className={card}>
+                <ToggleRow
+                  title={cfg.enabled ? 'Atendimento automático ligado' : 'Atendimento automático pausado'}
+                  desc={cfg.enabled ? 'O WhatsApp responde sozinho conforme o modo escolhido.' : 'Ninguém recebe resposta automática; lembretes continuam saindo.'}
+                  on={cfg.enabled} onChange={v => patch({ enabled: v })}
+                />
               </div>
-              {editingPrompt && (
-                <>
-                  <textarea
-                    rows={28}
-                    value={ninaPrompt}
-                    onChange={e => setNinaPrompt(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-gray-200 dark:border-darkBorder bg-gray-50 dark:bg-darkBg text-xs font-mono resize-y focus:outline-none focus:ring-2 focus:ring-primary"
+
+              <div className={card}>
+                <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary mb-1 flex items-center gap-2"><Bell size={15} className="text-green-600" /> Lembretes e avisos ao cliente</p>
+                <p className="text-xs text-gray-500 dark:text-darkTextSecondary mb-4">Escolha quais mensagens saem sozinhas. Cada uma liga e desliga separado.</p>
+                <div className="space-y-4">
+                  <ToggleRow
+                    title="Confirmação de agendamento"
+                    desc="Quando um serviço é agendado no painel."
+                    on={cfg.send_booking_confirmation !== false} onChange={v => patch({ send_booking_confirmation: v })}
                   />
-                  <div className="flex gap-2 mt-2">
-                    <button
-                      onClick={handleSavePrompt}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition-colors ${promptSaved ? 'bg-green-100 text-green-700' : 'bg-primary text-white hover:opacity-90'}`}
-                    >
-                      {promptSaved ? '✅ Prompt salvo!' : '💾 Salvar prompt'}
-                    </button>
-                    <button
-                      onClick={() => navigator.clipboard?.writeText(ninaPrompt)}
-                      className="px-4 py-2 rounded-xl text-xs font-bold border border-gray-200 text-gray-600 hover:bg-gray-50"
-                    >
-                      Copiar
-                    </button>
-                    <button
-                      onClick={handleResetPrompt}
-                      className="px-3 py-2 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50"
-                      title="Restaurar prompt original"
-                    >
-                      Reset
+                  <ToggleRow
+                    title="Lembrete 1 dia antes"
+                    desc="Todo dia às 9h, para os serviços do dia seguinte, com os botões Confirmo / Preciso reagendar."
+                    on={cfg.send_reminder_d1 !== false} onChange={v => patch({ send_reminder_d1: v })}
+                  />
+                  <ToggleRow
+                    title="Pós-serviço e avaliação"
+                    desc="Quando o serviço é marcado como concluído, pede uma nota de 1 a 5."
+                    on={cfg.send_post_service !== false} onChange={v => patch({ send_post_service: v })}
+                  />
+                </div>
+              </div>
+
+              <div className={card}>
+                <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary mb-3">Dados do negócio</p>
+                <p className="text-xs text-gray-500 -mt-2 mb-3">A assistente usa estas informações quando o cliente pergunta.</p>
+                <div className="space-y-3">
+                  <Field label="Nome do negócio" value={cfg.business_name || ''} onChange={v => patch({ business_name: v })} />
+                  <Field label="Endereço" value={cfg.business_address || ''} onChange={v => patch({ business_address: v })} placeholder="Rua, número, bairro, cidade" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Field label="Site" value={cfg.business_website || ''} onChange={v => patch({ business_website: v })} placeholder="negociosdelimpeza.com.br" />
+                    <Field label="Instagram" value={cfg.business_instagram || ''} onChange={v => patch({ business_instagram: v })} placeholder="@negociosdelimpeza" />
+                    <Field label="Telefone" value={cfg.business_phone || ''} onChange={v => patch({ business_phone: v })} />
+                    <Field label="E-mail" value={cfg.business_email || ''} onChange={v => patch({ business_email: v })} />
+                  </div>
+                  <Field label="Formas de pagamento" value={cfg.payment_methods || ''} onChange={v => patch({ payment_methods: v })} placeholder="Pix, cartão..." />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className={card}>
+                <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary mb-1 flex items-center gap-2"><Users size={15} className="text-blue-500" /> Atendimento humano</p>
+                <p className="text-xs text-gray-500 mb-3">Quando alguém da equipe responde pelo celular, o automático fica em silêncio nessa conversa.</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className={labelCls}>Reativar o automático após</label>
+                    <select value={cfg.human_reactivate_hours} onChange={e => patch({ human_reactivate_hours: Number(e.target.value) })} className={input}>
+                      {[2, 4, 6, 8, 12, 24, 48, 72].map(h => <option key={h} value={h}>{h < 24 ? `${h} horas` : `${h / 24} dia${h > 24 ? 's' : ''}`} sem mensagens</option>)}
+                    </select>
+                    <p className="text-[11px] text-gray-400 mt-1">Para reativar na hora, mande <strong>#ia</strong> na conversa pelo celular.</p>
+                  </div>
+                  <ToggleRow title="Avisar quando entrar na fila humana" desc="Manda um WhatsApp de aviso quando um cliente pede atendente ou chega orçamento novo."
+                    on={cfg.notify_human_queue} onChange={v => patch({ notify_human_queue: v })} />
+                  {cfg.notify_human_queue && (
+                    <Field label="Celular que recebe os avisos" value={cfg.notify_phone || ''} onChange={v => patch({ notify_phone: v })}
+                      placeholder="27 99999-0000" hint="Use um número diferente do WhatsApp conectado. Em branco: telefone de contato da empresa." />
+                  )}
+                </div>
+              </div>
+
+              <div className={card}>
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-start gap-2">
+                    <Clock size={15} className="text-blue-500 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Horário de atendimento</p>
+                      <p className="text-xs text-gray-500">Fora do horário, manda a mensagem de ausência (1 vez por dia).</p>
+                    </div>
+                  </div>
+                  <Toggle on={!!platformSettings.workingHoursEnabled} label="Horário de atendimento"
+                    onChange={v => updatePlatformSettings({ ...platformSettings, workingHoursEnabled: v })} />
+                </div>
+                {platformSettings.workingHoursEnabled && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={labelCls}>Abertura</label>
+                        <input type="time" value={platformSettings.workingHoursStart || '08:00'} className={input}
+                          onChange={e => updatePlatformSettings({ ...platformSettings, workingHoursStart: e.target.value })} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Fechamento</label>
+                        <input type="time" value={platformSettings.workingHoursEnd || '18:00'} className={input}
+                          onChange={e => updatePlatformSettings({ ...platformSettings, workingHoursEnd: e.target.value })} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Mensagem fora do horário</label>
+                      <textarea rows={2} value={platformSettings.awayMessage || ''} className={`${input} resize-none`}
+                        onChange={e => updatePlatformSettings({ ...platformSettings, awayMessage: e.target.value })} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Assistente IA ── */}
+        {tab === 'ia' && (
+          <div className="space-y-4">
+            {cfg.mode !== 'ai' && (
+              <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-300">
+                O modo atual é <strong>{MODES.find(m => m.id === cfg.mode)?.label}</strong>. Estas opções valem quando o modo <strong>IA</strong> estiver ligado
+                {cfg.mode === 'menu' ? ' (ou quando o cliente escolher no menu uma opção que chama a IA)' : ''}.
+              </div>
+            )}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+              <div className="space-y-4">
+                <div className={card}>
+                  <div className="space-y-3">
+                    <Field label="Nome da assistente" value={cfg.assistant_name || ''} onChange={v => patch({ assistant_name: v })} max={30} />
+                    <div>
+                      <label className={labelCls}>Linguagem / tom</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {TONES.map(t => (
+                          <button key={t.value} onClick={() => patch({ tone: t.value })}
+                            className={`p-2.5 rounded-xl border-2 text-left ${cfg.tone === t.value ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-200 dark:border-darkBorder'}`}>
+                            <p className="font-bold text-xs text-darkText dark:text-darkTextPrimary">{t.label}</p>
+                            <p className="text-[10px] text-gray-500 mt-0.5">{t.desc}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <ToggleRow title="Respostas por áudio" desc="Quando o cliente manda áudio, a assistente responde com áudio também."
+                      on={cfg.audio_replies} onChange={v => patch({ audio_replies: v })} />
+                  </div>
+                </div>
+
+                <div className={card}>
+                  <div className="space-y-3">
+                    <Field label="Informações adicionais" rows={4} value={cfg.extra_info || ''} onChange={v => patch({ extra_info: v })}
+                      placeholder="Ex.: atendemos Guarapari, Vila Velha e Vitória. Trazemos todos os produtos. Diária de 8h." />
+                    <Field label="Regras personalizadas" rows={4} value={cfg.custom_rules || ''} onChange={v => patch({ custom_rules: v })}
+                      placeholder="Ex.: nunca passar preço fechado sem visita; não atendemos aos domingos." />
+                  </div>
+                </div>
+
+                <div className={card}>
+                  <button onClick={() => setShowScript(s => !s)} className="w-full flex items-center justify-between text-left">
+                    <div>
+                      <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Roteiro de atendimento (avançado)</p>
+                      <p className="text-xs text-gray-500">O que perguntar para montar o orçamento.</p>
+                    </div>
+                    {showScript ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
+                  </button>
+                  {showScript && (
+                    <div className="mt-3 space-y-2">
+                      <textarea rows={16} value={cfg.script ?? DEFAULT_SCRIPT} onChange={e => patch({ script: e.target.value })} className={`${input} font-mono text-xs resize-y`} />
+                      <button onClick={() => patch({ script: null })} className="text-xs font-bold text-red-500 hover:underline">Voltar ao roteiro padrão</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className={card}>
+                  <div className="space-y-3">
+                    <Field label="Mensagem após agendamento" rows={2} value={cfg.after_booking_message || ''} onChange={v => patch({ after_booking_message: v })}
+                      hint="Enviada quando a assistente termina de coletar os dados do orçamento." />
+                    <Field label="Mensagem de transferência para humano" rows={2} value={cfg.handoff_message || ''} onChange={v => patch({ handoff_message: v })} />
+                    <Field label="Mensagem de feedback (pós-serviço)" rows={2} value={cfg.feedback_message || ''} onChange={v => patch({ feedback_message: v })}
+                      hint="Use [Nome] para o primeiro nome. Se passou de 24h desde a última conversa, vai o modelo aprovado." />
+                    <ToggleRow title="Pedir indicações" desc="Se a nota for 4 ou 5, pede indicação de amigos." on={cfg.ask_referrals} onChange={v => patch({ ask_referrals: v })} />
+                    {cfg.ask_referrals && <Field label="Mensagem de indicação" rows={2} value={cfg.referral_message || ''} onChange={v => patch({ referral_message: v })} />}
+                  </div>
+                </div>
+
+                <div className={card}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2">
+                      <Zap size={15} className="text-orange-500 mt-0.5" />
+                      <div>
+                        <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Follow-up inteligente</p>
+                        <p className="text-xs text-gray-500">A assistente retoma conversas paradas lendo o histórico.</p>
+                      </div>
+                    </div>
+                    <Toggle on={!!platformSettings.followUpEnabled} label="Follow-up inteligente"
+                      onChange={v => updatePlatformSettings({ ...platformSettings, followUpEnabled: v })} />
+                  </div>
+                  {platformSettings.followUpEnabled && (
+                    <div className="mt-3 space-y-3">
+                      <div>
+                        <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Parou no meio da conversa</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[{ v: fuChat1, s: setFuChat1, l: '1ª tentativa' }, { v: fuChat2, s: setFuChat2, l: '2ª tentativa' }].map(o => (
+                            <div key={o.l}>
+                              <label className={labelCls}>{o.l}</label>
+                              <select value={o.v} onChange={e => { o.s(Number(e.target.value)); setDirty(true); }} className={input}>
+                                {CHAT_HOUR_OPTIONS.map(h => <option key={h} value={h}>{h < 24 ? `${h}h` : `${h}h (${Math.round(h / 24)}d)`}</option>)}
+                              </select>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Recebeu orçamento e sumiu</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[0, 1].map(i => (
+                            <div key={i}>
+                              <label className={labelCls}>{i + 1}ª tentativa</label>
+                              <select value={fuHuman[i] ?? (i ? 48 : 24)} className={input}
+                                onChange={e => { const n = [...fuHuman]; n[i] = Number(e.target.value); setFuHuman(n); setDirty(true); }}>
+                                {HUMAN_HOUR_OPTIONS.map(h => <option key={h} value={h}>{h < 24 ? `${h}h` : `${h / 24} dia${h > 24 ? 's' : ''}`}</option>)}
+                              </select>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-gray-400">Depois de 24h sem resposta do cliente, a Meta só deixa enviar o modelo "Retomar conversa" (marketing, ≈ R$ 0,32 cada).</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className={card}>
+                  <button onClick={() => setShowPrompt(s => !s)} className="w-full flex items-center justify-between text-left">
+                    <div>
+                      <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Preview do prompt</p>
+                      <p className="text-xs text-gray-500">O texto completo que a IA recebe (atualiza enquanto você edita).</p>
+                    </div>
+                    {showPrompt ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
+                  </button>
+                  {showPrompt && (
+                    <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap break-words text-[11px] leading-relaxed bg-gray-50 dark:bg-darkBg rounded-xl p-3 text-gray-700 dark:text-darkTextSecondary">{promptPreview}</pre>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Menu ── */}
+        {tab === 'menu' && (
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start">
+            <div className="space-y-4">
+              {cfg.mode !== 'menu' && (
+                <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-300">
+                  O menu só é enviado com o modo <strong>Menu</strong> ligado.
+                </div>
+              )}
+              <div className={card}>
+                <div className="space-y-3">
+                  <Field label="Mensagem de boas-vindas" rows={2} value={cfg.menu_greeting || ''} onChange={v => patch({ menu_greeting: v })} max={1024} />
+                  <Field label="Texto do botão que abre a lista" value={cfg.menu_button_label || ''} onChange={v => patch({ menu_button_label: v })} max={20} />
+                </div>
+              </div>
+              {cfg.menu_items.map((it, i) => (
+                <div key={i} className={card}>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Opção {i + 1}</p>
+                    <button onClick={() => patch({ menu_items: cfg.menu_items.filter((_, idx) => idx !== i) })} className="p-1.5 text-red-400 hover:text-red-600" aria-label={`Remover opção ${i + 1}`}>
+                      <Trash2 size={16} />
                     </button>
                   </div>
-                  <p className="text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2 mt-2">
-                    ✅ Salvar aqui atualiza o simulador <strong>e o bot do WhatsApp</strong> automaticamente — o bot lê o prompt do banco em tempo real.
-                  </p>
-                </>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                      <Field label="Título" value={it.title} onChange={v => setItem(i, { title: v })} max={24} />
+                      <div>
+                        <label className={labelCls}>Ao escolher</label>
+                        <select value={it.action} onChange={e => setItem(i, { action: e.target.value as MenuItem['action'] })} className={input}>
+                          <option value="reply">Responder com um texto</option>
+                          <option value="human">Passar para a equipe</option>
+                          <option value="ai">Continuar com a IA</option>
+                        </select>
+                      </div>
+                    </div>
+                    <Field label="Descrição" value={it.description || ''} onChange={v => setItem(i, { description: v })} max={72} />
+                    {it.action === 'reply' && <Field label="Resposta" rows={3} value={it.response || ''} onChange={v => setItem(i, { response: v })} max={1024} />}
+                  </div>
+                </div>
+              ))}
+              {cfg.menu_items.length < 10 && (
+                <button
+                  onClick={() => patch({ menu_items: [...cfg.menu_items, { id: `op${Date.now().toString(36)}`, title: 'Nova opção', description: '', action: 'reply', response: '' }] })}
+                  className="w-full py-3 rounded-2xl border-2 border-dashed border-gray-300 dark:border-darkBorder text-sm font-bold text-gray-500 hover:text-green-600 hover:border-green-400 flex items-center justify-center gap-2"
+                >
+                  <Plus size={16} /> Adicionar opção ({cfg.menu_items.length}/10)
+                </button>
               )}
             </div>
 
-            {/* Chat simulador */}
-            <div className="bg-[#0b141a] rounded-2xl overflow-hidden border border-gray-800" style={{ backgroundImage: "url('https://web.whatsapp.com/img/bg-chat-tile-dark_a4be512e7195b6b733d9110b408f075d.png')", backgroundSize: '400px' }}>
-              {/* Header */}
+            {/* Prévia no celular */}
+            <div className="lg:sticky lg:top-4">
+              <p className={labelCls}>Prévia</p>
+              <div className="bg-[#efeae2] dark:bg-[#0b141a] rounded-2xl p-3 space-y-2">
+                <div className="bg-white dark:bg-[#202c33] rounded-xl rounded-tl-sm p-3 shadow-sm max-w-[90%]">
+                  <p className="text-sm text-gray-800 dark:text-[#e9edef] whitespace-pre-wrap">{cfg.menu_greeting}</p>
+                  <div className="border-t border-gray-100 dark:border-[#2a3942] mt-2 pt-2 text-center text-sm font-bold text-[#00a884] flex items-center justify-center gap-1">
+                    <List size={14} /> {cfg.menu_button_label || 'Ver opções'}
+                  </div>
+                </div>
+                <div className="bg-white dark:bg-[#202c33] rounded-xl p-2 shadow-sm">
+                  {cfg.menu_items.map((it, i) => (
+                    <div key={i} className="px-2 py-1.5 border-b last:border-0 border-gray-100 dark:border-[#2a3942]">
+                      <p className="text-sm text-gray-800 dark:text-[#e9edef]">{it.title || '—'}</p>
+                      {it.description && <p className="text-[11px] text-gray-500 dark:text-[#8696a0]">{it.description}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Modelos (aprovados pela Meta) ── */}
+        {tab === 'modelos' && (
+          <div className="space-y-4">
+            <div className={card}>
+              <p className="text-sm text-gray-600 dark:text-darkTextSecondary">
+                Para falar com um cliente que <strong>não</strong> mandou mensagem nas últimas 24h, a Meta exige um <strong>modelo aprovado</strong>.
+                Envie os modelos abaixo uma vez; a aprovação costuma sair em minutos (até 24h).
+              </p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <button onClick={handleCreateTemplates} disabled={!connected || tplBusy}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 disabled:opacity-50">
+                  {tplBusy ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />} Enviar modelos para aprovação
+                </button>
+                <button onClick={handleSyncTemplates} disabled={!connected || tplBusy}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-darkBorder text-sm font-bold text-darkText dark:text-darkTextPrimary disabled:opacity-50">
+                  <RefreshCw size={15} /> Atualizar status
+                </button>
+              </div>
+              {!connected && <p className="text-xs text-red-500 mt-2">Conecte o WhatsApp primeiro.</p>}
+              {tplMsg && <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary mt-2">{tplMsg}</p>}
+            </div>
+            {WA_TEMPLATES.map(t => {
+              const st = tplStatus[t.name];
+              const badge = st ? STATUS_BADGE[st.status] ?? { label: st.status, cls: 'bg-gray-200 text-gray-600' } : { label: 'Não enviado', cls: 'bg-gray-100 text-gray-500 dark:bg-darkBg' };
+              return (
+                <div key={t.name} className={card}>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">{t.label}</p>
+                      <p className="text-[11px] text-gray-400 font-mono break-all">{t.name} · {t.category === 'UTILITY' ? 'utilidade (≈ R$ 0,035)' : 'marketing (≈ R$ 0,32)'}</p>
+                    </div>
+                    <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
+                  </div>
+                  <div className="bg-[#e7ffd8] dark:bg-[#005c4b] rounded-xl rounded-tr-sm p-3 text-sm text-gray-800 dark:text-white whitespace-pre-wrap">
+                    {fillTemplate(t.body, t.example)}
+                    {t.buttons && (
+                      <div className="flex gap-2 mt-2">
+                        {t.buttons.map(b => <span key={b} className="flex-1 text-center text-xs font-bold text-[#00a884] dark:text-white bg-white/70 dark:bg-white/10 rounded-lg py-1.5">{b}</span>)}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-2">{t.usedFor}</p>
+                  {st?.rejected_reason && <p className="text-[11px] text-red-500 mt-1">Motivo da rejeição: {st.rejected_reason}</p>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── Mensagens do painel ── */}
+        {tab === 'mensagens' && (
+          <div className="space-y-4">
+            <div className="rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-3 text-xs text-blue-800 dark:text-blue-300">
+              Textos enviados pelo painel (orçamento recebido, proposta, confirmação). Só chegam se o cliente falou com você nas últimas 24h; fora disso use os modelos aprovados.
+            </div>
+            {(['welcome', 'proposal', 'confirmation'] as const).map(key => (
+              <div key={key} className={card}>
+                <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary mb-2">
+                  {key === 'welcome' ? 'Boas-vindas (orçamento recebido)' : key === 'proposal' ? 'Envio da proposta' : 'Confirmação'}
+                </p>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {PLACEHOLDERS[key].map(p => (
+                    <span key={p.key} className="text-[11px] bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-lg font-mono">{p.key}</span>
+                  ))}
+                </div>
+                <textarea rows={6} value={templates[key]} onChange={e => setTemplates({ ...templates, [key]: e.target.value })} className={`${input} font-mono resize-y`} />
+                <div className="bg-[#e7ffd8] rounded-xl rounded-tr-sm p-3 mt-2 max-w-sm ml-auto">
+                  <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                    {buildMessage(templates[key], { Nome: 'Ana', Servico: 'Limpeza Residencial', Endereco: 'Rua das Flores, 50', Valor: '280,00', Data: 'Segunda às 09h' })}
+                  </p>
+                </div>
+              </div>
+            ))}
+            <button onClick={handleSaveMessages} className={`w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 ${msgSaved ? 'bg-green-100 text-green-700' : 'bg-green-600 text-white hover:bg-green-700'}`}>
+              {msgSaved ? <><CheckCircle size={16} /> Salvo!</> : <><Save size={16} /> Salvar mensagens</>}
+            </button>
+          </div>
+        )}
+
+        {/* ── Testar a assistente ── */}
+        {tab === 'testar' && (
+          <div className="space-y-3">
+            <p className="text-xs text-gray-500">Converse como se fosse um cliente. Usa as configurações da aba Assistente IA, inclusive as que ainda não foram salvas.</p>
+            <div className="bg-[#0b141a] rounded-2xl overflow-hidden border border-gray-800">
               <div className="bg-[#202c33] px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm">N</div>
+                  <div className="w-9 h-9 rounded-full bg-green-600 flex items-center justify-center text-white font-bold text-sm">{(cfg.assistant_name || 'N')[0]}</div>
                   <div>
-                    <p className="text-white text-sm font-bold">Nina — Simulador</p>
+                    <p className="text-white text-sm font-bold">{cfg.assistant_name || 'Nina'} — teste</p>
                     <p className="text-[#8696a0] text-xs">online</p>
                   </div>
                 </div>
-                <button onClick={() => setNinaHistory([])} className="text-[#8696a0] hover:text-white p-1" title="Limpar conversa">
-                  <Trash2 size={16} />
-                </button>
+                <button onClick={() => setSim([])} className="text-[#8696a0] hover:text-white p-1" aria-label="Limpar conversa"><Trash2 size={16} /></button>
               </div>
-
-              {/* Messages */}
-              <div className="h-96 overflow-y-auto p-4 space-y-2 flex flex-col">
-                {ninaHistory.length === 0 && (
-                  <p className="text-center text-[#8696a0] text-sm mt-8">Mande uma mensagem para simular a conversa com a Nina</p>
-                )}
-                {ninaHistory.map((msg, i) => {
-                  // System card: quote finalized
-                  if ((msg.role as string) === 'system' && msg.parts[0].text.startsWith('__QUOTE_FINALIZED__')) {
-                    let q: Record<string, string> = {};
-                    try { q = JSON.parse(msg.parts[0].text.replace('__QUOTE_FINALIZED__', '')); } catch { /* ignore */ }
-                    return (
-                      <div key={i} className="flex justify-center my-2">
-                        <div className="bg-[#1a3a2a] border border-green-700 rounded-xl px-4 py-3 text-sm w-full max-w-[90%]">
-                          <p className="text-green-400 font-semibold mb-2 flex items-center gap-1"><CheckCircle size={14} /> Orçamento finalizado!</p>
-                          <div className="text-[#c9d1d9] space-y-0.5 text-xs">
-                            {q.name && <p><span className="text-[#8696a0]">Nome:</span> {q.name}</p>}
-                            {q.email && <p><span className="text-[#8696a0]">Email:</span> {q.email}</p>}
-                            {q.whatsapp && <p><span className="text-[#8696a0]">WhatsApp:</span> {q.whatsapp}</p>}
-                            {q.propertyType && <p><span className="text-[#8696a0]">Imóvel:</span> {q.propertyType}</p>}
-                            {q.serviceOption && <p><span className="text-[#8696a0]">Serviço:</span> {q.serviceOption}</p>}
-                            {q.rooms && <p><span className="text-[#8696a0]">Cômodos:</span> {q.rooms}</p>}
-                            {q.priorities && <p><span className="text-[#8696a0]">Prioridades:</span> {q.priorities}</p>}
-                            {(q.addressStreet || q.addressDistrict) && <p><span className="text-[#8696a0]">Endereço:</span> {[q.addressStreet, q.addressNumber, q.addressDistrict].filter(Boolean).join(', ')}</p>}
-                          </div>
-                          <p className="text-[#8696a0] text-xs mt-2">Orçamento salvo — equipe humana assume a partir daqui.</p>
-                        </div>
-                      </div>
-                    );
-                  }
+              <div className="h-[55vh] min-h-[320px] overflow-y-auto p-3 space-y-2 flex flex-col">
+                {sim.length === 0 && <p className="text-center text-[#8696a0] text-sm mt-8">Mande uma mensagem para começar</p>}
+                {sim.map((m, i) => {
+                  const quote = m.text.match(/<<QUOTE_DATA>>([\s\S]*?)<<END_QUOTE>>/);
+                  const clean = m.text.replace(/<<QUOTE_DATA>>[\s\S]*?<<END_QUOTE>>/, '').replace(/<<HUMAN_HANDOFF>>/g, '').trim();
                   return (
-                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap shadow ${msg.role === 'user' ? 'bg-[#005c4b] text-white rounded-br-sm' : 'bg-[#202c33] text-[#e9edef] rounded-bl-sm'}`}>
-                        {msg.parts[0].text.replace(/<<QUOTE_DATA>>[\s\S]*?<<END_QUOTE>>/, '').trim()}
-                      </div>
-                    </div>
+                    <React.Fragment key={i}>
+                      {clean && (
+                        <div className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${m.role === 'user' ? 'bg-[#005c4b] text-white' : 'bg-[#202c33] text-[#e9edef]'}`}>{clean}</div>
+                        </div>
+                      )}
+                      {m.text.includes('<<HUMAN_HANDOFF>>') && <p className="text-center text-[11px] text-amber-400">→ conversa passada para a equipe</p>}
+                      {quote && (
+                        <div className="bg-[#1a3a2a] border border-green-700 rounded-xl px-3 py-2 text-xs text-[#c9d1d9]">
+                          <p className="text-green-400 font-semibold mb-1 flex items-center gap-1"><CheckCircle size={13} /> Orçamento coletado</p>
+                          <p className="break-words font-mono text-[10px]">{quote[1].trim()}</p>
+                        </div>
+                      )}
+                    </React.Fragment>
                   );
                 })}
-                {ninaLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-[#202c33] rounded-xl px-4 py-2 flex items-center gap-2">
-                      <Loader2 size={14} className="animate-spin text-[#8696a0]" />
-                      <span className="text-[#8696a0] text-xs">digitando...</span>
-                    </div>
-                  </div>
-                )}
+                {simLoading && <div className="bg-[#202c33] rounded-xl px-3 py-2 w-fit flex items-center gap-2"><Loader2 size={13} className="animate-spin text-[#8696a0]" /><span className="text-[#8696a0] text-xs">digitando...</span></div>}
                 <div ref={chatEndRef} />
               </div>
-
-              {/* Input */}
               <div className="bg-[#202c33] px-3 py-2 flex items-center gap-2">
-                <input
-                  value={ninaInput}
-                  onChange={e => setNinaInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleNinaSend()}
-                  placeholder="Digite uma mensagem..."
-                  className="flex-1 bg-[#2a3942] text-white placeholder-[#8696a0] rounded-xl px-4 py-2 text-sm outline-none"
-                />
-                <button
-                  onClick={handleNinaSend}
-                  disabled={ninaLoading || !ninaInput.trim()}
-                  className="w-9 h-9 bg-[#00a884] rounded-full flex items-center justify-center hover:bg-[#00c49a] transition-colors disabled:opacity-40"
-                >
+                <input value={simInput} onChange={e => setSimInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSimSend()}
+                  placeholder="Digite uma mensagem..." className="flex-1 min-w-0 bg-[#2a3942] text-white placeholder-[#8696a0] rounded-xl px-4 py-2 text-sm outline-none" />
+                <button onClick={handleSimSend} disabled={simLoading || !simInput.trim()} aria-label="Enviar"
+                  className="w-9 h-9 bg-[#00a884] rounded-full flex items-center justify-center disabled:opacity-40 shrink-0">
                   <Send size={16} className="text-white" />
                 </button>
               </div>
             </div>
           </div>
         )}
-
-        {/* Tab: Personalizar */}
-        {tab === 'config' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
-
-            {/* Coluna esquerda */}
-            <div className="space-y-5">
-              {/* Horário de Atendimento */}
-              <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Clock size={16} className="text-blue-500" />
-                    <div>
-                      <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Horário de Atendimento</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Nina só responde dentro deste horário</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => updatePlatformSettings({ ...platformSettings, workingHoursEnabled: !platformSettings.workingHoursEnabled })}
-                    className={`relative w-12 h-6 rounded-full transition-colors shrink-0 overflow-hidden ${platformSettings.workingHoursEnabled ? 'bg-green-500' : 'bg-gray-300'}`}
-                  >
-                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${platformSettings.workingHoursEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                  </button>
-                </div>
-                {platformSettings.workingHoursEnabled && (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Abertura</label>
-                        <input type="time" value={platformSettings.workingHoursStart || '08:00'}
-                          onChange={e => updatePlatformSettings({ ...platformSettings, workingHoursStart: e.target.value })}
-                          className="w-full p-2.5 border border-gray-200 dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-green-300" />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Fechamento</label>
-                        <input type="time" value={platformSettings.workingHoursEnd || '18:00'}
-                          onChange={e => updatePlatformSettings({ ...platformSettings, workingHoursEnd: e.target.value })}
-                          className="w-full p-2.5 border border-gray-200 dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-green-300" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Mensagem fora do horário</label>
-                      <textarea value={platformSettings.awayMessage || ''}
-                        onChange={e => updatePlatformSettings({ ...platformSettings, awayMessage: e.target.value })}
-                        rows={2}
-                        className="w-full p-2.5 border border-gray-200 dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-green-300 resize-none" />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Tom de Voz */}
-              <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-5">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Tom de Voz da Nina</p>
-                  <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">● Ativo</span>
-                </div>
-                <p className="text-xs text-gray-500 mb-3">Ajusta automaticamente o estilo de conversa da Nina</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { value: 'casual', label: 'Casual', desc: 'Próxima e amigável' },
-                    { value: 'formal', label: 'Formal', desc: 'Profissional e direta' },
-                    { value: 'commercial', label: 'Comercial', desc: 'Foco em conversão' },
-                  ].map(opt => (
-                    <button key={opt.value}
-                      onClick={() => updatePlatformSettings({ ...platformSettings, ninaTone: opt.value })}
-                      className={`p-3 rounded-xl border-2 text-left transition-all ${platformSettings.ninaTone === opt.value || (!platformSettings.ninaTone && opt.value === 'casual') ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-200 dark:border-darkBorder hover:border-gray-300'}`}>
-                      <p className="font-bold text-xs text-darkText dark:text-darkTextPrimary">{opt.label}</p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">{opt.desc}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* Retomada Automática */}
-              <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Zap size={16} className="text-amber-500" />
-                  <div>
-                    <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Retomada Automática da Nina</p>
-                    <p className="text-xs text-gray-500">Quando você atende um cliente, Nina fica em silêncio. Após inatividade, ela retoma sozinha.</p>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Reativar Nina após inatividade de</label>
-                    <select
-                      value={platformSettings.ninaSilenceHours ?? 24}
-                      onChange={e => updatePlatformSettings({ ...platformSettings, ninaSilenceHours: Number(e.target.value) })}
-                      className="w-full p-2.5 border border-gray-200 dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-amber-300"
-                    >
-                      {[2, 4, 6, 8, 12, 24, 48, 72].map(h => (
-                        <option key={h} value={h}>{h === 24 ? '24 horas (padrão)' : h < 24 ? `${h} horas` : `${h/24} dias`}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3 text-xs text-amber-700 dark:text-amber-400 space-y-1">
-                    <p><strong>Como funciona:</strong></p>
-                    <p>• Você responde o cliente no WhatsApp → Nina silencia</p>
-                    <p>• Após {platformSettings.ninaSilenceHours ?? 24}h sem mensagens → Nina reativa automaticamente</p>
-                    <p>• Mensagem de encerramento detectada → Nina reativa na hora</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Coluna direita — Follow-up Inteligente */}
-            <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-5 flex flex-col gap-4">
-
-              {/* Header + toggle */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Zap size={16} className="text-orange-500" />
-                  <div>
-                    <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Follow-up Inteligente</p>
-                    <p className="text-xs text-gray-500">Nina retoma a conversa automaticamente</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${platformSettings.followUpEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {platformSettings.followUpEnabled ? '● Ativo' : '○ Inativo'}
-                  </span>
-                  <button
-                    onClick={() => updatePlatformSettings({ ...platformSettings, followUpEnabled: !platformSettings.followUpEnabled })}
-                    className={`relative w-12 h-6 rounded-full transition-colors shrink-0 overflow-hidden ${platformSettings.followUpEnabled ? 'bg-green-500' : 'bg-gray-300'}`}
-                  >
-                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${platformSettings.followUpEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Caixa de explicação */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-3 text-xs text-blue-800 dark:text-blue-300 space-y-1.5">
-                <p className="font-bold text-blue-700 dark:text-blue-200">💡 Como funciona</p>
-                <p>A Nina analisa o histórico da conversa e envia uma mensagem <strong>personalizada e natural</strong> — sem templates genéricos.</p>
-                <div className="mt-1 space-y-1">
-                  <p className="font-semibold text-blue-700 dark:text-blue-200">✅ Ative quando:</p>
-                  <p>• Quer recuperar leads que pararam de responder sem precisar fazer isso manualmente</p>
-                  <p>• Tem volume alto de conversas e não consegue acompanhar tudo</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="font-semibold text-blue-700 dark:text-blue-200">⏸ Desative quando:</p>
-                  <p>• Prefere fazer o follow-up pessoalmente com cada cliente</p>
-                  <p>• Está em período de baixo volume e quer controle total</p>
-                </div>
-              </div>
-
-              {/* Cenário 1 */}
-              <div className="bg-gray-50 dark:bg-darkBg rounded-xl border border-gray-200 dark:border-darkBorder p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-base">💬</span>
-                  <div>
-                    <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary">Cliente parou no meio da conversa</p>
-                    <p className="text-[10px] text-gray-400">Ainda não recebeu orçamento — até 2 tentativas</p>
-                  </div>
-                </div>
-                <div className="space-y-2 mt-2">
-                  {[
-                    { label: 'Tentativa 1', value: followUpChatHours, set: setFollowUpChatHours, color: 'orange' },
-                    { label: 'Tentativa 2', value: followUpChatHours2, set: setFollowUpChatHours2, color: 'orange' },
-                  ].map(({ label, value, set, color }) => (
-                    <div key={label} className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-gray-400 w-16">{label}</span>
-                      <div className={`flex items-center gap-1 bg-${color}-50 dark:bg-${color}-900/20 border border-${color}-200 dark:border-${color}-800 rounded-lg px-2 py-1`}>
-                        <Clock size={11} className={`text-${color}-500`} />
-                        <select
-                          value={value}
-                          onChange={e => set(Number(e.target.value))}
-                          className={`text-[11px] font-bold text-${color}-600 bg-transparent border-none outline-none cursor-pointer`}
-                        >
-                          {CHAT_HOUR_OPTIONS.map(h => <option key={h} value={h}>{h === 1 ? '1 hora' : `${h} horas`}</option>)}
-                          {[12, 24, 26, 48, 72].map(h => <option key={h} value={h}>{h < 24 ? `${h}h` : `${h/24}d`}</option>)}
-                        </select>
-                      </div>
-                      <span className="text-[11px] text-gray-400">sem resposta</span>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-[10px] text-gray-400 mt-2 italic">Nina lê a conversa e manda uma mensagem para continuar de onde parou</p>
-              </div>
-
-              {/* Cenário 2 */}
-              <div className="bg-gray-50 dark:bg-darkBg rounded-xl border border-gray-200 dark:border-darkBorder p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-base">📋</span>
-                  <div>
-                    <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary">Cliente recebeu orçamento e sumiu</p>
-                    <p className="text-[10px] text-gray-400">Até 2 tentativas de follow-up</p>
-                  </div>
-                </div>
-                <div className="space-y-2 mt-2">
-                  {[0, 1].map(i => (
-                    <div key={i} className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-gray-400 w-16">Tentativa {i + 1}</span>
-                      <div className="flex items-center gap-1 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg px-2 py-1">
-                        <Clock size={11} className="text-purple-500" />
-                        <select
-                          value={followUpHumanDelays[i] ?? (i === 0 ? 24 : 48)}
-                          onChange={e => {
-                            const next = [...followUpHumanDelays];
-                            next[i] = Number(e.target.value);
-                            setFollowUpHumanDelays(next);
-                          }}
-                          className="text-[11px] font-bold text-purple-600 bg-transparent border-none outline-none cursor-pointer"
-                        >
-                          {HUMAN_HOUR_OPTIONS.map(h => <option key={h} value={h}>{h < 24 ? `${h}h` : `${h / 24}d`}</option>)}
-                        </select>
-                      </div>
-                      <span className="text-[11px] text-gray-400">após o orçamento</span>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-[10px] text-gray-400 mt-2 italic">Nina relê o histórico e faz o follow-up de forma natural, sem pressionar</p>
-              </div>
-
-              {/* Save button */}
-              <button
-                onClick={handleSaveFollowUp}
-                className={`w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                  followUpSaved
-                    ? 'bg-green-100 text-green-700 border border-green-200'
-                    : 'bg-green-600 text-white hover:bg-green-700'
-                }`}
-              >
-                {followUpSaved ? <><CheckCircle size={15} /> Salvo!</> : <><Save size={15} /> Salvar configuração</>}
-              </button>
-            </div>
-
-          </div>
-        )}
-
-        {/* Tabs de Mensagens */}
-        {(['welcome', 'proposal', 'confirmation'] as const).map(key => (
-          tab === key && (
-            <div key={key} className="space-y-4">
-              {/* Placeholders */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-4 border border-blue-100 dark:border-blue-800">
-                <p className="text-xs font-bold text-blue-700 dark:text-blue-300 mb-2">Variáveis disponíveis:</p>
-                <div className="flex flex-wrap gap-2">
-                  {PLACEHOLDERS[key]?.map(p => (
-                    <span key={p.key} className="text-xs bg-white dark:bg-darkSurface border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-lg font-mono">
-                      {p.key} <span className="text-gray-400 font-sans">→ {p.desc}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Editor */}
-              <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-5">
-                <p className="font-bold text-darkText dark:text-darkTextPrimary mb-3">
-                  {key === 'welcome' && 'Mensagem de Boas-vindas'}
-                  {key === 'proposal' && 'Mensagem de Envio da Proposta'}
-                  {key === 'confirmation' && 'Mensagem de Confirmação'}
-                </p>
-                <textarea
-                  rows={10}
-                  value={templates[key]}
-                  onChange={e => setTemplates({ ...templates, [key]: e.target.value })}
-                  className="w-full p-4 rounded-xl border border-gray-200 dark:border-darkBorder bg-gray-50 dark:bg-darkBg text-sm text-darkText dark:text-darkTextPrimary font-mono resize-none focus:outline-none focus:ring-2 focus:ring-green-400"
-                />
-              </div>
-
-              {/* Preview */}
-              <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-5">
-                <p className="text-xs font-bold text-gray-400 uppercase mb-3">Preview (com dados de exemplo)</p>
-                <div className="bg-[#e7ffd8] rounded-2xl rounded-br-sm p-4 max-w-xs ml-auto shadow-sm">
-                  <p className="text-sm text-gray-800 whitespace-pre-wrap">
-                    {buildMessage(templates[key], {
-                      Nome: 'Ana Silva',
-                      Servico: 'Limpeza Residencial',
-                      Endereco: 'Rua das Flores, 50',
-                      Valor: '280,00',
-                      Data: 'Segunda-feira às 09h',
-                    })}
-                  </p>
-                  <p className="text-[10px] text-gray-400 text-right mt-1">14:32 ✓✓</p>
-                </div>
-              </div>
-
-              {/* Botão Salvar */}
-              <button
-                onClick={handleSave}
-                className={`w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                  saved
-                    ? 'bg-green-100 text-green-700 border border-green-200'
-                    : 'bg-green-600 text-white hover:bg-green-700'
-                }`}
-              >
-                {saved ? <><CheckCircle size={16} /> Salvo!</> : <><Save size={16} /> Salvar Mensagem</>}
-              </button>
-
-              {/* Teste rápido */}
-              {status.connected && (
-                <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder p-4">
-                  <p className="text-xs font-bold text-gray-500 mb-2">Testar esta mensagem:</p>
-                  <div className="flex gap-2">
-                    <input
-                      type="tel"
-                      placeholder="27 99999-0000"
-                      value={testPhone}
-                      onChange={e => setTestPhone(e.target.value)}
-                      className="flex-1 p-2.5 rounded-xl border border-gray-200 dark:border-darkBorder bg-gray-50 dark:bg-darkBg text-sm text-darkText dark:text-darkTextPrimary"
-                    />
-                    <button
-                      onClick={handleTest}
-                      disabled={sending || !testPhone}
-                      className="px-4 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 disabled:opacity-50"
-                    >
-                      {sending ? '...' : <Send size={16} />}
-                    </button>
-                  </div>
-                  {testResult === 'ok' && <p className="text-xs text-green-600 mt-2">✅ Enviado!</p>}
-                  {testResult === 'err' && <p className="text-xs text-red-500 mt-2">❌ Falha. Verifique a conexão.</p>}
-                </div>
-              )}
-            </div>
-          )
-        ))}
       </div>
+
+      {/* Barra de salvar */}
+      {showSaveBar && (
+        <div className="fixed bottom-[calc(64px+env(safe-area-inset-bottom))] md:bottom-0 inset-x-0 z-30 md:left-64 bg-white/95 dark:bg-darkSurface/95 backdrop-blur border-t border-gray-200 dark:border-darkBorder px-4 py-3">
+          <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
+            <p className="text-xs text-gray-500 dark:text-darkTextSecondary">
+              {dirty ? 'Você tem alterações não salvas.' : savedAt ? '✅ Tudo salvo.' : 'Nenhuma alteração.'}
+            </p>
+            <button onClick={() => saveConfig()} disabled={!dirty || saving}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 disabled:opacity-50">
+              {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Salvar
+            </button>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };

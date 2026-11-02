@@ -800,7 +800,7 @@ export const AdminCRM: React.FC = () => {
     const finalMsg = msg.replace(/\[nome\]/gi, firstName);
 
     try {
-      const { data, error } = await supabase.functions.invoke('evolution-proxy', {
+      const { data, error } = await supabase.functions.invoke('whatsapp-send', {
         body: { action: 'sendText', payload: { number: selected.whatsapp, text: finalMsg } }
       });
       if (!error && data?.ok !== false) {
@@ -1044,7 +1044,7 @@ export const AdminCRM: React.FC = () => {
         if (campaignMediaType === 'audio' && (recordedAudio || mediaFileData)) {
           // 1. Send text message first (if template has text)
           if (finalMsg) {
-            await supabase.functions.invoke('evolution-proxy', {
+            await supabase.functions.invoke('whatsapp-send', {
               body: { action: 'sendText', payload: { number: lead.whatsapp, text: finalMsg } }
             });
             await new Promise(r => setTimeout(r, 400));
@@ -1057,7 +1057,7 @@ export const AdminCRM: React.FC = () => {
           } else if (mediaFileData) {
             audioBase64 = mediaFileData.base64;
           }
-          const { data, error } = await supabase.functions.invoke('evolution-proxy', {
+          const { data, error } = await supabase.functions.invoke('whatsapp-send', {
             body: { action: 'sendWhatsAppAudio', payload: { number: lead.whatsapp, base64: audioBase64 } }
           });
           console.log(`[Campaign Audio] Lead ${lead.name}`, { data, error });
@@ -1069,7 +1069,7 @@ export const AdminCRM: React.FC = () => {
           // Image or video — send media with text as caption
           const base64 = mediaFileData?.base64 || '';
           const mimeType = mediaFileData?.mimeType || (campaignMediaType === 'image' ? 'image/jpeg' : 'video/mp4');
-          const { data, error } = await supabase.functions.invoke('evolution-proxy', {
+          const { data, error } = await supabase.functions.invoke('whatsapp-send', {
             body: {
               action: 'sendMedia',
               payload: {
@@ -1089,7 +1089,7 @@ export const AdminCRM: React.FC = () => {
 
         } else {
           // Text only
-          const { data, error } = await supabase.functions.invoke('evolution-proxy', {
+          const { data, error } = await supabase.functions.invoke('whatsapp-send', {
             body: { action: 'sendText', payload: { number: lead.whatsapp, text: finalMsg } }
           });
           console.log(`[Campaign Text] Lead ${lead.name}`, { data, error });
