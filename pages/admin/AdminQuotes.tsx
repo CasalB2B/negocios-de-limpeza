@@ -807,7 +807,7 @@ const CreateAccountModal: React.FC<CreateAccountModalProps> = ({ quote, onClose,
                   phone: quote.whatsapp,
                   address: '',
                   addresses: [],
-                  type: 'AVULSO',
+                  type: 'NOVO',
                   password,
                   createdAt: Date.now(),
                 })}

@@ -90,7 +90,7 @@ export const ClientRequest: React.FC = () => {
           phone: '',
           address: 'A confirmar',
           addresses: [],
-          type: 'AVULSO' as const,
+          type: 'NOVO' as const,
           createdAt: Date.now()
       };
 
@@ -155,7 +155,7 @@ export const ClientRequest: React.FC = () => {
               phone: regData.phone,
               address: 'A confirmar',
               addresses: [],
-              type: 'AVULSO' as const,
+              type: 'NOVO' as const,
               password: regData.password,
               createdAt: Date.now()
             };
