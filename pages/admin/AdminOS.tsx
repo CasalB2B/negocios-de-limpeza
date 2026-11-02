@@ -518,7 +518,7 @@ interface DrawerProps {
   onAssignCollab: (id: string, name: string) => void;
 }
 
-type PaymentState = null | 'loading' | { url: string } | { error: string };
+type PaymentState = null | 'loading' | { url: string; phone: string | null } | { error: string };
 
 const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose, onStatusChange, onAssignCollab }) => {
   const currentCol = normCol(service.status);
@@ -532,19 +532,17 @@ const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose
   const handleGerarCobranca = async () => {
     setPaymentState('loading');
     try {
-      const res = await fetch(
-        `https://yhdxmutbreihrtlnbcaf.supabase.co/functions/v1/create-payment-link`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ service_id: service.id }),
-        }
-      );
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        setPaymentState({ error: data.error || 'Erro ao gerar cobrança' });
+      const { data, error } = await supabase.functions.invoke('infinitepay', {
+        body: { acao: 'gerar_link', service_id: service.id },
+      });
+      let msg = data?.error as string | undefined;
+      if (error && !msg) {
+        try { msg = (await (error as any)?.context?.json())?.error; } catch {}
+      }
+      if (msg || !data?.url) {
+        setPaymentState({ error: msg || 'Não foi possível gerar a cobrança. Tente novamente.' });
       } else {
-        setPaymentState({ url: data.checkout_url });
+        setPaymentState({ url: data.url, phone: data.telefone_cliente ?? null });
       }
     } catch {
       setPaymentState({ error: 'Erro de conexão. Tente novamente.' });
@@ -557,10 +555,12 @@ const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleWhatsApp = (url: string) => {
-    const phone = ''; // sem número definido — abre seletor de contato
-    const msg = encodeURIComponent(`Olá! Segue o link para pagamento do serviço de ${service.date}:\n💰 ${url}\nVálido por 48h.`);
-    window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+  const handleWhatsApp = (url: string, phone: string | null) => {
+    const nome = (service.clientName || '').trim().split(' ')[0];
+    const valor = service.price ? ` de R$ ${Number(service.price).toFixed(2).replace('.', ',')}` : '';
+    const msg = encodeURIComponent(`Olá${nome ? `, ${nome}` : ''}! Segue o link para pagamento${valor} do serviço${service.date ? ` de ${service.date}` : ''}. Aceita Pix e cartão:\n${url}`);
+    // Without the client's number, wa.me opens the contact picker.
+    window.open(`https://wa.me/${(phone || '').replace(/\D/g, '')}?text=${msg}`, '_blank');
   };
 
   return (
@@ -657,7 +657,12 @@ const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose
 
         {/* Footer actions */}
         <div className="p-6 border-t border-gray-100 dark:border-darkBorder shrink-0 space-y-2">
-          {/* Gerar Cobrança InfinityPay */}
+          {service.paymentStatus === 'FULL_PAID' && (
+            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 rounded-xl p-3 text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+              <CheckCircle2 size={14} /> Pago
+            </div>
+          )}
+          {/* Gerar Cobrança InfinitePay */}
           {service.price && service.price > 0 && service.paymentStatus !== 'FULL_PAID' && (
             <div>
               {paymentState === null && (
@@ -689,7 +694,7 @@ const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose
                       <Copy size={12} /> {copied ? 'Copiado!' : 'Copiar'}
                     </button>
                     <button
-                      onClick={() => handleWhatsApp(paymentState.url)}
+                      onClick={() => handleWhatsApp(paymentState.url, paymentState.phone)}
                       className="flex-1 py-2 text-xs font-bold text-white bg-[#25D366] rounded-lg flex items-center justify-center gap-1 hover:bg-[#1fbb58] transition-colors"
                     >
                       <MessageCircle size={12} /> WhatsApp
