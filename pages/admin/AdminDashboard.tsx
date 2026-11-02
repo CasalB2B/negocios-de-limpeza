@@ -11,6 +11,7 @@ import { useRH } from '../../components/RHContext';
 import { supabase } from '../../lib/supabase';
 import { ClientesSumidosCard } from '../../components/ClientesSumidos';
 import { MapaColaboradoras } from '../../components/MapaColaboradoras';
+import { PedidosExclusao } from '../../components/ExcluirConta';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -244,6 +245,8 @@ export const AdminDashboard: React.FC = () => {
             <p className="text-xs text-red-600">Notificações bloqueadas. Ative nas configurações do navegador.</p>
           </div>
         )}
+
+        <PedidosExclusao />
 
         {/* ── Row 1: KPI cards ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

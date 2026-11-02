@@ -5,6 +5,7 @@ import { User, Lock, Bell, LogOut, Save, ChevronRight, ChevronDown, Camera, Hist
 import { useNavigate } from 'react-router-dom';
 import { Input } from '../../components/Input';
 import { Modal } from '../../components/Modal';
+import { ExcluirConta } from '../../components/ExcluirConta';
 import { useData } from '../../components/DataContext';
 import { useMyCollabIds, isMyService, useMyHourlyRate, valorDaColab } from '../../lib/collabIdentity';
 
@@ -214,6 +215,10 @@ export const CollaboratorProfile: React.FC = () => {
             >
                <LogOut size={20} /> Sair da Conta
             </button>
+
+            <div className="mt-3">
+              <ExcluirConta tipo="colaboradora" usuarioId={currentCollaborator?.id} nome={currentCollaborator?.name} contato={currentCollaborator?.phone || currentCollaborator?.email} />
+            </div>
 
             <p className="text-center text-[10px] text-gray-300 mt-8 mb-8 uppercase tracking-[0.2em] font-bold">Negócios de Limpeza v2.4.0</p>
          </div>

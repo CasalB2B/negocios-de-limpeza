@@ -4,6 +4,7 @@ import { UserRole } from '../../types';
 import { Button } from '../../components/Button';
 import { Camera, User, Mail, Phone, Lock, Save, MapPin, CheckCircle, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ExcluirConta } from '../../components/ExcluirConta';
 import { useData } from '../../components/DataContext'; // Import useData
 import { Modal } from '../../components/Modal';
 
@@ -219,6 +220,7 @@ export const ClientProfile: React.FC = () => {
                     <span>Notificações por Email</span>
                     <input type="checkbox" defaultChecked className="toggle" />
                 </div>
+                <ExcluirConta tipo="cliente" usuarioId={currentUser?.id} nome={currentUser?.name} contato={currentUser?.phone || currentUser?.email} />
             </div>
         </Modal>
       </div>

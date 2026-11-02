@@ -3,6 +3,7 @@
     { "source": "/admin-start.html", "destination": "/admin-start.html" },
     { "source": "/privacidade", "destination": "/privacidade.html" },
     { "source": "/termos", "destination": "/termos.html" },
+    { "source": "/excluir-conta", "destination": "/excluir-conta.html" },
     { "source": "/pagamento-concluido", "destination": "/pagamento-concluido.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
