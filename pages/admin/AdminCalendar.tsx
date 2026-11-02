@@ -6,13 +6,13 @@ import { Input } from '../../components/Input';
 import { Modal } from '../../components/Modal';
 import {
   Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, LayoutGrid, List, Users,
-  Clock, MapPin, User, X, AlertTriangle, CheckCircle2, ArrowRight, Search,
+  Clock, MapPin, User, X, AlertTriangle, CheckCircle2, ArrowRight, Search, UserRound,
 } from 'lucide-react';
 import { useData, Service } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
 import { usePreAgendamentoAtivo, statusInicial } from '../../lib/preAgendamento';
 
-type ViewMode = 'month' | 'week' | 'team';
+type ViewMode = 'month' | 'week' | 'team' | 'pessoa';
 interface RHColaboradora { id: string; nome: string; foto?: string; }
 interface SelectedCollab { id: string; nome: string; }
 
@@ -40,6 +40,8 @@ export const AdminCalendar: React.FC = () => {
   const { services, clients, serviceDefinitions, addService, updateServiceStatus } = useData();
   const [colaboradoras, setColaboradoras] = useState<RHColaboradora[]>([]);
   const [view, setView] = useState<ViewMode>('month');
+  const [pessoaIdx, setPessoaIdx] = useState(0);
+  const pessoaScrollRef = useRef<HTMLDivElement>(null);
   const [cursor, setCursor] = useState(new Date()); // month anchor: year/month; week anchor: any date in that week
   const [showCreate, setShowCreate] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
@@ -125,19 +127,19 @@ export const AdminCalendar: React.FC = () => {
 
   const prevPeriod = () => {
     if (view === 'month') setCursor(d => new Date(d.getFullYear(), d.getMonth() - 1, 1));
-    else if (view === 'week') { const d = new Date(cursor); d.setDate(d.getDate() - 7); setCursor(d); }
+    else if (view === 'week' || view === 'pessoa') { const d = new Date(cursor); d.setDate(d.getDate() - 7); setCursor(d); }
     else { const d = new Date(cursor); d.setDate(d.getDate() - 1); setCursor(d); }
   };
   const nextPeriod = () => {
     if (view === 'month') setCursor(d => new Date(d.getFullYear(), d.getMonth() + 1, 1));
-    else if (view === 'week') { const d = new Date(cursor); d.setDate(d.getDate() + 7); setCursor(d); }
+    else if (view === 'week' || view === 'pessoa') { const d = new Date(cursor); d.setDate(d.getDate() + 7); setCursor(d); }
     else { const d = new Date(cursor); d.setDate(d.getDate() + 1); setCursor(d); }
   };
   const goToday = () => setCursor(new Date());
 
   const periodLabel = view === 'month'
     ? cursor.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-    : view === 'week'
+    : view === 'week' || view === 'pessoa'
     ? `${formatDateBR(weekDays[0])} – ${formatDateBR(weekDays[6])}`
     : (() => {
         const s = cursor.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -302,10 +304,12 @@ export const AdminCalendar: React.FC = () => {
             {/* Corner */}
             <div style={{ width: TIME_COL_W, minWidth: TIME_COL_W }}
               className="sticky left-0 z-30 bg-gray-50 dark:bg-darkBg border-r border-gray-100 dark:border-darkBorder shrink-0" />
-            {colaboradoras.map(c => (
+            {colaboradoras.map((c, idx) => (
               <div key={c.id}
                 style={{ width: COL_W, minWidth: COL_W }}
-                className="flex flex-col items-center py-3 px-2 border-r border-gray-100 dark:border-darkBorder shrink-0">
+                onClick={() => abrirPessoa(idx)}
+                title="Ver a semana dela"
+                className="flex flex-col items-center py-3 px-2 border-r border-gray-100 dark:border-darkBorder shrink-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-darkBg">
                 {c.foto ? (
                   <img src={c.foto} alt={c.nome || ''}
                     className="w-10 h-10 rounded-full object-cover border-2 border-purple-200" />
@@ -386,6 +390,119 @@ export const AdminCalendar: React.FC = () => {
               <p className="text-sm text-gray-400">Nenhum serviço agendado para esta data</p>
             </div>
           )}
+        </div>
+      </div>
+    );
+  };
+
+  // ─── Render individual view (one collaborator per panel, swipe sideways) ─────
+  const abrirPessoa = (idx: number) => {
+    setPessoaIdx(idx);
+    setView('pessoa');
+    requestAnimationFrame(() => {
+      const el = pessoaScrollRef.current;
+      if (el) el.scrollTo({ left: idx * el.clientWidth, behavior: 'auto' });
+    });
+  };
+
+  const irParaPessoa = (idx: number) => {
+    const el = pessoaScrollRef.current;
+    if (!el || idx < 0 || idx >= colaboradoras.length) return;
+    el.scrollTo({ left: idx * el.clientWidth, behavior: 'smooth' });
+  };
+
+  const onPessoaScroll = () => {
+    const el = pessoaScrollRef.current;
+    if (!el || !el.clientWidth) return;
+    const idx = Math.round(el.scrollLeft / el.clientWidth);
+    if (idx !== pessoaIdx) setPessoaIdx(idx);
+  };
+
+  const agendarPara = (c: RHColaboradora, day: Date) => {
+    openCreate(formatDateBR(day));
+    setSelectedCollabs([{ id: c.id, nome: c.nome }]);
+  };
+
+  const avatar = (c: RHColaboradora, size: string) => c.foto
+    ? <img src={c.foto} alt={c.nome || ''} className={`${size} rounded-full object-cover shrink-0`} />
+    : <div className={`${size} rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center shrink-0`}>{(c.nome || '?').charAt(0)}</div>;
+
+  const renderPessoa = () => {
+    if (colaboradoras.length === 0) {
+      return <div className="flex-1 flex items-center justify-center p-8 text-sm text-gray-500">Nenhuma colaboradora ativa</div>;
+    }
+    const hoje = formatDateBR(new Date());
+    const doDia = (c: RHColaboradora, d: Date) => svcsForDay(d)
+      .filter(s => s.status !== 'CANCELLED' && (s.collaboratorId === c.id || (s.collaboratorIds || []).includes(c.id)))
+      .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+
+    return (
+      <div className="flex-1 flex flex-col min-h-[70vh] md:min-h-0">
+        {/* Avatar strip: tap to jump to someone */}
+        <div className="flex gap-3 overflow-x-auto no-scrollbar px-3 py-3 border-b border-gray-100 dark:border-darkBorder shrink-0">
+          {colaboradoras.map((c, idx) => (
+            <button key={c.id} onClick={() => irParaPessoa(idx)} className="flex flex-col items-center gap-1 shrink-0 w-14">
+              <span className={`rounded-full p-0.5 ${idx === pessoaIdx ? 'bg-primary' : 'bg-transparent'}`}>
+                {avatar(c, 'w-11 h-11')}
+              </span>
+              <span className={`text-[10px] truncate w-full text-center ${idx === pessoaIdx ? 'font-bold text-primary' : 'text-lightText dark:text-darkTextSecondary'}`}>
+                {(c.nome || '').trim().split(' ')[0]}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* One panel per collaborator; swipe sideways for the next one */}
+        <div ref={pessoaScrollRef} onScroll={onPessoaScroll}
+          className="flex-1 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory no-scrollbar min-h-0">
+          {colaboradoras.map((c, idx) => {
+            const semana = weekDays.map(d => ({ d, svcs: doDia(c, d) }));
+            const total = semana.reduce((n, x) => n + x.svcs.length, 0);
+            const horas = semana.reduce((n, x) => n + x.svcs.reduce((h, s) => h + (Number(s.duration) || 4), 0), 0);
+            return (
+              <div key={c.id} className="w-full shrink-0 snap-start overflow-y-auto">
+                <div className="flex items-center gap-3 px-4 py-3 sticky top-0 bg-white dark:bg-darkSurface z-10 border-b border-gray-100 dark:border-darkBorder">
+                  <button onClick={() => irParaPessoa(idx - 1)} disabled={idx === 0} className="p-1.5 rounded-lg text-lightText disabled:opacity-20" aria-label="Anterior"><ChevronLeft size={18} /></button>
+                  {avatar(c, 'w-10 h-10')}
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-darkText dark:text-darkTextPrimary truncate">{c.nome}</p>
+                    <p className="text-xs text-lightText dark:text-darkTextSecondary">{total} serviço{total === 1 ? '' : 's'} · {horas}h na semana · {idx + 1}/{colaboradoras.length}</p>
+                  </div>
+                  <button onClick={() => irParaPessoa(idx + 1)} disabled={idx === colaboradoras.length - 1} className="p-1.5 rounded-lg text-lightText disabled:opacity-20" aria-label="Próxima"><ChevronRight size={18} /></button>
+                </div>
+                <div className="divide-y divide-gray-100 dark:divide-darkBorder">
+                  {semana.map(({ d, svcs }) => {
+                    const ehHoje = formatDateBR(d) === hoje;
+                    return (
+                      <div key={d.toISOString()} className={`flex gap-3 px-4 py-3 ${ehHoje ? 'bg-violet-50/60 dark:bg-violet-900/10' : ''}`}>
+                        <div className="w-11 shrink-0 text-center">
+                          <p className={`text-[10px] font-bold uppercase ${ehHoje ? 'text-primary' : 'text-lightText dark:text-darkTextSecondary'}`}>{WEEKDAY_LABELS[d.getDay()]}</p>
+                          <p className={`text-lg font-bold leading-tight ${ehHoje ? 'text-primary' : 'text-darkText dark:text-darkTextPrimary'}`}>{d.getDate()}</p>
+                        </div>
+                        <div className="flex-1 min-w-0 space-y-2">
+                          {svcs.length === 0 ? (
+                            <button onClick={() => agendarPara(c, d)} className="w-full text-left text-xs text-lightText dark:text-darkTextSecondary py-2 flex items-center gap-1 hover:text-primary">
+                              Livre <Plus size={12} />
+                            </button>
+                          ) : svcs.map(s => (
+                            <button key={s.id} onClick={() => { setSelectedEvent(s); setShowDetail(true); }}
+                              className="w-full text-left rounded-xl border border-gray-100 dark:border-darkBorder p-2.5 flex gap-2.5 items-start hover:border-primary/40">
+                              <span className={`w-1.5 self-stretch rounded-full shrink-0 ${STATUS_COLOR[s.status] || 'bg-gray-400'}`} />
+                              <span className="min-w-0 flex-1">
+                                <span className="block text-sm font-bold text-darkText dark:text-darkTextPrimary truncate">{s.clientName}</span>
+                                <span className="block text-xs text-lightText dark:text-darkTextSecondary truncate">{s.time || '--:--'} · {Number(s.duration) || 4}h · {s.type}</span>
+                                {s.address && <span className="block text-[11px] text-lightText dark:text-darkTextSecondary truncate">{s.address}</span>}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -479,6 +596,12 @@ export const AdminCalendar: React.FC = () => {
               >
                 <Users size={14} /> Equipe
               </button>
+              <button
+                onClick={() => abrirPessoa(pessoaIdx)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${view === 'pessoa' ? 'bg-white dark:bg-darkSurface text-primary shadow-sm' : 'text-lightText dark:text-darkTextSecondary'}`}
+              >
+                <UserRound size={14} /> Pessoa
+              </button>
             </div>
             <Button icon={<Plus size={18} />} onClick={() => openCreate()}>Agendar</Button>
           </div>
@@ -514,7 +637,7 @@ export const AdminCalendar: React.FC = () => {
 
         {/* Calendar surface */}
         <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-200 dark:border-darkBorder shadow-sm flex-1 overflow-hidden flex flex-col">
-          {view === 'month' ? renderMonth() : view === 'week' ? renderWeek() : renderTeam()}
+          {view === 'month' ? renderMonth() : view === 'week' ? renderWeek() : view === 'pessoa' ? renderPessoa() : renderTeam()}
         </div>
       </div>
 
