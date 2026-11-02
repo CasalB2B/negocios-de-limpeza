@@ -6,10 +6,12 @@ import { useNavigate } from 'react-router-dom';
 import { Input } from '../../components/Input';
 import { Modal } from '../../components/Modal';
 import { useData } from '../../components/DataContext';
+import { useMyCollabIds, isMyService } from '../../lib/collabIdentity';
 
 export const CollaboratorProfile: React.FC = () => {
   const navigate = useNavigate();
   const { currentCollaborator, updateCollaborator, logoutCollaborator, services } = useData();
+  const myIds = useMyCollabIds(currentCollaborator);
   
   // Modals State
   const [showEditModal, setShowEditModal] = useState(false);
@@ -79,7 +81,7 @@ export const CollaboratorProfile: React.FC = () => {
   };
 
   // Histórico Filtrado + agrupado por mês
-  const historyServices = services.filter(s => s.collaboratorId === currentCollaborator?.id && s.status === 'COMPLETED');
+  const historyServices = services.filter(s => isMyService(s, myIds) && s.status === 'COMPLETED');
 
   const servicesByMonth = historyServices.reduce((acc, s) => {
     const parts = (s.date || '').split('/');

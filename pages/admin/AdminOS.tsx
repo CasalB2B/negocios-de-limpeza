@@ -7,10 +7,12 @@ import { Modal } from '../../components/Modal';
 import { Plus, X, User, Calendar, MapPin, Clock, DollarSign, ArrowRight, AlertCircle, CheckCircle2, Search, CreditCard, Copy, ExternalLink, MessageCircle } from 'lucide-react';
 import { useData, Service } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
+import { usePreAgendamentoAtivo, statusInicial } from '../../lib/preAgendamento';
 
-type ColStatus = 'AGENDADO' | 'CONFIRMADO' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'CANCELADO';
+type ColStatus = 'AGUARDANDO_SINAL' | 'AGENDADO' | 'CONFIRMADO' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'CANCELADO';
 
 const COLUMNS: { key: ColStatus; label: string; dotColor: string; bg: string; border: string; cardBorder: string }[] = [
+  { key: 'AGUARDANDO_SINAL', label: 'Aguardando sinal', dotColor: 'bg-amber-500', bg: 'bg-amber-50 dark:bg-amber-950/20', border: 'border-amber-200 dark:border-amber-800', cardBorder: 'border-l-amber-500' },
   { key: 'AGENDADO',     label: 'Agendado',      dotColor: 'bg-blue-400',   bg: 'bg-blue-50 dark:bg-blue-950/20',    border: 'border-blue-200 dark:border-blue-800',    cardBorder: 'border-l-blue-400'   },
   { key: 'CONFIRMADO',   label: 'Confirmado',    dotColor: 'bg-violet-500', bg: 'bg-violet-50 dark:bg-violet-950/20', border: 'border-violet-200 dark:border-violet-800', cardBorder: 'border-l-violet-500' },
   { key: 'EM_ANDAMENTO', label: 'Em Andamento',  dotColor: 'bg-orange-500', bg: 'bg-orange-50 dark:bg-orange-950/20', border: 'border-orange-200 dark:border-orange-800', cardBorder: 'border-l-orange-500' },
@@ -19,12 +21,14 @@ const COLUMNS: { key: ColStatus; label: string; dotColor: string; bg: string; bo
 ];
 
 const NEXT: Partial<Record<ColStatus, ColStatus>> = {
+  AGUARDANDO_SINAL: 'AGENDADO',
   AGENDADO: 'CONFIRMADO',
   CONFIRMADO: 'EM_ANDAMENTO',
   EM_ANDAMENTO: 'CONCLUIDO',
 };
 
 const DB_TO_COL: Record<string, ColStatus> = {
+  PRE_SCHEDULED: 'AGUARDANDO_SINAL',
   SCHEDULED: 'AGENDADO', WAITING_SIGNAL: 'AGENDADO', PENDING: 'AGENDADO',
   SOLICITADO: 'AGENDADO', BUDGET_READY: 'AGENDADO',
   CONFIRMED: 'CONFIRMADO', SIGNAL_PAID: 'CONFIRMADO',
@@ -34,7 +38,7 @@ const DB_TO_COL: Record<string, ColStatus> = {
 };
 
 const COL_TO_DB: Record<ColStatus, string> = {
-  AGENDADO: 'SCHEDULED', CONFIRMADO: 'CONFIRMED',
+  AGUARDANDO_SINAL: 'PRE_SCHEDULED', AGENDADO: 'SCHEDULED', CONFIRMADO: 'CONFIRMED',
   EM_ANDAMENTO: 'IN_PROGRESS', CONCLUIDO: 'COMPLETED', CANCELADO: 'CANCELLED',
 };
 
@@ -114,12 +118,14 @@ export const AdminOS: React.FC = () => {
       // month
       return svcDate.getMonth() === now.getMonth() && svcDate.getFullYear() === now.getFullYear();
     });
-    const map = { AGENDADO: [] as Service[], CONFIRMADO: [] as Service[], EM_ANDAMENTO: [] as Service[], CONCLUIDO: [] as Service[], CANCELADO: [] as Service[] };
+    const map = { AGUARDANDO_SINAL: [] as Service[], AGENDADO: [] as Service[], CONFIRMADO: [] as Service[], EM_ANDAMENTO: [] as Service[], CONCLUIDO: [] as Service[], CANCELADO: [] as Service[] };
     for (const s of all) map[normCol(s.status)].push(s);
     return map;
   }, [services, periodFilter]);
 
   const selectedClient = useMemo(() => clients.find(c => c.id === form.clientId), [clients, form.clientId]);
+  const preAgendamentoAtivo = usePreAgendamentoAtivo();
+  const statusNovo = statusInicial(preAgendamentoAtivo, selectedClient?.type);
 
   const handleAdvance = (service: Service, next: ColStatus) => {
     updateServiceStatus(service.id, COL_TO_DB[next]);
@@ -129,11 +135,11 @@ export const AdminOS: React.FC = () => {
       fetch('https://yhdxmutbreihrtlnbcaf.supabase.co/functions/v1/post-service-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service_id: service.id }),
+        body: JSON.stringify({ service_id: service.id, origem: 'painel' }),
       })
         .then(r => r.json())
         .then(data => {
-          if (data.reason === 'desligado') { setCompletionToast(null); return; }
+          if (data.reason === 'desligado' || data.reason === 'automatico') { setCompletionToast(null); return; }
           setCompletionToast(data.sent ? { sent: true } : { sent: false, url: data.wa_fallback_url || '' });
           setTimeout(() => setCompletionToast(null), 6000);
         })
@@ -158,7 +164,7 @@ export const AdminOS: React.FC = () => {
       date: `${d}/${m}/${y}`,
       time: form.time,
       address: form.addressText || client?.address || '',
-      status: 'SCHEDULED',
+      status: statusNovo,
       price: parseFloat(form.price) || 0,
       notes: form.notes,
       duration: parseInt(form.duration) as 4 | 6 | 8,
@@ -394,7 +400,7 @@ export const AdminOS: React.FC = () => {
           >
             Cancelar
           </button>
-          <Button onClick={handleCreate} disabled={!form.clientId || !form.date || !form.type}>Criar OS</Button>
+          <Button onClick={handleCreate} disabled={!form.clientId || !form.date || !form.type}>{statusNovo === 'PRE_SCHEDULED' ? 'Pré-agendar (aguarda sinal)' : 'Criar OS'}</Button>
         </div>
       </Modal>
 

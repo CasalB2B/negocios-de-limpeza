@@ -5,6 +5,7 @@ import { useData } from '../../components/DataContext';
 import { CollabLayout } from '../../components/CollabLayout';
 import { getCollabPreview } from '../../lib/adminPreview';
 import { supabase } from '../../lib/supabase';
+import { useMyCollabIds, isMyService } from '../../lib/collabIdentity';
 
 type Tab = 'hoje' | 'semana';
 
@@ -73,13 +74,13 @@ export const CollaboratorAgenda: React.FC = () => {
     return () => clearInterval(timer);
   }, [currentCollaborator?.id, previewMode]);
 
+  const myIds = useMyCollabIds(currentCollaborator);
+
   const myServices = useMemo(() => {
     if (!currentCollaborator) return [];
     return services
       .filter(s => {
-        const isPrimary = s.collaboratorId === currentCollaborator.id;
-        const isInArray = Array.isArray((s as any).collaboratorIds) && (s as any).collaboratorIds.includes(currentCollaborator.id);
-        const isCollaborator = isPrimary || isInArray;
+        const isCollaborator = isMyService(s, myIds);
         const relevantStatus = ['SCHEDULED','CONFIRMED','WAITING_SIGNAL','IN_PROGRESS','COMPLETED'].includes(s.status);
         if (!relevantStatus) return false;
         if (tab === 'hoje') return isCollaborator && s.date === today;
@@ -90,7 +91,7 @@ export const CollaboratorAgenda: React.FC = () => {
         if (dateDiff !== 0) return dateDiff;
         return (a.time || '').localeCompare(b.time || '');
       });
-  }, [services, currentCollaborator, tab, today]);
+  }, [services, currentCollaborator, tab, today, myIds]);
 
   const [commRate, setCommRate] = useState(40);
   useEffect(() => {
@@ -105,9 +106,7 @@ export const CollaboratorAgenda: React.FC = () => {
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const yyyy = String(now.getFullYear());
     const monthServices = services.filter(s => {
-      const isPrimary = s.collaboratorId === currentCollaborator.id;
-      const isInArray = Array.isArray((s as any).collaboratorIds) && (s as any).collaboratorIds.includes(currentCollaborator.id);
-      if (!(isPrimary || isInArray)) return false;
+      if (!isMyService(s, myIds)) return false;
       if (!s.date) return false;
       const parts = s.date.split('/');
       return parts[1] === mm && parts[2] === yyyy && s.status !== 'CANCELLED';
@@ -122,7 +121,7 @@ export const CollaboratorAgenda: React.FC = () => {
       estimativa: horas * commRate,
       concluidos: monthServices.filter(s => s.status === 'COMPLETED').length,
     };
-  }, [services, currentCollaborator, commRate]);
+  }, [services, currentCollaborator, commRate, myIds]);
 
   const greeting = () => {
     const h = new Date().getHours();

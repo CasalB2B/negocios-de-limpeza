@@ -3,6 +3,7 @@ import { CollabLayout } from '../../components/CollabLayout';
 import { DollarSign, Clock, FileText, TrendingUp, AlertTriangle, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
+import { useMyCollabIds, isMyService } from '../../lib/collabIdentity';
 
 type Period = 'mes' | 'anterior' | 'tudo';
 
@@ -33,6 +34,7 @@ function isInMonth(dateStr: string, year: number, month: number): boolean {
 
 export const CollaboratorFinance: React.FC = () => {
   const { services, currentCollaborator } = useData();
+  const myIds = useMyCollabIds(currentCollaborator);
   const [period, setPeriod] = useState<Period>('mes');
   const [commissionRate, setCommissionRate] = useState<number>(40);
   const [payments, setPayments] = useState<CollabPayment[]>([]);
@@ -92,7 +94,7 @@ export const CollaboratorFinance: React.FC = () => {
   const prevYear = thisMonth === 0 ? thisYear - 1 : thisYear;
   const prevMonth = thisMonth === 0 ? 11 : thisMonth - 1;
 
-  const myServices = services.filter(s => s.collaboratorId === currentCollaborator?.id);
+  const myServices = services.filter(s => isMyService(s, myIds));
 
   const filtered = myServices.filter(s => {
     if (period === 'tudo') return true;

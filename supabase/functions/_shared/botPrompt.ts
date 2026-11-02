@@ -48,6 +48,11 @@ export interface BotConfig {
   signal_delay_minutes?: number;
   signal_enabled_at?: string | null;
   booking_confirmation_when?: 'agendar' | 'sinal';
+  signal_followup_minutes?: number;
+  signal_expire_hours?: number;
+  remainder_after_hours?: number;
+  google_review_url?: string;
+  review_interval_days?: number;
 }
 
 export const TONES: { value: string; label: string; desc: string; instruction: string }[] = [

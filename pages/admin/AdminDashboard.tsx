@@ -316,6 +316,9 @@ export const AdminDashboard: React.FC = () => {
 
         </div>
 
+        {/* ── Mapa ao vivo da equipe (largura total, logo abaixo dos números) ── */}
+        <MapaColaboradoras grande />
+
         {/* ── Clientes Sumidos ── */}
         <ClientesSumidosCard services={services} />
 
@@ -580,10 +583,6 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Row 6: Mapa de Colaboradoras ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <MapaColaboradoras />
-        </div>
 
       </div>
     </Layout>

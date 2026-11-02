@@ -48,7 +48,7 @@ function pinIcon(google: any, ativa: boolean, letra: string) {
   };
 }
 
-export const MapaColaboradoras: React.FC = () => {
+export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = false }) => {
   const [locations, setLocations] = useState<CollabLocation[]>([]);
   const [mapsKey, setMapsKey] = useState<string | null | undefined>(undefined);
   const [erroMapa, setErroMapa] = useState('');
@@ -84,7 +84,7 @@ export const MapaColaboradoras: React.FC = () => {
       if (!mapDiv.current) return;
       mapRef.current = new google.maps.Map(mapDiv.current, {
         center: GUARAPARI,
-        zoom: 12,
+        zoom: grande ? 13 : 12,
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: true,
@@ -158,7 +158,7 @@ export const MapaColaboradoras: React.FC = () => {
       </div>
 
       {mapsKey === undefined ? (
-        <div className="h-72 flex items-center justify-center"><Loader2 className="animate-spin text-gray-400" size={24} /></div>
+        <div className={`${grande ? 'h-[60vh] min-h-[360px] max-h-[640px]' : 'h-72'} flex items-center justify-center`}><Loader2 className="animate-spin text-gray-400" size={24} /></div>
       ) : mapsKey === null ? (
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 text-center">
           <p className="text-blue-700 dark:text-blue-300 text-sm font-medium">Configure a chave do Google Maps</p>
@@ -166,7 +166,7 @@ export const MapaColaboradoras: React.FC = () => {
         </div>
       ) : (
         <>
-          <div ref={mapDiv} className="w-full h-72 md:h-80 rounded-xl overflow-hidden bg-gray-100 dark:bg-darkBg" />
+          <div ref={mapDiv} className={`w-full ${grande ? 'h-[60vh] min-h-[360px] max-h-[640px]' : 'h-72 md:h-80'} rounded-xl overflow-hidden bg-gray-100 dark:bg-darkBg`} />
           {erroMapa && <p className="text-xs text-red-600 mt-2">{erroMapa}</p>}
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-[11px] text-gray-500 dark:text-darkTextSecondary">
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-600" /> Atualizou nos últimos 15 min</span>

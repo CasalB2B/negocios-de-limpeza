@@ -593,13 +593,36 @@ export const AdminWhatsApp: React.FC = () => {
                   />
                   <ToggleRow
                     title="Pós-serviço e avaliação"
-                    desc="Quando o serviço é marcado como concluído, pede uma nota de 1 a 5."
+                    desc="1 hora depois de concluído: na primeira limpeza manda o link do Google; para clientes recorrentes, de tempos em tempos, o link de avaliação da colaboradora que atendeu."
                     on={cfg.send_post_service !== false} onChange={v => patch({ send_post_service: v })}
                   />
+                  {cfg.send_post_service !== false && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-1">
+                      <label className="block sm:col-span-2">
+                        <span className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1">Link de avaliação do Google Meu Negócio</span>
+                        <input
+                          type="url" inputMode="url"
+                          value={cfg.google_review_url ?? ''}
+                          onChange={e => patch({ google_review_url: e.target.value.trim() })}
+                          placeholder="https://g.page/r/.../review"
+                          className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkBg text-sm text-darkText dark:text-darkTextPrimary"
+                        />
+                        <span className="block text-[11px] text-gray-500 dark:text-darkTextSecondary mt-1">
+                          No Google: Perfil da Empresa → “Pedir avaliações” → copiar link. Em branco: a primeira limpeza recebe o pedido de nota de 1 a 5.
+                        </span>
+                      </label>
+                      <label className="block sm:col-span-2">
+                        <span className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1">Clientes recorrentes: pedir avaliação da colaboradora</span>
+                        <select value={cfg.review_interval_days ?? 60} onChange={e => patch({ review_interval_days: Number(e.target.value) })} className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkBg text-sm text-darkText dark:text-darkTextPrimary">
+                          {[30, 60, 90].map(d => <option key={d} value={d}>No máximo a cada {d === 30 ? '1 mês' : `${d / 30} meses`}</option>)}
+                        </select>
+                      </label>
+                    </div>
+                  )}
                   <div className="pt-4 border-t border-gray-100 dark:border-darkBorder space-y-3">
                     <ToggleRow
-                      title="Cobrar sinal pelo WhatsApp"
-                      desc="Depois que o serviço é agendado, envia ao cliente o link de pagamento do sinal (InfinitePay, Pix ou cartão). Quando o cliente paga, a OS fica como “Sinal pago” sozinha."
+                      title="Pré-agendamento com sinal"
+                      desc="Clientes novos e eventuais entram como “Aguardando sinal”: o cliente recebe o link do sinal (InfinitePay, Pix ou cartão) e o agendamento só é confirmado quando ele paga. Clientes fixos entram direto como agendados."
                       on={!!cfg.send_signal_link}
                       onChange={v => patch(v
                         ? { send_signal_link: true, signal_enabled_at: new Date().toISOString() }
@@ -631,15 +654,22 @@ export const AdminWhatsApp: React.FC = () => {
                             ))}
                           </select>
                         </label>
+                        <label className="block">
+                          <span className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1">Se não pagar, lembrar</span>
+                          <select value={cfg.signal_followup_minutes ?? 30} onChange={e => patch({ signal_followup_minutes: Number(e.target.value) })} className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkBg text-sm text-darkText dark:text-darkTextPrimary">
+                            {[15, 30, 60, 120].map(m => <option key={m} value={m}>{m < 60 ? `${m} minutos depois` : `${m / 60} hora${m > 60 ? 's' : ''} depois`} (e mais 1 vez)</option>)}
+                          </select>
+                        </label>
+                        <label className="block">
+                          <span className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1">Liberar o horário se não pagar em</span>
+                          <select value={cfg.signal_expire_hours ?? 24} onChange={e => patch({ signal_expire_hours: Number(e.target.value) })} className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkBg text-sm text-darkText dark:text-darkTextPrimary">
+                            {[6, 12, 24, 48].map(h => <option key={h} value={h}>{h} horas (avisa a equipe)</option>)}
+                          </select>
+                        </label>
                         <label className="block sm:col-span-2">
-                          <span className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1">Mensagem “agendamento confirmado”</span>
-                          <select
-                            value={cfg.booking_confirmation_when ?? 'agendar'}
-                            onChange={e => patch({ booking_confirmation_when: e.target.value as 'agendar' | 'sinal' })}
-                            className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkBg text-sm text-darkText dark:text-darkTextPrimary"
-                          >
-                            <option value="agendar">Enviar logo ao agendar</option>
-                            <option value="sinal">Enviar só quando o sinal for pago</option>
+                          <span className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1">Primeira limpeza: cobrar o restante</span>
+                          <select value={cfg.remainder_after_hours ?? 1} onChange={e => patch({ remainder_after_hours: Number(e.target.value) })} className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkBg text-sm text-darkText dark:text-darkTextPrimary">
+                            {[0, 1, 2, 4].map(h => <option key={h} value={h}>{h === 0 ? 'Assim que a colaboradora concluir' : `${h} hora${h > 1 ? 's' : ''} depois de concluída`}</option>)}
                           </select>
                         </label>
                         <p className="text-[11px] text-gray-500 dark:text-darkTextSecondary sm:col-span-2">

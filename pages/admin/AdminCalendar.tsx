@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useData, Service } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
+import { usePreAgendamentoAtivo, statusInicial } from '../../lib/preAgendamento';
 
 type ViewMode = 'month' | 'week' | 'team';
 interface RHColaboradora { id: string; nome: string; foto?: string; }
@@ -19,7 +20,7 @@ const WEEKDAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const TIME_SLOTS = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
 
 const STATUS_COLOR: Record<string, string> = {
-  SCHEDULED: 'bg-blue-500', WAITING_SIGNAL: 'bg-blue-400', CONFIRMED: 'bg-violet-500',
+  PRE_SCHEDULED: 'bg-amber-500', SCHEDULED: 'bg-blue-500', WAITING_SIGNAL: 'bg-blue-400', CONFIRMED: 'bg-violet-500',
   SIGNAL_PAID: 'bg-violet-600', IN_PROGRESS: 'bg-orange-500', COMPLETED: 'bg-green-500',
   CANCELLED: 'bg-red-400', PENDING: 'bg-gray-400',
 };
@@ -177,7 +178,7 @@ export const AdminCalendar: React.FC = () => {
       date: dateBR,
       time: form.time,
       address: form.addressText || client?.address || '',
-      status: 'SCHEDULED',
+      status: statusInicial(preAgendamentoAtivo, client?.type),
       price: parseFloat(form.price) || 0,
       notes: form.notes,
       duration: parseInt(form.duration) as 4 | 6 | 8,
@@ -191,6 +192,8 @@ export const AdminCalendar: React.FC = () => {
   };
 
   const selectedClient = clients.find(c => c.id === form.clientId);
+  const preAgendamentoAtivo = usePreAgendamentoAtivo();
+  const statusNovo = statusInicial(preAgendamentoAtivo, selectedClient?.type);
 
   // ─── Render month view ────────────────────────────────────────────────────────
   const renderMonth = () => (
@@ -524,7 +527,7 @@ export const AdminCalendar: React.FC = () => {
         footer={
           <>
             <button onClick={() => { setShowCreate(false); setForm(BLANK); setSelectedCollabs([]); setClientSearch(''); setShowClientDrop(false); }} className="px-6 py-3 font-bold text-lightText hover:bg-gray-100 dark:hover:bg-darkBorder rounded-xl transition-colors">Cancelar</button>
-            <Button onClick={handleCreate} disabled={!form.clientId || !form.date || !form.type}>Agendar</Button>
+            <Button onClick={handleCreate} disabled={!form.clientId || !form.date || !form.type}>{statusNovo === 'PRE_SCHEDULED' ? 'Pré-agendar (aguarda sinal)' : 'Agendar'}</Button>
           </>
         }
       >

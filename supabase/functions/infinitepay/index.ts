@@ -25,7 +25,7 @@ async function config() {
     db.from('platform_settings').select('infinitepay_handle').eq('id', 1).single(),
     db.from('integracoes_privadas').select('infinitepay_key').eq('id', 1).maybeSingle(),
     db.from('whatsapp_bot_config')
-      .select('send_signal_link, signal_percent, signal_delay_minutes, signal_enabled_at, booking_confirmation_when, send_booking_confirmation')
+      .select('send_signal_link, signal_percent, signal_delay_minutes, signal_enabled_at, booking_confirmation_when, send_booking_confirmation, signal_followup_minutes, signal_expire_hours, remainder_after_hours, send_post_service, google_review_url, review_interval_days, notify_phone')
       .eq('company_id', 1).maybeSingle(),
   ]);
   const handle = String(s?.infinitepay_handle ?? '').trim().replace(/^\$/, '');
@@ -141,7 +141,7 @@ async function receberWebhook(evento: any) {
   const tipo: Tipo = tipoBruto === 'sinal' || tipoBruto === 'restante' ? tipoBruto : 'total';
 
   const { data: s } = await db.from('services')
-    .select('id, price, type, client_name, payment_status, signal_amount, payment_transaction_nsu').eq('id', serviceId).maybeSingle();
+    .select('id, price, type, date, time, status, client_id, client_name, payment_status, signal_amount, payment_transaction_nsu').eq('id', serviceId).maybeSingle();
   if (!s) return json({ ok: false, error: 'Pedido desconhecido' }, 400);
 
   const { data: jaLancado } = await db.from('transactions').select('id').eq('id', `ip_${transactionNsu}`).maybeSingle();
@@ -171,7 +171,10 @@ async function receberWebhook(evento: any) {
     paid_at: new Date().toISOString(),
   };
   if (tipo === 'sinal') {
-    await db.from('services').update({ ...comum, payment_status: 'SIGNAL_PAID', signal_status: 'paid', signal_amount: valorCobrado || s.signal_amount }).eq('id', s.id);
+    const sinalUpd: Record<string, unknown> = { ...comum, payment_status: 'SIGNAL_PAID', signal_status: 'paid', signal_amount: valorCobrado || s.signal_amount };
+    // A pre-booking becomes a real booking once the deposit is paid.
+    if (s.status === 'PRE_SCHEDULED') sinalUpd.status = 'SCHEDULED';
+    await db.from('services').update(sinalUpd).eq('id', s.id);
   } else {
     await db.from('services').update({ ...comum, payment_status: 'FULL_PAID' }).eq('id', s.id);
   }
@@ -188,59 +191,196 @@ async function receberWebhook(evento: any) {
     method: `InfinitePay · ${metodo}${tipo === 'sinal' ? ' (sinal)' : tipo === 'restante' ? ' (restante)' : ''}`,
   });
 
-  if (tipo === 'sinal' && bot?.booking_confirmation_when === 'sinal' && bot?.send_booking_confirmation !== false) {
-    try { await enviarConfirmacao(s.id); } catch (e) { console.error('[infinitepay] confirmação', e); }
+  if (tipo === 'sinal') {
+    try {
+      if (s.status === 'PRE_SCHEDULED') {
+        // Deposit paid on a pre-booking: thank the client and confirm the date in one message.
+        const conn = await getConnection(1);
+        const fone = await telefoneCliente(s.client_id);
+        if (conn && fone) {
+          const params = [primeiroNome(s.client_name), reais(valorCobrado || Number(s.signal_amount) || 0), s.type || 'limpeza', s.date || 'data combinada', s.time || 'horário combinado'];
+          const t = tpl('sinal_recebido');
+          await sendTextOrTemplate(conn, fone, fillTemplate(t.body, params), { name: t.name, params });
+        }
+      } else if (bot?.booking_confirmation_when === 'sinal' && bot?.send_booking_confirmation !== false) {
+        await enviarConfirmacao(s.id);
+      }
+    } catch (e) { console.error('[infinitepay] mensagem do sinal', e); }
   }
   return json({ ok: true, pago: true, tipo });
 }
 
-// Runs every minute (pg_cron): sends the deposit link for new bookings once the delay has passed.
-async function processarSinais() {
+const tpl = (nome: string) => WA_TEMPLATES.find(x => x.name === nome)!;
+const primeiroNome = (nome: unknown) => String(nome || 'Cliente').trim().split(' ')[0] || 'Cliente';
+
+async function telefoneCliente(clientId: unknown): Promise<string | null> {
+  if (!clientId) return null;
+  const { data } = await db.from('app_users').select('phone').eq('id', clientId).maybeSingle();
+  return data?.phone || null;
+}
+
+// Team alert (the "aviso" phone, else the company contact phone) — same rule as the WhatsApp bot.
+async function avisarEquipe(conn: any, bot: any, texto: string) {
+  const { data: s } = await db.from('platform_settings').select('contact_phone').eq('id', 1).maybeSingle();
+  const destino = String(bot?.notify_phone || s?.contact_phone || '').replace(/\D/g, '');
+  if (destino.length < 10) return;
+  const proprio = String(conn.display_phone || '').replace(/\D/g, '');
+  if (proprio && destino.endsWith(proprio.slice(-8))) return;
+  const t = tpl('aviso_equipe');
+  await sendTextOrTemplate(conn, destino, texto, { name: t.name, params: [texto.replace(/\s*\n+\s*/g, ' · ').slice(0, 900)] });
+}
+
+const minutosAtras = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
+
+// Runs every minute (pg_cron). Each step only touches rows created/changed after the related
+// switch was turned on, and marks rows so nothing is sent twice.
+async function processarAutomacoes() {
   const { bot } = await config();
-  if (!bot?.send_signal_link) return json({ ok: true, ignorado: 'cobrança de sinal desligada' });
   const conn = await getConnection(1);
-  if (!conn) return json({ ok: true, ignorado: 'WhatsApp não conectado' });
+  const log: Record<string, string> = {};
 
-  const atraso = Math.max(0, Number(bot.signal_delay_minutes) || 0);
-  const limite = new Date(Date.now() - atraso * 60_000).toISOString();
-  // Never charge bookings older than the switch being turned on, nor older than 24h.
-  const desde = [bot.signal_enabled_at, new Date(Date.now() - 24 * 3600_000).toISOString()].filter(Boolean).sort().pop()!;
+  // Client type: after the first finished cleaning a "Novo" client becomes "Eventual".
+  {
+    const { data: feitos } = await db.from('services').select('client_id').eq('status', 'COMPLETED').gte('completed_at', minutosAtras(7 * 24 * 60));
+    const ids = [...new Set((feitos ?? []).map(f => f.client_id).filter(Boolean))];
+    if (ids.length) await db.from('app_users').update({ type: 'EVENTUAL' }).in('id', ids).in('type', ['NOVO', 'PRIMEIRA_LIMPEZA']);
+  }
 
-  const { data: fila } = await db.from('services')
-    .select('id, client_id, client_name, type, date, time, price, status, payment_status')
-    .is('signal_status', null)
-    .gt('price', 0)
-    .gte('created_at', desde)
-    .lte('created_at', limite)
-    .limit(20);
+  if (!conn) return json({ ok: true, ignorado: 'WhatsApp não conectado', log });
 
-  const t = WA_TEMPLATES.find(x => x.name === 'cobranca_sinal');
-  const resultado: Record<string, string> = {};
-  for (const s of fila ?? []) {
-    if (['CANCELLED', 'COMPLETED'].includes(String(s.status)) || ['SIGNAL_PAID', 'FULL_PAID'].includes(String(s.payment_status))) {
-      await db.from('services').update({ signal_status: 'skipped' }).eq('id', s.id);
-      resultado[s.id] = 'ignorado';
-      continue;
+  // 1) Deposit link for new pre-bookings, after the configured delay.
+  if (bot?.send_signal_link) {
+    const atraso = Math.max(0, Number(bot.signal_delay_minutes) || 0);
+    const desde = [bot.signal_enabled_at, minutosAtras(24 * 60)].filter(Boolean).sort().pop()!;
+    const { data: fila } = await db.from('services')
+      .select('id, client_id, client_name, type, date, time, price, status, payment_status')
+      .eq('status', 'PRE_SCHEDULED').is('signal_status', null).gt('price', 0)
+      .gte('created_at', desde).lte('created_at', minutosAtras(atraso)).limit(20);
+    const t = tpl('cobranca_sinal');
+    for (const s of fila ?? []) {
+      const { data: claim } = await db.from('services').update({ signal_status: 'sending' }).eq('id', s.id).is('signal_status', null).select('id');
+      if (!claim?.length) continue;
+      try {
+        const c = await criarCobranca(s.id, 'sinal');
+        if (!c.telefoneBruto) throw new ErroCobranca('Cliente sem telefone cadastrado.');
+        const params = [primeiroNome(c.nome), s.type || 'limpeza', s.date || 'data combinada', s.time || 'horário combinado', reais(c.valor), c.url];
+        const r = await sendTextOrTemplate(conn, c.telefoneBruto, fillTemplate(t.body, params), { name: t.name, params });
+        if (!r.ok) throw new ErroCobranca(r.error || 'Falha no envio pelo WhatsApp');
+        await db.from('services').update({ signal_status: 'sent', signal_sent_at: new Date().toISOString(), signal_error: null, signal_reminders: 0 }).eq('id', s.id);
+        log[s.id] = 'sinal enviado';
+      } catch (e) {
+        await db.from('services').update({ signal_status: 'failed', signal_error: String((e as Error).message).slice(0, 300) }).eq('id', s.id);
+        log[s.id] = `sinal falhou: ${(e as Error).message}`;
+      }
     }
-    // Claim the row so an overlapping run never sends twice.
-    const { data: claim } = await db.from('services').update({ signal_status: 'sending' }).eq('id', s.id).is('signal_status', null).select('id');
-    if (!claim?.length) continue;
-    try {
-      const c = await criarCobranca(s.id, 'sinal');
-      if (!c.telefoneBruto) throw new ErroCobranca('Cliente sem telefone cadastrado.');
-      const primeiroNome = (c.nome || 'Cliente').split(' ')[0];
-      const params = [primeiroNome, s.type || 'limpeza', s.date || 'data combinada', s.time || 'horário combinado', reais(c.valor), c.url];
-      const texto = t ? fillTemplate(t.body, params) : `Olá, ${primeiroNome}! Para garantir seu agendamento, pague o sinal de ${reais(c.valor)}: ${c.url}`;
-      const r = await sendTextOrTemplate(conn, c.telefoneBruto, texto, t ? { name: t.name, params } : null);
-      if (!r.ok) throw new ErroCobranca(r.error || 'Falha no envio pelo WhatsApp');
-      await db.from('services').update({ signal_status: 'sent', signal_sent_at: new Date().toISOString(), signal_error: null }).eq('id', s.id);
-      resultado[s.id] = 'enviado';
-    } catch (e) {
-      await db.from('services').update({ signal_status: 'failed', signal_error: String((e as Error).message).slice(0, 300) }).eq('id', s.id);
-      resultado[s.id] = `falhou: ${(e as Error).message}`;
+
+    // 2) Reminders while unpaid, then release the slot and warn the team.
+    const lembrete1 = Math.max(5, Number(bot.signal_followup_minutes) || 30);
+    const expira = Math.max(1, Number(bot.signal_expire_hours) || 24) * 60;
+    const lembrete2 = Math.max(lembrete1 + 30, Math.round(expira / 2));
+    const { data: pendentes } = await db.from('services')
+      .select('id, client_id, client_name, type, date, time, signal_amount, signal_sent_at, signal_reminders, payment_link_signal')
+      .eq('status', 'PRE_SCHEDULED').eq('signal_status', 'sent').lte('signal_sent_at', minutosAtras(lembrete1)).limit(50);
+    const tl = tpl('lembrete_sinal');
+    for (const s of pendentes ?? []) {
+      const idadeMin = (Date.now() - new Date(s.signal_sent_at).getTime()) / 60_000;
+      const fone = await telefoneCliente(s.client_id);
+      if (idadeMin >= expira) {
+        await db.from('services').update({ status: 'CANCELLED', signal_status: 'expired' }).eq('id', s.id).eq('status', 'PRE_SCHEDULED');
+        await avisarEquipe(conn, bot,
+          `Sinal não pago em ${Math.round(expira / 60)}h: ${String(s.client_name || '').trim()} (${s.type}, ${s.date} às ${s.time}). O pré-agendamento foi cancelado e o horário liberado. Vale chamar a cliente.`);
+        log[s.id] = 'expirado';
+        continue;
+      }
+      const vez = Number(s.signal_reminders) || 0;
+      const devido = (vez === 0 && idadeMin >= lembrete1) || (vez === 1 && idadeMin >= lembrete2);
+      if (!devido || !fone || !s.payment_link_signal) continue;
+      const params = [primeiroNome(s.client_name), s.type || 'limpeza', s.date || 'data combinada', s.time || 'horário combinado', reais(Number(s.signal_amount) || 0), s.payment_link_signal];
+      const r = await sendTextOrTemplate(conn, fone, fillTemplate(tl.body, params), { name: tl.name, params });
+      if (r.ok) {
+        await db.from('services').update({ signal_reminders: vez + 1 }).eq('id', s.id);
+        log[s.id] = `lembrete ${vez + 1}`;
+      }
     }
   }
-  return json({ ok: true, processados: resultado });
+
+  // 3) After the first cleaning is done: charge the remainder (fixed clients are billed monthly).
+  if (bot?.send_signal_link) {
+    const espera = Math.max(0, Number(bot.remainder_after_hours) || 1) * 60;
+    const { data: concluidos } = await db.from('services')
+      .select('id, client_id, client_name, type')
+      .eq('status', 'COMPLETED').eq('payment_status', 'SIGNAL_PAID').is('remainder_status', null)
+      .lte('completed_at', minutosAtras(espera)).gte('completed_at', [bot.signal_enabled_at, minutosAtras(7 * 24 * 60)].filter(Boolean).sort().pop()!)
+      .limit(20);
+    const tr = tpl('cobranca_restante');
+    for (const s of concluidos ?? []) {
+      const { data: cli } = await db.from('app_users').select('type').eq('id', s.client_id).maybeSingle();
+      if (String(cli?.type || '').startsWith('FIXO')) { await db.from('services').update({ remainder_status: 'skipped' }).eq('id', s.id); continue; }
+      const { data: claim } = await db.from('services').update({ remainder_status: 'sending' }).eq('id', s.id).is('remainder_status', null).select('id');
+      if (!claim?.length) continue;
+      try {
+        const c = await criarCobranca(s.id, 'restante');
+        if (!c.telefoneBruto) throw new ErroCobranca('Cliente sem telefone cadastrado.');
+        const params = [primeiroNome(c.nome), s.type || 'limpeza', reais(c.valor), c.url];
+        const r = await sendTextOrTemplate(conn, c.telefoneBruto, fillTemplate(tr.body, params), { name: tr.name, params });
+        if (!r.ok) throw new ErroCobranca(r.error || 'Falha no envio pelo WhatsApp');
+        await db.from('services').update({ remainder_status: 'sent', remainder_sent_at: new Date().toISOString() }).eq('id', s.id);
+        log[s.id] = 'restante enviado';
+      } catch (e) {
+        await db.from('services').update({ remainder_status: 'failed' }).eq('id', s.id);
+        log[s.id] = `restante falhou: ${(e as Error).message}`;
+      }
+    }
+  }
+
+  // 4) Review request: Google for a first cleaning, the collaborator's own link for returning clients
+  //    (at most once every N days per client, for whoever cleaned last).
+  if (bot?.send_post_service !== false) {
+    const { data: feitos } = await db.from('services')
+      .select('id, client_id, client_name, collaborator_id, collaborator_name, collaborator_ids, collaborator_names')
+      .eq('status', 'COMPLETED').is('review_status', null)
+      .lte('completed_at', minutosAtras(60)).gte('completed_at', minutosAtras(3 * 24 * 60)).limit(20);
+    const intervaloDias = Math.max(7, Number(bot?.review_interval_days) || 60);
+    for (const s of feitos ?? []) {
+      const { data: claim } = await db.from('services').update({ review_status: 'sending' }).eq('id', s.id).is('review_status', null).select('id');
+      if (!claim?.length) continue;
+      const { data: cli } = await db.from('app_users').select('phone, last_review_request_at').eq('id', s.client_id).maybeSingle();
+      const { count: feitas } = await db.from('services').select('id', { count: 'exact', head: true }).eq('client_id', s.client_id).eq('status', 'COMPLETED');
+      const primeira = (feitas ?? 0) <= 1;
+      let enviado = false;
+      let motivo = 'skipped';
+      if (cli?.phone) {
+        if (primeira && bot?.google_review_url) {
+          const t = tpl('avaliacao_google');
+          const params = [primeiroNome(s.client_name), String(bot?.google_review_url)];
+          enviado = (await sendTextOrTemplate(conn, cli.phone, fillTemplate(t.body, params), { name: t.name, params })).ok;
+          motivo = enviado ? 'google' : 'failed';
+        } else if (primeira) {
+          // No Google link configured: fall back to the 1–5 rating message (handled by the bot).
+          const r = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/post-service-message`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service_id: s.id }),
+          }).then(x => x.json()).catch(() => null);
+          enviado = !!r?.sent;
+          motivo = enviado ? 'nota' : 'failed';
+        } else {
+          const ultimo = cli.last_review_request_at ? new Date(cli.last_review_request_at).getTime() : 0;
+          const colabId = (Array.isArray(s.collaborator_ids) && s.collaborator_ids[0]) || s.collaborator_id;
+          const colabNome = (Array.isArray(s.collaborator_names) && s.collaborator_names[0]) || s.collaborator_name;
+          if (colabId && Date.now() - ultimo >= intervaloDias * 86400_000) {
+            const t = tpl('avaliacao_colaboradora');
+            const params = [primeiroNome(s.client_name), primeiroNome(colabNome), `${APP_URL}/#/avaliar?c=${colabId}`];
+            enviado = (await sendTextOrTemplate(conn, cli.phone, fillTemplate(t.body, params), { name: t.name, params })).ok;
+            motivo = enviado ? 'colaboradora' : 'failed';
+          }
+        }
+      }
+      await db.from('services').update({ review_status: motivo }).eq('id', s.id);
+      if (enviado) await db.from('app_users').update({ last_review_request_at: new Date().toISOString() }).eq('id', s.client_id);
+      log[s.id] = `avaliação: ${motivo}`;
+    }
+  }
+
+  return json({ ok: true, log });
 }
 
 async function salvarChave(chave: unknown) {
@@ -294,7 +434,8 @@ Deno.serve(async (req) => {
         const c = await criarCobranca(String(body.service_id ?? ''), tipo);
         return json({ url: c.url, valor: c.valor, tipo, telefone_cliente: c.fone, nome_cliente: c.nome });
       }
-      case 'processar_sinais': return await processarSinais();
+      case 'processar_sinais':
+      case 'processar_automacoes': return await processarAutomacoes();
       case 'salvar_chave': return await salvarChave(body.chave);
       case 'testar': return await testar(body.handle);
       case 'status': return await status();

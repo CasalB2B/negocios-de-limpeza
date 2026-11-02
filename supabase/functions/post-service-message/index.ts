@@ -9,7 +9,7 @@ import { fillName } from '../_shared/botPrompt.ts';
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
-    const { service_id } = await req.json();
+    const { service_id, origem } = await req.json();
     const { data: service } = await supabase.from('services').select('id, client_id, client_name, type').eq('id', service_id).maybeSingle();
     if (!service) return json({ sent: false, error: 'Serviço não encontrado' }, 400);
 
@@ -27,8 +27,12 @@ Deno.serve(async (req) => {
       return json({ sent: false, reason: 'whatsapp_not_configured', wa_fallback_url: `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, message: msg });
     }
 
+    // With WhatsApp connected, the automations queue (infinitepay function) picks Google vs collaborator review.
+    if (origem === 'painel') return json({ sent: false, reason: 'automatico' });
+
     const r = await sendTextOrTemplate(conn, phone, msg, { name: 'pos_servico_avaliacao', params: [firstName || 'cliente', service.type || 'limpeza'] });
     if (r.ok) {
+      await supabase.from('services').update({ review_status: 'nota' }).eq('id', service.id).is('review_status', null);
       const { data: rows } = await supabase.from('whatsapp_sessions').select('history, meta').eq('phone', phone).limit(1);
       const sess = rows?.[0];
       await supabase.from('whatsapp_sessions').upsert({
