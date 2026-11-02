@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pagamento recebido — Negócios de Limpeza</title>
+  <link rel="icon" href="/img/logo-icon.png" />
+  <link rel="stylesheet" href="/legal.css" />
+  <style>
+    main { text-align: center; padding-block: 48px; }
+    .selo { width: 72px; height: 72px; margin: 0 auto 16px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-size: 36px; }
+    .botao { display: inline-block; margin-top: 20px; padding: 12px 20px; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 700; text-decoration: none; }
+    .botao[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="selo" aria-hidden="true">✓</div>
+    <h1>Pagamento recebido!</h1>
+    <p class="meta" id="forma">Obrigado. A confirmação já foi enviada para a nossa equipe.</p>
+    <p>Qualquer dúvida, é só responder no WhatsApp.</p>
+    <a class="botao" id="comprovante" href="#" target="_blank" rel="noopener" hidden>Ver comprovante</a>
+  </main>
+  <script>
+    (function () {
+      var q = new URLSearchParams(location.search);
+      var recibo = q.get('receipt_url');
+      if (recibo && /^https:\/\//.test(recibo)) {
+        var a = document.getElementById('comprovante');
+        a.href = recibo;
+        a.hidden = false;
+      }
+      var metodo = q.get('capture_method');
+      if (metodo) {
+        document.getElementById('forma').textContent =
+          'Obrigado! Pagamento via ' + (metodo === 'pix' ? 'Pix' : 'cartão') + ' recebido. A confirmação já foi enviada para a nossa equipe.';
+      }
+    })();
+  </script>
+</body>
+</html>

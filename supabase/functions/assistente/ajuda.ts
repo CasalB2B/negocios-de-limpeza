@@ -30,6 +30,8 @@ Perfil do administrador, informações e endereço da empresa, tabela de repasse
 - **Google Maps**: mapa ao vivo das colaboradoras, endereço automático e rotas. Cole a chave em Configurações → Integrações → Google Maps.
 - **Gemini AI**: este assistente. Chave em Configurações → Integrações → Gemini AI (gerada em aistudio.google.com).
 - **WhatsApp**: em migração para a API oficial da Meta com coexistência (o número continua no app WhatsApp Business do celular). Lembretes automáticos dependem dessa conexão.
+- **Recebimentos / InfinitePay**: cole a InfiniteTag (o $nome do app InfinitePay) e toque em "Conectar e testar" — é gerado um link de R$ 1,00 só para conferir o nome da empresa. A chave de API (inchk_...) é opcional: com ela cada link aceita um único pagamento e vence em 7 dias. Mercado Pago: em breve.
+- **Cobrar um serviço**: na OS, botão "Gerar Cobrança" cria o link com o valor do serviço (Pix ou cartão). Dá para copiar ou enviar pelo WhatsApp do cliente. Quando o cliente paga, a OS fica como "Pago" e a entrada aparece no Financeiro automaticamente.
 - **Conectar com Google** (Agenda, Planilhas, Analytics, Perfil da Empresa): em construção.
 
 ## Ver o sistema como colaboradora ou cliente
