@@ -77,5 +77,12 @@ Marque com `[x]` conforme for fazendo. Quando terminar a sua parte, é só me ch
 - [ ] Gestão: gráficos nas respostas (ex.: faturamento mês a mês)
 - [x] Tela do bot do WhatsApp com 3 modos: **Só lembretes / Menu / IA** (modelo do Gendo: abas Geral, Assistente IA e Menu) — feito em 02/11/2026, deixada em "Só lembretes"
 - [ ] Botão **"Conectar com Google"** (Agenda, Planilhas, Analytics, Meu Negócio)
-- [ ] Mapa ao vivo das colaboradoras e endereço automático (a chave do Maps já está funcionando)
+- [x] Mapa ao vivo das colaboradoras no Dashboard — feito em 02/11/2026 (pinos aparecem quando elas abrem o app e liberam a localização)
 - [ ] Incluir razão social e CNPJ nas páginas de Privacidade e Termos (me passe os dados)
+- [x] Central de Ajuda (app.negociosdelimpeza.com.br/ajuda) como base da IA + tela **Aprendizado da IA** (Configurações): perguntas recebidas, sugestões para aprovar, "ensinar a resposta certa" — feito em 02/11/2026
+- [ ] Central de Ajuda em páginas próprias para o Google achar (hoje o Google não lê bem; pensar junto com o blog)
+- [ ] **A combinar com você:** cobrança mensal dos clientes fixos (prévia dias antes de fechar o mês, cancelamentos, mês com 5 semanas, lembretes até pagar)
+- [ ] **A combinar com você:** mensagem de reativação com IA para clientes sumidos (ex.: 3 meses sem agendar)
+- [ ] Lembrete da véspera à tarde com o nome da colaboradora (ajustar o modelo de mensagem quando a Meta liberar)
+- [ ] Passadoria como serviço: cadastrar em **Serviços** (você mesmo faz, é só adicionar)
+- [ ] Apagar tabelas de backup antigas (backup_colaboradoras_arquivos, backup_candidatas_notas) e a função sem uso create-payment-link — só quando você confirmar
