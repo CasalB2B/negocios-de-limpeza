@@ -46,6 +46,23 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 const fmt     = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('pt-BR');
 
+// Defined outside the page: a component created inside render is a new type on every keystroke,
+// so React remounted the input and it lost focus after each digit.
+const CellInput: React.FC<{ value: number; onChange: (v: number) => void }> = ({ value, onChange }) => {
+  const [texto, setTexto] = useState(String(value));
+  const [editando, setEditando] = useState(false);
+  useEffect(() => { if (!editando) setTexto(String(value)); }, [value, editando]);
+  return (
+    <input
+      type="number" inputMode="decimal" step="1" value={texto}
+      onFocus={() => setEditando(true)}
+      onBlur={() => { setEditando(false); setTexto(String(value)); }}
+      onChange={e => { setTexto(e.target.value); onChange(parseFloat(e.target.value.replace(',', '.')) || 0); }}
+      className="w-full border border-input bg-background dark:bg-darkBg rounded-lg px-2 py-1.5 text-sm text-darkText dark:text-darkTextPrimary text-center focus:outline-none focus:ring-2 focus:ring-primary/30"
+    />
+  );
+};
+
 export const AdminRHConfiguracoes: React.FC = () => {
   const {
     colaboradoras,
@@ -73,8 +90,8 @@ export const AdminRHConfiguracoes: React.FC = () => {
   const remProf   = latestFor('PROFISSIONAL');
 
   const [remJ, setRemJ] = useState({ diaria4h: 80,  diaria6h: 120, diaria8h: 140, passagem: 10.20 });
-  const [remS, setRemS] = useState({ diaria4h: 85,  diaria6h: 130, diaria8h: 150, passagem: 10.20 });
-  const [remP, setRemP] = useState({ diaria4h: 90,  diaria6h: 140, diaria8h: 160, passagem: 10.20 });
+  const [remS, setRemS] = useState({ diaria4h: 100, diaria6h: 140, diaria8h: 160, passagem: 10.20 });
+  const [remP, setRemP] = useState({ diaria4h: 120, diaria6h: 160, diaria8h: 180, passagem: 10.20 });
 
   // Re-sync form fields whenever the context config changes (Phase 1 LS load OR Phase 2 Supabase sync).
   // Deps include all field values so the form updates even when only values change (same record ID).
@@ -320,26 +337,6 @@ export const AdminRHConfiguracoes: React.FC = () => {
       { cargoOrigem: CargoRH.LIDER,        ...critL, vigenciaInicio: hoje, alteradoPor },
     ]);
   });
-
-  // ── Input helpers ────────────────────────────────────────────────────────────
-  const CellInput = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => (
-    <input
-      type="number" value={value} step="0.01"
-      onChange={e => onChange(parseFloat(e.target.value) || 0)}
-      className="w-full border border-input bg-background dark:bg-darkBg rounded-lg px-2 py-1.5 text-sm text-darkText dark:text-darkTextPrimary text-center focus:outline-none focus:ring-2 focus:ring-primary/30"
-    />
-  );
-
-  const NumInput = ({ label, value, onChange, prefix }: { label: string; value: number; onChange: (v: number) => void; prefix?: string }) => (
-    <div>
-      <label className="block text-xs font-bold text-darkText dark:text-darkTextPrimary mb-1">{label}</label>
-      <div className="flex items-center border border-input bg-background dark:bg-darkBg rounded-xl overflow-hidden">
-        {prefix && <span className="px-2.5 py-2 text-xs text-lightText bg-gray-50 dark:bg-darkBg border-r border-input">{prefix}</span>}
-        <input type="number" value={value} onChange={e => onChange(parseFloat(e.target.value) || 0)} step="0.01"
-          className="flex-1 px-2.5 py-2 text-sm text-darkText dark:text-darkTextPrimary bg-transparent focus:outline-none" />
-      </div>
-    </div>
-  );
 
   return (
     <Layout role={UserRole.ADMIN}>
