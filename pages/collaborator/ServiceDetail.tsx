@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { MapPin, Clock, Play, CheckSquare, Camera, AlertCircle, DollarSign } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 import { CollabLayout } from '../../components/CollabLayout';
-import { useMyHourlyRate, valorDaColab } from '../../lib/collabIdentity';
+import { useMinhaRemuneracao, valorDaColab } from '../../lib/collabIdentity';
 
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED: 'AGENDADO', CONFIRMED: 'CONFIRMADO', WAITING_SIGNAL: 'AGUARDANDO SINAL',
@@ -23,7 +23,7 @@ export const ServiceDetail: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { services, currentCollaborator } = useData();
-  const hourlyRate = useMyHourlyRate(currentCollaborator);
+  const remuneracao = useMinhaRemuneracao(currentCollaborator);
 
   const service = services.find(s => s.id === id);
 
@@ -60,7 +60,7 @@ export const ServiceDetail: React.FC = () => {
             {service.price != null && service.price > 0 && (
               <span className="flex items-center gap-1 font-bold text-gray-900">
                 <DollarSign size={14} className="text-green-600" />
-                R$ {valorDaColab(service.duration, hourlyRate).toFixed(2)}
+                R$ {valorDaColab(service.duration, remuneracao).toFixed(2)}
               </span>
             )}
           </div>

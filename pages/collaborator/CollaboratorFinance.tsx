@@ -3,7 +3,7 @@ import { CollabLayout } from '../../components/CollabLayout';
 import { DollarSign, Clock, FileText, TrendingUp, AlertTriangle, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useData } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
-import { useMyCollabIds, isMyService } from '../../lib/collabIdentity';
+import { useMyCollabIds, isMyService, useMinhaRemuneracao, valorDaColab, horasDoServico, nomeDoCargo } from '../../lib/collabIdentity';
 
 type Period = 'mes' | 'anterior' | 'tudo';
 
@@ -36,26 +36,11 @@ export const CollaboratorFinance: React.FC = () => {
   const { services, currentCollaborator } = useData();
   const myIds = useMyCollabIds(currentCollaborator);
   const [period, setPeriod] = useState<Period>('mes');
-  const [commissionRate, setCommissionRate] = useState<number>(40);
+  const remuneracao = useMinhaRemuneracao(currentCollaborator);
   const [payments, setPayments] = useState<CollabPayment[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(true);
   const [showPending, setShowPending] = useState(true);
   const [showPayments, setShowPayments] = useState(true);
-
-  // Load commission rate from colaboradoras_rh by name match
-  useEffect(() => {
-    if (!currentCollaborator?.name) return;
-    supabase
-      .from('colaboradoras_rh')
-      .select('commission_rate')
-      .ilike('nome', currentCollaborator.name)
-      .limit(1)
-      .then(({ data }) => {
-        if (data?.[0]?.commission_rate) {
-          setCommissionRate(Number(data[0].commission_rate));
-        }
-      });
-  }, [currentCollaborator?.name]);
 
   // Load payments from collab_payments
   useEffect(() => {
@@ -106,12 +91,11 @@ export const CollaboratorFinance: React.FC = () => {
   // Pending = not yet linked to a payment (collab_payment_id is null) and service has a price
   const pending = filtered.filter(s => !s.collab_payment_id && s.price && s.price > 0);
   const pendingValue = pending.reduce((acc, s) => {
-    const hours = (s.duration === 4 || s.duration === 6 || s.duration === 8) ? s.duration : 4;
-    return acc + commissionRate * hours;
+    return acc + valorDaColab(s.duration, remuneracao);
   }, 0);
 
   const totalHours = filtered.reduce((acc, s) => {
-    return acc + ((s.duration === 4 || s.duration === 6 || s.duration === 8) ? s.duration : 4);
+    return acc + horasDoServico(s.duration);
   }, 0);
 
   // Adiantamentos not yet deducted (simplified: sum of ADIANTAMENTO payments in period)
@@ -150,7 +134,7 @@ export const CollaboratorFinance: React.FC = () => {
           ))}
         </div>
 
-        <p className="text-xs text-lightText text-center">{periodLabel} · R$ {commissionRate.toFixed(0)}/h</p>
+        <p className="text-xs text-lightText text-center">{periodLabel} · {remuneracao.diarias ? `${nomeDoCargo(remuneracao.cargo)} · 8h = R$ ${remuneracao.diarias.d8.toFixed(0)}` : `R$ ${remuneracao.porHora.toFixed(0)}/h`}</p>
 
         {/* KPI 2×2 grid */}
         <div className="grid grid-cols-2 gap-3">
@@ -169,7 +153,7 @@ export const CollaboratorFinance: React.FC = () => {
               <Clock size={16} className="text-primary" />
             </div>
             <p className="text-3xl font-bold text-darkText">{totalHours}h</p>
-            <p className="text-[10px] text-lightText mt-1">R$ {commissionRate}/h</p>
+            <p className="text-[10px] text-lightText mt-1">{remuneracao.diarias ? `diária 4h R$ ${remuneracao.diarias.d4.toFixed(0)}` : `R$ ${remuneracao.porHora}/h`}</p>
           </div>
 
           <div className="bg-white p-4 rounded-2xl border-2 border-primary/20 shadow-sm col-span-2">
@@ -227,8 +211,8 @@ export const CollaboratorFinance: React.FC = () => {
               {pending.length === 0 ? (
                 <p className="text-sm text-lightText text-center py-6">Nenhum serviço pendente no período.</p>
               ) : pending.map(s => {
-                const hours = (s.duration === 4 || s.duration === 6 || s.duration === 8) ? s.duration : 4;
-                const val = commissionRate * hours;
+                const hours = horasDoServico(s.duration);
+                const val = valorDaColab(s.duration, remuneracao);
                 return (
                   <div key={s.id} className="flex items-center gap-3 p-4 border-l-4 border-l-orange-400">
                     <div className="flex-1 min-w-0">

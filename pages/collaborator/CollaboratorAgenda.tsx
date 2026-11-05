@@ -5,7 +5,7 @@ import { useData } from '../../components/DataContext';
 import { CollabLayout } from '../../components/CollabLayout';
 import { getCollabPreview } from '../../lib/adminPreview';
 import { supabase } from '../../lib/supabase';
-import { useMyCollabIds, isMyService, useMyHourlyRate, valorDaColab } from '../../lib/collabIdentity';
+import { useMyCollabIds, isMyService, useMinhaRemuneracao, valorDaColab } from '../../lib/collabIdentity';
 
 type Tab = 'hoje' | 'semana';
 
@@ -75,7 +75,7 @@ export const CollaboratorAgenda: React.FC = () => {
   }, [currentCollaborator?.id, previewMode]);
 
   const myIds = useMyCollabIds(currentCollaborator);
-  const hourlyRate = useMyHourlyRate(currentCollaborator);
+  const remuneracao = useMinhaRemuneracao(currentCollaborator);
 
   const myServices = useMemo(() => {
     if (!currentCollaborator) return [];
@@ -190,7 +190,7 @@ export const CollaboratorAgenda: React.FC = () => {
                 </span>
                 {svc.price != null && svc.price > 0 && (
                   <span className={`font-bold text-base ${svc.status === 'COMPLETED' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                    R$ {valorDaColab(svc.duration, hourlyRate).toFixed(2)}
+                    R$ {valorDaColab(svc.duration, remuneracao).toFixed(2)}
                   </span>
                 )}
               </div>

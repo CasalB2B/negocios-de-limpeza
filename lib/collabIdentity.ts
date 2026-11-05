@@ -24,18 +24,49 @@ export function isMyService(s: { collaboratorId?: string; collaboratorIds?: stri
   return Array.isArray(s.collaboratorIds) && s.collaboratorIds.some(id => ids.includes(id));
 }
 
-// Collaborators never see the client's price, only what they earn: hourly rate × hours (same rule as Meu Financeiro).
-export function useMyHourlyRate(collab: { name?: string } | null | undefined): number {
-  const [rate, setRate] = useState(40);
+// Collaborators never see the client's price, only what they earn: the daily rate of their current
+// position (RH → Configurações → Remuneração), by service length (4h, 6h, 8h). Positions without a
+// configured table fall back to the old hourly rate × hours.
+export interface Remuneracao { cargo: string | null; diarias: { d4: number; d6: number; d8: number } | null; porHora: number }
+
+const CARGO_LABEL: Record<string, string> = {
+  JUNIOR: 'Auxiliar de Limpeza', SENIOR: 'Faxineira', PROFISSIONAL: 'Faxineira Profissional', LIDER: 'Líder de Equipe', GERENTE: 'Gerente de Equipe',
+};
+export const nomeDoCargo = (cargo: string | null) => (cargo && CARGO_LABEL[cargo]) || '';
+
+// Same defaults the RH screens use when a position has no saved table.
+const PADRAO: Record<string, { d4: number; d6: number; d8: number }> = {
+  JUNIOR: { d4: 80, d6: 120, d8: 140 }, SENIOR: { d4: 100, d6: 140, d8: 160 }, PROFISSIONAL: { d4: 120, d6: 160, d8: 180 },
+};
+
+export function useMinhaRemuneracao(collab: { name?: string } | null | undefined): Remuneracao {
+  const [r, setR] = useState<Remuneracao>({ cargo: null, diarias: null, porHora: 40 });
   useEffect(() => {
     if (!collab?.name) return;
-    supabase.from('colaboradoras_rh').select('commission_rate').ilike('nome', collab.name).limit(1)
-      .then(({ data }) => { if (data?.[0]?.commission_rate) setRate(Number(data[0].commission_rate)); });
+    (async () => {
+      const { data } = await supabase.from('colaboradoras_rh').select('cargo_atual, commission_rate').ilike('nome', collab.name!).limit(1);
+      const cargo: string | null = data?.[0]?.cargo_atual ?? null;
+      const porHora = Number(data?.[0]?.commission_rate) || 40;
+      let diarias = cargo ? PADRAO[cargo] ?? null : null;
+      if (cargo) {
+        const { data: cfg } = await supabase.from('configuracao_remuneracao').select('diaria_4h, diaria_6h, diaria_8h')
+          .eq('cargo', cargo).is('vigencia_fim', null).order('created_at', { ascending: false }).limit(1);
+        if (cfg?.[0]) diarias = { d4: Number(cfg[0].diaria_4h), d6: Number(cfg[0].diaria_6h), d8: Number(cfg[0].diaria_8h) };
+      }
+      setR({ cargo, diarias, porHora });
+    })();
   }, [collab?.name]);
-  return rate;
+  return r;
 }
 
-export function valorDaColab(duration: number | undefined, rate: number): number {
-  const horas = (duration === 4 || duration === 6 || duration === 8) ? duration : 4;
-  return rate * horas;
+// Service duration is stored as text ("8"); anything up to 4h pays the 4h rate, up to 6h the 6h rate, longer the 8h rate.
+export function horasDoServico(duration: unknown): 4 | 6 | 8 {
+  const h = Number(duration) || 4;
+  return h <= 4 ? 4 : h <= 6 ? 6 : 8;
+}
+
+export function valorDaColab(duration: unknown, r: Remuneracao): number {
+  const h = horasDoServico(duration);
+  if (r.diarias) return h === 4 ? r.diarias.d4 : h === 6 ? r.diarias.d6 : r.diarias.d8;
+  return r.porHora * h;
 }

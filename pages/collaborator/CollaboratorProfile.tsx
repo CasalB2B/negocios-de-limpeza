@@ -7,13 +7,13 @@ import { Input } from '../../components/Input';
 import { Modal } from '../../components/Modal';
 import { ExcluirConta } from '../../components/ExcluirConta';
 import { useData } from '../../components/DataContext';
-import { useMyCollabIds, isMyService, useMyHourlyRate, valorDaColab } from '../../lib/collabIdentity';
+import { useMyCollabIds, isMyService, useMinhaRemuneracao, valorDaColab } from '../../lib/collabIdentity';
 
 export const CollaboratorProfile: React.FC = () => {
   const navigate = useNavigate();
   const { currentCollaborator, updateCollaborator, logoutCollaborator, services } = useData();
   const myIds = useMyCollabIds(currentCollaborator);
-  const hourlyRate = useMyHourlyRate(currentCollaborator);
+  const remuneracao = useMinhaRemuneracao(currentCollaborator);
   
   // Modals State
   const [showEditModal, setShowEditModal] = useState(false);
@@ -332,7 +332,7 @@ export const CollaboratorProfile: React.FC = () => {
                                        <p className="font-semibold text-sm text-darkText">{service.type}</p>
                                        <p className="text-xs text-lightText">{service.date} · {service.clientName}</p>
                                     </div>
-                                    <span className="text-green-600 font-bold text-xs bg-green-50 px-2 py-1 rounded-lg">R$ {valorDaColab(service.duration, hourlyRate).toFixed(2)}</span>
+                                    <span className="text-green-600 font-bold text-xs bg-green-50 px-2 py-1 rounded-lg">R$ {valorDaColab(service.duration, remuneracao).toFixed(2)}</span>
                                  </div>
                               ))}
                            </div>
