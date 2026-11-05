@@ -432,11 +432,6 @@ export const QuoteChat: React.FC = () => {
         {apiError && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
             <strong>Ops!</strong> {apiError}
-            {apiError.includes('GEMINI') && (
-              <p className="mt-1 text-xs text-red-500">
-                Configure a variável VITE_GEMINI_API_KEY com uma chave válida do Google AI Studio.
-              </p>
-            )}
           </div>
         )}
 
