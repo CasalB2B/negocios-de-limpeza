@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { comLimite } from '../lib/aoVoltar';
 import { supabase } from '../lib/supabase';
 import { semFotosEmbutidas } from '../lib/storage';
 import { CargoRH, StatusColaboradoraRH, ElegibilidadeRH } from '../types';
@@ -397,12 +398,16 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         const age = Date.now() - lastSyncAt.current;
-        if (age > 60_000) { // only if the last sync is older than 1 min
+        if (age > 30_000) { // only if the last sync is older than 30 s
           loadAll(true); // background-only: skip Phase 1 to avoid stale flash
         }
       }
     };
+    // iOS restores frozen pages without always firing visibilitychange; focus/pageshow/online cover it.
     document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleVisibility);
+    window.addEventListener('pageshow', handleVisibility);
+    window.addEventListener('online', handleVisibility);
 
     // ── Polling: every 90 s while the tab is visible ──────────────────────
     // Catches any missed updates (e.g. another device saved while this tab
@@ -415,6 +420,9 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleVisibility);
+      window.removeEventListener('pageshow', handleVisibility);
+      window.removeEventListener('online', handleVisibility);
       clearInterval(interval);
     };
   }, []);
@@ -431,9 +439,10 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       // Jump straight to Phase 2 — skip Phase 1 localStorage flash
       setRhSyncing(true);
       try {
-        const adminRes = await supabase.functions.invoke('rh-write', {
+        // A request cut off by the phone sleeping never settles, which used to block every later sync.
+        const adminRes = await comLimite(supabase.functions.invoke('rh-write', {
           body: { action: 'get_admin_data' },
-        });
+        }));
         if (!adminRes.data?.ok) return;
         const d = adminRes.data;
         // Key names must match what get_admin_data actually returns
@@ -511,9 +520,9 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     try {
       // Primary: use rh-write/get_admin_data which bypasses RLS with SERVICE_ROLE_KEY
       // This ensures mobile/new devices always see all data without needing localStorage
-      const adminRes = await supabase.functions.invoke('rh-write', {
+      const adminRes = await comLimite(supabase.functions.invoke('rh-write', {
         body: { action: 'get_admin_data' },
-      });
+      }));
 
       if (!adminRes.data?.ok) throw new Error('get_admin_data failed');
 
@@ -1047,7 +1056,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   // 10 tables. Use this on the Contratação page for a quick refresh on mount/focus.
   const syncCandidatasOnly = useCallback(async () => {
     try {
-      const res = await supabase.functions.invoke('rh-write', { body: { action: 'get_candidatas' } });
+      const res = await comLimite(supabase.functions.invoke('rh-write', { body: { action: 'get_candidatas' } }));
       if (!res.data?.ok) return;
       const cands = (res.data.candidatas || []).map(mapCandidatura);
       if (cands.length) { const m = mergeRecentCands(cands); setCandidatas(m); lsSet('rh_candidatas', m); }

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useAoVoltar } from '../../../lib/aoVoltar';
 import { useSearchParams } from 'react-router-dom';
 import { Layout } from '../../../components/Layout';
 import { UserRole } from '../../../types';
@@ -339,6 +340,7 @@ export const AdminRHContratacao: React.FC = () => {
   // Fast candidatas sync on page mount — fetches only the candidatas table
   // so the list is fresh without waiting for the full get_admin_data payload.
   useEffect(() => { syncCandidatasOnly(); }, []);
+  useAoVoltar(syncCandidatasOnly, 10_000);
 
   // Etapa label for card display
   const getEtapa = (id: string) => getPipeline(id).etapa;

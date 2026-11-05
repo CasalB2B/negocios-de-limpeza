@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAoVoltar } from '../lib/aoVoltar';
 import { ServiceStatus, Address } from '../types';
 import { supabase } from '../lib/supabase';
 import { sendBookingConfirmation } from '../lib/whatsapp';
@@ -606,6 +607,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsRefreshing(false);
     }
   };
+
+  // Realtime events sent while the phone was asleep are lost; reload when the app comes back.
+  useAoVoltar(() => fetchData(), 30_000);
 
   useEffect(() => {
     fetchData();
