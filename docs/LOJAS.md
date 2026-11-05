@@ -7,7 +7,7 @@ Só é preciso publicar versão nova nas lojas quando mudar algo nativo (ícone,
 ## O que já está pronto (feito em 02/11/2026)
 
 - [x] Projeto Android (`android/`) e iOS (`ios/`) criados — nome **Negócios de Limpeza**, identificador `br.com.negociosdelimpeza.app`
-- [x] Ícone e tela de abertura com o logo da marca (claro e escuro) — refazer com `node scripts/gerar-icones-app.mjs && npx capacitor-assets generate`
+- [x] Ícone (bolinha/quadrado lilás com o símbolo branco) e tela de abertura com o logo — refazer com `node scripts/gerar-favicon.mjs && node scripts/gerar-icones-app.mjs && npx capacitor-assets generate --iconBackgroundColor '#a163ff'`
 - [x] Permissões com explicação em português: localização (mapa da equipe e check-in, só com o app aberto), câmera e galeria (fotos do serviço)
 - [x] **Excluir minha conta** dentro do app (cliente e colaboradora) + aviso no Dashboard quando chega um pedido — exigência das duas lojas
 - [x] Página pública de exclusão: **app.negociosdelimpeza.com.br/excluir-conta** (o Google Play pede esse link)

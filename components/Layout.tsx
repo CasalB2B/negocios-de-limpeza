@@ -338,7 +338,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-darkSurface border-r border-gray-200 dark:border-darkBorder transition-colors duration-300">
         <div className="px-6 pt-6 pb-5">
-          <img src="/img/logo.png" alt="Negócios de Limpeza" className="h-12 w-auto object-contain" />
+          <img src="/img/logo-lilas.png" alt="Negócios de Limpeza" className="h-14 w-auto object-contain dark:hidden" />
+          <img src="/img/logo-bege.png" alt="Negócios de Limpeza" className="h-14 w-auto object-contain hidden dark:block" />
           <p className="text-[11px] text-lightText dark:text-darkTextSecondary mt-2">Portal Administrativo</p>
         </div>
 
