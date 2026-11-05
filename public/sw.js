@@ -59,8 +59,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Negócios de Limpeza';
   const options = {
     body: data.body || 'Você tem uma nova atualização.',
-    icon: '/icons/icon.svg',
-    badge: '/icons/icon.svg',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
     tag: data.tag || 'nl-notification',
     renotify: true,
     data: { url: data.url || '/' },
@@ -97,8 +97,8 @@ self.addEventListener('message', (event) => {
     const { title, body, url, tag } = event.data;
     self.registration.showNotification(title || 'NL Limpeza', {
       body: body || '',
-      icon: '/icons/icon.svg',
-      badge: '/icons/icon.svg',
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
       tag: tag || 'nl-msg',
       renotify: true,
       data: { url: url || '/admin/crm' },

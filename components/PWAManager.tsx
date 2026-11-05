@@ -18,7 +18,7 @@ export function sendNotification(title: string, body: string, url = '/admin/crm'
   if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
     navigator.serviceWorker.controller.postMessage({ type: 'SHOW_NOTIFICATION', title, body, url, tag });
   } else if (Notification.permission === 'granted') {
-    new Notification(title, { body, icon: '/icons/icon.svg', tag });
+    new Notification(title, { body, icon: '/icons/icon-192.png', tag });
   }
 }
 

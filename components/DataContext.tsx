@@ -628,7 +628,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           type: 'SHOW_NOTIFICATION', title, body, url, tag: 'nl-realtime'
         });
       } else {
-        new Notification(title, { body, icon: '/icons/icon.svg' });
+        new Notification(title, { body, icon: '/icons/icon-192.png' });
       }
     };
 

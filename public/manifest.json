@@ -9,18 +9,27 @@
   "theme_color": "#a163ff",
   "orientation": "any",
   "lang": "pt-BR",
-  "categories": ["business", "productivity"],
+  "categories": [
+    "business",
+    "productivity"
+  ],
   "icons": [
     {
-      "src": "/icons/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "maskable"
     }
   ],
@@ -31,21 +40,39 @@
       "short_name": "Dashboard",
       "description": "Painel de controle geral",
       "url": "/?role=admin#/admin/dashboard",
-      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Colaboradoras",
       "short_name": "Equipe",
       "description": "Gestão da equipe de colaboradoras",
       "url": "/?role=admin#/admin/rh/colaboradoras",
-      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Contratação",
       "short_name": "RH",
       "description": "Processo seletivo e contratação",
       "url": "/?role=admin#/admin/rh/contratacao",
-      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }

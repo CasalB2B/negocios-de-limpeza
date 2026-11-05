@@ -277,15 +277,21 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
     },
   ];
 
-  // Desktop sidebar: every section starts open; the ones the user collapses are remembered.
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem('menu_recolhidos') || '[]')); } catch { return new Set(); }
+  // Desktop sidebar: only the section of the current page starts open; others open on click.
+  const grupoDaRota = (path: string) =>
+    adminGroups.find(g => g.items.some(i => path === i.path || path.startsWith(i.path + '/')))?.key;
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
+    const k = grupoDaRota(location.pathname);
+    return new Set(k ? [k] : []);
   });
+  useEffect(() => {
+    const k = grupoDaRota(location.pathname);
+    if (k) setOpenGroups(prev => prev.has(k) ? prev : new Set(prev).add(k));
+  }, [location.pathname]);
   const toggleGroup = (key: string) => {
-    setCollapsedGroups(prev => {
+    setOpenGroups(prev => {
       const next = new Set(prev);
       next.has(key) ? next.delete(key) : next.add(key);
-      try { localStorage.setItem('menu_recolhidos', JSON.stringify([...next])); } catch {}
       return next;
     });
   };
@@ -331,14 +337,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       )}
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-darkSurface border-r border-gray-200 dark:border-darkBorder transition-colors duration-300">
-        <div className="px-5 pt-6 pb-4 flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <img src="/img/logo-icon.png" alt="" className="w-7 h-7 object-contain" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="font-bold text-darkText dark:text-darkTextPrimary leading-tight text-[15px]">Negócios de Limpeza</h1>
-            <p className="text-[11px] text-lightText dark:text-darkTextSecondary">Portal Administrativo</p>
-          </div>
+        <div className="px-6 pt-6 pb-5">
+          <img src="/img/logo.png" alt="Negócios de Limpeza" className="h-12 w-auto object-contain" />
+          <p className="text-[11px] text-lightText dark:text-darkTextSecondary mt-2">Portal Administrativo</p>
         </div>
 
         <nav className="flex-1 px-3 overflow-y-auto pb-4">
@@ -360,30 +361,41 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                   onClick={() => !dashLocked && navigate('/admin/dashboard')}
                   disabled={dashLocked}
                   title={dashLocked ? 'Indisponível no modo revisor' : undefined}
-                  className={itemCls(dashActive, dashLocked)}
+                  className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors ${
+                    dashLocked ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : dashActive ? 'bg-primary/10' : 'hover:bg-purple-50 dark:hover:bg-darkBorder'
+                  }`}
                 >
-                  <span className={iconCls(dashActive)}><LayoutDashboard size={18} /></span>
-                  <span>Dashboard</span>
-                  {dashLocked && <Lock size={13} className="ml-auto" />}
+                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${dashActive ? 'bg-primary text-white' : 'bg-primary/10 text-primary'}`}>
+                    <LayoutDashboard size={16} />
+                  </span>
+                  <span className={`flex-1 text-[14px] font-bold ${dashActive ? 'text-primary' : 'text-darkText dark:text-darkTextPrimary'}`}>Dashboard</span>
+                  {dashLocked && <Lock size={13} />}
                 </button>
 
                 {adminGroups.map(group => {
-                  const isOpen = reviewerMode || !collapsedGroups.has(group.key);
+                  const isOpen = reviewerMode || openGroups.has(group.key);
                   const hasActive = group.items.some(i => isPathActive(i.path));
                   return (
-                    <div key={group.key} className="mt-5">
-                      {/* Section title — click to collapse/expand */}
+                    <div key={group.key} className="mt-1.5">
+                      {/* Group header: icon tile + name; click to open/close */}
                       <button
                         onClick={() => toggleGroup(group.key)}
-                        className="flex items-center justify-between w-full px-3 mb-1.5 group"
+                        className={`flex items-center gap-2.5 w-full px-2.5 py-2.5 rounded-xl text-left transition-colors ${
+                          isOpen ? 'bg-gray-50 dark:bg-darkBg' : 'hover:bg-purple-50 dark:hover:bg-darkBorder'
+                        }`}
                       >
-                        <span className={`text-[11px] font-bold uppercase tracking-[0.08em] ${hasActive ? 'text-primary' : 'text-gray-400 dark:text-darkTextSecondary'} group-hover:text-darkText dark:group-hover:text-darkTextPrimary`}>
+                        <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                          hasActive ? 'bg-primary text-white' : 'bg-primary/10 text-primary'
+                        }`}>
+                          {React.cloneElement(group.icon, { size: 16 })}
+                        </span>
+                        <span className={`flex-1 min-w-0 whitespace-nowrap truncate text-[14px] font-bold ${hasActive ? 'text-primary' : 'text-darkText dark:text-darkTextPrimary'}`}>
                           {group.label}
                         </span>
-                        <ChevronDown size={14} className={`text-gray-300 dark:text-darkTextSecondary transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`} />
+                        <ChevronDown size={16} className={`text-gray-400 dark:text-darkTextSecondary transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
                       </button>
                       {isOpen && (
-                        <div className="space-y-0.5">
+                        <div className="mt-1 mb-2 ml-[26px] pl-3 border-l-2 border-primary/15 space-y-0.5">
                           {group.items.map(item => {
                             const isActive = isPathActive(item.path);
                             const locked = isLocked(item.path);
@@ -395,7 +407,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                                 title={locked ? 'Indisponível no modo revisor' : undefined}
                                 className={itemCls(isActive, locked)}
                               >
-                                <span className={iconCls(isActive)}>{React.cloneElement(item.icon, { size: 18 })}</span>
+                                <span className={iconCls(isActive)}>{React.cloneElement(item.icon, { size: 17 })}</span>
                                 <span className="truncate">{item.label}</span>
                                 {locked && <Lock size={12} className="ml-auto" />}
                               </button>
