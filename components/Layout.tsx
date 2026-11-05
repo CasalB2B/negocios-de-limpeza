@@ -277,35 +277,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
     },
   ];
 
-  // Which groups are expanded (auto-expand active group)
-  const getInitialExpanded = () => {
-    const set = new Set<string>();
-    adminGroups.forEach(g => {
-      if (reviewerMode || g.items.some(i => location.pathname.startsWith(i.path) || location.pathname === i.path)) {
-        set.add(g.key);
-      }
-    });
-    return set;
-  };
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(getInitialExpanded);
-
-  // Auto-expand when route changes
-  useEffect(() => {
-    setExpandedGroups(prev => {
-      const next = new Set(prev);
-      adminGroups.forEach(g => {
-        if (g.items.some(i => location.pathname === i.path || location.pathname.startsWith(i.path + '/'))) {
-          next.add(g.key);
-        }
-      });
-      return next;
-    });
-  }, [location.pathname]);
-
+  // Desktop sidebar: every section starts open; the ones the user collapses are remembered.
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('menu_recolhidos') || '[]')); } catch { return new Set(); }
+  });
   const toggleGroup = (key: string) => {
-    setExpandedGroups(prev => {
+    setCollapsedGroups(prev => {
       const next = new Set(prev);
       next.has(key) ? next.delete(key) : next.add(key);
+      try { localStorage.setItem('menu_recolhidos', JSON.stringify([...next])); } catch {}
       return next;
     });
   };
@@ -351,92 +331,84 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       )}
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-darkSurface border-r border-gray-200 dark:border-darkBorder transition-colors duration-300">
-        <div className="p-6 flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white">
-            <Briefcase size={20} />
+        <div className="px-5 pt-6 pb-4 flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <img src="/img/logo-icon.png" alt="" className="w-7 h-7 object-contain" />
           </div>
-          <div>
-            <h1 className="font-bold text-darkText dark:text-darkTextPrimary leading-tight text-sm">Negócios de<br/>Limpeza</h1>
-            <p className="text-[10px] text-lightText dark:text-darkTextSecondary">Portal Administrativo</p>
+          <div className="min-w-0">
+            <h1 className="font-bold text-darkText dark:text-darkTextPrimary leading-tight text-[15px]">Negócios de Limpeza</h1>
+            <p className="text-[11px] text-lightText dark:text-darkTextSecondary">Portal Administrativo</p>
           </div>
         </div>
 
-        <nav className="flex-1 px-3 mt-2 overflow-y-auto pb-4">
-          {/* Dashboard — top-level item */}
-          <button
-            onClick={() => !isLocked('/admin/dashboard') && navigate('/admin/dashboard')}
-            disabled={isLocked('/admin/dashboard')}
-            title={isLocked('/admin/dashboard') ? 'Indisponível no modo revisor' : undefined}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl w-full transition-colors mb-2 ${
-              isLocked('/admin/dashboard')
-                ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                : location.pathname === '/admin/dashboard'
-                ? 'bg-primary/10 text-primary font-bold'
-                : 'text-lightText dark:text-darkTextSecondary hover:bg-purple-50 dark:hover:bg-darkBorder'
-            }`}
-          >
-            <LayoutDashboard size={16} />
-            <span className="text-sm font-semibold">Dashboard</span>
-            {isLocked('/admin/dashboard') && <Lock size={13} className="ml-auto" />}
-          </button>
-
-          {/* Collapsible groups */}
-          {adminGroups.map(group => {
-            const isOpen = expandedGroups.has(group.key);
-            const hasActive = group.items.some(i => location.pathname === i.path || location.pathname.startsWith(i.path + '/'));
+        <nav className="flex-1 px-3 overflow-y-auto pb-4">
+          {(() => {
+            const itemCls = (active: boolean, locked: boolean) =>
+              `relative flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-left text-[14px] transition-colors ${
+                locked
+                  ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                  : active
+                  ? 'bg-primary/10 text-primary font-bold before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-full before:bg-primary'
+                  : 'text-darkText/80 dark:text-darkTextSecondary font-medium hover:bg-purple-50 dark:hover:bg-darkBorder hover:text-darkText dark:hover:text-darkTextPrimary'
+              }`;
+            const iconCls = (active: boolean) => active ? 'text-primary' : 'text-gray-400 dark:text-darkTextSecondary';
+            const dashActive = location.pathname === '/admin/dashboard';
+            const dashLocked = isLocked('/admin/dashboard');
             return (
-              <div key={group.key} className="mb-1">
-                {/* Group header — clickable block */}
+              <>
                 <button
-                  onClick={() => toggleGroup(group.key)}
-                  className={`flex items-center justify-between w-full px-4 py-3 rounded-xl transition-colors group ${
-                    hasActive && !isOpen
-                      ? 'bg-primary/5 text-primary'
-                      : 'hover:bg-purple-50 dark:hover:bg-darkBorder text-darkText dark:text-darkTextPrimary'
-                  }`}
+                  onClick={() => !dashLocked && navigate('/admin/dashboard')}
+                  disabled={dashLocked}
+                  title={dashLocked ? 'Indisponível no modo revisor' : undefined}
+                  className={itemCls(dashActive, dashLocked)}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className={`${hasActive ? 'text-primary' : 'text-gray-400 dark:text-darkTextSecondary'}`}>
-                      {group.icon}
-                    </span>
-                    <span className="text-sm font-bold">{group.label}</span>
-                  </div>
-                  <span className={`transition-transform duration-200 text-gray-400 dark:text-darkTextSecondary ${isOpen ? 'rotate-180' : ''}`}>
-                    <ChevronDown size={16} />
-                  </span>
+                  <span className={iconCls(dashActive)}><LayoutDashboard size={18} /></span>
+                  <span>Dashboard</span>
+                  {dashLocked && <Lock size={13} className="ml-auto" />}
                 </button>
 
-                {/* Sub-items */}
-                {isOpen && (
-                  <div className="mt-1 ml-3 pl-3 border-l-2 border-gray-100 dark:border-darkBorder space-y-0.5">
-                    {group.items.map(item => {
-                      const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
-                      const locked = isLocked(item.path);
-                      return (
-                        <button
-                          key={item.path}
-                          onClick={() => !locked && navigate(item.path)}
-                          disabled={locked}
-                          title={locked ? 'Indisponível no modo revisor' : undefined}
-                          className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg w-full transition-colors text-sm ${
-                            locked
-                              ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                              : isActive
-                              ? 'bg-primary/10 text-primary font-bold'
-                              : 'text-lightText dark:text-darkTextSecondary hover:bg-purple-50 dark:hover:bg-darkBorder'
-                          }`}
-                        >
-                          {item.icon}
-                          <span>{item.label}</span>
-                          {locked && <Lock size={12} className="ml-auto" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                {adminGroups.map(group => {
+                  const isOpen = reviewerMode || !collapsedGroups.has(group.key);
+                  const hasActive = group.items.some(i => isPathActive(i.path));
+                  return (
+                    <div key={group.key} className="mt-5">
+                      {/* Section title — click to collapse/expand */}
+                      <button
+                        onClick={() => toggleGroup(group.key)}
+                        className="flex items-center justify-between w-full px-3 mb-1.5 group"
+                      >
+                        <span className={`text-[11px] font-bold uppercase tracking-[0.08em] ${hasActive ? 'text-primary' : 'text-gray-400 dark:text-darkTextSecondary'} group-hover:text-darkText dark:group-hover:text-darkTextPrimary`}>
+                          {group.label}
+                        </span>
+                        <ChevronDown size={14} className={`text-gray-300 dark:text-darkTextSecondary transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`} />
+                      </button>
+                      {isOpen && (
+                        <div className="space-y-0.5">
+                          {group.items.map(item => {
+                            const isActive = isPathActive(item.path);
+                            const locked = isLocked(item.path);
+                            return (
+                              <button
+                                key={item.path}
+                                onClick={() => !locked && navigate(item.path)}
+                                disabled={locked}
+                                title={locked ? 'Indisponível no modo revisor' : undefined}
+                                className={itemCls(isActive, locked)}
+                              >
+                                <span className={iconCls(isActive)}>{React.cloneElement(item.icon, { size: 18 })}</span>
+                                <span className="truncate">{item.label}</span>
+                                {locked && <Lock size={12} className="ml-auto" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </>
             );
-          })}
+          })()}
         </nav>
 
         <div className="p-4 border-t border-gray-100 dark:border-darkBorder">
