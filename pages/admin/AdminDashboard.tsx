@@ -50,6 +50,7 @@ interface ServiceRow {
   status: string | null;
   price: number | null;
   payment_status: string | null;
+  signal_amount?: number | null;
 }
 
 interface ColabRow {
@@ -80,7 +81,7 @@ export const AdminDashboard: React.FC = () => {
     const fetch = async () => {
       const { data: svc } = await supabase
         .from('services')
-        .select('id, client_name, collaborator_name, type, date, time, status, price, payment_status');
+        .select('id, client_name, collaborator_name, type, date, time, status, price, payment_status, signal_amount');
       const { data: col } = await supabase
         .from('colaboradoras_rh')
         .select('id, nome, status, data_nascimento');
@@ -117,13 +118,18 @@ export const AdminDashboard: React.FC = () => {
     return d && d.getMonth() + 1 === curMonth && d.getFullYear() === curYear;
   });
 
-  const receitaMes = monthServices
-    .filter(s => s.payment_status === 'PAID')
-    .reduce((sum, s) => sum + (s.price ?? 0), 0);
+  // What came in: full payments (manual "PAID" or InfinitePay "FULL_PAID") and deposits already paid.
+  const recebido = (s: ServiceRow) => {
+    const preco = Number(s.price) || 0;
+    if (['PAID', 'FULL_PAID', 'PAGO'].includes(s.payment_status ?? '')) return preco;
+    if (s.payment_status === 'SIGNAL_PAID') return Number(s.signal_amount) || preco / 2;
+    return 0;
+  };
+  const receitaMes = monthServices.reduce((sum, s) => sum + recebido(s), 0);
 
   const aReceber = monthServices
-    .filter(s => s.status !== 'CANCELLED' && (!s.payment_status || s.payment_status === 'PENDENTE'))
-    .reduce((sum, s) => sum + (s.price ?? 0), 0);
+    .filter(s => s.status !== 'CANCELLED')
+    .reduce((sum, s) => sum + Math.max(0, (Number(s.price) || 0) - recebido(s)), 0);
 
   const ativasCount = colabs.filter(c => c.status === 'ATIVA').length;
   const afastadasCount = colabs.filter(c => c.status === 'AFASTADA').length;
@@ -186,8 +192,8 @@ export const AdminDashboard: React.FC = () => {
   }
 
   // ── Donut chart — payment breakdown ──────────────────────────────────────
-  const paidCount   = monthServices.filter(s => s.payment_status === 'PAID').length;
-  const pendingCount = monthServices.filter(s => s.status !== 'CANCELLED' && (!s.payment_status || s.payment_status === 'PENDENTE')).length;
+  const paidCount   = monthServices.filter(s => ['PAID', 'FULL_PAID', 'PAGO'].includes(s.payment_status ?? '')).length;
+  const pendingCount = monthServices.filter(s => s.status !== 'CANCELLED' && !['PAID', 'FULL_PAID', 'PAGO'].includes(s.payment_status ?? '')).length;
   const totalMonthCount = monthServices.length;
   const circumference = 2 * Math.PI * 50; // ~314.16
   const paidDash    = totalMonthCount > 0 ? (paidCount / totalMonthCount) * circumference : 0;
