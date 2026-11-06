@@ -229,7 +229,7 @@ export const AdminCollaborators: React.FC = () => {
                              <h3 className="text-2xl font-bold text-darkText dark:text-darkTextPrimary">{viewCollab.name}</h3>
                              {getStatusBadge(viewCollab.status)}
                           </div>
-                          <p className="text-sm text-lightText dark:text-darkTextSecondary mb-2">Senha: {viewCollab.password}</p>
+                          <p className="text-sm text-lightText dark:text-darkTextSecondary mb-2">Senha protegida (não fica guardada no sistema)</p>
                           {getLevelBadge(viewCollab.level || 'JUNIOR')}
                        </div>
                     </div>

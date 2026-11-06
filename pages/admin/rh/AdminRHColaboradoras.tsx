@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { criarAcesso, definirSenha } from '../../../lib/conta';
 import { Layout } from '../../../components/Layout';
 import { UserRole, CargoRH, StatusColaboradoraRH } from '../../../types';
 import { useRH, ColaboradoraRH, ObservacaoColaboradora } from '../../../components/RHContext';
@@ -354,19 +355,19 @@ export const AdminRHColaboradoras: React.FC = () => {
       setAcessoLoading(false);
       return;
     }
-    const { error } = await supabase.from('app_users').insert({
+    // The login is created on the server (Supabase Auth); the password is never stored in app_users.
+    const r = await criarAcesso({
       name: acessoModal.nome,
       email: acessoEmail.trim().toLowerCase(),
       phone: acessoModal.telefone || '',
       role: 'COLLABORATOR',
-      status: 'AVAILABLE',
       photo: acessoModal.foto || '',
-      password: acessoSenha,
+      senha: acessoSenha,
       level: acessoModal.cargoAtual === CargoRH.JUNIOR ? 'junior' : acessoModal.cargoAtual === CargoRH.SENIOR ? 'senior' : 'master',
     });
     setAcessoLoading(false);
-    if (error) {
-      setAcessoStatus({ ok: false, msg: `Erro: ${error.message}` });
+    if (!r.ok) {
+      setAcessoStatus({ ok: false, msg: r.erro || 'Não foi possível criar o acesso.' });
     } else {
       setAcessoCreatedPwd(acessoSenha);
       setAcessoExistente({ id: '(new)', email: acessoEmail.trim().toLowerCase() });
@@ -381,14 +382,11 @@ export const AdminRHColaboradoras: React.FC = () => {
     }
     setAltSenhaLoading(true);
     setAltSenhaMsg(null);
-    const { error } = await supabase
-      .from('app_users')
-      .update({ password: altSenha })
-      .eq('name', acessoModal.nome)
-      .eq('role', 'COLLABORATOR');
+    const alvo = acessoExistente?.email ? { email: acessoExistente.email } : null;
+    const r = alvo ? await definirSenha(alvo, altSenha) : { ok: false, erro: 'Esta colaboradora ainda não tem acesso.' };
     setAltSenhaLoading(false);
-    if (error) {
-      setAltSenhaMsg({ ok: false, msg: `Erro: ${error.message}` });
+    if (!r.ok) {
+      setAltSenhaMsg({ ok: false, msg: r.erro || 'Não foi possível alterar a senha.' });
     } else {
       setAltSenhaMsg({ ok: true, msg: 'Senha alterada com sucesso!' });
       setAltSenha('');

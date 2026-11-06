@@ -221,7 +221,8 @@ export const QuoteChat: React.FC = () => {
         const loginEmail = quoteData.email?.trim()
           ? quoteData.email.trim()
           : `${phoneDigits}@cliente.ndl`;
-        const loginPassword = phoneDigits.slice(-4) || '0000';
+        // Secure logins need at least 6 characters: last 6 digits of the phone.
+        const loginPassword = phoneDigits.length >= 6 ? phoneDigits.slice(-6) : `${phoneDigits}${'000000'}`.slice(0, 6);
 
         let realClientId: string | null = null;
         try {

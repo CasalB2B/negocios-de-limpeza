@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { trocarMinhaSenha } from '../../lib/conta';
 import { CollabLayout } from '../../components/CollabLayout';
 import { Button } from '../../components/Button';
 import { User, Lock, Bell, LogOut, Save, ChevronRight, ChevronDown, Camera, History, Mail } from 'lucide-react';
@@ -60,23 +61,15 @@ export const CollaboratorProfile: React.FC = () => {
     }
   };
 
-  const handleSavePassword = () => {
+  const handleSavePassword = async () => {
     if (!currentCollaborator) return;
-    
-    if (passwordData.current !== currentCollaborator.password) {
-      alert("A senha atual está incorreta.");
-      return;
-    }
     if (passwordData.new !== passwordData.confirm) {
       alert("A nova senha e a confirmação não conferem.");
       return;
     }
-    if (passwordData.new.length < 4) {
-      alert("A senha deve ter pelo menos 4 caracteres.");
-      return;
-    }
-
-    updateCollaborator(currentCollaborator.id, { password: passwordData.new });
+    // Checks the current password and saves the new one in the secure login (minimum 6 characters).
+    const erro = await trocarMinhaSenha(currentCollaborator.email, passwordData.current, passwordData.new);
+    if (erro) { alert(erro); return; }
     alert("Senha alterada com sucesso!");
     setShowPasswordModal(false);
     setPasswordData({ current: '', new: '', confirm: '' });
