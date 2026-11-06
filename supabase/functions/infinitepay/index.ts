@@ -20,13 +20,14 @@ const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SE
 type Tipo = 'sinal' | 'restante' | 'total';
 class ErroCobranca extends Error { constructor(msg: string, public status = 400) { super(msg); } }
 
-async function config() {
+// Each company has its own InfinitePay account: settings rows use the company id.
+async function config(empresa = 1) {
   const [{ data: s }, { data: p }, { data: bot }] = await Promise.all([
-    db.from('platform_settings').select('infinitepay_handle').eq('id', 1).single(),
-    db.from('integracoes_privadas').select('infinitepay_key').eq('id', 1).maybeSingle(),
+    db.from('platform_settings').select('infinitepay_handle').eq('id', empresa).maybeSingle(),
+    db.from('integracoes_privadas').select('infinitepay_key').eq('id', empresa).maybeSingle(),
     db.from('whatsapp_bot_config')
       .select('send_signal_link, signal_percent, signal_delay_minutes, signal_enabled_at, booking_confirmation_when, send_booking_confirmation, signal_followup_minutes, signal_expire_hours, remainder_after_hours, send_post_service, google_review_url, review_interval_days, notify_phone')
-      .eq('company_id', 1).maybeSingle(),
+      .eq('company_id', empresa).maybeSingle(),
   ]);
   const handle = String(s?.infinitepay_handle ?? '').trim().replace(/^\$/, '');
   return { handle, key: (p?.infinitepay_key as string | null) || null, bot };
@@ -43,13 +44,13 @@ const reais = (v: number) => `R$ ${v.toFixed(2).replace('.', ',').replace(/\B(?=
 const hojeBR = () => new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
-async function criarCobranca(serviceId: string, tipo: Tipo) {
-  const { handle, key, bot } = await config();
+async function criarCobranca(serviceId: string, tipo: Tipo, empresa: number) {
+  const { handle, key, bot } = await config(empresa);
   if (!handle) throw new ErroCobranca('InfinitePay não configurada. Informe a InfiniteTag em Configurações → Integrações.');
 
   const { data: s } = await db.from('services')
     .select('id, price, type, date, time, client_id, client_name, payment_status, signal_amount, signal_status')
-    .eq('id', serviceId).single();
+    .eq('id', serviceId).eq('company_id', empresa).maybeSingle();
   if (!s) throw new ErroCobranca('Serviço não encontrado.', 404);
   const preco = Number(s.price) || 0;
   if (preco <= 0) throw new ErroCobranca('Defina o valor do serviço antes de gerar a cobrança.');
@@ -120,8 +121,8 @@ async function criarCobranca(serviceId: string, tipo: Tipo) {
   return { url, valor, servico: s, nome: nome ? String(nome).trim() : null, fone: fone ?? null, telefoneBruto: cliente?.phone ?? null };
 }
 
-async function enviarConfirmacao(serviceId: string) {
-  const conn = await getConnection(1);
+async function enviarConfirmacao(serviceId: string, empresa: number) {
+  const conn = await getConnection(empresa);
   if (!conn) return;
   const { data: svc } = await db.from('services').select('client_id, client_name, type, date, time, address').eq('id', serviceId).maybeSingle();
   const { data: client } = svc ? await db.from('app_users').select('phone').eq('id', svc.client_id).maybeSingle() : { data: null };
@@ -141,13 +142,13 @@ async function receberWebhook(evento: any) {
   const tipo: Tipo = tipoBruto === 'sinal' || tipoBruto === 'restante' ? tipoBruto : 'total';
 
   const { data: s } = await db.from('services')
-    .select('id, price, type, date, time, status, client_id, client_name, payment_status, signal_amount, payment_transaction_nsu').eq('id', serviceId).maybeSingle();
+    .select('id, company_id, price, type, date, time, status, client_id, client_name, payment_status, signal_amount, payment_transaction_nsu').eq('id', serviceId).maybeSingle();
   if (!s) return json({ ok: false, error: 'Pedido desconhecido' }, 400);
 
   const { data: jaLancado } = await db.from('transactions').select('id').eq('id', `ip_${transactionNsu}`).maybeSingle();
   if (jaLancado) return json({ ok: true, repetido: true });
 
-  const { handle, key, bot } = await config();
+  const { handle, key, bot } = await config(s.company_id ?? 1);
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (key) headers['X-Api-Key'] = key;
   const check = await fetch(`${API}/payment_check`, {
@@ -195,7 +196,7 @@ async function receberWebhook(evento: any) {
     try {
       if (s.status === 'PRE_SCHEDULED') {
         // Deposit paid on a pre-booking: thank the client and confirm the date in one message.
-        const conn = await getConnection(1);
+        const conn = await getConnection(s.company_id ?? 1);
         const fone = await telefoneCliente(s.client_id);
         if (conn && fone) {
           const params = [primeiroNome(s.client_name), reais(valorCobrado || Number(s.signal_amount) || 0), s.type || 'limpeza', s.date || 'data combinada', s.time || 'horário combinado'];
@@ -203,7 +204,7 @@ async function receberWebhook(evento: any) {
           await sendTextOrTemplate(conn, fone, fillTemplate(t.body, params), { name: t.name, params });
         }
       } else if (bot?.booking_confirmation_when === 'sinal' && bot?.send_booking_confirmation !== false) {
-        await enviarConfirmacao(s.id);
+        await enviarConfirmacao(s.id, s.company_id ?? 1);
       }
     } catch (e) { console.error('[infinitepay] mensagem do sinal', e); }
   }
@@ -234,14 +235,18 @@ const minutosAtras = (min: number) => new Date(Date.now() - min * 60_000).toISOS
 
 // Runs every minute (pg_cron). Each step only touches rows created/changed after the related
 // switch was turned on, and marks rows so nothing is sent twice.
+// Automations run only for company 1 (Negócios de Limpeza) for now: it is the only one with WhatsApp
+// connected. Other companies get them when the per-company WhatsApp connection is live.
+const EMPRESA_AUTOMACOES = 1;
+
 async function processarAutomacoes() {
-  const { bot } = await config();
-  const conn = await getConnection(1);
+  const { bot } = await config(EMPRESA_AUTOMACOES);
+  const conn = await getConnection(EMPRESA_AUTOMACOES);
   const log: Record<string, string> = {};
 
   // Client type: after the first finished cleaning a "Novo" client becomes "Eventual".
   {
-    const { data: feitos } = await db.from('services').select('client_id').eq('status', 'COMPLETED').gte('completed_at', minutosAtras(7 * 24 * 60));
+    const { data: feitos } = await db.from('services').select('client_id').eq('company_id', EMPRESA_AUTOMACOES).eq('status', 'COMPLETED').gte('completed_at', minutosAtras(7 * 24 * 60));
     const ids = [...new Set((feitos ?? []).map(f => f.client_id).filter(Boolean))];
     if (ids.length) await db.from('app_users').update({ type: 'EVENTUAL' }).in('id', ids).in('type', ['NOVO', 'PRIMEIRA_LIMPEZA']);
   }
@@ -254,14 +259,14 @@ async function processarAutomacoes() {
     const desde = [bot.signal_enabled_at, minutosAtras(24 * 60)].filter(Boolean).sort().pop()!;
     const { data: fila } = await db.from('services')
       .select('id, client_id, client_name, type, date, time, price, status, payment_status')
-      .eq('status', 'PRE_SCHEDULED').is('signal_status', null).gt('price', 0)
+      .eq('company_id', EMPRESA_AUTOMACOES).eq('status', 'PRE_SCHEDULED').is('signal_status', null).gt('price', 0)
       .gte('created_at', desde).lte('created_at', minutosAtras(atraso)).limit(20);
     const t = tpl('cobranca_sinal');
     for (const s of fila ?? []) {
       const { data: claim } = await db.from('services').update({ signal_status: 'sending' }).eq('id', s.id).is('signal_status', null).select('id');
       if (!claim?.length) continue;
       try {
-        const c = await criarCobranca(s.id, 'sinal');
+        const c = await criarCobranca(s.id, 'sinal', EMPRESA_AUTOMACOES);
         if (!c.telefoneBruto) throw new ErroCobranca('Cliente sem telefone cadastrado.');
         const params = [primeiroNome(c.nome), s.type || 'limpeza', s.date || 'data combinada', s.time || 'horário combinado', reais(c.valor), c.url];
         const r = await sendTextOrTemplate(conn, c.telefoneBruto, fillTemplate(t.body, params), { name: t.name, params });
@@ -280,7 +285,7 @@ async function processarAutomacoes() {
     const lembrete2 = Math.max(lembrete1 + 30, Math.round(expira / 2));
     const { data: pendentes } = await db.from('services')
       .select('id, client_id, client_name, type, date, time, signal_amount, signal_sent_at, signal_reminders, payment_link_signal')
-      .eq('status', 'PRE_SCHEDULED').eq('signal_status', 'sent').lte('signal_sent_at', minutosAtras(lembrete1)).limit(50);
+      .eq('company_id', EMPRESA_AUTOMACOES).eq('status', 'PRE_SCHEDULED').eq('signal_status', 'sent').lte('signal_sent_at', minutosAtras(lembrete1)).limit(50);
     const tl = tpl('lembrete_sinal');
     for (const s of pendentes ?? []) {
       const idadeMin = (Date.now() - new Date(s.signal_sent_at).getTime()) / 60_000;
@@ -309,7 +314,7 @@ async function processarAutomacoes() {
     const espera = Math.max(0, Number(bot.remainder_after_hours) || 1) * 60;
     const { data: concluidos } = await db.from('services')
       .select('id, client_id, client_name, type')
-      .eq('status', 'COMPLETED').eq('payment_status', 'SIGNAL_PAID').is('remainder_status', null)
+      .eq('company_id', EMPRESA_AUTOMACOES).eq('status', 'COMPLETED').eq('payment_status', 'SIGNAL_PAID').is('remainder_status', null)
       .lte('completed_at', minutosAtras(espera)).gte('completed_at', [bot.signal_enabled_at, minutosAtras(7 * 24 * 60)].filter(Boolean).sort().pop()!)
       .limit(20);
     const tr = tpl('cobranca_restante');
@@ -319,7 +324,7 @@ async function processarAutomacoes() {
       const { data: claim } = await db.from('services').update({ remainder_status: 'sending' }).eq('id', s.id).is('remainder_status', null).select('id');
       if (!claim?.length) continue;
       try {
-        const c = await criarCobranca(s.id, 'restante');
+        const c = await criarCobranca(s.id, 'restante', EMPRESA_AUTOMACOES);
         if (!c.telefoneBruto) throw new ErroCobranca('Cliente sem telefone cadastrado.');
         const params = [primeiroNome(c.nome), s.type || 'limpeza', reais(c.valor), c.url];
         const r = await sendTextOrTemplate(conn, c.telefoneBruto, fillTemplate(tr.body, params), { name: tr.name, params });
@@ -338,7 +343,7 @@ async function processarAutomacoes() {
   if (bot?.send_post_service !== false) {
     const { data: feitos } = await db.from('services')
       .select('id, client_id, client_name, collaborator_id, collaborator_name, collaborator_ids, collaborator_names')
-      .eq('status', 'COMPLETED').is('review_status', null)
+      .eq('company_id', EMPRESA_AUTOMACOES).eq('status', 'COMPLETED').is('review_status', null)
       .lte('completed_at', minutosAtras(60)).gte('completed_at', minutosAtras(3 * 24 * 60)).limit(20);
     const intervaloDias = Math.max(7, Number(bot?.review_interval_days) || 60);
     for (const s of feitos ?? []) {
@@ -383,17 +388,17 @@ async function processarAutomacoes() {
   return json({ ok: true, log });
 }
 
-async function salvarChave(chave: unknown) {
+async function salvarChave(chave: unknown, empresa: number) {
   const valor = String(chave ?? '').trim();
   if (valor && !/^inchk_[A-Za-z0-9_\-]+$/.test(valor)) {
     return json({ error: 'A chave da InfinitePay começa com "inchk_". Confira e cole de novo.' }, 400);
   }
-  await db.from('integracoes_privadas').upsert({ id: 1, infinitepay_key: valor || null, updated_at: new Date().toISOString() });
+  await db.from('integracoes_privadas').upsert({ id: empresa, company_id: empresa, infinitepay_key: valor || null, updated_at: new Date().toISOString() });
   return json({ ok: true, configurada: !!valor });
 }
 
 // Self-service check: a R$ 1,00 link whose checkout shows the business name of the InfiniteTag.
-async function testar(handleInformado: unknown) {
+async function testar(handleInformado: unknown, empresa: number) {
   const handle = String(handleInformado ?? '').trim().replace(/^\$/, '').toLowerCase();
   if (!/^[a-z0-9_.\-]{2,40}$/.test(handle)) return json({ error: 'InfiniteTag inválida. Use só o nome, sem espaços (ex.: minhaempresa).' }, 400);
   const res = await fetch(`${API}/links`, {
@@ -413,12 +418,12 @@ async function testar(handleInformado: unknown) {
     console.error('[infinitepay] teste', res.status, texto.slice(0, 500));
     return json({ error: 'A InfinitePay não reconheceu essa InfiniteTag. Confira no app InfinitePay → Perfil.' }, 400);
   }
-  await db.from('platform_settings').update({ infinitepay_handle: handle }).eq('id', 1);
+  await db.from('platform_settings').update({ infinitepay_handle: handle }).eq('id', empresa);
   return json({ ok: true, handle, url });
 }
 
-async function status() {
-  const { handle, key } = await config();
+async function status(empresa: number) {
+  const { handle, key } = await config(empresa);
   return json({ handle: handle || null, chave_configurada: !!key });
 }
 
@@ -428,17 +433,26 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const body = await req.json().catch(() => ({}));
     if (url.searchParams.get('evento') === 'webhook') return await receberWebhook(body);
+    if (body.acao === 'processar_sinais' || body.acao === 'processar_automacoes') return await processarAutomacoes();
+
+    // Panel actions: only a logged-in member, always on their own company.
+    const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
+    const { data: quem } = await db.auth.getUser(token);
+    const { data: perfil } = quem?.user
+      ? await db.from('app_users').select('company_id, role').eq('auth_id', quem.user.id).maybeSingle()
+      : { data: null };
+    if (!perfil || !['ADMIN', 'COLLABORATOR'].includes(perfil.role)) return json({ error: 'Entre no sistema para usar os recebimentos.' }, 401);
+    const empresa: number = perfil.company_id;
+
     switch (body.acao) {
       case 'gerar_link': {
         const tipo: Tipo = ['sinal', 'restante', 'total'].includes(body.tipo) ? body.tipo : 'total';
-        const c = await criarCobranca(String(body.service_id ?? ''), tipo);
+        const c = await criarCobranca(String(body.service_id ?? ''), tipo, empresa);
         return json({ url: c.url, valor: c.valor, tipo, telefone_cliente: c.fone, nome_cliente: c.nome });
       }
-      case 'processar_sinais':
-      case 'processar_automacoes': return await processarAutomacoes();
-      case 'salvar_chave': return await salvarChave(body.chave);
-      case 'testar': return await testar(body.handle);
-      case 'status': return await status();
+      case 'salvar_chave': return perfil.role === 'ADMIN' ? await salvarChave(body.chave, empresa) : json({ error: 'Só o administrador.' }, 403);
+      case 'testar': return perfil.role === 'ADMIN' ? await testar(body.handle, empresa) : json({ error: 'Só o administrador.' }, 403);
+      case 'status': return await status(empresa);
       default: return json({ error: 'Ação inválida.' }, 400);
     }
   } catch (e) {

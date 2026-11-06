@@ -34,6 +34,7 @@ Deno.serve(async (req) => {
       .from('services')
       .select('id, client_id, client_name, type, date, time, address, status, notes')
       .eq('date', targetDate)
+      .eq('company_id', conn.company_id) // only this WhatsApp number's company
       .in('status', ['SCHEDULED', 'CONFIRMED', 'SIGNAL_PAID', 'WAITING_SIGNAL']);
     if (error) return json({ error: error.message }, 500);
     if (!services?.length) return json({ sent: 0, date: targetDate, message: 'Nenhum serviço amanhã.' });

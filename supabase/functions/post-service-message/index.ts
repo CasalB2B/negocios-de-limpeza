@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
     const { service_id, origem } = await req.json();
-    const { data: service } = await supabase.from('services').select('id, client_id, client_name, type').eq('id', service_id).maybeSingle();
+    const { data: service } = await supabase.from('services').select('id, client_id, client_name, type').eq('id', service_id).eq('company_id', 1).maybeSingle(); // WhatsApp below is company 1's
     if (!service) return json({ sent: false, error: 'Serviço não encontrado' }, 400);
 
     const { data: client } = await supabase.from('app_users').select('phone').eq('id', service.client_id).maybeSingle();

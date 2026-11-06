@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { empresaId } from '../../lib/empresa';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { Button } from '../../components/Button';
@@ -28,7 +29,7 @@ export const AdminSettings: React.FC = () => {
     (async () => {
       setIntegLoading(true);
       try {
-        const { data } = await supabase.from('platform_settings').select('meta_app_id, meta_es_config_id, google_maps_key').eq('id', 1).single();
+        const { data } = await supabase.from('platform_settings').select('meta_app_id, meta_es_config_id, google_maps_key').eq('id', empresaId()).single();
         if (data) {
           if (data.meta_app_id) setMetaAppId(data.meta_app_id);
           if (data.meta_es_config_id) setMetaConfigId(data.meta_es_config_id);
@@ -40,13 +41,13 @@ export const AdminSettings: React.FC = () => {
   }, [activeTab]);
 
   const handleSaveWhatsApp = async () => {
-    await supabase.from('platform_settings').upsert({ id: 1, meta_app_id: metaAppId.trim() || null, meta_es_config_id: metaConfigId.trim() || null });
+    await supabase.from('platform_settings').upsert({ id: empresaId(), meta_app_id: metaAppId.trim() || null, meta_es_config_id: metaConfigId.trim() || null });
     setWaSaved(true);
     setTimeout(() => setWaSaved(false), 2000);
   };
 
   const handleSaveMaps = async () => {
-    await supabase.from('platform_settings').upsert({ id: 1, google_maps_key: mapsKey });
+    await supabase.from('platform_settings').upsert({ id: empresaId(), google_maps_key: mapsKey });
     setMapsSaved(true);
     setTimeout(() => setMapsSaved(false), 2000);
   };

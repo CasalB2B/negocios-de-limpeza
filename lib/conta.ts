@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { definirEmpresa } from './empresa';
 
 // Secure login (Supabase Auth). app_users stays the profile table (role, company, photo...).
 // A user who still has a legacy password is moved to Supabase Auth on their first login (the `conta` function).
@@ -22,10 +23,12 @@ export async function entrar(email: string, senha: string, papeis: Papel[]): Pro
     await supabase.auth.signOut();
     return { perfil: null };
   }
+  definirEmpresa(perfil.company_id);
   return { perfil };
 }
 
 export async function sair() {
+  definirEmpresa(null);
   await supabase.auth.signOut().catch(() => {});
 }
 
@@ -58,3 +61,9 @@ export async function trocarMinhaSenha(email: string, atual: string, nova: strin
   const { error: e2 } = await supabase.auth.updateUser({ password: nova });
   return e2 ? e2.message : null;
 }
+
+// Self-service sign-up of a cleaning company: creates the company, its first admin login and the 14-day trial.
+export const criarEmpresa = (dados: {
+  nome: string; sobrenome?: string; whatsapp: string; email: string; senha: string;
+  empresa: string; documento?: string; cidade?: string; tamanho_equipe?: string; como_agenda?: string;
+}) => chamar({ acao: 'criar_empresa', ...dados });

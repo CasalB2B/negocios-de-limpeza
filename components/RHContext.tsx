@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { comLimite } from '../lib/aoVoltar';
+import { empresaId } from '../lib/empresa';
 import { supabase } from '../lib/supabase';
 import { semFotosEmbutidas } from '../lib/storage';
 import { CargoRH, StatusColaboradoraRH, ElegibilidadeRH } from '../types';
@@ -405,6 +406,9 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     };
     // iOS restores frozen pages without always firing visibilitychange; focus/pageshow/online cover it.
     document.addEventListener('visibilitychange', handleVisibility);
+    // Right after a login: reload with the new person's company.
+    const aoEntrar = () => loadAll();
+    window.addEventListener('ndl-login', aoEntrar);
     window.addEventListener('focus', handleVisibility);
     window.addEventListener('pageshow', handleVisibility);
     window.addEventListener('online', handleVisibility);
@@ -420,6 +424,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('ndl-login', aoEntrar);
       window.removeEventListener('focus', handleVisibility);
       window.removeEventListener('pageshow', handleVisibility);
       window.removeEventListener('online', handleVisibility);
@@ -481,8 +486,8 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     }
 
     // Populate state immediately so the UI is never blank while the edge function loads
-    const lsCols   = lsGet<ColaboradoraRH[]>('rh_colaboradoras', SEED_COLABORADORAS);
-    const lsDes    = lsGet<DesempenhoMensalRH[]>('rh_desempenho', buildVanielenDesempenho());
+    const lsCols   = lsGet<ColaboradoraRH[]>('rh_colaboradoras', empresaId() === 1 ? SEED_COLABORADORAS : []);
+    const lsDes    = lsGet<DesempenhoMensalRH[]>('rh_desempenho', empresaId() === 1 ? buildVanielenDesempenho() : []);
     const lsPros   = lsGet<PromocaoRH[]>('rh_promocoes', []);
     const lsBons   = lsGet<BonusMensalRH[]>('rh_bonus_mensal', []);
     const lsCfg    = lsGet<ConfiguracaoBonusLider>('rh_config_bonus', DEFAULT_CONFIG_BONUS);
@@ -593,7 +598,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
       // Merge Supabase + local-only (only col_XXX — never seeds, they're just fallback)
       const supabaseIds  = new Set(cols.map((c: ColaboradoraRH) => c.id));
-      const lsCols       = lsGet<ColaboradoraRH[]>('rh_colaboradoras', SEED_COLABORADORAS);
+      const lsCols       = lsGet<ColaboradoraRH[]>('rh_colaboradoras', empresaId() === 1 ? SEED_COLABORADORAS : []);
       // Only include user-created (col_) that haven't been synced yet — never seeds
       const localOnly    = lsCols.filter(c => c.id.startsWith('col_') && !supabaseIds.has(c.id));
 

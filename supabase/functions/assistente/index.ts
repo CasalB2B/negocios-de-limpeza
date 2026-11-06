@@ -75,11 +75,25 @@ Deno.serve(async (req) => {
     const apiKey = settings?.gemini_key || Deno.env.get('GEMINI_API_KEY');
     if (!apiKey) return json({ error: 'Gemini não configurado. Adicione a chave em Configurações > Integrações.' }, 503);
 
+    // Who is asking: business numbers only for a logged-in member, and only of their own company.
+    const auth = req.headers.get('Authorization') ?? '';
+    const { data: quem } = await db.auth.getUser(auth.replace(/^Bearer\s+/i, ''));
+    const { data: perfil } = quem?.user
+      ? await db.from('app_users').select('company_id, role').eq('auth_id', quem.user.id).maybeSingle()
+      : { data: null };
+    const empresa: number = perfil?.company_id ?? 1;
+    if (modo === 'gestao' && (!perfil || !['ADMIN', 'COLLABORATOR'].includes(perfil.role))) {
+      return json({ error: 'Entre no sistema para ver os números da empresa.' }, 401);
+    }
+    const dbUsuario = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: auth } }, auth: { persistSession: false },
+    });
+
     const hoje = hojeSP();
     const gestao = modo === 'gestao';
     const declaracoes = gestao ? DECLARACOES_GESTAO : DECLARACOES_AJUDA;
     const permitidas = declaracoes.map(d => d.name);
-    const ctx = { db, hoje: hoje.iso };
+    const ctx = { db: dbUsuario, admin: db, empresa, hoje: hoje.iso };
 
     const historico: any[] = messages.slice(-20).map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
@@ -126,6 +140,7 @@ Deno.serve(async (req) => {
           if (!gestao) {
             const ultima = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';
             await db.from('ajuda_perguntas').insert({
+              company_id: empresa,
               pergunta: String(ultima).slice(0, 1000), resposta: texto.slice(0, 4000), sem_resposta: usadas.has('registrar_lacuna'),
             });
           }

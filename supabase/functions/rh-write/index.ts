@@ -1,6 +1,6 @@
 /**
  * rh-write — Supabase Edge Function
- * Accepts RH data writes using SERVICE_ROLE_KEY so it bypasses RLS completely.
+ * RH reads and writes as the logged-in user (database rules keep each company to its own data).
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -78,9 +78,16 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   try {
-    const supabase = createClient(
+    // Data goes through the caller's own login, so the database rules show and change only their
+    // company's RH. The service key is used only for file storage.
+    const admin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } }, auth: { persistSession: false } },
     );
 
     const body = await req.json();
@@ -89,7 +96,7 @@ Deno.serve(async (req) => {
     // ── Upsert a single colaboradora ──────────────────────────────────────────
     if (action === 'upsert_colaboradora') {
       const c = data;
-      const row = await withStoredFiles(supabase, buildColRow(c));
+      const row = await withStoredFiles(admin, buildColRow(c));
 
       if (isUUID(c.id)) {
         // Real Supabase ID → upsert by id
@@ -115,7 +122,7 @@ Deno.serve(async (req) => {
     if (action === 'sync_colaboradoras') {
       const results = [];
       for (const c of (data as any[])) {
-        const row = await withStoredFiles(supabase, buildColRow(c));
+        const row = await withStoredFiles(admin, buildColRow(c));
         if (isUUID(c.id)) {
           // Real UUID → upsert directly
           const { data: r, error } = await supabase.from('colaboradoras_rh').upsert({ id: c.id, ...row }).select().single();
@@ -319,7 +326,7 @@ Deno.serve(async (req) => {
 
     // ── Fast fetch: candidatas only (skip the other 9 tables) ────────────────
     // Lightweight alternative to get_admin_data for the Contratação page —
-    // much smaller payload, same RLS bypass via SERVICE_ROLE_KEY.
+    // much smaller payload.
     if (action === 'get_candidatas') {
       const { data: rows, error } = await supabase
         .from('candidatas_rh')
@@ -334,10 +341,10 @@ Deno.serve(async (req) => {
       const bucket = data.bucket || 'rh-files';
       const path: string = data.path;
       // Create bucket if it doesn't exist yet (public = true so files are readable without auth)
-      await supabase.storage.createBucket(bucket, { public: true }).catch(() => {});
-      const { data: signed, error } = await supabase.storage.from(bucket).createSignedUploadUrl(path);
+      await admin.storage.createBucket(bucket, { public: true }).catch(() => {});
+      const { data: signed, error } = await admin.storage.from(bucket).createSignedUploadUrl(path);
       if (error) return json200({ ok: false, error: error.message });
-      const publicUrl = supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+      const publicUrl = admin.storage.from(bucket).getPublicUrl(path).data.publicUrl;
       return json200({ ok: true, signedUrl: signed.signedUrl, token: signed.token, path: signed.path, publicUrl });
     }
 
@@ -416,7 +423,7 @@ Deno.serve(async (req) => {
       return json200({ ok: true });
     }
 
-    // ── Read all admin data (bypasses RLS with SERVICE_ROLE_KEY) ─────────────
+    // ── Read all RH data of the caller's company ──────────────────────────────
     if (action === 'get_admin_data') {
       const [colRes, desRes, proRes, bonRes, cfgBonRes, cfgRemRes, cfgCriRes, avalRes, obsRes, candRes] = await Promise.all([
         supabase.from('colaboradoras_rh').select('*').order('nome'),

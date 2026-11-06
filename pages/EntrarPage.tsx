@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useData } from '../components/DataContext';
-import { supabase } from '../lib/supabase';
+import { criarEmpresa } from '../lib/conta';
 
 // Single entry screen for everyone (admin, collaborator, client), plus the "create account" steps.
 // Inspired by the AgencyFlow login: logo animation on arrival, form on the left, team photo on the right.
@@ -101,11 +101,13 @@ const Login: React.FC<{ onCriar: () => void }> = ({ onCriar }) => {
 const PASSOS = ['Seus dados', 'Sua empresa', 'Sua equipe'];
 
 const CriarConta: React.FC<{ onVoltar: () => void }> = ({ onVoltar }) => {
+  const navigate = useNavigate();
+  const { entrarUnico } = useData();
   const [passo, setPasso] = useState(0);
-  const [d, setD] = useState({ nome: '', sobrenome: '', whatsapp: '', email: '', empresa: '', documento: '', cidade: '', tamanho_equipe: '', como_agenda: '' });
+  const [d, setD] = useState({ nome: '', sobrenome: '', whatsapp: '', email: '', senha: '', confirmar: '', empresa: '', documento: '', cidade: '', tamanho_equipe: '', como_agenda: '' });
+  const [verSenha, setVerSenha] = useState(false);
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
-  const [feito, setFeito] = useState(false);
   const muda = (k: keyof typeof d) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setD({ ...d, [k]: e.target.value });
 
   const validar = (): string => {
@@ -113,6 +115,8 @@ const CriarConta: React.FC<{ onVoltar: () => void }> = ({ onVoltar }) => {
       if (!d.nome.trim()) return 'Informe seu nome.';
       if (d.whatsapp.replace(/\D/g, '').length < 10) return 'Informe o WhatsApp com DDD.';
       if (!/\S+@\S+\.\S+/.test(d.email)) return 'Informe um e-mail válido.';
+      if (d.senha.length < 8) return 'A senha precisa ter pelo menos 8 caracteres.';
+      if (d.senha !== d.confirmar) return 'As senhas não conferem.';
     }
     if (passo === 1 && !d.empresa.trim()) return 'Informe o nome da empresa.';
     if (passo === 2 && !d.tamanho_equipe) return 'Escolha o tamanho da equipe.';
@@ -125,24 +129,15 @@ const CriarConta: React.FC<{ onVoltar: () => void }> = ({ onVoltar }) => {
     setErro('');
     if (passo < 2) { setPasso(passo + 1); return; }
     setEnviando(true);
-    const { error } = await supabase.from('cadastros_saas').insert({ ...d, email: d.email.trim().toLowerCase() });
+    const { confirmar, ...dados } = d;
+    const r = await criarEmpresa({ ...dados, email: d.email.trim().toLowerCase() });
+    if (!r.ok) { setEnviando(false); setErro(r.erro || 'Não foi possível criar a conta agora. Tente de novo em instantes.'); return; }
+    // Account ready: sign in and open the panel with the 14-day trial.
+    const login = await entrarUnico(d.email, d.senha);
     setEnviando(false);
-    if (error) { setErro('Não foi possível enviar agora. Tente de novo em instantes.'); return; }
-    setFeito(true);
+    if (login.destino) navigate(login.destino, { replace: true });
+    else onVoltar();
   };
-
-  if (feito) {
-    return (
-      <div className="text-center">
-        <CheckCircle2 size={44} className="mx-auto text-green-500" />
-        <h1 className="mt-4 text-2xl font-bold text-darkText dark:text-darkTextPrimary">Cadastro recebido!</h1>
-        <p className="mt-2 text-lightText dark:text-darkTextSecondary">
-          Seu teste grátis de 14 dias, com todas as funções liberadas, está sendo preparado. Vamos te chamar no WhatsApp {d.whatsapp} assim que estiver pronto.
-        </p>
-        <button onClick={onVoltar} className="mt-6 font-semibold text-primary hover:underline">Voltar para o login</button>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -169,7 +164,18 @@ const CriarConta: React.FC<{ onVoltar: () => void }> = ({ onVoltar }) => {
             <div><label className={rotulo} htmlFor="sobrenome">Sobrenome</label><input id="sobrenome" value={d.sobrenome} onChange={muda('sobrenome')} placeholder="Silva" className={campoSimples} /></div>
           </div>
           <div><label className={rotulo} htmlFor="whats">WhatsApp</label><input id="whats" type="tel" inputMode="tel" value={d.whatsapp} onChange={muda('whatsapp')} placeholder="(27) 99999-9999" className={campoSimples} /></div>
-          <div><label className={rotulo} htmlFor="mail">E-mail</label><input id="mail" type="email" value={d.email} onChange={muda('email')} placeholder="voce@suaempresa.com" className={campoSimples} /></div>
+          <div><label className={rotulo} htmlFor="mail">E-mail</label><input id="mail" type="email" autoComplete="email" value={d.email} onChange={muda('email')} placeholder="voce@suaempresa.com" className={campoSimples} /></div>
+          <div>
+            <label className={rotulo} htmlFor="nova-senha">Senha</label>
+            <div className="relative">
+              <input id="nova-senha" type={verSenha ? 'text' : 'password'} autoComplete="new-password" value={d.senha} onChange={muda('senha')} placeholder="••••••••" className={campoSimples + ' pr-10'} />
+              <button type="button" onClick={() => setVerSenha(v => !v)} aria-label={verSenha ? 'Esconder senha' : 'Mostrar senha'} className="absolute right-3 top-1/2 -translate-y-1/2 text-lightText hover:text-primary">
+                {verSenha ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-lightText dark:text-darkTextSecondary">Mínimo de 8 caracteres. É a senha que você vai usar no sistema e no app.</p>
+          </div>
+          <div><label className={rotulo} htmlFor="confirmar">Confirmar senha</label><input id="confirmar" type={verSenha ? 'text' : 'password'} autoComplete="new-password" value={d.confirmar} onChange={muda('confirmar')} placeholder="••••••••" className={campoSimples} /></div>
         </>)}
         {passo === 1 && (<>
           <div><label className={rotulo} htmlFor="empresa">Nome da empresa</label><input id="empresa" value={d.empresa} onChange={muda('empresa')} placeholder="Ex.: Brilho Limpezas" className={campoSimples} /></div>
@@ -206,7 +212,7 @@ const CriarConta: React.FC<{ onVoltar: () => void }> = ({ onVoltar }) => {
         </button>
         <button onClick={avancar} disabled={enviando} className="py-3 rounded-xl bg-primary hover:bg-primary-hover text-white font-bold disabled:opacity-60 flex items-center justify-center gap-2">
           {enviando ? <Loader2 size={16} className="animate-spin" /> : null}
-          {passo < 2 ? 'Continuar' : 'Começar teste grátis'} {passo < 2 && <ArrowRight size={16} />}
+          {passo < 2 ? 'Continuar' : 'Começar 14 dias grátis'} {passo < 2 && <ArrowRight size={16} />}
         </button>
       </div>
       <p className="mt-6 text-center text-sm text-lightText dark:text-darkTextSecondary">

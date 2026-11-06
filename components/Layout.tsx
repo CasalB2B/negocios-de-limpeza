@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
 import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight, Eye, Package, Contact, Lock } from 'lucide-react';
 import { GeminiChat } from './GeminiChat';
+import { FaixaTeste, TesteEncerrado, useEmpresaAtual } from './TesteGratis';
 import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
 import { useData } from './DataContext';
@@ -312,6 +313,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   const menuItems = getMenuItems();
 
   const isAdmin = role === UserRole.ADMIN;
+  const empresaAtual = useEmpresaAtual();
   // Modo revisor: tudo fica visível no menu, mas bloqueado, menos o WhatsApp.
   const isLocked = (path: string) => reviewerMode && path !== '/admin/whatsapp';
   const mobileTabs = reviewerMode
@@ -548,8 +550,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
         </header>
 
         <main ref={mainRef} className="flex-1 overflow-y-auto p-4 md:p-8 mobile-pb-nav md:pb-8">
+          {isAdmin && <FaixaTeste empresa={empresaAtual} />}
           {children}
         </main>
+        {isAdmin && <TesteEncerrado empresa={empresaAtual} onSair={handleLogout} />}
 
         {isAdmin && !reviewerMode && <GeminiChat />}
 

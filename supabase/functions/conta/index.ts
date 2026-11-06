@@ -79,6 +79,59 @@ Deno.serve(async (req) => {
       return json({ ok: true, id: perfil.id });
     }
 
+    // Self-service sign-up of a new cleaning company: company + first admin login + 14-day trial of the top plan.
+    if (acao === 'criar_empresa') {
+      const email = normaliza(body.email);
+      const senha = String(body.senha ?? '');
+      const nome = String(body.nome ?? '').trim();
+      const empresaNome = String(body.empresa ?? '').trim();
+      if (!nome || !empresaNome) return json({ ok: false, erro: 'Informe seu nome e o nome da empresa.' }, 400);
+      if (!email.includes('@')) return json({ ok: false, erro: 'Informe um e-mail válido.' }, 400);
+      if (senha.length < 8) return json({ ok: false, erro: 'A senha precisa ter pelo menos 8 caracteres.' }, 400);
+      const { data: existe } = await db.from('app_users').select('id').eq('email', email).maybeSingle();
+      if (existe) return json({ ok: false, erro: 'Já existe uma conta com este e-mail. Faça login.' }, 409);
+
+      const teste_ate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+      const nomeCompleto = [nome, String(body.sobrenome ?? '').trim()].filter(Boolean).join(' ');
+      const { data: empresa, error: e1 } = await db.from('empresas').insert({
+        nome: empresaNome.slice(0, 120), cnpj: String(body.documento ?? '').slice(0, 30) || null,
+        status: 'teste', plano: 'Empresa', teste_ate, responsavel: nomeCompleto.slice(0, 120),
+        whatsapp: String(body.whatsapp ?? '').slice(0, 30), email, cidade: String(body.cidade ?? '').slice(0, 80) || null,
+        tamanho_equipe: String(body.tamanho_equipe ?? '').slice(0, 30) || null,
+      }).select('id').single();
+      if (e1 || !empresa) return json({ ok: false, erro: e1?.message ?? 'Não foi possível criar a empresa.' }, 500);
+      const cid = empresa.id;
+
+      try {
+        // Company settings: start from the platform-level ids (our Meta app, maps key) of company 1.
+        const { data: base } = await db.from('platform_settings').select('meta_app_id, meta_es_config_id, google_maps_key').eq('id', 1).maybeSingle();
+        await db.from('platform_settings').insert({ id: cid, company_id: cid, admin_name: nomeCompleto, ...(base ?? {}) });
+        await db.from('whatsapp_bot_config').insert({ company_id: cid, business_name: empresaNome });
+        const { data: perfil, error: e2 } = await db.from('app_users').insert({
+          name: nomeCompleto.slice(0, 120), email, phone: String(body.whatsapp ?? '').slice(0, 30),
+          role: 'ADMIN', company_id: cid,
+        }).select('id, role, company_id').single();
+        if (e2 || !perfil) throw new Error(e2?.message ?? 'Falha ao criar o administrador');
+        await criarLogin(email, senha, perfil);
+        // Lead for the software owner's sales panel.
+        await db.from('cadastros_saas').insert({
+          nome, sobrenome: body.sobrenome ?? null, whatsapp: String(body.whatsapp ?? ''), email, empresa: empresaNome,
+          documento: body.documento ?? null, cidade: body.cidade ?? null, tamanho_equipe: body.tamanho_equipe ?? null,
+          como_agenda: body.como_agenda ?? null, status: 'em_teste',
+        });
+      } catch (e) {
+        // Undo a half-created company so the person can try again with the same e-mail.
+        const { data: perfis } = await db.from('app_users').select('id, auth_id').eq('company_id', cid);
+        for (const p of perfis ?? []) if (p.auth_id) await db.auth.admin.deleteUser(p.auth_id);
+        await db.from('app_users').delete().eq('company_id', cid);
+        await db.from('whatsapp_bot_config').delete().eq('company_id', cid);
+        await db.from('platform_settings').delete().eq('id', cid);
+        await db.from('empresas').delete().eq('id', cid);
+        throw e;
+      }
+      return json({ ok: true, empresa: cid, teste_ate });
+    }
+
     // Everything below is for a logged-in administrator of the company.
     const chamador = await quemChama(req);
     if (!chamador || chamador.role !== 'ADMIN') return json({ ok: false, erro: 'Só o administrador pode fazer isso.' }, 403);

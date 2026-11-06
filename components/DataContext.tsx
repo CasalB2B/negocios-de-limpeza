@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAoVoltar } from '../lib/aoVoltar';
+import { empresaId } from '../lib/empresa';
 import { entrar, sair, criarAcesso, definirSenha, excluirAcesso, cadastrarCliente } from '../lib/conta';
 import { ServiceStatus, Address } from '../types';
 import { supabase } from '../lib/supabase';
@@ -613,6 +614,26 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Realtime events sent while the phone was asleep are lost; reload when the app comes back.
   useAoVoltar(() => fetchData(), 30_000);
 
+  // Right after a login (any role): load that person's company data.
+  useEffect(() => {
+    const aoEntrar = () => fetchData();
+    window.addEventListener('ndl-login', aoEntrar);
+    return () => window.removeEventListener('ndl-login', aoEntrar);
+  }, []);
+
+  // Logins from before the secure login only have flags in localStorage, with no real session:
+  // with per-company access rules they would see an empty system. Send them to log in once.
+  useEffect(() => {
+    const temFlag = localStorage.getItem('auth_admin') === 'true' || !!localStorage.getItem('auth_collab') || !!localStorage.getItem('auth_client');
+    if (!temFlag) return;
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) return;
+      ['auth_admin', 'auth_reviewer', 'auth_collab', 'auth_client'].forEach(k => localStorage.removeItem(k));
+      setAdminLoggedIn(false); setReviewerMode(false); setCurrentCollaborator(null); setCurrentUser(null);
+      window.location.replace('/#/');
+    });
+  }, []);
+
   useEffect(() => {
     fetchData();
 
@@ -1046,7 +1067,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setPlatformSettings(s);
       if (reviewerMode) return; // revisor só visualiza
       const { error } = await supabase.from('platform_settings').upsert({
-          id: 1,
+          id: empresaId(),
           hourly_rate: s.hourlyRate,
           min_displacement: s.minDisplacement,
           payouts: s.payouts,
@@ -1093,7 +1114,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setQuotes(prev => [localQuote, ...prev]);
     await addNotificationInternal({ type: 'NEW_REQUEST', title: 'Novo Orçamento', desc: `${quoteData.name} solicitou orçamento via chat.` });
 
-    const { data, error } = await supabase.from('quotes').insert({
+    const novoId = crypto.randomUUID();
+    const { error } = await supabase.from('quotes').insert({
+        id: novoId,
         name: quoteData.name,
         email: quoteData.email,
         whatsapp: quoteData.whatsapp,
@@ -1111,10 +1134,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         status: 'NEW',
         source: quoteData.source || 'web_chat',
         chat_summary: quoteData.chatSummary || ''
-    }).select().single();
+    });
 
-    if (data && !error) {
-        const saved: Quote = { ...localQuote, id: data.id, createdAt: new Date(data.created_at).getTime() };
+    if (!error) {
+        const saved: Quote = { ...localQuote, id: novoId };
         setQuotes(prev => prev.map(q => q.id === localQuote.id ? saved : q));
         return saved;
     }

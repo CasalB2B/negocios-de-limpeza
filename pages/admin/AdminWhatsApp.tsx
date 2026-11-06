@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { empresaId } from '../../lib/empresa';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import {
@@ -186,10 +187,10 @@ export const AdminWhatsApp: React.FC = () => {
   useEffect(() => {
     fetchStatus();
     fetchTemplates();
-    supabase.from('whatsapp_bot_config').select('*').eq('company_id', 1).maybeSingle().then(({ data }) => {
+    supabase.from('whatsapp_bot_config').select('*').eq('company_id', empresaId()).maybeSingle().then(({ data }) => {
       if (data) setCfg({ ...data, menu_items: Array.isArray(data.menu_items) ? data.menu_items : [] } as BotConfig);
     });
-    supabase.from('platform_settings').select('meta_app_id, meta_es_config_id').eq('id', 1).single().then(({ data }) => {
+    supabase.from('platform_settings').select('meta_app_id, meta_es_config_id').eq('id', empresaId()).single().then(({ data }) => {
       setMetaIds({ appId: data?.meta_app_id || '', configId: data?.meta_es_config_id || '' });
     });
   }, []);
@@ -231,7 +232,7 @@ export const AdminWhatsApp: React.FC = () => {
     if (!cfg || reviewerMode) return; // revisor só visualiza
     setSaving(true);
     const { company_id, ...rest } = { ...cfg, ...override } as any;
-    await supabase.from('whatsapp_bot_config').update({ ...rest, updated_at: new Date().toISOString() }).eq('company_id', company_id ?? 1);
+    await supabase.from('whatsapp_bot_config').update({ ...rest, updated_at: new Date().toISOString() }).eq('company_id', company_id ?? empresaId());
     if (tab === 'ia') {
       await updatePlatformSettings({ ...platformSettings, followUpChatHours: fuChat1, followUpChatHours2: fuChat2, followUpHumanDelays: fuHuman });
     }

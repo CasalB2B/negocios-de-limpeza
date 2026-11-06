@@ -1,7 +1,9 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 export interface Contexto {
-  db: SupabaseClient;
+  db: SupabaseClient;     // caller's own login: database rules limit it to their company's data
+  admin: SupabaseClient;  // service key, only for private settings and the shared help base
+  empresa: number;
   hoje: string; // YYYY-MM-DD (America/Sao_Paulo)
 }
 
@@ -447,8 +449,8 @@ async function pagamentos_colaboradoras(ctx: Contexto, a: Args) {
 
 async function status_integracoes(ctx: Contexto) {
   const [{ data }, { data: wa }] = await Promise.all([
-    ctx.db.from('platform_settings').select('google_maps_key, gemini_key, infinitepay_handle').eq('id', 1).single(),
-    ctx.db.from('whatsapp_connections').select('status, display_phone').limit(1).maybeSingle(),
+    ctx.admin.from('platform_settings').select('google_maps_key, gemini_key, infinitepay_handle').eq('id', ctx.empresa).single(),
+    ctx.admin.from('whatsapp_connections').select('status, display_phone').eq('company_id', ctx.empresa).limit(1).maybeSingle(),
   ]);
   const ok = (v: any) => !!(v && String(v).trim());
   return {
@@ -469,8 +471,8 @@ async function sugerir_aprendizado(ctx: Contexto, a: Args) {
   const pergunta = String(a.pergunta || '').trim().slice(0, 300);
   const resposta = String(a.resposta || '').trim().slice(0, 2000);
   if (!pergunta || !resposta) return { ok: false };
-  const { data: igual } = await ctx.db.from('ajuda_aprendizado').select('id').ilike('pergunta', pergunta).limit(1);
-  if (!igual?.length) await ctx.db.from('ajuda_aprendizado').insert({ pergunta, resposta });
+  const { data: igual } = await ctx.admin.from('ajuda_aprendizado').select('id').ilike('pergunta', pergunta).limit(1);
+  if (!igual?.length) await ctx.admin.from('ajuda_aprendizado').insert({ pergunta, resposta });
   return { ok: true, status: 'pendente de aprovação' };
 }
 

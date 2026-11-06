@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { empresaId } from './empresa';
 import { supabase } from './supabase';
 
 // With the deposit flow on (WhatsApp screen → "Cobrar sinal"), a booking for a non-fixed client
@@ -6,7 +7,7 @@ import { supabase } from './supabase';
 export function usePreAgendamentoAtivo(): boolean {
   const [ativo, setAtivo] = useState(false);
   useEffect(() => {
-    supabase.from('whatsapp_bot_config').select('send_signal_link').eq('company_id', 1).maybeSingle()
+    supabase.from('whatsapp_bot_config').select('send_signal_link').eq('company_id', empresaId()).maybeSingle()
       .then(({ data }) => setAtivo(!!data?.send_signal_link));
   }, []);
   return ativo;
