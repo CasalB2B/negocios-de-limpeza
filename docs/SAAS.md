@@ -25,22 +25,26 @@ Seções, na ordem:
 Blog fica para depois.
 
 ## 2. Planos (sugestão)
-Cobrança por tamanho da equipe, como o Gendo. Referência: hoje a empresa paga ~R$ 218/mês no Gendo (Plano III, R$ 2.614,90/ano).
+Referência Gendo (site, 06/11/2026; preços cheios por mês, hoje com 50% de desconto no anual): **Básico** 1 profissional R$ 49,98 · **Essencial** 1–2 R$ 99,86 · **Avançado** 3–6 R$ 178,43 · **Profissional** 7+ sob consulta. Teste grátis de 7 dias sem cartão. Robô de WhatsApp é adicional de R$ 49/mês.
+Referência AgencyFlow: Básico R$ 99 · Profissional R$ 247 · Enterprise R$ 319, 15% de desconto no anual, teste de 7 dias.
 
-| | Essencial | Profissional | Empresa |
+A plataforma tem mais coisas que o Gendo (app da colaboradora, cobrança de sinal automática, RH completo, mapa, IA), então dá para cobrar um pouco acima, por tamanho da equipe:
+
+| | Inicial | Profissional | Empresa |
 |---|---|---|---|
-| Colaboradoras | até 3 | até 10 | ilimitado |
+| Colaboradoras | até 3 | até 8 | até 20 (acima: sob consulta) |
 | Agenda, OS, clientes, app da colaboradora | ✓ | ✓ | ✓ |
 | Lembretes e confirmações no WhatsApp | 150/mês | 500/mês | 1.500/mês |
 | Cobrança automática (sinal/restante) | ✓ | ✓ | ✓ |
+| Perfis de acesso (líder, financeiro, atendimento) | — | ✓ | ✓ |
 | RH (contratação, avaliações, desempenho, carreira) | — | ✓ | ✓ |
-| Mapa da equipe e check-in por localização | — | ✓ | ✓ |
-| Assistente com IA | — | ✓ | ✓ |
-| Relatórios avançados e suporte prioritário | — | — | ✓ |
-| **Sugestão de preço mensal** | R$ 97 | R$ 197 | R$ 347 |
-| **Anual** (2 meses grátis) | R$ 970 | R$ 1.970 | R$ 3.470 |
+| Mapa da equipe | — | ✓ | ✓ |
+| Assistente com IA | básico | completo | completo |
+| Suporte | chat | chat | prioritário |
+| **Mensal (sugestão)** | R$ 89 | R$ 179 | R$ 299 |
+| **Anual** (15% off) | R$ 76/mês | R$ 152/mês | R$ 254/mês |
 
-**Adicionais pagos à parte:** Nota fiscal (Focus NFe, por CNPJ) · Atendimento automático no WhatsApp (bot/IA) · pacotes extras de lembretes.
+**Adicionais:** Nota fiscal (Focus NFe, por CNPJ) · Atendimento automático no WhatsApp (bot/IA, referência Gendo R$ 49/mês) · pacotes extras de lembretes.
 A Meta cobra as mensagens direto no cartão de cada empresa (≈ R$ 0,035 por lembrete).
 
 ## 3. Teste grátis de 14 dias
@@ -80,6 +84,27 @@ Recomendação: decidir pela **menor taxa no cartão recorrente** entre Infinite
 - **Meus dados ficam seguros?** Sim. Cada empresa só acessa os próprios dados, com login protegido.
 - **Emite nota fiscal?** Sim, com o adicional de Nota Fiscal.
 - **E se eu tiver dúvida?** O assistente com IA responde na hora, e há suporte pelo WhatsApp.
+
+## 7. Endereços (domínio)
+- O **nome do produto** precisa ser decidido: vender para outras empresas de limpeza com a marca "Negócios de Limpeza" (que é uma concorrente delas) pode atrapalhar. Sugestão: uma marca própria do software, com domínio próprio.
+- Estrutura igual à do AgencyFlow:
+  - `dominio.com.br` → página de vendas (`/recursos`, `/precos`, `/blog`, `/teste-gratis`)
+  - `app.dominio.com.br` → o sistema (login com animação do logo; cada empresa entra pelo mesmo endereço e o login sabe de qual empresa ela é)
+- Endereço por empresa como o Gendo (`suaempresa.dominio.com.br`) é possível depois, com domínio curinga na Vercel. Não é necessário para começar.
+- O site atual negociosdelimpeza.com.br continua sendo só da empresa de faxina.
+
+## 8. Painel do dono do software (depois do teste grátis)
+- CRM das empresas: em teste, ativas, atrasadas, canceladas; de onde vieram.
+- Automações de WhatsApp e e-mail (boas-vindas, fim do teste, cobrança, reativação).
+- Chamados de suporte das empresas.
+- Números: visitas no site, cadastros, conversão do teste, receita mensal (MRR), cancelamentos.
+
+## 9. Ordem de construção
+1. Login seguro + **perfis de acesso** (administrador, líder que vê a agenda da equipe, financeiro, atendimento, colaboradora, cliente; e personalizado)
+2. Cadastro de empresa + teste de 14 dias + bloqueio ao vencer (dá para testar o funil com uma empresa de teste)
+3. Página de vendas (depois do nome/domínio; prints tirados do próprio sistema)
+4. Cobrança da assinatura (depois de escolher o provedor)
+5. Painel do dono do software
 
 ## Depende de
 - Login seguro e várias empresas (docs/SEGURANCA.md) — obrigatório antes do teste grátis.
