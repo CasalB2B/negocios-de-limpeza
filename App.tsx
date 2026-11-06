@@ -6,8 +6,7 @@ import { PrivateRoute } from './components/PrivateRoute'; // Importação do com
 import { UserRole } from './types';
 
 // Pages Imports
-import { CentralAccess } from './pages/CentralAccess';
-import { ClientLogin } from './pages/client/ClientLogin';
+import { EntrarPage } from './pages/EntrarPage';
 import { ClientDashboard } from './pages/client/ClientDashboard';
 import { ClientRequest } from './pages/client/ClientRequest';
 import { ClientBudget } from './pages/client/ClientBudget';
@@ -16,7 +15,6 @@ import { ClientAppointmentDetail } from './pages/client/ClientAppointmentDetail'
 import { ClientAddresses } from './pages/client/ClientAddresses';
 import { ClientPayments } from './pages/client/ClientPayments';
 import { ClientProfile } from './pages/client/ClientProfile';
-import { CollaboratorLogin } from './pages/collaborator/CollaboratorLogin';
 import { CollaboratorAgenda } from './pages/collaborator/CollaboratorAgenda';
 import { ServiceDetail } from './pages/collaborator/ServiceDetail';
 import { ServiceCheckIn } from './pages/collaborator/ServiceCheckIn';
@@ -25,7 +23,6 @@ import { ServicePhotos } from './pages/collaborator/ServicePhotos';
 import { ServiceCheckout } from './pages/collaborator/ServiceCheckout';
 import { CollaboratorFinance } from './pages/collaborator/CollaboratorFinance';
 import { CollaboratorProfile } from './pages/collaborator/CollaboratorProfile';
-import { AdminLogin } from './pages/admin/AdminLogin';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminRequests } from './pages/admin/AdminRequests';
 import { AdminCalendar } from './pages/admin/AdminCalendar';
@@ -91,10 +88,12 @@ const App: React.FC = () => {
         <HashRouter>
           <Routes>
             {/* Public Routes */}
-            <Route path="/" element={<CentralAccess />} />
-            <Route path="/client/login" element={<ClientLogin />} />
-            <Route path="/collab/login" element={<CollaboratorLogin />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
+            {/* One login screen for everyone; the old per-role login addresses open it too */}
+            <Route path="/" element={<EntrarPage />} />
+            <Route path="/criar-conta" element={<EntrarPage />} />
+            <Route path="/client/login" element={<EntrarPage />} />
+            <Route path="/collab/login" element={<EntrarPage />} />
+            <Route path="/admin/login" element={<EntrarPage />} />
             
             {/* Avaliação pública — sem login */}
             <Route path="/avaliar" element={<AvaliacaoPage />} />

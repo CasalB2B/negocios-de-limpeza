@@ -241,6 +241,7 @@ interface DataContextType {
   logoutCollaborator: () => void;
   
   loginAdmin: (user: string, pass: string) => Promise<boolean>;
+  entrarUnico: (email: string, senha: string) => Promise<{ destino: string | null; erro?: string }>;
   logoutAdmin: () => void;
   markAllNotificationsRead: () => Promise<void>;
   updatePlatformSettings: (settings: PlatformSettings) => Promise<void>;
@@ -863,16 +864,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (currentUser?.id === id) logoutClient();
   };
 
+  const aplicarLoginCliente = async (user: any): Promise<ClientUser> => {
+    const { data: addrs } = await supabase.from('addresses').select('*').eq('user_id', user.id);
+    const clientObj = mapDbUserToClient(user, addrs || []);
+    setCurrentUser(clientObj);
+    localStorage.setItem('auth_client', JSON.stringify(clientObj));
+    return clientObj;
+  };
+
   const loginClient = async (email: string, password: string): Promise<ClientUser | null> => {
     const { perfil: user } = await entrar(email, password, ['CLIENT']);
-    if (user) {
-        const { data: addrs } = await supabase.from('addresses').select('*').eq('user_id', user.id);
-        const clientObj = mapDbUserToClient(user, addrs || []);
-        setCurrentUser(clientObj);
-        localStorage.setItem('auth_client', JSON.stringify(clientObj));
-        return clientObj;
-    }
-    return null;
+    return user ? aplicarLoginCliente(user) : null;
   };
 
   const logoutClient = () => {
@@ -975,15 +977,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await excluirAcesso(id);
   };
 
+  const aplicarLoginColaboradora = (user: any) => {
+    const collabObj = mapDbUserToCollab(user);
+    setCurrentCollaborator(collabObj);
+    localStorage.setItem('auth_collab', JSON.stringify(collabObj));
+  };
+
   const loginCollaborator = async (email: string, password: string): Promise<boolean> => {
     const { perfil: user } = await entrar(email, password, ['COLLABORATOR']);
-    if (user) {
-        const collabObj = mapDbUserToCollab(user);
-        setCurrentCollaborator(collabObj);
-        localStorage.setItem('auth_collab', JSON.stringify(collabObj));
-        return true;
-    }
-    return false;
+    if (user) aplicarLoginColaboradora(user);
+    return !!user;
   };
 
   const logoutCollaborator = () => {
@@ -996,7 +999,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginAdmin = async (user: string, pass: string): Promise<boolean> => {
     // Secure login (Supabase Auth); legacy passwords are migrated on the first login.
     const { perfil: dbUser } = await entrar(user, pass, ['ADMIN', 'REVIEWER']);
-    if (dbUser) {
+    if (dbUser) { aplicarLoginAdmin(dbUser); return true; }
+    return false;
+  };
+
+  const aplicarLoginAdmin = (dbUser: any) => {
         const isReviewer = dbUser.role === 'REVIEWER';
         if (isReviewer) {
             localStorage.setItem('auth_reviewer', 'true');
@@ -1009,9 +1016,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setAdminLoggedIn(true);
         localStorage.setItem('auth_admin', 'true');
         fetchData();
-        return true;
+  };
+
+  // Single login screen: signs in whoever it is and says where to go.
+  const entrarUnico = async (email: string, senha: string): Promise<{ destino: string | null; erro?: string }> => {
+    const { perfil, erro } = await entrar(email, senha, ['ADMIN', 'REVIEWER', 'COLLABORATOR', 'CLIENT']);
+    if (!perfil) return { destino: null, erro };
+    if (perfil.role === 'ADMIN' || perfil.role === 'REVIEWER') {
+        aplicarLoginAdmin(perfil);
+        return { destino: perfil.role === 'REVIEWER' ? '/admin/whatsapp' : '/admin/dashboard' };
     }
-    return false;
+    if (perfil.role === 'COLLABORATOR') { aplicarLoginColaboradora(perfil); return { destino: '/collab/agenda' }; }
+    await aplicarLoginCliente(perfil);
+    return { destino: '/client/dashboard' };
   };
   const logoutAdmin = () => {
       sair();
@@ -1165,7 +1182,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       registerClient, updateClient, deleteClient, loginClient, logoutClient,
       addClientAddress, updateClientAddress, deleteClientAddress,
       registerCollaborator, updateCollaborator, deleteCollaborator, loginCollaborator, logoutCollaborator,
-      loginAdmin, logoutAdmin, markAllNotificationsRead, updatePlatformSettings, markTransactionPaid, deleteTransaction,
+      loginAdmin, entrarUnico, logoutAdmin, markAllNotificationsRead, updatePlatformSettings, markTransactionPaid, deleteTransaction,
       quotes, addQuote, updateQuote, updateQuoteStatus, deleteQuote,
       crmTags, addCrmTag, deleteCrmTag
     }}>
