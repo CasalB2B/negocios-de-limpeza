@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
-import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight, Eye, Package, Contact, Lock } from 'lucide-react';
+import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight, Eye, Package, Contact, Lock, Landmark, List, CreditCard } from 'lucide-react';
 import { GeminiChat } from './GeminiChat';
 import { FaixaTeste, TesteEncerrado, useEmpresaAtual } from './TesteGratis';
 import { Button } from './Button';
@@ -260,7 +260,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       label: 'Financeiro',
       icon: <DollarSign size={16} />,
       items: [
-        { icon: <DollarSign size={15} />, label: 'Financeiro', path: '/admin/payments' },
+        { icon: <LayoutDashboard size={15} />, label: 'Painel',       path: '/admin/financeiro' },
+        { icon: <Landmark size={15} />,   label: 'Contas',        path: '/admin/financeiro/contas' },
+        { icon: <List size={15} />,       label: 'Lançamentos',   path: '/admin/financeiro/lancamentos' },
+        { icon: <CreditCard size={15} />, label: 'Cartões',       path: '/admin/financeiro/cartoes' },
+        { icon: <Calendar size={15} />,   label: 'Calendário',    path: '/admin/financeiro/calendario' },
+        { icon: <DollarSign size={15} />, label: 'Recebimentos',  path: '/admin/financeiro/recebimentos' },
         { icon: <Package size={15} />,    label: 'Estoque',    path: '/admin/estoque' },
         { icon: <FileText size={15} />,   label: 'Nota Fiscal', path: '/admin/nfe' },
       ],
@@ -336,7 +341,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       ]
     : menuItems.slice(0, 4);
   const showMobileMenuButton = isAdmin || menuItems.length > 4;
-  const isPathActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
+  // Um item só fica marcado quando nenhum outro item mais específico combina com a página (ex.: Painel /admin/financeiro x Contas /admin/financeiro/contas).
+  const isPathActive = (path: string) => {
+    const combina = (p: string) => location.pathname === p || location.pathname.startsWith(p + '/');
+    if (!combina(path)) return false;
+    return !adminGroups.some(g => g.items.some(i => i.path.length > path.length && i.path.startsWith(path + '/') && combina(i.path)));
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-background dark:bg-darkBg font-sans transition-colors duration-300">

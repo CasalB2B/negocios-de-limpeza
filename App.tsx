@@ -28,7 +28,13 @@ import { AdminRequests } from './pages/admin/AdminRequests';
 import { AdminCalendar } from './pages/admin/AdminCalendar';
 import { AdminCollaborators } from './pages/admin/AdminCollaborators';
 import { AdminClients } from './pages/admin/AdminClients';
-import { AdminPayments } from './pages/admin/AdminPayments';
+import { FinPainel } from './pages/admin/financeiro/FinPainel';
+import { FinContas } from './pages/admin/financeiro/FinContas';
+import { FinLancamentos } from './pages/admin/financeiro/FinLancamentos';
+import { FinCartoes } from './pages/admin/financeiro/FinCartoes';
+import { FinCalendario } from './pages/admin/financeiro/FinCalendario';
+import { FinRecebimentos } from './pages/admin/financeiro/FinRecebimentos';
+import { FinCategorias } from './pages/admin/financeiro/FinCategorias';
 import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminServices } from './pages/admin/AdminServices';
 import { AdminQuotes } from './pages/admin/AdminQuotes';
@@ -146,7 +152,15 @@ const App: React.FC = () => {
               <Route path="/admin/crm/historico" element={<AdminCRM />} />
               <Route path="/admin/inbox" element={<AdminInbox />} />
                   <Route path="/admin/analytics" element={<AdminAnalytics />} />
-              <Route path="/admin/payments" element={<AdminPayments />} />
+              <Route path="/admin/payments" element={<Navigate to="/admin/financeiro" replace />} />
+              <Route path="/admin/financeiro" element={<FinPainel />} />
+              <Route path="/admin/financeiro/contas" element={<FinContas />} />
+              <Route path="/admin/financeiro/lancamentos" element={<FinLancamentos />} />
+              <Route path="/admin/financeiro/cartoes" element={<FinCartoes />} />
+              <Route path="/admin/financeiro/cartoes/:id" element={<FinCartoes />} />
+              <Route path="/admin/financeiro/calendario" element={<FinCalendario />} />
+              <Route path="/admin/financeiro/recebimentos" element={<FinRecebimentos />} />
+              <Route path="/admin/financeiro/categorias" element={<FinCategorias />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
               <Route path="/admin/whatsapp" element={<AdminWhatsApp />} />
               <Route path="/admin/ajuda-ia" element={<AdminAjudaIA />} />

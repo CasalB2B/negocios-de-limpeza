@@ -27,6 +27,9 @@ function todayBR(): string {
   return `${d}/${m}/${y}`;
 }
 
+// Pago por inteiro (baixa manual antiga 'PAID'/'PAGO' ou InfinitePay 'FULL_PAID').
+const pago = (st: string | null) => st === 'PAID' || st === 'PAGO' || st === 'FULL_PAID';
+
 function parseDateBR(s: string): Date | null {
   if (!s) return null;
   const parts = s.split('/');
@@ -118,11 +121,11 @@ export const AdminDashboard: React.FC = () => {
   });
 
   const receitaMes = monthServices
-    .filter(s => s.payment_status === 'PAID')
+    .filter(s => pago(s.payment_status))
     .reduce((sum, s) => sum + (s.price ?? 0), 0);
 
   const aReceber = monthServices
-    .filter(s => s.status !== 'CANCELLED' && (!s.payment_status || s.payment_status === 'PENDENTE'))
+    .filter(s => s.status !== 'CANCELLED' && !pago(s.payment_status))
     .reduce((sum, s) => sum + (s.price ?? 0), 0);
 
   const ativasCount = colabs.filter(c => c.status === 'ATIVA').length;
@@ -131,7 +134,7 @@ export const AdminDashboard: React.FC = () => {
   const semPagamento = services.filter(s => {
     if (!s.date) return false;
     const d = parseDateBR(s.date);
-    return d && d < today && s.status === 'COMPLETED' && !s.payment_status;
+    return d && d < today && s.status === 'COMPLETED' && !pago(s.payment_status);
   }).length;
 
   const emProcesso = candidatas.filter(c => {
@@ -186,8 +189,8 @@ export const AdminDashboard: React.FC = () => {
   }
 
   // ── Donut chart — payment breakdown ──────────────────────────────────────
-  const paidCount   = monthServices.filter(s => s.payment_status === 'PAID').length;
-  const pendingCount = monthServices.filter(s => s.status !== 'CANCELLED' && (!s.payment_status || s.payment_status === 'PENDENTE')).length;
+  const paidCount   = monthServices.filter(s => pago(s.payment_status)).length;
+  const pendingCount = monthServices.filter(s => s.status !== 'CANCELLED' && !pago(s.payment_status)).length;
   const totalMonthCount = monthServices.length;
   const circumference = 2 * Math.PI * 50; // ~314.16
   const paidDash    = totalMonthCount > 0 ? (paidCount / totalMonthCount) * circumference : 0;
@@ -485,7 +488,7 @@ export const AdminDashboard: React.FC = () => {
 
               if (semPagamento > 0)
                 alerts.push(
-                  <button key="pag" onClick={() => navigate('/admin/payments')}
+                  <button key="pag" onClick={() => navigate('/admin/financeiro/recebimentos')}
                     className="w-full flex items-center gap-2 text-left px-3 py-2.5 rounded-xl bg-yellow-50 border border-yellow-100 hover:bg-yellow-100 transition-colors">
                     <DollarSign size={14} className="text-yellow-600 shrink-0" />
                     <span className="text-sm text-yellow-700 flex-1">{semPagamento} serviço{semPagamento > 1 ? 's' : ''} sem pagamento</span>
@@ -544,7 +547,7 @@ export const AdminDashboard: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
               { label: 'Nova OS',         icon: <Plus size={18}/>,         path: '/admin/os',                cls: 'text-teal-700 bg-teal-50 hover:bg-teal-100 border-teal-100' },
-              { label: 'Financeiro',      icon: <DollarSign size={18}/>,   path: '/admin/payments',          cls: 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-100' },
+              { label: 'Financeiro',      icon: <DollarSign size={18}/>,   path: '/admin/financeiro',           cls: 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-100' },
               { label: 'Calendário',      icon: <Calendar size={18}/>,     path: '/admin/calendar',          cls: 'text-blue-700 bg-blue-50 hover:bg-blue-100 border-blue-100' },
               { label: 'Clientes',        icon: <Users size={18}/>,        path: '/admin/clients',           cls: 'text-violet-700 bg-violet-50 hover:bg-violet-100 border-violet-100' },
               { label: 'Colaboradoras',   icon: <UserPlus size={18}/>,     path: '/admin/rh/colaboradoras',  cls: 'text-pink-700 bg-pink-50 hover:bg-pink-100 border-pink-100' },
