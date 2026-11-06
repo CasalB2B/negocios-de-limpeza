@@ -34,6 +34,7 @@ import { AdminServices } from './pages/admin/AdminServices';
 import { AdminQuotes } from './pages/admin/AdminQuotes';
 import { AdminWhatsApp } from './pages/admin/AdminWhatsApp';
 import { AdminAjudaIA } from './pages/admin/AdminAjudaIA';
+import { AdminPlataforma } from './pages/admin/AdminPlataforma';
 import { AdminCRM } from './pages/admin/AdminCRM';
 import { AdminInbox } from './pages/admin/AdminInbox';
 import { AdminAnalytics } from './pages/admin/AdminAnalytics';
@@ -149,6 +150,7 @@ const App: React.FC = () => {
               <Route path="/admin/settings" element={<AdminSettings />} />
               <Route path="/admin/whatsapp" element={<AdminWhatsApp />} />
               <Route path="/admin/ajuda-ia" element={<AdminAjudaIA />} />
+              <Route path="/admin/plataforma" element={<AdminPlataforma />} />
               <Route path="/admin/rh" element={<AdminRHDashboard />} />
               <Route path="/admin/rh/colaboradoras" element={<AdminRHColaboradoras />} />
               <Route path="/admin/rh/desempenho" element={<AdminRHDesempenho />} />

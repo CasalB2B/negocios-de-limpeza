@@ -24,11 +24,13 @@ export async function entrar(email: string, senha: string, papeis: Papel[]): Pro
     return { perfil: null };
   }
   definirEmpresa(perfil.company_id);
+  try { perfil.dono_plataforma ? localStorage.setItem('ndl_dono', '1') : localStorage.removeItem('ndl_dono'); } catch {}
   return { perfil };
 }
 
 export async function sair() {
   definirEmpresa(null);
+  try { localStorage.removeItem('ndl_dono'); } catch {}
   await supabase.auth.signOut().catch(() => {});
 }
 

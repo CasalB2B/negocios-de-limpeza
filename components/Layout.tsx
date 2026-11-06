@@ -276,6 +276,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
         { icon: <MessageCircle size={15} />, label: 'WhatsApp',   path: '/admin/whatsapp' },
       ],
     },
+    // Software owner only: every company on the platform.
+    ...(localStorage.getItem('ndl_dono') === '1' ? [{
+      key: 'PLATAFORMA',
+      label: 'Plataforma',
+      icon: <Grid size={16} />,
+      items: [
+        { icon: <Grid size={15} />, label: 'Empresas', path: '/admin/plataforma' },
+      ],
+    }] : []),
   ];
 
   // Desktop sidebar: only the section of the current page starts open; others open on click.
