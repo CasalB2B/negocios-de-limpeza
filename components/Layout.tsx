@@ -544,11 +544,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Mobile Header (Admin/Collab) */}
         <header className="md:hidden bg-white dark:bg-darkSurface border-b border-gray-200 dark:border-darkBorder p-4 flex justify-between items-center z-10 transition-colors duration-300 shadow-sm h-16">
-           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center text-white">
-              <CheckCircle size={18} />
-            </div>
-            <h1 className="font-bold text-sm text-darkText dark:text-darkTextPrimary leading-tight">Negócios de<br/>Limpeza</h1>
+           <div className="flex items-center">
+            <img src="/img/logo-lilas.png" alt="Negócios de Limpeza" className="h-9 w-auto dark:hidden" />
+            <img src="/img/logo-bege.png" alt="Negócios de Limpeza" className="h-9 w-auto hidden dark:block" />
           </div>
           <div className="flex gap-4 items-center">
             <ThemeToggle />

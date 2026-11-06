@@ -425,7 +425,7 @@ export const AdminCalendar: React.FC = () => {
 
   const avatar = (c: RHColaboradora, size: string) => c.foto
     ? <img src={c.foto} alt={c.nome || ''} className={`${size} rounded-full object-cover shrink-0`} />
-    : <div className={`${size} rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center shrink-0`}>{(c.nome || '?').charAt(0)}</div>;
+    : <div className={`${size} rounded-full bg-violet-100 dark:bg-violet-900/40 text-primary font-bold flex items-center justify-center shrink-0`}>{(c.nome || '?').charAt(0)}</div>;
 
   const renderPessoa = () => {
     if (colaboradoras.length === 0) {

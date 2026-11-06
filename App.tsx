@@ -7,6 +7,7 @@ import { UserRole } from './types';
 
 // Pages Imports
 import { EntrarPage } from './pages/EntrarPage';
+import { VendasPage } from './pages/VendasPage';
 import { ClientDashboard } from './pages/client/ClientDashboard';
 import { ClientRequest } from './pages/client/ClientRequest';
 import { ClientBudget } from './pages/client/ClientBudget';
@@ -92,6 +93,7 @@ const App: React.FC = () => {
             {/* One login screen for everyone; the old per-role login addresses open it too */}
             <Route path="/" element={<EntrarPage />} />
             <Route path="/criar-conta" element={<EntrarPage />} />
+            <Route path="/sistema" element={<VendasPage />} />
             <Route path="/client/login" element={<EntrarPage />} />
             <Route path="/collab/login" element={<EntrarPage />} />
             <Route path="/admin/login" element={<EntrarPage />} />
