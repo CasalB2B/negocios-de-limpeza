@@ -277,6 +277,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       icon: <Settings size={16} />,
       items: [
         { icon: <Settings size={15} />,   label: 'Configurações', path: '/admin/settings' },
+        ...(empresaId() !== 1 ? [{ icon: <DollarSign size={15} />, label: 'Assinatura', path: '/admin/assinatura' }] : []),
         { icon: <HelpCircle size={15} />, label: 'Central de Ajuda', path: '/ajuda' },
         // The shared help base is curated by the software owner only.
         ...(localStorage.getItem('ndl_dono') === '1' ? [{ icon: <Sparkles size={15} />, label: 'Aprendizado da IA', path: '/admin/ajuda-ia' }] : []),
@@ -572,7 +573,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           {isAdmin && <FaixaTeste empresa={empresaAtual} />}
           {children}
         </main>
-        {isAdmin && <TesteEncerrado empresa={empresaAtual} onSair={handleLogout} />}
+        {isAdmin && <TesteEncerrado empresa={empresaAtual} onSair={handleLogout} naTelaDeAssinatura={location.pathname === '/admin/assinatura'} />}
 
         {isAdmin && !reviewerMode && <GeminiChat />}
 

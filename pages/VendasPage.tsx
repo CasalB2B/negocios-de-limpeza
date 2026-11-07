@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PLANOS, mensalNoAnual } from '../supabase/functions/_shared/planos';
 import {
   ArrowRight, Check, CalendarDays, Smartphone, MessageCircle, Wallet, Users, Sparkles, MapPin, ClipboardList,
   NotebookPen, PhoneOff, Calculator, UserX, ChevronDown, Menu, X, FileText, Star,
@@ -10,12 +11,25 @@ import {
 
 const IMG = '/img/sistema';
 
+// Pain points of a cleaning-business owner whose team grew beyond what a notebook and WhatsApp can hold.
 const DORES = [
-  { icon: NotebookPen, titulo: 'Agenda no caderno ou no WhatsApp', texto: 'Horário em dois lugares, faxina marcada em cima de outra, colaboradora sem saber o endereço.' },
-  { icon: PhoneOff, titulo: 'Cliente que esquece ou some', texto: 'Sem lembrete na véspera, a faxina vira deslocamento perdido e dia sem receita.' },
-  { icon: Calculator, titulo: 'Cobrança e pagamento na mão', texto: 'Mandar Pix um por um, conferir quem pagou o sinal, calcular quanto cada uma recebe.' },
-  { icon: UserX, titulo: 'Equipe sem acompanhamento', texto: 'Contratação, avaliações e desempenho espalhados em planilhas e conversas.' },
+  { icon: Users, titulo: 'Equipe de 5, 10 pessoas e ninguém sabe direito onde ir', texto: 'Quem vai em qual casa, que horas, qual endereço, quem cobre a falta. Tudo isso passando por áudio e print de conversa.' },
+  { icon: Calculator, titulo: 'Faxina feita e cobrança esquecida', texto: 'Com muitas faxinas no mesmo dia, um sinal não cobrado, um restante que ficou para depois e um cliente que nunca pagou.' },
+  { icon: NotebookPen, titulo: 'Caderno e WhatsApp não são um sistema', texto: 'A informação fica espalhada, só você sabe de tudo, e se o celular quebra ou você viaja a empresa para.' },
+  { icon: Wallet, titulo: 'Sem saber quanto entra e quanto sai', texto: 'Quanto faturou no mês, quanto falta receber, quanto pagar para cada colaboradora: sem número, a decisão vira achismo.' },
+  { icon: PhoneOff, titulo: 'Cliente que esquece e faxina perdida', texto: 'Sem lembrete na véspera, a colaboradora chega e não tem ninguém. É deslocamento pago e dia sem receita.' },
+  { icon: UserX, titulo: 'Contratar e manter gente boa', texto: 'Candidatas, avaliações dos clientes e promoções em planilhas soltas. Você perde as melhores sem perceber.' },
 ];
+
+const ANTES_DEPOIS: [string, string][] = [
+  ['Agenda no caderno e em conversas de WhatsApp', 'Agenda da equipe inteira numa tela, por dia, semana ou pessoa'],
+  ['Colaboradora pergunta o endereço toda vez', 'Ela abre o app, vê o serviço e toca no endereço para abrir o mapa'],
+  ['Você lembra cada cliente na véspera, um por um', 'Lembrete automático no WhatsApp, saindo do seu número'],
+  ['Pix cobrado na mão e conferido no extrato', 'Link de sinal enviado sozinho e baixa automática quando cai'],
+  ['Faturamento só no fim do mês, se der tempo', 'Receita do mês e quanto falta receber na tela inicial'],
+  ['Pagamento da equipe calculado na calculadora', 'Valor de cada faxina pela diária do cargo, já somado'],
+];
+
 
 const RECURSOS = [
   {
@@ -35,6 +49,12 @@ const RECURSOS = [
     texto: 'Cada serviço anda pelas etapas: aguardando sinal, agendado, confirmado, em andamento e concluído. Cobre o sinal, o total ou o restante com um clique.',
     itens: ['Quadro por etapas', 'Link de pagamento na hora', 'Baixa automática quando o cliente paga'],
     img: 'ordens-servico.webp', alt: 'Quadro de ordens de serviço',
+  },
+  {
+    eyebrow: 'Controle financeiro', titulo: 'Saiba quanto entrou e quanto falta receber',
+    texto: 'A tela inicial mostra os serviços do dia, a receita do mês e o que ainda está para receber. Cada pagamento pela InfinitePay entra sozinho, e o assistente responde quanto você faturou e quem está devendo.',
+    itens: ['Receita do mês e a receber', 'Pagamentos confirmados automaticamente', 'Quanto pagar para cada colaboradora'],
+    img: 'painel.webp', alt: 'Painel com receita do mês e valores a receber',
   },
   {
     eyebrow: 'Clientes', titulo: 'Clientes fixos, eventuais e novos, organizados',
@@ -60,21 +80,6 @@ const MODULOS = [
   { icon: MapPin, nome: 'Mapa da equipe' },
   { icon: Sparkles, nome: 'Assistente com IA' },
   { icon: FileText, nome: 'Nota fiscal (adicional)' },
-];
-
-const PLANOS = [
-  {
-    nome: 'Inicial', mensal: 89, para: 'Até 3 colaboradoras',
-    itens: ['Agenda e ordens de serviço', 'App da colaboradora', 'Clientes', 'Cobrança automática', '150 lembretes no WhatsApp por mês', 'Assistente com IA (dúvidas)'],
-  },
-  {
-    nome: 'Profissional', mensal: 179, para: 'Até 8 colaboradoras', destaque: true,
-    itens: ['Tudo do Inicial', 'RH completo: contratação, avaliações e carreira', 'Mapa da equipe', 'Perfis de acesso (líder, financeiro, atendimento)', '500 lembretes no WhatsApp por mês', 'Assistente com IA (números do negócio)'],
-  },
-  {
-    nome: 'Empresa', mensal: 299, para: 'Até 20 colaboradoras',
-    itens: ['Tudo do Profissional', '1.500 lembretes no WhatsApp por mês', 'Relatórios avançados', 'Suporte prioritário', 'Acima de 20 colaboradoras: fale com a gente'],
-  },
 ];
 
 const FAQ = [
@@ -177,8 +182,14 @@ export const VendasPage: React.FC = () => {
 
       {/* Pains */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16 md:py-24">
-        <h2 className="text-3xl md:text-4xl font-bold text-center max-w-2xl mx-auto" style={{ textWrap: 'balance' } as React.CSSProperties}>A rotina de uma empresa de limpeza não cabe num caderno</h2>
-        <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <p className="text-center text-xs font-bold uppercase tracking-wider text-primary">Se a sua empresa cresceu, você conhece isso</p>
+        <h2 className="mt-2 text-3xl md:text-4xl font-bold text-center max-w-3xl mx-auto" style={{ textWrap: 'balance' } as React.CSSProperties}>
+          Com 5, 10 colaboradoras, o caderno e o WhatsApp não dão mais conta
+        </h2>
+        <p className="mt-4 text-center text-lightText dark:text-darkTextSecondary max-w-2xl mx-auto">
+          No começo dá para lembrar de tudo de cabeça. Quando a equipe cresce, é aí que a agenda embola, a cobrança escapa e você passa o dia apagando incêndio em vez de fazer a empresa crescer.
+        </p>
+        <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {DORES.map(({ icon: Icone, titulo, texto }) => (
             <div key={titulo} className="rounded-2xl border border-gray-100 dark:border-darkBorder bg-gray-50/60 dark:bg-darkSurface p-5">
               <Icone size={22} className="text-primary" />
@@ -186,6 +197,26 @@ export const VendasPage: React.FC = () => {
               <p className="mt-1.5 text-sm text-lightText dark:text-darkTextSecondary">{texto}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Before / after */}
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 pb-16 md:pb-24">
+        <h2 className="text-2xl md:text-3xl font-bold text-center" style={{ textWrap: 'balance' } as React.CSSProperties}>Da bagunça ao controle</h2>
+        <div className="mt-8 rounded-2xl border border-gray-200 dark:border-darkBorder overflow-hidden">
+          <div className="grid grid-cols-2 text-xs font-bold uppercase tracking-wider">
+            <div className="px-4 py-3 bg-gray-100 dark:bg-darkSurface text-lightText">Sem sistema</div>
+            <div className="px-4 py-3 bg-primary text-white">Com a Negócios de Limpeza</div>
+          </div>
+          {ANTES_DEPOIS.map(([antes, depois]) => (
+            <div key={antes} className="grid grid-cols-2 border-t border-gray-100 dark:border-darkBorder text-sm">
+              <div className="px-4 py-3.5 text-lightText dark:text-darkTextSecondary flex gap-2"><X size={15} className="text-red-400 shrink-0 mt-0.5" /> {antes}</div>
+              <div className="px-4 py-3.5 bg-primary/5 font-semibold flex gap-2"><Check size={15} className="text-primary shrink-0 mt-0.5" /> {depois}</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-8 text-center">
+          <Link to="/criar-conta" className={botaoTeste}>Quero organizar minha empresa <ArrowRight size={18} /></Link>
         </div>
       </section>
 
@@ -271,9 +302,9 @@ export const VendasPage: React.FC = () => {
         </div>
         <div className="mt-10 grid md:grid-cols-3 gap-5 items-stretch">
           {PLANOS.map(p => {
-            const valor = anual ? Math.round(p.mensal * 0.85) : p.mensal;
+            const valor = anual ? mensalNoAnual(p) : p.mensal;
             return (
-              <div key={p.nome} className={`relative rounded-2xl p-6 flex flex-col ${p.destaque ? 'border-2 border-primary shadow-xl shadow-primary/15' : 'border border-gray-200 dark:border-darkBorder'}`}>
+              <div key={p.id} className={`relative rounded-2xl p-6 flex flex-col ${p.destaque ? 'border-2 border-primary shadow-xl shadow-primary/15' : 'border border-gray-200 dark:border-darkBorder'}`}>
                 {p.destaque && <span className="absolute -top-3 left-6 rounded-full bg-primary text-white text-xs font-bold px-3 py-1">Mais escolhido</span>}
                 <h3 className="text-lg font-bold">{p.nome}</h3>
                 <p className="text-sm text-lightText dark:text-darkTextSecondary">{p.para}</p>
