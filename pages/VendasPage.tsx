@@ -95,25 +95,87 @@ const FAQ = [
 
 const preco = (v: number) => v.toLocaleString('pt-BR');
 
-const Navegador: React.FC<{ src: string; alt: string }> = ({ src, alt }) => (
-  <div className="rounded-2xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkSurface shadow-2xl shadow-primary/10 overflow-hidden">
+// Any screenshot opens full size when clicked.
+const AmpliarCtx = React.createContext<(src: string, alt: string) => void>(() => {});
+
+const Navegador: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
+  const ampliar = React.useContext(AmpliarCtx);
+  return (
+  <button type="button" onClick={() => ampliar(src, alt)} aria-label={`Ampliar: ${alt}`}
+    className="block w-full text-left cursor-zoom-in rounded-2xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkSurface shadow-2xl shadow-primary/10 overflow-hidden transition hover:shadow-primary/20 hover:-translate-y-0.5">
     <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-gray-100 dark:border-darkBorder bg-gray-50 dark:bg-darkBg">
       <span className="w-2.5 h-2.5 rounded-full bg-red-300" /><span className="w-2.5 h-2.5 rounded-full bg-amber-300" /><span className="w-2.5 h-2.5 rounded-full bg-green-300" />
       <span className="ml-3 text-[11px] text-lightText truncate">app.negociosdelimpeza.com.br</span>
     </div>
     <img src={`${IMG}/${src}`} alt={alt} loading="lazy" className="w-full h-auto block" />
-  </div>
-);
+  </button>
+  );
+};
 
-const Celular: React.FC<{ src: string; alt: string }> = ({ src, alt }) => (
-  <div className="mx-auto w-[260px] max-w-full rounded-[2.5rem] border-[10px] border-gray-900 bg-gray-900 shadow-2xl shadow-primary/20 overflow-hidden">
+const Celular: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
+  const ampliar = React.useContext(AmpliarCtx);
+  return (
+  <button type="button" onClick={() => ampliar(src, alt)} aria-label={`Ampliar: ${alt}`}
+    className="block mx-auto w-[260px] max-w-full cursor-zoom-in rounded-[2.5rem] border-[10px] border-gray-900 bg-gray-900 shadow-2xl shadow-primary/20 overflow-hidden transition hover:-translate-y-0.5">
     <img src={`${IMG}/${src}`} alt={alt} loading="lazy" className="w-full h-auto block rounded-[1.6rem]" />
-  </div>
-);
+  </button>
+  );
+};
+
+// Auto-playing tour of the system's screens: works like a short video, tabs jump to a screen.
+const TOUR = [
+  { id: 'painel', rotulo: 'Painel', img: 'painel.webp', texto: 'Serviços do dia, receita do mês, quanto falta receber e o mapa da equipe.' },
+  { id: 'agenda', rotulo: 'Agenda da equipe', img: 'agenda-equipe.webp', texto: 'O dia de todas as colaboradoras lado a lado.' },
+  { id: 'mes', rotulo: 'Agenda do mês', img: 'agenda-mes.webp', texto: 'O mês inteiro com cliente, serviço e quem vai.' },
+  { id: 'os', rotulo: 'Ordens de serviço', img: 'ordens-servico.webp', texto: 'Cada faxina andando pelas etapas, do sinal ao concluído.' },
+  { id: 'clientes', rotulo: 'Clientes', img: 'clientes.webp', texto: 'Fixos, eventuais e novos, com histórico e endereço.' },
+  { id: 'equipe', rotulo: 'Equipe', img: 'equipe-rh.webp', texto: 'Cargo, diária e avaliações de cada colaboradora.' },
+  { id: 'celular', rotulo: 'No celular', img: 'celular-painel.webp', texto: 'Tudo também no celular, para você e para a equipe.', celular: true },
+];
+const TEMPO_TOUR = 5000;
+
+const Tour: React.FC = () => {
+  const [atual, setAtual] = useState(0);
+  const [pausado, setPausado] = useState(false);
+  useEffect(() => {
+    if (pausado) return;
+    const t = setTimeout(() => setAtual(a => (a + 1) % TOUR.length), TEMPO_TOUR);
+    return () => clearTimeout(t);
+  }, [atual, pausado]);
+  const tela = TOUR[atual];
+  return (
+    <div onMouseEnter={() => setPausado(true)} onMouseLeave={() => setPausado(false)}>
+      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 justify-start md:justify-center">
+        {TOUR.map((t, i) => (
+          <button key={t.id} onClick={() => setAtual(i)}
+            className={`relative shrink-0 overflow-hidden rounded-xl px-4 py-2 text-sm font-bold transition ${i === atual ? 'bg-primary text-white' : 'bg-white dark:bg-darkSurface text-lightText dark:text-darkTextSecondary border border-gray-200 dark:border-darkBorder hover:text-primary'}`}>
+            {t.rotulo}
+            {i === atual && !pausado && (
+              <span key={`p${atual}`} className="absolute left-0 bottom-0 h-0.5 bg-white/70 ndl-progresso" style={{ animationDuration: `${TEMPO_TOUR}ms` }} />
+            )}
+          </button>
+        ))}
+      </div>
+      <p className="mt-3 text-center text-sm text-lightText dark:text-darkTextSecondary min-h-[1.25rem]">{tela.texto}</p>
+      <div key={tela.id} className="mt-6 ndl-entra">
+        {tela.celular
+          ? <div className="py-2"><Celular src={tela.img} alt={tela.rotulo} /></div>
+          : <div className="max-w-5xl mx-auto"><Navegador src={tela.img} alt={tela.rotulo} /></div>}
+      </div>
+    </div>
+  );
+};
 
 export const VendasPage: React.FC = () => {
   const [anual, setAnual] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [ampliada, setAmpliada] = useState<{ src: string; alt: string } | null>(null);
+  useEffect(() => {
+    if (!ampliada) return;
+    const fechar = (e: KeyboardEvent) => { if (e.key === 'Escape') setAmpliada(null); };
+    window.addEventListener('keydown', fechar);
+    return () => window.removeEventListener('keydown', fechar);
+  }, [ampliada]);
   useEffect(() => {
     document.title = 'Sistema para empresas de limpeza — Negócios de Limpeza';
     window.scrollTo(0, 0);
@@ -123,6 +185,20 @@ export const VendasPage: React.FC = () => {
   const botaoTeste = 'inline-flex items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover text-white font-bold px-6 py-3.5 shadow-lg shadow-primary/30 transition';
 
   return (
+    <AmpliarCtx.Provider value={(src, alt) => setAmpliada({ src, alt })}>
+    <style>{`
+      @keyframes ndl-progresso { from { width: 0 } to { width: 100% } }
+      .ndl-progresso { animation-name: ndl-progresso; animation-timing-function: linear; animation-fill-mode: forwards; }
+      @keyframes ndl-entra { from { opacity: 0; transform: translateY(10px) scale(.99) } to { opacity: 1; transform: none } }
+      .ndl-entra { animation: ndl-entra .45s ease both; }
+      @media (prefers-reduced-motion: reduce) { .ndl-entra, .ndl-progresso { animation: none } }
+    `}</style>
+    {ampliada && (
+      <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out" onClick={() => setAmpliada(null)} role="dialog" aria-label={ampliada.alt}>
+        <button className="absolute top-4 right-4 text-white/90 hover:text-white p-2" aria-label="Fechar"><X size={26} /></button>
+        <img src={`${IMG}/${ampliada.src}`} alt={ampliada.alt} className="max-w-full max-h-[90vh] w-auto h-auto rounded-xl shadow-2xl" />
+      </div>
+    )}
     <div className="min-h-screen bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/85 dark:bg-darkBg/85 backdrop-blur border-b border-gray-100 dark:border-darkBorder" style={{ top: 'env(safe-area-inset-top, 0px)' }}>
@@ -180,6 +256,16 @@ export const VendasPage: React.FC = () => {
         </div>
       </section>
 
+      {/* Tour */}
+      <section className="bg-gray-50 dark:bg-darkSurface/40 py-16 md:py-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <p className="text-center text-xs font-bold uppercase tracking-wider text-primary">Veja por dentro</p>
+          <h2 className="mt-2 text-3xl md:text-4xl font-bold text-center" style={{ textWrap: 'balance' } as React.CSSProperties}>Um passeio pelo sistema</h2>
+          <p className="mt-3 text-center text-lightText dark:text-darkTextSecondary">Clique em qualquer tela para ver grande.</p>
+          <div className="mt-8"><Tour /></div>
+        </div>
+      </section>
+
       {/* Pains */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16 md:py-24">
         <p className="text-center text-xs font-bold uppercase tracking-wider text-primary">Se a sua empresa cresceu, você conhece isso</p>
@@ -201,19 +287,31 @@ export const VendasPage: React.FC = () => {
       </section>
 
       {/* Before / after */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 pb-16 md:pb-24">
-        <h2 className="text-2xl md:text-3xl font-bold text-center" style={{ textWrap: 'balance' } as React.CSSProperties}>Da bagunça ao controle</h2>
-        <div className="mt-8 rounded-2xl border border-gray-200 dark:border-darkBorder overflow-hidden">
-          <div className="grid grid-cols-2 text-xs font-bold uppercase tracking-wider">
-            <div className="px-4 py-3 bg-gray-100 dark:bg-darkSurface text-lightText">Sem sistema</div>
-            <div className="px-4 py-3 bg-primary text-white">Com a Negócios de Limpeza</div>
-          </div>
-          {ANTES_DEPOIS.map(([antes, depois]) => (
-            <div key={antes} className="grid grid-cols-2 border-t border-gray-100 dark:border-darkBorder text-sm">
-              <div className="px-4 py-3.5 text-lightText dark:text-darkTextSecondary flex gap-2"><X size={15} className="text-red-400 shrink-0 mt-0.5" /> {antes}</div>
-              <div className="px-4 py-3.5 bg-primary/5 font-semibold flex gap-2"><Check size={15} className="text-primary shrink-0 mt-0.5" /> {depois}</div>
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16 md:pb-24">
+        <h2 className="text-3xl md:text-4xl font-bold text-center" style={{ textWrap: 'balance' } as React.CSSProperties}>Da bagunça ao controle</h2>
+        <div className="mt-10 grid md:grid-cols-2 gap-5 items-stretch">
+          <div className="rounded-3xl border border-red-100 dark:border-red-900/40 bg-gradient-to-br from-red-50 to-white dark:from-red-950/30 dark:to-darkSurface p-6 md:p-8">
+            <div className="flex items-center gap-3">
+              <span className="w-11 h-11 rounded-2xl bg-red-100 dark:bg-red-900/40 text-red-500 flex items-center justify-center"><NotebookPen size={20} /></span>
+              <div><p className="text-xs font-bold uppercase tracking-wider text-red-500">Sem sistema</p><p className="font-bold text-lg">Caderno, áudio e memória</p></div>
             </div>
-          ))}
+            <ul className="mt-6 space-y-3">
+              {ANTES_DEPOIS.map(([antes]) => (
+                <li key={antes} className="flex gap-3 text-sm text-lightText dark:text-darkTextSecondary"><span className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-500 flex items-center justify-center shrink-0 mt-0.5"><X size={12} /></span>{antes}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-3xl bg-gradient-to-br from-primary to-secondary text-white p-6 md:p-8 shadow-xl shadow-primary/25">
+            <div className="flex items-center gap-3">
+              <span className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center"><Sparkles size={20} /></span>
+              <div><p className="text-xs font-bold uppercase tracking-wider text-white/80">Com a Negócios de Limpeza</p><p className="font-bold text-lg">Tudo num lugar, funcionando sozinho</p></div>
+            </div>
+            <ul className="mt-6 space-y-3">
+              {ANTES_DEPOIS.map(([antes, depois]) => (
+                <li key={antes} className="flex gap-3 text-sm font-semibold"><span className="w-5 h-5 rounded-full bg-white text-primary flex items-center justify-center shrink-0 mt-0.5"><Check size={12} /></span>{depois}</li>
+              ))}
+            </ul>
+          </div>
         </div>
         <div className="mt-8 text-center">
           <Link to="/criar-conta" className={botaoTeste}>Quero organizar minha empresa <ArrowRight size={18} /></Link>
@@ -379,5 +477,6 @@ export const VendasPage: React.FC = () => {
         </div>
       </footer>
     </div>
+    </AmpliarCtx.Provider>
   );
 };
