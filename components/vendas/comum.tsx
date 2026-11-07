@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ChevronDown, Menu, X, Contact, CalendarDays, Kanban, Wallet, MessageCircle, BarChart3, Users, Smartphone,
-  Sparkles, Rocket, ArrowRight,
+  Sparkles, Rocket, ArrowRight, Check,
 } from 'lucide-react';
 import RECURSOS_DADOS from '../../lib/recursos.json';
+import { PLANOS, mensalNoAnual } from '../../supabase/functions/_shared/planos';
 
 // Pieces shared by the sales page (/) and the feature pages (/recursos/...).
 // The links are plain <a href>: the feature pages live on clean URLs (for Google), outside the hash router.
@@ -16,6 +17,7 @@ export interface Recurso {
   slug: string; nome: string; menu: string; titulo: string; descricao: string; chamada: string; subtitulo: string;
   imagem?: string; imagem2?: string; celular?: string; whatsapp?: boolean; ia?: boolean;
   beneficios: { t: string; d: string }[]; passos: string[]; perguntas: { p: string; r: string }[];
+  destaques: { t: string; d: string; visual: string; chip: string }[];
 }
 export const RECURSOS_PAGINAS = RECURSOS_DADOS as Recurso[];
 
@@ -275,3 +277,48 @@ export const Rodape: React.FC = () => (
     </div>
   </footer>
 );
+
+const preco = (v: number) => v.toLocaleString('pt-BR');
+
+// Plans with the monthly/annual toggle (home and feature pages).
+export const Precos: React.FC<{ titulo?: React.ReactNode }> = ({ titulo }) => {
+  const [anual, setAnual] = useState(false);
+  return (
+  <section id="precos" className="max-w-6xl mx-auto px-4 sm:px-6 pb-16 md:pb-24 scroll-mt-20">
+    <h2 className="text-3xl md:text-5xl font-bold text-center leading-tight" style={balance}>
+      {titulo || <>Várias funcionalidades em um só plano <span className="text-primary">(e sem cobrar por faxina)</span></>}
+    </h2>
+    <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-sm font-semibold">
+      <span className={anual ? 'text-lightText' : ''}>Cobrado mensalmente</span>
+      <button role="switch" aria-checked={anual} onClick={() => setAnual(a => !a)} aria-label="Plano anual"
+        className={`relative w-12 h-7 rounded-full transition ${anual ? 'bg-primary' : 'bg-gray-300 dark:bg-darkBorder'}`}>
+        <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-all ${anual ? 'left-6' : 'left-1'}`} />
+      </button>
+      <span className={anual ? '' : 'text-lightText'}>Anual</span>
+      <span className="rounded-full bg-primary/10 text-primary text-xs font-bold px-2.5 py-1">15% OFF</span>
+    </div>
+    <div className="mt-10 grid md:grid-cols-3 gap-5 items-stretch">
+      {PLANOS.map(p => {
+        const valor = anual ? mensalNoAnual(p) : p.mensal;
+        return (
+          <div key={p.id} className={`relative rounded-3xl p-7 flex flex-col bg-white dark:bg-darkSurface ${p.destaque ? 'border-2 border-primary shadow-xl shadow-primary/15' : 'border border-gray-200 dark:border-darkBorder'}`}>
+            {p.destaque && <span className="absolute -top-3 left-6 rounded-full bg-primary text-white text-xs font-bold px-3 py-1">Mais escolhido</span>}
+            <h3 className="text-lg font-bold">{p.nome}</h3>
+            <p className="text-sm text-lightText dark:text-darkTextSecondary">{p.para}</p>
+            <p className="mt-5"><span className="text-4xl font-bold tabular-nums">R$ {preco(valor)}</span><span className="text-lightText">/mês</span></p>
+            <p className="text-xs text-lightText dark:text-darkTextSecondary min-h-[1rem]">{anual ? `R$ ${preco(valor * 12)} por ano, em até 12x` : 'Sem fidelidade'}</p>
+            <ul className="mt-5 space-y-2.5 flex-1">
+              {p.itens.map(it => <li key={it} className="flex gap-2.5 text-sm"><Check size={16} className="text-primary shrink-0 mt-0.5" /> {it}</li>)}
+            </ul>
+            <a href="/#/criar-conta" className={`mt-6 text-center rounded-xl font-bold py-3 ${p.destaque ? 'bg-primary hover:bg-primary-hover text-white' : 'border border-gray-200 dark:border-darkBorder hover:border-primary hover:text-primary'}`}>Testar grátis por 14 dias</a>
+            <p className="mt-2 text-center text-xs text-lightText">Cancele quando quiser</p>
+          </div>
+        );
+      })}
+    </div>
+    <p className="mt-6 text-center text-sm text-lightText dark:text-darkTextSecondary">
+      Adicionais: Nota fiscal (NFS-e) · Atendimento automático no WhatsApp com IA · Pacotes extras de mensagens.
+    </p>
+  </section>
+  );
+};

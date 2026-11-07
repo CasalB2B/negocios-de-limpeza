@@ -37,6 +37,7 @@ for (const r of recursos) {
   const corpo = `${nav}
 <h1>${esc(r.chamada)}</h1><p>${esc(r.subtitulo)}</p>
 <h2>O que você ganha</h2><ul>${r.beneficios.map(b => `<li><strong>${esc(b.t)}</strong>: ${esc(b.d)}</li>`).join('')}</ul>
+${(r.destaques || []).map(d => `<h2>${esc(d.t)}</h2><p>${esc(d.d)}</p>`).join('')}
 <h2>Como funciona</h2><ol>${r.passos.map(p => `<li>${esc(p)}</li>`).join('')}</ol>
 ${r.perguntas.length ? `<h2>Perguntas frequentes</h2>${r.perguntas.map(f => `<h3>${esc(f.p)}</h3><p>${esc(f.r)}</p>`).join('')}` : ''}
 <h2>Outros recursos</h2><ul>${lista}</ul>

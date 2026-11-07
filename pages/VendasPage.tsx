@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PLANOS, mensalNoAnual } from '../supabase/functions/_shared/planos';
-import { Cabecalho, Rodape } from '../components/vendas/comum';
+import { Cabecalho, Rodape, Precos } from '../components/vendas/comum';
 import {
   ArrowRight, Check, CalendarDays, Smartphone, MessageCircle, Wallet, Users, Sparkles, MapPin,
   NotebookPen, PhoneOff, Calculator, UserX, ChevronDown, Menu, X, FileText, Star, BellRing, CheckCheck,
@@ -147,19 +147,10 @@ const HeroTelas: React.FC = () => {
         <div className="relative aspect-[16/10] bg-gray-50">
           {TELAS.map((t, j) => (
             <img key={t.id} src={`${IMG}/${t.img}`} alt={t.rotulo} loading={j === 0 ? 'eager' : 'lazy'}
-              className={`absolute inset-0 w-full h-full object-cover object-left-top transition-opacity duration-700 ${j === i ? 'opacity-100' : 'opacity-0'}`} />
+              className={`absolute inset-0 w-full h-full object-cover object-left-top transition-all duration-700 ease-out ${j === i ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`} />
           ))}
         </div>
       </button>
-      <div className="mt-5 flex flex-wrap justify-center gap-2">
-        {TELAS.map((t, j) => (
-          <button key={t.id} onClick={() => setI(j)}
-            className={`relative overflow-hidden rounded-full px-3.5 py-1.5 text-xs font-bold transition ${j === i ? 'bg-primary text-white' : 'bg-white dark:bg-darkSurface text-lightText border border-gray-200 dark:border-darkBorder hover:text-primary'}`}>
-            {t.rotulo}
-            {j === i && !pausado && <span key={`p${i}`} className="absolute left-0 bottom-0 h-0.5 bg-white/70 ndl-progresso" style={{ animationDuration: `${TEMPO_HERO}ms` }} />}
-          </button>
-        ))}
-      </div>
     </div>
   );
 };
@@ -484,43 +475,7 @@ export const VendasPage: React.FC = () => {
           </ol>
         </section>
 
-        {/* Pricing */}
-        <section id="precos" className="max-w-6xl mx-auto px-4 sm:px-6 pb-16 md:pb-24 scroll-mt-20">
-          <h2 className="text-3xl md:text-5xl font-bold text-center leading-tight" style={balance}>
-            Várias funcionalidades em um só plano <span className="text-primary">(e sem cobrar por faxina)</span>
-          </h2>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-sm font-semibold">
-            <span className={anual ? 'text-lightText' : ''}>Cobrado mensalmente</span>
-            <button role="switch" aria-checked={anual} onClick={() => setAnual(a => !a)} aria-label="Plano anual"
-              className={`relative w-12 h-7 rounded-full transition ${anual ? 'bg-primary' : 'bg-gray-300 dark:bg-darkBorder'}`}>
-              <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-all ${anual ? 'left-6' : 'left-1'}`} />
-            </button>
-            <span className={anual ? '' : 'text-lightText'}>Anual</span>
-            <span className="rounded-full bg-primary/10 text-primary text-xs font-bold px-2.5 py-1">15% OFF</span>
-          </div>
-          <div className="mt-10 grid md:grid-cols-3 gap-5 items-stretch">
-            {PLANOS.map(p => {
-              const valor = anual ? mensalNoAnual(p) : p.mensal;
-              return (
-                <div key={p.id} className={`relative rounded-3xl p-7 flex flex-col bg-white dark:bg-darkSurface ${p.destaque ? 'border-2 border-primary shadow-xl shadow-primary/15' : 'border border-gray-200 dark:border-darkBorder'}`}>
-                  {p.destaque && <span className="absolute -top-3 left-6 rounded-full bg-primary text-white text-xs font-bold px-3 py-1">Mais escolhido</span>}
-                  <h3 className="text-lg font-bold">{p.nome}</h3>
-                  <p className="text-sm text-lightText dark:text-darkTextSecondary">{p.para}</p>
-                  <p className="mt-5"><span className="text-4xl font-bold tabular-nums">R$ {preco(valor)}</span><span className="text-lightText">/mês</span></p>
-                  <p className="text-xs text-lightText dark:text-darkTextSecondary min-h-[1rem]">{anual ? `R$ ${preco(valor * 12)} por ano, em até 12x` : 'Sem fidelidade'}</p>
-                  <ul className="mt-5 space-y-2.5 flex-1">
-                    {p.itens.map(it => <li key={it} className="flex gap-2.5 text-sm"><Check size={16} className="text-primary shrink-0 mt-0.5" /> {it}</li>)}
-                  </ul>
-                  <Link to="/criar-conta" className={`mt-6 text-center rounded-xl font-bold py-3 ${p.destaque ? 'bg-primary hover:bg-primary-hover text-white' : 'border border-gray-200 dark:border-darkBorder hover:border-primary hover:text-primary'}`}>Testar grátis por 14 dias</Link>
-                  <p className="mt-2 text-center text-xs text-lightText">Cancele quando quiser</p>
-                </div>
-              );
-            })}
-          </div>
-          <p className="mt-6 text-center text-sm text-lightText dark:text-darkTextSecondary">
-            Adicionais: Nota fiscal (NFS-e) · Atendimento automático no WhatsApp com IA · Pacotes extras de mensagens.
-          </p>
-        </section>
+        <Precos />
 
         {/* Case: made inside a real cleaning company */}
         <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16 md:pb-24">
