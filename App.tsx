@@ -8,6 +8,7 @@ import { UserRole } from './types';
 // Pages Imports
 import { EntrarPage } from './pages/EntrarPage';
 import { VendasPage } from './pages/VendasPage';
+import { RecursoPage } from './pages/RecursoPage';
 import { ClientDashboard } from './pages/client/ClientDashboard';
 import { ClientRequest } from './pages/client/ClientRequest';
 import { ClientBudget } from './pages/client/ClientBudget';
@@ -95,7 +96,15 @@ function ManifestSwitcher() {
   return null;
 }
 
+// Feature pages live on clean URLs (/recursos, /recursos/clientes...) so Google indexes them; outside the hash router.
+const rotaRecursos = (() => {
+  if (typeof window === 'undefined' || (window.location.hash && window.location.hash !== '#')) return null;
+  const m = window.location.pathname.match(/^\/recursos(?:\/([\w-]+))?\/?$/);
+  return m ? { slug: m[1] } : null;
+})();
+
 const App: React.FC = () => {
+  if (rotaRecursos) return <ThemeProvider><RecursoPage slug={rotaRecursos.slug} /></ThemeProvider>;
   return (
     <ThemeProvider>
       <DataProvider>

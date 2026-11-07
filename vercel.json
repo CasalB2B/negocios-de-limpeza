@@ -5,6 +5,8 @@
     { "source": "/termos", "destination": "/termos.html" },
     { "source": "/excluir-conta", "destination": "/excluir-conta.html" },
     { "source": "/pagamento-concluido", "destination": "/pagamento-concluido.html" },
+    { "source": "/recursos", "destination": "/recursos.html" },
+    { "source": "/recursos/:slug", "destination": "/recursos/:slug.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

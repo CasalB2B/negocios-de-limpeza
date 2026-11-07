@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PLANOS, mensalNoAnual } from '../supabase/functions/_shared/planos';
+import { Cabecalho, Rodape } from '../components/vendas/comum';
 import {
   ArrowRight, Check, CalendarDays, Smartphone, MessageCircle, Wallet, Users, Sparkles, MapPin,
   NotebookPen, PhoneOff, Calculator, UserX, ChevronDown, Menu, X, FileText, Star, BellRing, CheckCheck,
@@ -44,21 +45,21 @@ const ANTES_DEPOIS: [string, string][] = [
   ['Pagamento da equipe calculado na calculadora', 'Valor de cada faxina pela diária do cargo, já somado'],
 ];
 
-const RECURSOS = [
-  { icon: CalendarDays, t: 'Agenda da equipe', d: 'Mês, semana, equipe lado a lado e a semana de cada colaboradora.' },
-  { icon: Kanban, t: 'Ordens de serviço', d: 'Do aguardando sinal ao concluído, com o status de cada faxina.' },
-  { icon: Contact, t: 'Clientes', d: 'Fixos, eventuais e novos, com histórico, endereços e clientes sumidos.' },
-  { icon: Wallet, t: 'Cobrança automática', d: 'Link de sinal e de restante pela InfinitePay, com baixa sozinha.' },
-  { icon: MessageCircle, t: 'WhatsApp automático', d: 'Confirmação, lembrete na véspera e pós-serviço do seu número.' },
-  { icon: BarChart3, t: 'Financeiro', d: 'Contas, cartões, categorias, lançamentos e quanto sobrou no mês.' },
-  { icon: Smartphone, t: 'App da colaboradora', d: 'Agenda, endereço no mapa, check-in, fotos e quanto vai receber.' },
-  { icon: Users, t: 'Equipe e RH', d: 'Cargos, diárias, desempenho, bônus e plano de carreira.' },
+const RECURSOS: { icon: React.ElementType; t: string; slug?: string; d: string }[] = [
+  { icon: CalendarDays, t: 'Agenda da equipe', slug: 'agenda', d: 'Mês, semana, equipe lado a lado e a semana de cada colaboradora.' },
+  { icon: Kanban, t: 'Ordens de serviço', slug: 'ordens-de-servico', d: 'Do aguardando sinal ao concluído, com o status de cada faxina.' },
+  { icon: Contact, t: 'Clientes', slug: 'clientes', d: 'Fixos, eventuais e novos, com histórico, endereços e clientes sumidos.' },
+  { icon: Wallet, t: 'Cobrança automática', slug: 'cobranca', d: 'Link de sinal e de restante pela InfinitePay, com baixa sozinha.' },
+  { icon: MessageCircle, t: 'WhatsApp automático', slug: 'whatsapp', d: 'Confirmação, lembrete na véspera e pós-serviço do seu número.' },
+  { icon: BarChart3, t: 'Financeiro', slug: 'financeiro', d: 'Contas, cartões, categorias, lançamentos e quanto sobrou no mês.' },
+  { icon: Smartphone, t: 'App da colaboradora', slug: 'app-colaboradora', d: 'Agenda, endereço no mapa, check-in, fotos e quanto vai receber.' },
+  { icon: Users, t: 'Equipe e RH', slug: 'equipe', d: 'Cargos, diárias, desempenho, bônus e plano de carreira.' },
   { icon: UserPlus, t: 'Contratação', d: 'Candidatas por etapa, entrevista e banco de freelas.' },
   { icon: Star, t: 'Avaliações', d: 'Pedido de avaliação no Google e nota de cada colaboradora.' },
   { icon: MapPin, t: 'Mapa da equipe', d: 'Onde cada colaboradora está, em tempo real.' },
   { icon: Package, t: 'Estoque', d: 'Produtos e equipamentos com alerta de estoque baixo.' },
   { icon: FileText, t: 'Nota fiscal', d: 'NFS-e com o CNPJ da sua empresa (adicional).' },
-  { icon: Sparkles, t: 'Assistente com IA', d: 'Pergunte sobre o seu negócio e receba a resposta com números.' },
+  { icon: Sparkles, t: 'Assistente com IA', slug: 'assistente-ia', d: 'Pergunte sobre o seu negócio e receba a resposta com números.' },
   { icon: BellRing, t: 'Avisos para a equipe', d: 'Mudou a agenda? A colaboradora recebe o aviso no celular.' },
 ];
 
@@ -196,7 +197,6 @@ const CARTOES_IA = [
 
 export const VendasPage: React.FC = () => {
   const [anual, setAnual] = useState(false);
-  const [menu, setMenu] = useState(false);
   const [ampliada, setAmpliada] = useState<{ src: string; alt: string } | null>(null);
   useEffect(() => {
     document.title = 'Sistema para empresas de limpeza — Negócios de Limpeza';
@@ -209,7 +209,19 @@ export const VendasPage: React.FC = () => {
     return () => window.removeEventListener('keydown', fechar);
   }, [ampliada]);
 
-  const irPara = (id: string) => { setMenu(false); document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); };
+  const irPara = (id: string) => { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); };
+  // Header links from the feature pages arrive as /?secao=precos.
+  useEffect(() => {
+    const secao = new URLSearchParams(window.location.search).get('secao');
+    if (!secao) return;
+    // The page keeps growing while images load, so aim again a few times.
+    let n = 0;
+    const t = setInterval(() => {
+      document.getElementById(secao)?.scrollIntoView();
+      if (++n >= 6) { clearInterval(t); history.replaceState(null, '', '/' + window.location.hash); }
+    }, 350);
+    return () => clearInterval(t);
+  }, []);
   const botaoTeste = 'inline-flex items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover text-white font-bold px-6 py-3.5 shadow-lg shadow-primary/30 transition';
   const cartao = 'rounded-3xl border border-gray-200/70 dark:border-darkBorder bg-white dark:bg-darkSurface';
   const selo = 'inline-flex items-center gap-2 rounded-full bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder text-xs font-bold px-3 py-1.5';
@@ -235,37 +247,7 @@ export const VendasPage: React.FC = () => {
       )}
 
       <div className="min-h-screen bg-[#f7f6f8] dark:bg-darkBg text-darkText dark:text-darkTextPrimary overflow-x-hidden">
-        {/* Header */}
-        <header className="sticky z-40 bg-[#f7f6f8]/85 dark:bg-darkBg/85 backdrop-blur border-b border-gray-200/60 dark:border-darkBorder" style={{ top: 'env(safe-area-inset-top, 0px)' }}>
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-6">
-            <Link to="/" className="shrink-0">
-              <img src="/img/logo-lilas.png" alt="Negócios de Limpeza" className="h-9 w-auto dark:hidden" />
-              <img src="/img/logo-bege.png" alt="Negócios de Limpeza" className="h-9 w-auto hidden dark:block" />
-            </Link>
-            <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-lightText dark:text-darkTextSecondary">
-              <button onClick={() => irPara('recursos')} className="hover:text-primary">Recursos</button>
-              <button onClick={() => irPara('como-funciona')} className="hover:text-primary">Como funciona</button>
-              <button onClick={() => irPara('precos')} className="hover:text-primary">Preços</button>
-              <button onClick={() => irPara('perguntas')} className="hover:text-primary">Perguntas</button>
-            </nav>
-            <div className="ml-auto hidden md:flex items-center gap-3">
-              <Link to="/entrar" className="text-sm font-bold hover:text-primary px-3 py-2">Entrar</Link>
-              <Link to="/criar-conta" className="rounded-xl bg-primary hover:bg-primary-hover text-white text-sm font-bold px-4 py-2.5">Testar grátis</Link>
-            </div>
-            <button onClick={() => setMenu(m => !m)} className="ml-auto md:hidden p-2" aria-label="Menu">{menu ? <X size={22} /> : <Menu size={22} />}</button>
-          </div>
-          {menu && (
-            <div className="md:hidden border-t border-gray-100 dark:border-darkBorder px-4 py-3 space-y-1 bg-[#f7f6f8] dark:bg-darkBg">
-              {[['recursos', 'Recursos'], ['como-funciona', 'Como funciona'], ['precos', 'Preços'], ['perguntas', 'Perguntas']].map(([id, r]) => (
-                <button key={id} onClick={() => irPara(id)} className="block w-full text-left py-2 font-semibold">{r}</button>
-              ))}
-              <div className="grid grid-cols-2 gap-2 pt-2">
-                <Link to="/entrar" className="text-center rounded-xl border border-gray-200 dark:border-darkBorder py-2.5 font-bold">Entrar</Link>
-                <Link to="/criar-conta" className="text-center rounded-xl bg-primary text-white py-2.5 font-bold">Testar grátis</Link>
-              </div>
-            </div>
-          )}
-        </header>
+        <Cabecalho irPara={irPara} />
 
         {/* Hero */}
         <section className="relative">
@@ -442,13 +424,19 @@ export const VendasPage: React.FC = () => {
             Agenda num app, cobrança em outro, planilha para o financeiro e o WhatsApp para todo o resto. Aqui é tudo num lugar, numa assinatura só.
           </p>
           <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {RECURSOS.map(({ icon: Icone, t, d }) => (
-              <div key={t} className={`${cartao} p-6`}>
-                <span className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><Icone size={20} /></span>
-                <h3 className="mt-4 font-bold">{t}</h3>
-                <p className="mt-1.5 text-sm text-lightText dark:text-darkTextSecondary">{d}</p>
-              </div>
-            ))}
+            {RECURSOS.map(({ icon: Icone, t, d, slug }) => {
+              const miolo = (
+                <>
+                  <span className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><Icone size={20} /></span>
+                  <h3 className="mt-4 font-bold group-hover:text-primary">{t}</h3>
+                  <p className="mt-1.5 text-sm text-lightText dark:text-darkTextSecondary flex-1">{d}</p>
+                  {slug && <span className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-primary">Saiba mais <ArrowRight size={13} /></span>}
+                </>
+              );
+              return slug
+                ? <a key={t} href={`/recursos/${slug}`} className={`${cartao} p-6 flex flex-col group hover:border-primary transition-colors`}>{miolo}</a>
+                : <div key={t} className={`${cartao} p-6 flex flex-col`}>{miolo}</div>;
+            })}
           </div>
         </section>
 
@@ -581,21 +569,7 @@ export const VendasPage: React.FC = () => {
           </div>
         </section>
 
-        <footer className="border-t border-gray-200 dark:border-darkBorder">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col md:flex-row gap-4 items-center justify-between text-sm text-lightText dark:text-darkTextSecondary">
-            <img src="/img/logo-lilas.png" alt="Negócios de Limpeza" className="h-8 w-auto dark:hidden" />
-            <img src="/img/logo-bege.png" alt="Negócios de Limpeza" className="h-8 w-auto hidden dark:block" />
-            <div className="flex flex-wrap gap-x-5 gap-y-2 justify-center">
-              <a href={INSTAGRAM} target="_blank" rel="noreferrer" className="hover:text-primary">Instagram</a>
-              <a href={SITE_EMPRESA} target="_blank" rel="noreferrer" className="hover:text-primary">Site</a>
-              <a href="/ajuda" className="hover:text-primary">Central de Ajuda</a>
-              <a href="/privacidade" className="hover:text-primary">Privacidade</a>
-              <a href="/termos" className="hover:text-primary">Termos</a>
-              <Link to="/entrar" className="hover:text-primary">Entrar</Link>
-            </div>
-            <span>© {new Date().getFullYear()} Negócios de Limpeza</span>
-          </div>
-        </footer>
+        <Rodape />
       </div>
     </AmpliarCtx.Provider>
   );

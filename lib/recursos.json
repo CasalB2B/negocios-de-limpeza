@@ -1,0 +1,210 @@
+[
+  {
+    "slug": "clientes",
+    "nome": "Clientes",
+    "menu": "Carteira, histórico e clientes sumidos",
+    "titulo": "Cadastro de clientes para empresa de limpeza",
+    "descricao": "Organize os clientes da sua empresa de limpeza: fixos, eventuais e novos, com endereços, histórico de faxinas, pagamentos e alerta de clientes sumidos.",
+    "chamada": "Todos os seus clientes organizados, com histórico de cada faxina",
+    "subtitulo": "Chega de procurar endereço em conversa antiga. Cada cliente tem os endereços, o WhatsApp, os serviços feitos, o que pagou e o que falta pagar.",
+    "imagem": "clientes.webp",
+    "beneficios": [
+      { "t": "Fixos, eventuais e novos", "d": "Separe quem tem faxina toda semana de quem chama de vez em quando e veja de onde veio cada cliente novo." },
+      { "t": "Vários endereços por cliente", "d": "Casa, escritório, casa de praia: a colaboradora recebe o endereço certo do serviço, com o mapa." },
+      { "t": "Histórico completo", "d": "Todas as faxinas, quem foi, quanto custou e as avaliações, numa tela só." },
+      { "t": "Clientes sumidos", "d": "O sistema mostra quem não agenda há meses para você chamar de volta antes de perder o cliente." },
+      { "t": "Pagamentos em dia", "d": "Veja na hora quem pagou o sinal, quem deve o restante e o total que o cliente já gastou." },
+      { "t": "Área do cliente", "d": "O cliente pode pedir orçamento, ver os agendamentos e pagar pelo link, sem precisar te chamar." }
+    ],
+    "passos": ["Cadastre o cliente com nome, WhatsApp e endereço", "Agende a primeira faxina direto na ficha dele", "Acompanhe o histórico e os pagamentos crescerem sozinhos"],
+    "perguntas": [
+      { "p": "Consigo importar meus clientes de uma planilha?", "r": "Durante o teste a gente ajuda você a trazer a lista de clientes da sua planilha para o sistema." },
+      { "p": "O cliente precisa baixar algum app?", "r": "Não. Ele recebe as confirmações e os links de pagamento pelo WhatsApp. A área do cliente é opcional." }
+    ]
+  },
+  {
+    "slug": "agenda",
+    "nome": "Agenda da equipe",
+    "menu": "Dia, semana, mês e por colaboradora",
+    "titulo": "Agenda de faxinas e escala da equipe de limpeza",
+    "descricao": "Agenda online para empresa de limpeza: veja o dia de todas as colaboradoras lado a lado, a semana de cada uma e o mês inteiro. Agende faxinas em segundos.",
+    "chamada": "A agenda da equipe inteira numa tela, sem conflito de horário",
+    "subtitulo": "Quem vai em qual casa, que horas e em qual endereço. Agende em segundos e cada colaboradora vê a própria agenda no celular.",
+    "imagem": "agenda-equipe.webp",
+    "imagem2": "agenda-mes.webp",
+    "beneficios": [
+      { "t": "Visão da equipe", "d": "O dia de todas as colaboradoras lado a lado, para encaixar faxinas sem choque de horário." },
+      { "t": "Visão por pessoa", "d": "A semana de uma colaboradora por vez. No celular, arraste para o lado para ver a próxima." },
+      { "t": "Mês inteiro", "d": "Todos os agendamentos do mês com cliente, serviço e quem vai, para planejar a escala." },
+      { "t": "Agendar em segundos", "d": "Escolha cliente, serviço, data e quem vai. O endereço e o valor já vêm do cadastro." },
+      { "t": "Duração por serviço", "d": "Faxina de 4, 6 ou 8 horas ocupa o espaço certo na agenda e no pagamento da equipe." },
+      { "t": "Aviso para a colaboradora", "d": "Mudou a agenda? Ela recebe o aviso no celular e vê o novo serviço no app." }
+    ],
+    "passos": ["Cadastre suas colaboradoras e os serviços", "Agende escolhendo cliente, data, horário e quem vai", "A colaboradora vê tudo no app e o cliente recebe a confirmação"],
+    "perguntas": [
+      { "p": "Funciona no celular?", "r": "Sim. A agenda funciona no navegador do celular e nos apps para Android e iPhone." },
+      { "p": "Posso ter mais de uma colaboradora no mesmo serviço?", "r": "Sim. Faxinas grandes podem ter duas ou mais colaboradoras, e cada uma vê o serviço na própria agenda." }
+    ]
+  },
+  {
+    "slug": "ordens-de-servico",
+    "nome": "Ordens de serviço",
+    "menu": "Cada faxina do sinal ao concluído",
+    "titulo": "Ordens de serviço para empresa de limpeza",
+    "descricao": "Controle cada faxina por etapa: aguardando sinal, confirmada, em andamento e concluída. Check-in, fotos e status em tempo real para a sua empresa de limpeza.",
+    "chamada": "Cada faxina andando pelas etapas, do sinal ao concluído",
+    "subtitulo": "Veja na hora o que está aguardando pagamento, o que está confirmado, o que está acontecendo agora e o que já foi concluído.",
+    "imagem": "ordens-servico.webp",
+    "celular": "celular-os.webp",
+    "beneficios": [
+      { "t": "Quadro por etapa", "d": "Aguardando sinal, confirmado, em andamento e concluído. Nada se perde no meio do caminho." },
+      { "t": "Check-in da colaboradora", "d": "Ela marca a chegada e a saída pelo app, e você acompanha em tempo real." },
+      { "t": "Fotos do serviço", "d": "Antes e depois guardados na ordem de serviço, para resolver qualquer dúvida do cliente." },
+      { "t": "Status automático", "d": "Pagou o sinal? A faxina muda de etapa sozinha quando o pagamento cai." },
+      { "t": "Observações do cliente", "d": "Chave na portaria, cachorro em casa, produto especial: tudo anotado para a colaboradora." },
+      { "t": "Avaliação no fim", "d": "Depois do serviço o cliente recebe o pedido de avaliação da faxina e da colaboradora." }
+    ],
+    "passos": ["Agende a faxina e a ordem de serviço nasce sozinha", "O sinal é pago e a faxina fica confirmada", "A colaboradora faz check-in, fotos e conclui pelo app"],
+    "perguntas": [
+      { "p": "Preciso mudar as etapas na mão?", "r": "Não. Com a cobrança automática ligada, as etapas mudam sozinhas conforme o cliente paga e a colaboradora faz o check-in." }
+    ]
+  },
+  {
+    "slug": "cobranca",
+    "nome": "Cobrança automática",
+    "menu": "Sinal, restante e baixa automática",
+    "titulo": "Cobrança automática de faxina com Pix e cartão",
+    "descricao": "Cobre o sinal e o restante das faxinas automaticamente pelo WhatsApp, com Pix e cartão pela InfinitePay. O pagamento cai e a baixa acontece sozinha.",
+    "chamada": "Faxina feita, cobrança feita. Sem esquecer nenhum cliente",
+    "subtitulo": "O link do sinal sai sozinho no WhatsApp, o sistema lembra quem não pagou, confirma quando o dinheiro cai e cobra o restante depois da faxina.",
+    "imagem": "fin-lancamentos.webp",
+    "beneficios": [
+      { "t": "Link de pagamento automático", "d": "Pix ou cartão pela InfinitePay, com o dinheiro caindo direto na sua conta." },
+      { "t": "Sinal para confirmar", "d": "A faxina só fica confirmada quando o sinal é pago, e você para de perder dia com cancelamento." },
+      { "t": "Restante depois do serviço", "d": "Terminou a faxina? O cliente recebe o link do restante sem você digitar nada." },
+      { "t": "Lembrete para quem não pagou", "d": "O sistema avisa o cliente que esqueceu, com educação, até o pagamento cair." },
+      { "t": "Baixa automática", "d": "Pagou, apareceu. Não precisa conferir extrato para saber quem pagou." },
+      { "t": "Direto no financeiro", "d": "Cada pagamento vira receita no financeiro, na conta e na categoria certas." }
+    ],
+    "passos": ["Conecte sua conta InfinitePay em Configurações", "Defina o valor do sinal dos seus serviços", "Agende e deixe o sistema cobrar, lembrar e dar baixa"],
+    "perguntas": [
+      { "p": "Preciso ter conta na InfinitePay?", "r": "Para a cobrança automática, sim. A conta é gratuita e o dinheiro cai direto para você. Sem ela você pode registrar os pagamentos na mão." },
+      { "p": "O sistema fica com parte do pagamento?", "r": "Não. Você paga só as taxas da própria InfinitePay. A Negócios de Limpeza não toca no seu dinheiro." }
+    ]
+  },
+  {
+    "slug": "whatsapp",
+    "nome": "Lembretes no WhatsApp",
+    "menu": "Confirma, lembra e cobra pelo seu número",
+    "titulo": "Lembrete automático de faxina pelo WhatsApp",
+    "descricao": "Confirmação de agendamento, lembrete na véspera, link de pagamento e pedido de avaliação enviados automaticamente pelo WhatsApp da sua empresa de limpeza.",
+    "chamada": "Confirma, lembra e cobra pelo WhatsApp, sem você digitar nada",
+    "subtitulo": "As mensagens saem do número da sua empresa pela API oficial do WhatsApp. Você continua usando o WhatsApp Business normalmente.",
+    "whatsapp": true,
+    "beneficios": [
+      { "t": "Confirmação do agendamento", "d": "Assim que você agenda, o cliente recebe data, horário e endereço." },
+      { "t": "Lembrete na véspera", "d": "Com o botão Confirmo. A resposta aparece sozinha no sistema." },
+      { "t": "Menos faxina perdida", "d": "Cliente avisado não esquece, e a colaboradora não chega em casa vazia." },
+      { "t": "Link de pagamento", "d": "Sinal e restante enviados na hora certa, com lembrete para quem não pagou." },
+      { "t": "Pedido de avaliação", "d": "Depois da faxina o cliente avalia o serviço e a colaboradora." },
+      { "t": "API oficial da Meta", "d": "Sem risco de bloqueio do número por envio em massa." }
+    ],
+    "passos": ["Conecte o WhatsApp da empresa em Configurações", "Escolha quais mensagens automáticas ligar", "Agende normalmente e as mensagens saem sozinhas"],
+    "perguntas": [
+      { "p": "Quanto custa o WhatsApp?", "r": "Cada plano inclui um limite de lembretes por mês. A Meta cobra direto no seu cartão só o que for enviado, centavos por mensagem. Para enviar mais ou ter o atendimento automático com IA, existe o adicional." },
+      { "p": "Vou perder meu WhatsApp do celular?", "r": "Não. Você continua respondendo os clientes normalmente. O sistema só envia as mensagens automáticas." }
+    ]
+  },
+  {
+    "slug": "financeiro",
+    "nome": "Financeiro",
+    "menu": "Receitas, despesas, contas e cartões",
+    "titulo": "Controle financeiro para empresa de limpeza",
+    "descricao": "Saiba quanto sua empresa de limpeza faturou, quanto falta receber e quanto sobrou no mês. Contas, cartões, categorias, calendário de vencimentos e relatórios.",
+    "chamada": "Saiba quanto entra, quanto sai e quanto sobra no fim do mês",
+    "subtitulo": "Os pagamentos das faxinas entram sozinhos, o pagamento da equipe vira despesa e você enxerga o lucro de verdade.",
+    "imagem": "financeiro.webp",
+    "imagem2": "fin-calendario.webp",
+    "celular": "celular-financeiro.webp",
+    "beneficios": [
+      { "t": "Saldo de todas as contas", "d": "Banco, InfinitePay e dinheiro em caixa somados numa tela." },
+      { "t": "Receitas automáticas", "d": "Cada faxina paga vira receita sem você lançar nada." },
+      { "t": "Despesas por categoria", "d": "Produtos, transporte, equipe, impostos: veja para onde vai o dinheiro." },
+      { "t": "Cartões de crédito", "d": "Faturas e parcelas no mês certo, para não ter surpresa." },
+      { "t": "Calendário de contas", "d": "O que vence e o que entra em cada dia do mês." },
+      { "t": "Pagamento da equipe", "d": "Calculado pela diária do cargo de cada colaboradora, já somado no mês." }
+    ],
+    "passos": ["Cadastre suas contas e cartões", "Os pagamentos das faxinas entram sozinhos", "Lance as despesas e acompanhe o resultado do mês"],
+    "perguntas": [
+      { "p": "Substitui a planilha?", "r": "Sim. E com a vantagem de que as receitas das faxinas entram sozinhas, sem digitar." },
+      { "p": "Consigo ver no celular?", "r": "Sim. O financeiro funciona no celular e nos apps para Android e iPhone." }
+    ]
+  },
+  {
+    "slug": "equipe",
+    "nome": "Equipe e RH",
+    "menu": "Contratação, cargos, diárias e avaliações",
+    "titulo": "Gestão de equipe e RH para empresa de limpeza",
+    "descricao": "Contrate, organize e mantenha boas colaboradoras: candidatas por etapa, cargos e diárias, avaliações dos clientes, desempenho e bônus.",
+    "chamada": "Contrate, acompanhe e mantenha as melhores colaboradoras",
+    "subtitulo": "Candidatas, entrevistas, cargos, diárias, avaliações dos clientes e desempenho: tudo o que hoje fica em planilhas soltas.",
+    "imagem": "equipe-rh.webp",
+    "beneficios": [
+      { "t": "Contratação por etapas", "d": "Candidatas chegam pelo formulário e andam de etapa até a contratação." },
+      { "t": "Banco de freelas", "d": "Quem cobre falta e férias, com contato e histórico." },
+      { "t": "Cargos e diárias", "d": "Defina a diária de cada cargo por duração de serviço. O pagamento sai certo." },
+      { "t": "Avaliações dos clientes", "d": "A nota de cada colaboradora vem das avaliações reais dos clientes." },
+      { "t": "Desempenho e bônus", "d": "Critérios claros para premiar quem se destaca." },
+      { "t": "Acesso ao app", "d": "Cada colaboradora ganha login próprio e vê só o que é dela." }
+    ],
+    "passos": ["Cadastre as colaboradoras e os cargos", "Defina as diárias e os critérios de avaliação", "Acompanhe desempenho e contratações num lugar só"],
+    "perguntas": [
+      { "p": "As colaboradoras pagam alguma coisa?", "r": "Não. O acesso delas está incluído no plano da empresa." }
+    ]
+  },
+  {
+    "slug": "app-colaboradora",
+    "nome": "App da colaboradora",
+    "menu": "Agenda, endereço, check-in e fotos",
+    "titulo": "App para colaboradoras de empresa de limpeza",
+    "descricao": "App para a equipe de limpeza: agenda do dia, endereço com mapa, check-in, fotos do serviço e quanto vai receber. Android, iPhone e navegador.",
+    "chamada": "A agenda da colaboradora no bolso, sem você ficar mandando áudio",
+    "subtitulo": "Ela abre o app, vê os serviços do dia, toca no endereço para abrir o mapa, faz check-in, tira as fotos e sabe quanto vai receber.",
+    "celular": "celular-pessoa.webp",
+    "imagem": "agenda-equipe.webp",
+    "beneficios": [
+      { "t": "Serviços do dia e da semana", "d": "Cliente, horário, endereço e observações de cada faxina." },
+      { "t": "Endereço no mapa", "d": "Um toque abre o mapa com o caminho até o cliente." },
+      { "t": "Check-in e check-out", "d": "Chegada e saída registradas, e você acompanha de onde estiver." },
+      { "t": "Fotos do serviço", "d": "Antes e depois guardados na ordem de serviço." },
+      { "t": "Quanto vai receber", "d": "O valor de cada faxina pela diária do cargo, somado na semana." },
+      { "t": "Avisos de mudança", "d": "Mudou a agenda? Ela recebe a notificação na hora." }
+    ],
+    "passos": ["Dê acesso à colaboradora com e-mail e senha", "Ela instala o app ou entra pelo navegador", "Pronto: a agenda dela atualiza sozinha"],
+    "perguntas": [
+      { "p": "Funciona em qualquer celular?", "r": "Sim. Tem app para Android e iPhone, e também funciona pelo navegador." }
+    ]
+  },
+  {
+    "slug": "assistente-ia",
+    "nome": "Assistente com IA",
+    "menu": "Pergunte e receba a resposta com números",
+    "titulo": "Assistente com inteligência artificial para empresa de limpeza",
+    "descricao": "Pergunte em português sobre a sua empresa de limpeza: faturamento, clientes sumidos, melhores colaboradoras, faxinas da semana. A IA responde com os seus números.",
+    "chamada": "Pergunte do seu jeito e receba a resposta com os números da empresa",
+    "subtitulo": "Quanto tenho a receber? Quais clientes sumiram? Quem teve as melhores avaliações? O assistente responde na hora e ainda ensina a usar o sistema.",
+    "ia": true,
+    "beneficios": [
+      { "t": "Números do negócio", "d": "Faturamento, quanto falta receber, faxinas por período e muito mais." },
+      { "t": "Clientes para reativar", "d": "Quem não agenda há meses, para você chamar de volta." },
+      { "t": "Equipe", "d": "Quem trabalhou mais, quem teve as melhores notas." },
+      { "t": "Ajuda para usar o sistema", "d": "Dúvida de como fazer algo? Pergunte e ele explica o passo a passo." },
+      { "t": "Em português simples", "d": "Sem relatório complicado: você pergunta como falaria com uma pessoa." },
+      { "t": "Só os seus dados", "d": "A IA só enxerga os dados da sua empresa." }
+    ],
+    "passos": ["Abra o assistente no canto da tela", "Escolha Ajuda ou Gestão", "Pergunte e receba a resposta"],
+    "perguntas": [
+      { "p": "A IA vê dados de outras empresas?", "r": "Não. Cada empresa só acessa os próprios dados, inclusive pelo assistente." }
+    ]
+  }
+]
