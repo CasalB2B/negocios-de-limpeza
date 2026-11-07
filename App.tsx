@@ -68,6 +68,16 @@ import { AdminOS } from './pages/admin/AdminOS';
 import { AdminEstoque } from './pages/admin/AdminEstoque';
 import { AdminNFe } from './pages/admin/AdminNFe';
 
+
+// Opened as an app (Capacitor on Android/iOS, or the installed PWA): no sales page there, straight to the login.
+const abertoComoApp = () => {
+  try {
+    const cap = (window as any).Capacitor;
+    if (cap?.isNativePlatform?.()) return true;
+    return window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+  } catch { return false; }
+};
+
 // ── Troca o manifest dinamicamente conforme a rota ────────────────────────────
 function ManifestSwitcher() {
   React.useEffect(() => {
@@ -98,8 +108,10 @@ const App: React.FC = () => {
         <HashRouter>
           <Routes>
             {/* Public Routes */}
-            {/* One login screen for everyone; the old per-role login addresses open it too */}
-            <Route path="/" element={<EntrarPage />} />
+            {/* The site's home is the sales page; the login lives at /entrar (the old per-role login addresses
+                open it too). Inside the phone app and the installed app the home is the login. */}
+            <Route path="/" element={abertoComoApp() ? <EntrarPage /> : <VendasPage />} />
+            <Route path="/entrar" element={<EntrarPage />} />
             <Route path="/criar-conta" element={<EntrarPage />} />
             <Route path="/sistema" element={<VendasPage />} />
             <Route path="/client/login" element={<EntrarPage />} />

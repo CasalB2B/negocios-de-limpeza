@@ -630,7 +630,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.session) return;
       ['auth_admin', 'auth_reviewer', 'auth_collab', 'auth_client'].forEach(k => localStorage.removeItem(k));
       setAdminLoggedIn(false); setReviewerMode(false); setCurrentCollaborator(null); setCurrentUser(null);
-      window.location.replace('/#/');
+      window.location.replace('/#/entrar');
     });
   }, []);
 

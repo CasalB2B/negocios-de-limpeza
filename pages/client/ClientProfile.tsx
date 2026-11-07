@@ -210,7 +210,7 @@ export const ClientProfile: React.FC = () => {
             onClose={() => setShowSettings(false)}
             title="Configurações da Conta"
             footer={
-                <Button onClick={() => { logoutClient(); navigate('/'); }} variant="destructive" fullWidth>Sair da Conta</Button>
+                <Button onClick={() => { logoutClient(); navigate('/entrar'); }} variant="destructive" fullWidth>Sair da Conta</Button>
             }
         >
             <div className="space-y-4">

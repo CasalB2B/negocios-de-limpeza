@@ -39,7 +39,7 @@ export const CollaboratorProfile: React.FC = () => {
 
   const handleLogout = () => {
     logoutCollaborator();
-    navigate('/');
+    navigate('/entrar');
   };
 
   const handleUpdatePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {

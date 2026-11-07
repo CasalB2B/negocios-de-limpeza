@@ -260,7 +260,7 @@ export const EntrarPage: React.FC = () => {
         <div className="flex-1 flex items-center justify-center py-10">
           <div key={modoCriar ? 'criar' : 'entrar'} className="w-full max-w-md ndl-sobe">
             {modoCriar
-              ? <CriarConta onVoltar={() => navigate('/')} />
+              ? <CriarConta onVoltar={() => navigate('/entrar')} />
               : <Login onCriar={() => navigate('/criar-conta')} />}
           </div>
         </div>

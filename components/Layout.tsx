@@ -38,7 +38,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
     if (role === UserRole.ADMIN) logoutAdmin();
     else if (role === UserRole.COLLABORATOR) logoutCollaborator();
     else logoutClient();
-    navigate('/');
+    navigate('/entrar');
   };
 
   const openPreviewPanel = async () => {

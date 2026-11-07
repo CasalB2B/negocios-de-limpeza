@@ -26,5 +26,5 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ role }) => {
     return <Outlet />;
   }
 
-  return <Navigate to="/" replace />;
+  return <Navigate to="/entrar" replace />;
 };

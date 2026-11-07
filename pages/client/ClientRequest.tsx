@@ -74,7 +74,7 @@ export const ClientRequest: React.FC = () => {
       if (currentUser) {
           navigate('/client/dashboard');
       } else {
-          navigate('/');
+          navigate('/entrar');
       }
   };
 

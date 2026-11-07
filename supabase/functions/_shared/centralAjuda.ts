@@ -240,7 +240,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     resumo: 'Perfil, cargo, acesso ao app, financeiro e link de avaliação.',
     passos: [
       'Recursos Humanos → Colaboradoras → Nova. Preencha os dados, a foto e o cargo (Auxiliar de Limpeza, Faxineira, Faxineira Profissional ou Líder).',
-      'Para ela usar o app: abra a colaboradora → Dar acesso → e-mail e senha (mínimo de 6 caracteres). Ela entra em app.negociosdelimpeza.com.br com esses dados.',
+      'Para ela usar o app: abra a colaboradora → Dar acesso → e-mail e senha (mínimo de 6 caracteres). Ela entra em app.negociosdelimpeza.com.br/entrar (ou pelo app do celular) com esses dados.',
       'No perfil: abas Dados, Comportamental, Diário, Avaliações e Financeiro (registrar pagamento ou adiantamento). O link de avaliação pode ser enviado pelo WhatsApp.',
     ],
     dicas: ['Quando uma colaboradora é promovida, registre a promoção para o cargo mudar e o app passar a mostrar a diária do novo cargo.'],
@@ -311,7 +311,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     titulo: 'Como a colaboradora usa o app',
     resumo: 'Agenda, check-in, checklist, fotos, check-out e quanto vai receber.',
     texto: [
-      'A colaboradora entra em app.negociosdelimpeza.com.br (ou pelo app do celular) com o e-mail e a senha criados em Dar acesso.',
+      'A colaboradora entra em app.negociosdelimpeza.com.br/entrar (ou pelo app do celular) com o e-mail e a senha criados em Dar acesso.',
       'Ela vê a agenda de hoje e da semana, abre o serviço com o endereço, faz check-in ao chegar (a OS vai para Em andamento), segue o checklist, tira fotos de antes e depois e faz check-out (a OS vai para Concluído).',
       'Em cada serviço aparece quanto ela vai receber (a diária do cargo dela para 4h, 6h ou 8h), nunca o valor que o cliente paga.',
       'No Financeiro dela aparecem serviços pendentes, pagamentos recebidos, adiantamentos e a projeção do mês. No Perfil ela troca a senha e pode pedir a exclusão da conta.',
@@ -365,7 +365,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     titulo: 'Entrar no sistema e trocar a senha',
     resumo: 'Uma tela de login para administrador, colaboradora e cliente.',
     passos: [
-      'Acesse app.negociosdelimpeza.com.br e entre com e-mail e senha. Cada pessoa vai direto para a área dela.',
+      'Acesse app.negociosdelimpeza.com.br/entrar (ou clique em Entrar no topo do site) e entre com e-mail e senha. No app do celular, o login abre direto. Cada pessoa vai direto para a área dela.',
       'A colaboradora troca a senha no Perfil do app. O administrador troca a senha de uma colaboradora em Recursos Humanos → Colaboradoras → Dar acesso → Alterar senha.',
       'Esqueceu a senha? Por enquanto, peça uma nova ao administrador da empresa. Em breve o link de troca chegará por e-mail.',
     ],

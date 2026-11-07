@@ -104,11 +104,21 @@ const CelularGirando: React.FC = () => {
   useEffect(() => { const t = setInterval(() => setI(x => (x + 1) % TELAS_CELULAR.length), 3500); return () => clearInterval(t); }, []);
   return (
     <button type="button" onClick={() => ampliar(TELAS_CELULAR[i], 'Sistema no celular')} aria-label="Ampliar tela do celular"
-      className="relative mx-auto block w-[240px] max-w-full aspect-[390/844] cursor-zoom-in rounded-[2.6rem] border-[10px] border-gray-900 bg-gray-900 shadow-2xl shadow-black/30 overflow-hidden">
-      {TELAS_CELULAR.map((src, j) => (
-        <img key={src} src={`${IMG}/${src}`} alt="" loading="lazy"
-          className={`absolute inset-0 w-full h-full object-cover object-top rounded-[1.8rem] transition-opacity duration-700 ${j === i ? 'opacity-100' : 'opacity-0'}`} />
-      ))}
+      className="relative mx-auto block w-[240px] max-w-full cursor-zoom-in">
+      {/* Side buttons */}
+      <span className="absolute -left-[3px] top-[18%] w-[3px] h-8 rounded-l bg-gray-700" />
+      <span className="absolute -left-[3px] top-[28%] w-[3px] h-12 rounded-l bg-gray-700" />
+      <span className="absolute -right-[3px] top-[24%] w-[3px] h-16 rounded-r bg-gray-700" />
+      <span className="relative block rounded-[2.8rem] bg-gray-900 p-[9px] shadow-2xl shadow-black/40 ring-1 ring-white/10">
+        <span className="relative block aspect-[390/844] rounded-[2.2rem] overflow-hidden bg-white">
+          {TELAS_CELULAR.map((src, j) => (
+            <img key={src} src={`${IMG}/${src}`} alt="" loading="lazy"
+              className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-700 ${j === i ? 'opacity-100' : 'opacity-0'}`} />
+          ))}
+          {/* Camera notch */}
+          <span className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-5 rounded-full bg-gray-900" />
+        </span>
+      </span>
     </button>
   );
 };
@@ -228,7 +238,7 @@ export const VendasPage: React.FC = () => {
         {/* Header */}
         <header className="sticky z-40 bg-[#f7f6f8]/85 dark:bg-darkBg/85 backdrop-blur border-b border-gray-200/60 dark:border-darkBorder" style={{ top: 'env(safe-area-inset-top, 0px)' }}>
           <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-6">
-            <Link to="/sistema" className="shrink-0">
+            <Link to="/" className="shrink-0">
               <img src="/img/logo-lilas.png" alt="Negócios de Limpeza" className="h-9 w-auto dark:hidden" />
               <img src="/img/logo-bege.png" alt="Negócios de Limpeza" className="h-9 w-auto hidden dark:block" />
             </Link>
@@ -239,7 +249,7 @@ export const VendasPage: React.FC = () => {
               <button onClick={() => irPara('perguntas')} className="hover:text-primary">Perguntas</button>
             </nav>
             <div className="ml-auto hidden md:flex items-center gap-3">
-              <Link to="/" className="text-sm font-bold hover:text-primary px-3 py-2">Entrar</Link>
+              <Link to="/entrar" className="text-sm font-bold hover:text-primary px-3 py-2">Entrar</Link>
               <Link to="/criar-conta" className="rounded-xl bg-primary hover:bg-primary-hover text-white text-sm font-bold px-4 py-2.5">Testar grátis</Link>
             </div>
             <button onClick={() => setMenu(m => !m)} className="ml-auto md:hidden p-2" aria-label="Menu">{menu ? <X size={22} /> : <Menu size={22} />}</button>
@@ -250,7 +260,7 @@ export const VendasPage: React.FC = () => {
                 <button key={id} onClick={() => irPara(id)} className="block w-full text-left py-2 font-semibold">{r}</button>
               ))}
               <div className="grid grid-cols-2 gap-2 pt-2">
-                <Link to="/" className="text-center rounded-xl border border-gray-200 dark:border-darkBorder py-2.5 font-bold">Entrar</Link>
+                <Link to="/entrar" className="text-center rounded-xl border border-gray-200 dark:border-darkBorder py-2.5 font-bold">Entrar</Link>
                 <Link to="/criar-conta" className="text-center rounded-xl bg-primary text-white py-2.5 font-bold">Testar grátis</Link>
               </div>
             </div>
@@ -334,9 +344,9 @@ export const VendasPage: React.FC = () => {
               <p className="mt-2 text-sm text-lightText dark:text-darkTextSecondary max-w-lg">O dia de todas as colaboradoras lado a lado, a semana de cada uma e o mês inteiro. Agende em segundos com cliente, serviço, endereço e quem vai.</p>
               <div className="mt-6 flex-1"><Recorte src="agenda-equipe.webp" alt="Agenda da equipe" altura="h-64 md:h-full md:min-h-[20rem]" /></div>
             </div>
-            <div className="rounded-3xl bg-gray-900 text-white p-6 md:p-8 md:col-span-2 flex flex-col">
+            <div className="rounded-3xl bg-gradient-to-br from-primary to-secondary text-white p-6 md:p-8 md:col-span-2 flex flex-col shadow-xl shadow-primary/25">
               <h3 className="text-xl font-bold">No celular de cada colaboradora</h3>
-              <p className="mt-2 text-sm text-white/70">Ela vê os serviços, abre o endereço, faz check-in, tira as fotos e sabe quanto vai receber.</p>
+              <p className="mt-2 text-sm text-white/85">Ela vê os serviços, abre o endereço, faz check-in, tira as fotos e sabe quanto vai receber.</p>
               <div className="mt-6 flex-1 flex items-end justify-center"><CelularGirando /></div>
             </div>
             <div className={`${cartao} p-6 md:p-8 md:col-span-3 flex flex-col`}>
@@ -578,7 +588,7 @@ export const VendasPage: React.FC = () => {
               <a href="/ajuda" className="hover:text-primary">Central de Ajuda</a>
               <a href="/privacidade" className="hover:text-primary">Privacidade</a>
               <a href="/termos" className="hover:text-primary">Termos</a>
-              <Link to="/" className="hover:text-primary">Entrar</Link>
+              <Link to="/entrar" className="hover:text-primary">Entrar</Link>
             </div>
             <span>© {new Date().getFullYear()} Negócios de Limpeza</span>
           </div>

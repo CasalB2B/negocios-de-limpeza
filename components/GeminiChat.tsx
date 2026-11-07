@@ -131,12 +131,22 @@ export const GeminiChat: React.FC = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const corpoRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Scroll only the chat itself to the last message (scrollIntoView also scrolled the page behind it).
   useEffect(() => {
-    if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = corpoRef.current;
+    if (open && el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [messages, open, loading]);
+
+  // While the chat is open the page behind it does not scroll.
+  useEffect(() => {
+    if (!open) return;
+    const antes = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = antes; };
+  }, [open]);
 
   const escolherModo = (m: Modo | null) => {
     setModo(m);
@@ -257,7 +267,7 @@ export const GeminiChat: React.FC = () => {
             )}
 
             {/* Body */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 min-h-0">
+            <div ref={corpoRef} className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 min-h-0">
               {!modo ? (
                 <div className="space-y-4">
                   <div>
@@ -327,7 +337,6 @@ export const GeminiChat: React.FC = () => {
                       {error}
                     </div>
                   )}
-                  <div ref={bottomRef} />
                 </div>
               )}
             </div>
