@@ -24,6 +24,7 @@ export const CATEGORIAS_AJUDA = [
   'App da colaboradora',
   'Integrações',
   'Assistente com IA',
+  'Conta e assinatura',
 ] as const;
 
 export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
@@ -35,7 +36,8 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     resumo: 'Onde fica cada área do sistema no computador e no celular.',
     texto: [
       'No computador, o menu fica na lateral esquerda. No celular, a barra inferior tem Início, Agenda, OS e Clientes, e o botão Menu abre todas as áreas.',
-      'Áreas principais: Dashboard (visão geral e mapa da equipe), Operações (Agendamento, OS, Clientes e Serviços), Recursos Humanos (Contratação, Colaboradoras, Avaliações, Desempenho, Plano de Carreira e Config. RH), Financeiro (Financeiro, Estoque e Nota Fiscal), WhatsApp e Configurações.',
+      'Áreas principais: Dashboard (serviços do dia, receita do mês, quanto falta receber e mapa da equipe), Operações (Agendamento, OS, Clientes e Serviços), Recursos Humanos (Contratação, Colaboradoras, Avaliações, Desempenho e Config. RH), Financeiro (Financeiro, Estoque e Nota Fiscal) e Configurações (Configurações, Assinatura, Central de Ajuda e WhatsApp).',
+      'Os grupos do menu ficam fechados; o grupo da tela em que você está abre sozinho. Clique no nome do grupo para abrir ou fechar.',
     ],
     palavras: ['menu', 'onde fica', 'navegação', 'celular', 'dashboard'],
   },
@@ -46,7 +48,8 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     resumo: 'O que configurar para tudo funcionar: serviços, equipe, recebimento e WhatsApp.',
     passos: [
       'Cadastre os seus serviços e preços em Operações → Serviços.',
-      'Cadastre a equipe em Recursos Humanos → Colaboradoras (com foto e valor por hora).',
+      'Defina quanto cada cargo recebe por faxina em Recursos Humanos → Config. RH → Remuneração (diária de 4h, 6h e 8h). Na conta nova a tabela começa vazia.',
+      'Cadastre a equipe em Recursos Humanos → Colaboradoras e crie o acesso de cada uma ao app (botão Dar acesso).',
       'Conecte onde você recebe em Configurações → Integrações → Recebimentos (InfinitePay).',
       'Conecte o WhatsApp da empresa na tela WhatsApp para lembretes e cobranças automáticas.',
       'Cadastre os clientes em Operações → Clientes, escolhendo o tipo (Novo, Fixo ou Eventual).',
@@ -55,15 +58,15 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
   },
   {
     id: 'ver-como',
-    categoria: 'Primeiros passos',
-    titulo: 'Ver o sistema como colaboradora ou cliente',
-    resumo: 'Confira o que cada pessoa vê, sem precisar da senha dela.',
+    categoria: 'Conta e assinatura',
+    titulo: 'Usuários e permissões',
+    resumo: 'Quem tem acesso ao sistema da sua empresa.',
     passos: [
-      'No computador: rodapé do menu lateral → "Ver como colaboradora..." ou "Ver como cliente..." → clique na pessoa.',
-      'No celular: botão Menu → "Visualizar como" → Colaboradora ou Cliente → toque na pessoa.',
-      'Uma faixa colorida no topo mostra que é uma visualização. Toque em "← Voltar ao Admin" para sair.',
+      'Configurações → Usuários & Permissões mostra os administradores e as colaboradoras que têm acesso ao app.',
+      'O acesso de uma colaboradora é criado em Recursos Humanos → Colaboradoras → abra a colaboradora → Dar acesso (e-mail e senha de pelo menos 6 caracteres). Ali também dá para trocar a senha dela.',
     ],
-    palavras: ['visualizar como', 'preview', 'ver como', 'senha'],
+    dicas: ['Em breve: perfis de acesso (líder, financeiro, atendimento), escolhendo o que cada pessoa pode ver.'],
+    palavras: ['usuário', 'permissão', 'acesso', 'senha da colaboradora', 'dar acesso', 'login da equipe'],
   },
 
   // ── Agenda e OS ───────────────────────────────────────────────────────
@@ -80,6 +83,18 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     ],
     dicas: ['Os cards do calendário mostram horário, cliente, serviço, observação e as fotos da equipe.'],
     palavras: ['agendar', 'nova os', 'calendário', 'marcar faxina', 'agendamento'],
+  },
+  {
+    id: 'visoes-calendario',
+    categoria: 'Agenda e ordens de serviço',
+    titulo: 'Visões do calendário: Mês, Semana, Equipe e Pessoa',
+    resumo: 'Veja a agenda do jeito que precisa, inclusive uma colaboradora por vez.',
+    texto: [
+      'Mês e Semana: todos os serviços no período.',
+      'Equipe: o dia com as colaboradoras lado a lado. Clique no nome de uma colaboradora para abrir a semana dela.',
+      'Pessoa: a semana de uma colaboradora por vez, com total de serviços e horas. No celular, arraste para o lado para ir à próxima, ou toque na foto no topo. Em um dia "Livre", toque para agendar já com ela escolhida.',
+    ],
+    palavras: ['calendário', 'visão', 'equipe', 'pessoa', 'semana da colaboradora', 'agenda individual'],
   },
   {
     id: 'status-os',
@@ -184,7 +199,8 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     ],
     dicas: [
       'Funciona com o app WhatsApp Business (não o pessoal). Abra o WhatsApp Business no celular pelo menos a cada ~14 dias.',
-      'A Meta cobra no cartão da empresa só as mensagens que o sistema inicia (lembretes, cobranças). Respostas dentro de 24 h são grátis.',
+      'A Meta cobra no cartão da empresa só as mensagens que o sistema inicia (lembretes, cobranças). Respostas dentro de 24 h são grátis. Cadastre o cartão no Gerenciador de Negócios da Meta → Faturamento.',
+      'Cada plano tem um limite de lembretes automáticos por mês (Inicial 150, Profissional 500, Empresa 1.500). Para enviar mais ou usar o atendimento automático (bot), contrate o adicional.',
     ],
     palavras: ['whatsapp', 'conectar', 'qr code', 'coexistência', 'meta', 'número'],
   },
@@ -220,14 +236,28 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
   {
     id: 'colaboradoras',
     categoria: 'Equipe e RH',
-    titulo: 'Cadastro de colaboradoras',
-    resumo: 'Perfil, foto, valor por hora, financeiro e link de avaliação.',
+    titulo: 'Cadastro de colaboradoras e acesso ao app',
+    resumo: 'Perfil, cargo, acesso ao app, financeiro e link de avaliação.',
     passos: [
-      'Recursos Humanos → Colaboradoras → Nova.',
-      'Preencha os dados, a foto e o valor por hora (usado no cálculo de custo e retorno).',
+      'Recursos Humanos → Colaboradoras → Nova. Preencha os dados, a foto e o cargo (Auxiliar de Limpeza, Faxineira, Faxineira Profissional ou Líder).',
+      'Para ela usar o app: abra a colaboradora → Dar acesso → e-mail e senha (mínimo de 6 caracteres). Ela entra em app.negociosdelimpeza.com.br com esses dados.',
       'No perfil: abas Dados, Comportamental, Diário, Avaliações e Financeiro (registrar pagamento ou adiantamento). O link de avaliação pode ser enviado pelo WhatsApp.',
     ],
-    palavras: ['colaboradora', 'equipe', 'cadastro', 'valor hora', 'adiantamento', 'pagamento'],
+    dicas: ['Quando uma colaboradora é promovida, registre a promoção para o cargo mudar e o app passar a mostrar a diária do novo cargo.'],
+    palavras: ['colaboradora', 'equipe', 'cadastro', 'cargo', 'dar acesso', 'senha', 'adiantamento', 'pagamento'],
+  },
+  {
+    id: 'config-rh',
+    categoria: 'Equipe e RH',
+    titulo: 'Remuneração por cargo, bônus e critérios de promoção',
+    resumo: 'Quanto cada cargo recebe por faxina e as regras do RH.',
+    passos: [
+      'Recursos Humanos → Config. RH → Remuneração: preencha a diária de 4h, 6h e 8h e a passagem de cada cargo e clique em Salvar Tabela de Remuneração.',
+      'Bônus / Líder: salário fixo e bônus da líder (opcional).',
+      'Critérios de Promoção: tempo mínimo, meses sem reclamação e metas para cada cargo.',
+    ],
+    texto: ['O app da colaboradora mostra quanto ela recebe por serviço usando a diária do cargo dela. Cada alteração cria uma nova versão; o histórico não é afetado.'],
+    palavras: ['remuneração', 'diária', 'quanto recebe', 'cargo', 'bônus', 'líder', 'promoção', 'config rh'],
   },
   {
     id: 'contratacao',
@@ -248,11 +278,14 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     id: 'financeiro',
     categoria: 'Financeiro e estoque',
     titulo: 'Financeiro',
-    resumo: 'Entradas, pagamentos e resumo dos últimos meses.',
+    resumo: 'Contas, cartões, categorias, lançamentos e próximos compromissos.',
     texto: [
-      'Financeiro → Financeiro mostra entradas e o resumo dos últimos 6 meses. Pagamentos feitos pelos links da InfinitePay entram sozinhos; outros você registra em "Registrar Pagamento".',
+      'Financeiro → Financeiro organiza o dinheiro da empresa: contas, cartões de crédito (com parcelas e faturas), categorias, lançamentos, calendário e próximos compromissos.',
+      'Pagamentos recebidos pelos links da InfinitePay entram sozinhos como receita, e os pagamentos às colaboradoras registrados no RH entram como despesa.',
+      'Dá para importar o histórico de outro aplicativo (como o Mobills) ou de uma planilha.',
+      'No Dashboard, os cartões "Receita do mês" e "A receber" somam os pagamentos confirmados (inclusive sinais) e o que ainda falta receber.',
     ],
-    palavras: ['financeiro', 'entrada', 'receita', 'faturamento', 'pagamento'],
+    palavras: ['financeiro', 'entrada', 'receita', 'despesa', 'conta', 'cartão', 'fatura', 'parcela', 'mobills', 'importar', 'planilha'],
   },
   {
     id: 'estoque',
@@ -276,12 +309,14 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     id: 'app-colaboradora',
     categoria: 'App da colaboradora',
     titulo: 'Como a colaboradora usa o app',
-    resumo: 'Agenda, check-in, checklist, fotos e check-out.',
+    resumo: 'Agenda, check-in, checklist, fotos, check-out e quanto vai receber.',
     texto: [
-      'A colaboradora vê a agenda de hoje e da semana, abre o serviço com o endereço, faz check-in ao chegar (a OS vai para Em andamento), segue o checklist, tira fotos de antes e depois e faz check-out (a OS vai para Concluído).',
-      'No Financeiro dela aparecem serviços pendentes, pagamentos recebidos, adiantamentos e a projeção do mês.',
+      'A colaboradora entra em app.negociosdelimpeza.com.br (ou pelo app do celular) com o e-mail e a senha criados em Dar acesso.',
+      'Ela vê a agenda de hoje e da semana, abre o serviço com o endereço, faz check-in ao chegar (a OS vai para Em andamento), segue o checklist, tira fotos de antes e depois e faz check-out (a OS vai para Concluído).',
+      'Em cada serviço aparece quanto ela vai receber (a diária do cargo dela para 4h, 6h ou 8h), nunca o valor que o cliente paga.',
+      'No Financeiro dela aparecem serviços pendentes, pagamentos recebidos, adiantamentos e a projeção do mês. No Perfil ela troca a senha e pode pedir a exclusão da conta.',
     ],
-    palavras: ['app', 'colaboradora', 'check-in', 'checkout', 'fotos', 'agenda'],
+    palavras: ['app', 'colaboradora', 'check-in', 'checkout', 'fotos', 'agenda', 'quanto recebe', 'valor da faxina'],
   },
   {
     id: 'mapa-equipe',
@@ -290,7 +325,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     resumo: 'Veja no Dashboard onde cada colaboradora está.',
     texto: [
       'O mapa do Dashboard mostra um pino por colaboradora: verde se a posição foi atualizada nos últimos 15 minutos, cinza com a última posição conhecida.',
-      'A posição aparece quando a colaboradora abre o app e permite a localização. Requer a chave do Google Maps em Configurações → Integrações.',
+      'A posição aparece quando a colaboradora abre o app e permite a localização.',
     ],
     palavras: ['mapa', 'localização', 'tempo real', 'gps', 'onde está'],
   },
@@ -299,21 +334,14 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
   {
     id: 'google-maps',
     categoria: 'Integrações',
-    titulo: 'Google Maps',
-    resumo: 'Mapa da equipe e endereços.',
-    passos: [
-      'No Google Cloud, crie uma chave de API com Maps JavaScript, Places, Geocoding e Routes, restrita ao endereço do seu painel.',
-      'Cole em Configurações → Integrações → Google Maps.',
+    titulo: 'Integrações da empresa',
+    resumo: 'O que a sua empresa conecta: recebimentos e Google.',
+    texto: [
+      'Configurações → Integrações: conecte a InfinitePay (recebimentos) e, quando disponível, o Google da empresa.',
+      'O mapa e a inteligência artificial já vêm incluídos na plataforma: não é preciso colar nenhuma chave.',
+      'O WhatsApp é conectado em Configurações → WhatsApp → Conexão.',
     ],
-    palavras: ['google maps', 'chave', 'mapa', 'api'],
-  },
-  {
-    id: 'gemini',
-    categoria: 'Integrações',
-    titulo: 'Gemini (inteligência artificial)',
-    resumo: 'Chave que alimenta o assistente, a leitura de formulários e a pontuação de áudio.',
-    passos: ['Gere a chave em aistudio.google.com → Get API key.', 'Cole em Configurações → Integrações → Gemini AI.'],
-    palavras: ['gemini', 'ia', 'chave', 'inteligência artificial'],
+    palavras: ['integração', 'google maps', 'chave', 'api', 'conectar'],
   },
 
   // ── Assistente ────────────────────────────────────────────────────────
@@ -328,6 +356,64 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       'Gestão: consulta os dados registrados — faturamento, quanto há a receber, links não pagos, pré-agendamentos aguardando sinal, retorno por colaboradora, clientes sumidos, avaliações, estoque e pagamentos.',
     ],
     palavras: ['assistente', 'ia', 'gemini', 'chat', 'perguntar', 'relatório'],
+  },
+
+  // ── Conta e assinatura ────────────────────────────────────────────────
+  {
+    id: 'entrar',
+    categoria: 'Conta e assinatura',
+    titulo: 'Entrar no sistema e trocar a senha',
+    resumo: 'Uma tela de login para administrador, colaboradora e cliente.',
+    passos: [
+      'Acesse app.negociosdelimpeza.com.br e entre com e-mail e senha. Cada pessoa vai direto para a área dela.',
+      'A colaboradora troca a senha no Perfil do app. O administrador troca a senha de uma colaboradora em Recursos Humanos → Colaboradoras → Dar acesso → Alterar senha.',
+      'Esqueceu a senha? Por enquanto, peça uma nova ao administrador da empresa. Em breve o link de troca chegará por e-mail.',
+    ],
+    dicas: ['As senhas ficam guardadas de forma protegida. Ninguém da equipe consegue ver a sua senha.'],
+    palavras: ['entrar', 'login', 'senha', 'esqueci a senha', 'acesso', 'não consigo entrar'],
+  },
+  {
+    id: 'criar-conta',
+    categoria: 'Conta e assinatura',
+    titulo: 'Criar a conta da empresa e teste grátis de 14 dias',
+    resumo: 'Cadastre sua empresa e use tudo liberado por 14 dias.',
+    passos: [
+      'Na tela de entrada, toque em "Crie uma agora" (ou em Testar grátis na página do sistema).',
+      'Preencha seus dados e a senha, depois os dados da empresa e o tamanho da equipe.',
+      'Pronto: você já entra no painel com todas as funções liberadas. A faixa roxa no topo mostra quantos dias faltam.',
+    ],
+    texto: [
+      'Os dados de cada empresa ficam separados: nenhuma outra empresa vê seus clientes, sua equipe ou seu financeiro.',
+      'Quando o teste termina, o painel fica bloqueado até escolher um plano. Seus dados continuam guardados.',
+    ],
+    palavras: ['criar conta', 'cadastro', 'teste grátis', '14 dias', 'testar', 'nova empresa'],
+  },
+  {
+    id: 'assinatura',
+    categoria: 'Conta e assinatura',
+    titulo: 'Planos e assinatura',
+    resumo: 'Escolha o plano e pague por Pix ou cartão; a liberação é automática.',
+    passos: [
+      'Configurações → Assinatura (ou o botão "Escolher plano" na faixa roxa).',
+      'Escolha Mensal ou Anual (15% de desconto; o anual pode ser parcelado no cartão).',
+      'Toque em Assinar no plano desejado e pague na página segura da InfinitePay. Assim que o pagamento é confirmado, a empresa é liberada sozinha.',
+    ],
+    texto: [
+      'Planos: Inicial (até 3 colaboradoras), Profissional (até 8) e Empresa (até 20). Acima de 20, fale com a equipe.',
+      'Perto do vencimento aparece o aviso "Sua assinatura vence em X dias" com o botão Renovar. Renovar antes do vencimento soma o tempo, sem perder dias.',
+    ],
+    palavras: ['plano', 'assinatura', 'pagar', 'renovar', 'mensal', 'anual', 'preço', 'valor do sistema', 'vencida'],
+  },
+  {
+    id: 'excluir-conta',
+    categoria: 'Conta e assinatura',
+    titulo: 'Excluir a conta (cliente e colaboradora)',
+    resumo: 'Pedido de exclusão dos dados pelo app.',
+    texto: [
+      'Colaboradora: Perfil → Excluir minha conta. Cliente: Perfil → configurações → Excluir minha conta.',
+      'O pedido aparece em vermelho no Dashboard do administrador. Depois de excluir os dados, toque em "Já excluí". O prazo é de até 15 dias.',
+    ],
+    palavras: ['excluir conta', 'apagar dados', 'lgpd', 'deletar'],
   },
 ];
 
