@@ -36,25 +36,52 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   try {
     if (body.acao === 'listar') {
-      const [{ data: empresas }, equipe, clientes, servicos, { data: admins }, { data: cadastros }] = await Promise.all([
+      const inicioMes = new Date();
+      inicioMes.setDate(1); inicioMes.setHours(0, 0, 0, 0);
+      const [{ data: empresas }, equipe, clientes, servicos, { data: admins }, { data: cadastros }, { data: whats }, { data: uso }, { data: custos }] = await Promise.all([
         db.from('empresas').select('*').order('created_at', { ascending: false }),
         contarPorEmpresa('colaboradoras_rh', q => q.eq('status', 'ATIVA')),
         contarPorEmpresa('app_users', q => q.eq('role', 'CLIENT')),
         contarPorEmpresa('services'),
         db.from('app_users').select('company_id, name, email, phone').eq('role', 'ADMIN'),
         db.from('cadastros_saas').select('*').order('created_at', { ascending: false }).limit(200),
+        db.from('whatsapp_connections').select('company_id, status, display_phone'),
+        db.rpc('uso_por_empresa', { p_desde: inicioMes.toISOString() }),
+        db.from('platform_settings').select('custos_plataforma, whatsapp_custo_unit, absorve_whatsapp, taxa_cartao_pct').eq('id', 1).single(),
       ]);
       const adminPor: Record<number, any> = {};
       for (const a of admins ?? []) if (!adminPor[a.company_id]) adminPor[a.company_id] = a;
+      const whatsPor: Record<number, any> = {};
+      for (const w of whats ?? []) whatsPor[w.company_id] = w;
+      const usoPor: Record<number, any> = {};
+      for (const u of uso ?? []) usoPor[u.company_id] = u;
       return json({
         ok: true,
         empresas: (empresas ?? []).map(e => ({
           ...e,
           colaboradoras: equipe[e.id] ?? 0, clientes: clientes[e.id] ?? 0, servicos: servicos[e.id] ?? 0,
           admin: adminPor[e.id] ?? null,
+          whatsapp: whatsPor[e.id] ? { status: whatsPor[e.id].status, numero: whatsPor[e.id].display_phone } : null,
+          envios_mes: Number(usoPor[e.id]?.envios_mes ?? 0),
+          ultimo_acesso: usoPor[e.id]?.ultimo_acesso ?? null,
+          ultimo_servico: usoPor[e.id]?.ultimo_servico ?? null,
         })),
         cadastros: cadastros ?? [],
+        custos: custos ?? null,
       });
+    }
+
+    if (body.acao === 'salvar_custos') {
+      const itens = Array.isArray(body.custos) ? body.custos
+        .map((c: any) => ({ nome: String(c?.nome ?? '').slice(0, 80), valor: Math.max(0, Number(c?.valor) || 0) }))
+        .filter((c: any) => c.nome) : [];
+      const { error } = await db.from('platform_settings').update({
+        custos_plataforma: itens,
+        whatsapp_custo_unit: Math.max(0, Number(body.whatsapp_custo_unit) || 0),
+        absorve_whatsapp: !!body.absorve_whatsapp,
+        taxa_cartao_pct: Math.min(30, Math.max(0, Number(body.taxa_cartao_pct) || 0)),
+      }).eq('id', 1);
+      return json({ ok: !error, erro: error?.message });
     }
 
     if (body.acao === 'atualizar') {
