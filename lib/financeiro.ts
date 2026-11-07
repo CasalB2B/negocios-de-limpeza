@@ -18,7 +18,7 @@ export interface Lancamento {
   id: string; tipo: TipoLanc; descricao: string; valor: number; data: string; pago: boolean;
   conta_id: string | null; conta_destino_id: string | null; cartao_id: string | null; fatura_mes: string | null;
   categoria_id: string | null; grupo_id: string | null; parcela_num: number | null; parcela_total: number | null;
-  origem: 'MANUAL' | 'INFINITEPAY' | 'SERVICO' | 'COLABORADORA'; referencia: string | null; observacao: string | null;
+  origem: 'MANUAL' | 'INFINITEPAY' | 'SERVICO' | 'COLABORADORA' | 'IMPORTACAO'; referencia: string | null; observacao: string | null;
 }
 
 export const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
