@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PLANOS, mensalNoAnual } from '../supabase/functions/_shared/planos';
 import {
   ArrowRight, Check, CalendarDays, Smartphone, MessageCircle, Wallet, Users, Sparkles, MapPin, ClipboardList,
   NotebookPen, PhoneOff, Calculator, UserX, ChevronDown, Menu, X, FileText, Star,
@@ -60,21 +61,6 @@ const MODULOS = [
   { icon: MapPin, nome: 'Mapa da equipe' },
   { icon: Sparkles, nome: 'Assistente com IA' },
   { icon: FileText, nome: 'Nota fiscal (adicional)' },
-];
-
-const PLANOS = [
-  {
-    nome: 'Inicial', mensal: 89, para: 'Até 3 colaboradoras',
-    itens: ['Agenda e ordens de serviço', 'App da colaboradora', 'Clientes', 'Cobrança automática', '150 lembretes no WhatsApp por mês', 'Assistente com IA (dúvidas)'],
-  },
-  {
-    nome: 'Profissional', mensal: 179, para: 'Até 8 colaboradoras', destaque: true,
-    itens: ['Tudo do Inicial', 'RH completo: contratação, avaliações e carreira', 'Mapa da equipe', 'Perfis de acesso (líder, financeiro, atendimento)', '500 lembretes no WhatsApp por mês', 'Assistente com IA (números do negócio)'],
-  },
-  {
-    nome: 'Empresa', mensal: 299, para: 'Até 20 colaboradoras',
-    itens: ['Tudo do Profissional', '1.500 lembretes no WhatsApp por mês', 'Relatórios avançados', 'Suporte prioritário', 'Acima de 20 colaboradoras: fale com a gente'],
-  },
 ];
 
 const FAQ = [
@@ -271,9 +257,9 @@ export const VendasPage: React.FC = () => {
         </div>
         <div className="mt-10 grid md:grid-cols-3 gap-5 items-stretch">
           {PLANOS.map(p => {
-            const valor = anual ? Math.round(p.mensal * 0.85) : p.mensal;
+            const valor = anual ? mensalNoAnual(p) : p.mensal;
             return (
-              <div key={p.nome} className={`relative rounded-2xl p-6 flex flex-col ${p.destaque ? 'border-2 border-primary shadow-xl shadow-primary/15' : 'border border-gray-200 dark:border-darkBorder'}`}>
+              <div key={p.id} className={`relative rounded-2xl p-6 flex flex-col ${p.destaque ? 'border-2 border-primary shadow-xl shadow-primary/15' : 'border border-gray-200 dark:border-darkBorder'}`}>
                 {p.destaque && <span className="absolute -top-3 left-6 rounded-full bg-primary text-white text-xs font-bold px-3 py-1">Mais escolhido</span>}
                 <h3 className="text-lg font-bold">{p.nome}</h3>
                 <p className="text-sm text-lightText dark:text-darkTextSecondary">{p.para}</p>
