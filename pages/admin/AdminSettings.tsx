@@ -17,6 +17,14 @@ export const AdminSettings: React.FC = () => {
     whatsapp: localStorage.getItem('notif_whatsapp') !== 'false',
   }));
 
+  const souDono = localStorage.getItem('ndl_dono') === '1';
+  const [usuarios, setUsuarios] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
+  useEffect(() => {
+    if (activeTab !== 'users') return;
+    supabase.from('app_users').select('id, name, email, role').in('role', ['ADMIN', 'COLLABORATOR']).order('role')
+      .then(({ data }) => setUsuarios(data ?? []));
+  }, [activeTab]);
+
   const [metaAppId, setMetaAppId] = useState('');
   const [metaConfigId, setMetaConfigId] = useState('');
   const [mapsKey, setMapsKey] = useState('');
@@ -67,8 +75,8 @@ export const AdminSettings: React.FC = () => {
   type LocalSettings = typeof platformSettings & { companyName: string; supportEmail: string };
   const [localSettings, setLocalSettings] = useState<LocalSettings>({
     ...platformSettings,
-    companyName: localStorage.getItem('company_name') || 'Negócios de Limpeza',
-    supportEmail: localStorage.getItem('support_email') || 'suporte@negociosdelimpeza.com.br',
+    companyName: localStorage.getItem('company_name') || (empresaId() === 1 ? 'Negócios de Limpeza' : ''),
+    supportEmail: localStorage.getItem('support_email') || (empresaId() === 1 ? 'suporte@negociosdelimpeza.com.br' : ''),
   });
 
   useEffect(() => {
@@ -93,19 +101,6 @@ export const AdminSettings: React.FC = () => {
       alert("Informações da empresa salvas com sucesso!");
   };
 
-  // Helper para atualizar matriz de valores
-  const updatePayout = (level: 'junior' | 'senior' | 'master', hours: 'hours4' | 'hours6' | 'hours8', value: number) => {
-      setLocalSettings(prev => ({
-          ...prev,
-          payouts: {
-              ...prev.payouts,
-              [level]: {
-                  ...prev.payouts[level],
-                  [hours]: value
-              }
-          }
-      }));
-  };
 
   const renderContent = () => {
     switch(activeTab) {
@@ -215,115 +210,25 @@ export const AdminSettings: React.FC = () => {
       case 'services':
         return (
           <div className="space-y-8 animate-in fade-in duration-300">
-             <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 mb-6">
+             <div className="bg-purple-50 dark:bg-primary/10 p-4 rounded-xl border border-purple-100 dark:border-primary/30">
                 <p className="text-sm text-primary font-bold flex items-center gap-2">
-                   <DollarSign size={16} /> Defina os valores fixos de repasse para cada nível de experiência e duração do serviço.
+                   <DollarSign size={16} /> Quanto cada colaboradora recebe por faxina (4h, 6h e 8h) fica em Recursos Humanos → Config. RH → Remuneração.
                 </p>
+                <a href="#/admin/rh/configuracoes" className="inline-block mt-2 text-sm font-bold text-primary underline">Abrir a tabela de diárias</a>
              </div>
-             
+
              <div>
-                <h3 className="text-xl font-bold text-darkText mb-4">Tabela de Repasse (Matriz por Horas)</h3>
-                
-                {/* Matriz de Inputs */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* JUNIOR COL */}
-                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-4">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold uppercase">JUNIOR</span>
-                        </div>
-                        <Input 
-                            label="Valor para 4 Horas" 
-                            icon={<span className="text-xs font-bold text-gray-500">R$</span>}
-                            type="number"
-                            value={localSettings.payouts.junior.hours4}
-                            onChange={e => updatePayout('junior', 'hours4', parseFloat(e.target.value) || 0)}
-                        />
-                        <Input 
-                            label="Valor para 6 Horas" 
-                            icon={<span className="text-xs font-bold text-gray-500">R$</span>}
-                            type="number"
-                            value={localSettings.payouts.junior.hours6}
-                            onChange={e => updatePayout('junior', 'hours6', parseFloat(e.target.value) || 0)}
-                        />
-                        <Input 
-                            label="Valor para 8 Horas" 
-                            icon={<span className="text-xs font-bold text-gray-500">R$</span>}
-                            type="number"
-                            value={localSettings.payouts.junior.hours8}
-                            onChange={e => updatePayout('junior', 'hours8', parseFloat(e.target.value) || 0)}
-                        />
-                    </div>
-
-                    {/* SENIOR COL */}
-                    <div className="bg-purple-50/50 p-4 rounded-xl border border-purple-100 space-y-4">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold uppercase">SENIOR</span>
-                        </div>
-                        <Input 
-                            label="Valor para 4 Horas" 
-                            icon={<span className="text-xs font-bold text-gray-500">R$</span>}
-                            type="number"
-                            value={localSettings.payouts.senior.hours4}
-                            onChange={e => updatePayout('senior', 'hours4', parseFloat(e.target.value) || 0)}
-                        />
-                        <Input 
-                            label="Valor para 6 Horas" 
-                            icon={<span className="text-xs font-bold text-gray-500">R$</span>}
-                            type="number"
-                            value={localSettings.payouts.senior.hours6}
-                            onChange={e => updatePayout('senior', 'hours6', parseFloat(e.target.value) || 0)}
-                        />
-                        <Input 
-                            label="Valor para 8 Horas" 
-                            icon={<span className="text-xs font-bold text-gray-500">R$</span>}
-                            type="number"
-                            value={localSettings.payouts.senior.hours8}
-                            onChange={e => updatePayout('senior', 'hours8', parseFloat(e.target.value) || 0)}
-                        />
-                    </div>
-
-                    {/* MASTER COL */}
-                    <div className="bg-yellow-50/50 p-4 rounded-xl border border-yellow-100 space-y-4">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold uppercase">MESTRE</span>
-                        </div>
-                        <Input 
-                            label="Valor para 4 Horas" 
-                            icon={<span className="text-xs font-bold text-gray-500">R$</span>}
-                            type="number"
-                            value={localSettings.payouts.master.hours4}
-                            onChange={e => updatePayout('master', 'hours4', parseFloat(e.target.value) || 0)}
-                        />
-                        <Input 
-                            label="Valor para 6 Horas" 
-                            icon={<span className="text-xs font-bold text-gray-500">R$</span>}
-                            type="number"
-                            value={localSettings.payouts.master.hours6}
-                            onChange={e => updatePayout('master', 'hours6', parseFloat(e.target.value) || 0)}
-                        />
-                        <Input 
-                            label="Valor para 8 Horas" 
-                            icon={<span className="text-xs font-bold text-gray-500">R$</span>}
-                            type="number"
-                            value={localSettings.payouts.master.hours8}
-                            onChange={e => updatePayout('master', 'hours8', parseFloat(e.target.value) || 0)}
-                        />
-                    </div>
-                </div>
-             </div>
-
-             <div className="border-t border-gray-100 pt-6">
-                <h3 className="text-xl font-bold text-darkText mb-4">Taxas Operacionais</h3>
+                <h3 className="text-xl font-bold text-darkText dark:text-darkTextPrimary mb-4">Taxas Operacionais</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                    <Input 
                       label="Valor Hora Base (Referência Cliente)" 
-                      value={localSettings.hourlyRate}
+                      value={localSettings.hourlyRate ?? 0}
                       onChange={e => setLocalSettings({...localSettings, hourlyRate: parseFloat(e.target.value) || 0})}
                       icon={<span className="text-xs font-bold">R$</span>} 
                    />
                    <Input 
                       label="Taxa Mínima de Deslocamento" 
-                      value={localSettings.minDisplacement}
+                      value={localSettings.minDisplacement ?? 0}
                       onChange={e => setLocalSettings({...localSettings, minDisplacement: parseFloat(e.target.value) || 0})}
                       icon={<span className="text-xs font-bold">R$</span>} 
                    />
@@ -391,42 +296,46 @@ export const AdminSettings: React.FC = () => {
       case 'users':
          return (
             <div className="space-y-8 animate-in fade-in duration-300">
-               <div className="mb-2">
-                  <h3 className="text-xl font-bold text-darkText dark:text-darkTextPrimary flex items-center gap-2"><Users size={20}/> Visualizar como Usuário</h3>
-                  <p className="text-sm text-lightText dark:text-darkTextSecondary mt-1">Acesse os portais de cliente e colaboradora para testar o fluxo completo.</p>
+               <div>
+                  <h3 className="text-xl font-bold text-darkText dark:text-darkTextPrimary flex items-center gap-2"><Users size={20}/> Usuários & Permissões</h3>
+                  <p className="text-sm text-lightText dark:text-darkTextSecondary mt-1">Quem tem acesso ao sistema da sua empresa.</p>
                </div>
-
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <a href="#/client/dashboard" target="_blank" rel="noopener noreferrer"
-                     className="flex items-center gap-4 p-5 bg-purple-50 dark:bg-primary/10 border border-purple-200 dark:border-primary/30 rounded-2xl hover:shadow-md transition-all group">
-                     <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-white text-xl">👤</div>
-                     <div>
-                        <p className="font-bold text-darkText dark:text-darkTextPrimary group-hover:text-primary transition-colors">Portal do Cliente</p>
-                        <p className="text-xs text-lightText dark:text-darkTextSecondary">Ver tela como cliente logado</p>
-                     </div>
-                  </a>
-                  <a href="#/collab/agenda" target="_blank" rel="noopener noreferrer"
-                     className="flex items-center gap-4 p-5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-2xl hover:shadow-md transition-all group">
-                     <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white text-xl">🧹</div>
-                     <div>
-                        <p className="font-bold text-darkText dark:text-darkTextPrimary group-hover:text-blue-600 transition-colors">Portal da Colaboradora</p>
-                        <p className="text-xs text-lightText dark:text-darkTextSecondary">Ver tela como colaboradora logada</p>
-                     </div>
-                  </a>
-               </div>
-
-               <div className="border-t border-gray-100 dark:border-darkBorder pt-6">
-                  <h4 className="text-sm font-bold text-darkText dark:text-darkTextPrimary mb-3 flex items-center gap-2"><Shield size={16}/> Acesso Admin</h4>
-                  <div className="bg-gray-50 dark:bg-darkBg rounded-xl p-4 border border-gray-200 dark:border-darkBorder">
-                     <div className="flex items-center justify-between">
-                        <div>
-                           <p className="font-bold text-darkText dark:text-darkTextPrimary text-sm">Administrador</p>
-                           <p className="text-xs text-lightText dark:text-darkTextSecondary">Super Admin • Acesso via e-mail cadastrado</p>
+               <div className="divide-y divide-gray-100 dark:divide-darkBorder rounded-xl border border-gray-200 dark:border-darkBorder">
+                  {usuarios.length === 0 && <p className="p-4 text-sm text-lightText">Carregando...</p>}
+                  {usuarios.map(u => (
+                     <div key={u.id} className="p-4 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                           <p className="font-bold text-darkText dark:text-darkTextPrimary text-sm truncate">{u.name}</p>
+                           <p className="text-xs text-lightText dark:text-darkTextSecondary truncate">{u.email}</p>
                         </div>
-                        <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold px-2 py-1 rounded">Ativo</span>
+                        <span className={`shrink-0 text-xs font-bold px-2 py-1 rounded ${u.role === 'ADMIN' ? 'bg-primary/10 text-primary' : 'bg-blue-50 text-blue-700'}`}>
+                           {u.role === 'ADMIN' ? 'Administrador' : 'Colaboradora (app)'}
+                        </span>
+                     </div>
+                  ))}
+               </div>
+               <p className="text-xs text-lightText dark:text-darkTextSecondary">
+                  O acesso das colaboradoras ao app é criado em Recursos Humanos → Colaboradoras → Dar acesso.
+                  Em breve: perfis de acesso (líder, financeiro, atendimento) escolhendo o que cada pessoa pode ver.
+               </p>
+
+               {souDono && (
+                  <div className="border-t border-gray-100 dark:border-darkBorder pt-6">
+                     <h4 className="text-sm font-bold text-darkText dark:text-darkTextPrimary mb-3 flex items-center gap-2"><Shield size={16}/> Visualizar como usuário (só o dono da plataforma)</h4>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <a href="#/client/dashboard" target="_blank" rel="noopener noreferrer"
+                           className="flex items-center gap-4 p-5 bg-purple-50 dark:bg-primary/10 border border-purple-200 dark:border-primary/30 rounded-2xl hover:shadow-md transition-all">
+                           <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-white text-xl">👤</div>
+                           <div><p className="font-bold text-darkText dark:text-darkTextPrimary">Portal do Cliente</p><p className="text-xs text-lightText">Ver tela como cliente</p></div>
+                        </a>
+                        <a href="#/collab/agenda" target="_blank" rel="noopener noreferrer"
+                           className="flex items-center gap-4 p-5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-2xl hover:shadow-md transition-all">
+                           <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white text-xl">🧹</div>
+                           <div><p className="font-bold text-darkText dark:text-darkTextPrimary">Portal da Colaboradora</p><p className="text-xs text-lightText">Ver tela como colaboradora</p></div>
+                        </a>
                      </div>
                   </div>
-               </div>
+               )}
             </div>
          );
       default:
@@ -435,7 +344,7 @@ export const AdminSettings: React.FC = () => {
           <div className="space-y-5 animate-in fade-in duration-300">
             <div>
               <h3 className="text-xl font-bold text-darkText dark:text-darkTextPrimary">Integrações</h3>
-              <p className="text-sm text-lightText dark:text-darkTextSecondary mt-1">Conecte serviços externos para automatizar cobranças, mensagens e agendamentos.</p>
+              <p className="text-sm text-lightText dark:text-darkTextSecondary mt-1">Conecte as contas da sua empresa. O WhatsApp é conectado em Configurações → WhatsApp.</p>
             </div>
 
             {integLoading && (
@@ -444,8 +353,8 @@ export const AdminSettings: React.FC = () => {
               </div>
             )}
 
-            {/* WhatsApp Business */}
-            <div className="bg-gray-50 dark:bg-darkBg rounded-2xl border border-gray-200 dark:border-darkBorder p-6">
+            {/* WhatsApp Business (platform-level Meta app ids) */}
+            {souDono && <div className="bg-gray-50 dark:bg-darkBg rounded-2xl border border-gray-200 dark:border-darkBorder p-6">
               <div className="flex items-start justify-between mb-5">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
@@ -494,6 +403,11 @@ export const AdminSettings: React.FC = () => {
                   {waSaved ? 'Salvo!' : 'Salvar'}
                 </Button>
               </div>
+            </div>}
+
+            {/* Recebimentos (InfinitePay e próximos provedores) */}
+            <div className="bg-white dark:bg-darkSurface rounded-2xl">
+              <PagamentosIntegracao />
             </div>
 
             {/* Google Calendar */}
@@ -529,13 +443,8 @@ export const AdminSettings: React.FC = () => {
               </button>
             </div>
 
-            {/* Recebimentos (InfinitePay e próximos provedores) */}
-            <div className="bg-white dark:bg-darkSurface rounded-2xl">
-              <PagamentosIntegracao />
-            </div>
-
-            {/* Google Maps */}
-            <div className="bg-gray-50 dark:bg-darkBg rounded-2xl border border-gray-200 dark:border-darkBorder p-6">
+            {/* Google Maps (platform key) */}
+            {souDono && <div className="bg-gray-50 dark:bg-darkBg rounded-2xl border border-gray-200 dark:border-darkBorder p-6">
               <div className="flex items-start justify-between mb-5">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 text-2xl">
@@ -570,10 +479,10 @@ export const AdminSettings: React.FC = () => {
                   {mapsSaved ? 'Salvo!' : 'Salvar'}
                 </Button>
               </div>
-            </div>
+            </div>}
 
-            {/* Gemini AI */}
-            <div className="bg-gray-50 dark:bg-darkBg rounded-2xl border border-gray-200 dark:border-darkBorder p-6">
+            {/* Gemini AI (platform) */}
+            {souDono && <div className="bg-gray-50 dark:bg-darkBg rounded-2xl border border-gray-200 dark:border-darkBorder p-6">
               <div className="flex items-start justify-between mb-5">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0 text-2xl">
@@ -592,7 +501,7 @@ export const AdminSettings: React.FC = () => {
               <p className="text-xs text-lightText dark:text-darkTextSecondary">
                 A IA já vem incluída na plataforma. Não é preciso colar nenhuma chave aqui.
               </p>
-            </div>
+            </div>}
           </div>
         );
     }
