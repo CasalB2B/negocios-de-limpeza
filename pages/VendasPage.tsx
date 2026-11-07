@@ -271,18 +271,21 @@ export const VendasPage: React.FC = () => {
         <section className="relative">
           <div className="absolute inset-0 ndl-grade [mask-image:linear-gradient(to_bottom,black,transparent_75%)] pointer-events-none" />
           <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-14 md:pt-20 pb-16 text-center">
-            <p className={selo}><span className="w-2 h-2 rounded-full bg-green-500" /> Criado por quem vive o dia a dia de uma empresa de faxina</p>
-            <h1 className="mt-6 text-4xl md:text-6xl font-bold leading-[1.06] max-w-4xl mx-auto" style={balance}>
+            <p className={`${selo} whitespace-nowrap`}><span className="w-2 h-2 rounded-full bg-green-500 shrink-0" /> Criado por quem vive o dia a dia da faxina</p>
+            <h1 className="mt-6 text-[2.15rem] sm:text-5xl md:text-6xl font-bold leading-[1.12] tracking-tight max-w-4xl mx-auto">
               O sistema completo para gestão de <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">empresas de limpeza</span>
             </h1>
             <p className="mt-5 text-lg text-lightText dark:text-darkTextSecondary max-w-2xl mx-auto">
               Agenda da equipe, app da colaboradora, cobrança automática, lembretes no WhatsApp e financeiro. Tudo num lugar só, para você parar de apagar incêndio e fazer a empresa crescer.
             </p>
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
               <Link to="/criar-conta" className={botaoTeste}>Testar grátis por 14 dias <ArrowRight size={18} /></Link>
-              <button onClick={() => irPara('recursos')} className="rounded-xl border border-gray-300 dark:border-darkBorder bg-white dark:bg-darkSurface font-bold px-6 py-3.5 hover:border-primary hover:text-primary">Ver os recursos</button>
+              <button onClick={() => irPara('recursos')} className="hidden sm:inline-flex rounded-xl border border-gray-300 dark:border-darkBorder bg-white dark:bg-darkSurface font-bold px-6 py-3.5 hover:border-primary hover:text-primary">Ver os recursos</button>
             </div>
-            <p className="mt-3 text-xs text-lightText dark:text-darkTextSecondary">Sem cartão de crédito · Tudo liberado no teste · Cancele quando quiser</p>
+            <p className="mt-3 text-xs text-lightText dark:text-darkTextSecondary">Sem cartão de crédito · Tudo liberado no teste<span className="hidden sm:inline"> · Cancele quando quiser</span></p>
+            <button onClick={() => irPara('recursos')} className="sm:hidden mt-6 mx-auto flex flex-col items-center gap-1 text-sm font-semibold text-lightText hover:text-primary">
+              Ver mais <ChevronDown size={20} className="animate-bounce" />
+            </button>
             <div className="mt-12 max-w-5xl mx-auto"><HeroTelas /></div>
           </div>
         </section>
