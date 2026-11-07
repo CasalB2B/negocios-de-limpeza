@@ -36,6 +36,7 @@ import { FinCartoes } from './pages/admin/financeiro/FinCartoes';
 import { FinCalendario } from './pages/admin/financeiro/FinCalendario';
 import { FinRecebimentos } from './pages/admin/financeiro/FinRecebimentos';
 import { FinCategorias } from './pages/admin/financeiro/FinCategorias';
+import { FinImportar } from './pages/admin/financeiro/FinImportar';
 import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminServices } from './pages/admin/AdminServices';
 import { AdminQuotes } from './pages/admin/AdminQuotes';
@@ -163,6 +164,7 @@ const App: React.FC = () => {
               <Route path="/admin/financeiro/calendario" element={<FinCalendario />} />
               <Route path="/admin/financeiro/recebimentos" element={<FinRecebimentos />} />
               <Route path="/admin/financeiro/categorias" element={<FinCategorias />} />
+              <Route path="/admin/financeiro/importar" element={<FinImportar />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
               <Route path="/admin/whatsapp" element={<AdminWhatsApp />} />
               <Route path="/admin/ajuda-ia" element={<AdminAjudaIA />} />

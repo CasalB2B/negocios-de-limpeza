@@ -177,3 +177,7 @@ do $$ begin
     alter publication supabase_realtime add table fin_lancamentos;
   end if;
 end $$;
+
+-- Lançamentos trazidos de planilha / Mobills (referencia 'imp:<lote>:<chave da linha>' permite desfazer e evitar repetidos).
+alter table fin_lancamentos drop constraint if exists fin_lancamentos_origem_check;
+alter table fin_lancamentos add constraint fin_lancamentos_origem_check check (origem in ('MANUAL','INFINITEPAY','SERVICO','COLABORADORA','IMPORTACAO'));

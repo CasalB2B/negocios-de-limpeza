@@ -6,7 +6,7 @@ import { Layout } from '../../../components/Layout';
 import { UserRole } from '../../../types';
 import { supabase } from '../../../lib/supabase';
 import {
-  Cartao, Categoria, Conta, DadosFin, Lancamento, TipoLanc, brl, diaDoMes, faturaDaCompra, hoje, nomeMes, r2, somaMeses, nomeMesCurto,
+  Cartao, Categoria, Conta, DadosFin, Lancamento, TipoLanc, brl, diaDoMes, faturaDaCompra, saldoAtual, hoje, nomeMes, r2, somaMeses, nomeMesCurto,
 } from '../../../lib/financeiro';
 
 export const card = 'bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder rounded-2xl';
@@ -21,6 +21,7 @@ const ABAS = [
   { label: 'Calendário', path: '/admin/financeiro/calendario' },
   { label: 'Recebimentos', path: '/admin/financeiro/recebimentos' },
   { label: 'Categorias', path: '/admin/financeiro/categorias' },
+  { label: 'Importar', path: '/admin/financeiro/importar' },
 ];
 
 export const FinShell: React.FC<{
@@ -360,7 +361,9 @@ const CORES = ['#7c3aed', '#16a34a', '#0ea5e9', '#f97316', '#ef4444', '#0f766e',
 export const ContaModal: React.FC<{ fin: DadosFin; editar?: Conta | null; onFechar: () => void }> = ({ fin, editar, onFechar }) => {
   const [nome, setNome] = useState(editar?.nome ?? '');
   const [tipo, setTipo] = useState<Conta['tipo']>(editar?.tipo ?? 'BANCO');
-  const [saldo, setSaldo] = useState(editar ? valorParaCampo(editar.saldo_inicial) : '');
+  // Sempre se digita o saldo de HOJE; o saldo inicial é calculado para bater com os lançamentos já feitos.
+  const movimento = editar ? saldoAtual(editar, fin.lancamentos) - editar.saldo_inicial : 0;
+  const [saldo, setSaldo] = useState(editar ? valorParaCampo(saldoAtual(editar, fin.lancamentos)) : '');
   const [cor, setCor] = useState(editar?.cor ?? CORES[0]);
   const [padrao, setPadrao] = useState(editar?.padrao ?? fin.contas.length === 0);
   const [salvando, setSalvando] = useState(false);
@@ -370,7 +373,7 @@ export const ContaModal: React.FC<{ fin: DadosFin; editar?: Conta | null; onFech
     if (!nome.trim()) return setMsg('Informe o nome da conta.');
     setSalvando(true);
     if (padrao) await supabase.from('fin_contas').update({ padrao: false }).neq('id', editar?.id ?? '00000000-0000-0000-0000-000000000000');
-    const dados = { nome: nome.trim(), tipo, saldo_inicial: lerValor(saldo) || 0, cor, padrao };
+    const dados = { nome: nome.trim(), tipo, saldo_inicial: r2((lerValor(saldo) || 0) - movimento), cor, padrao };
     const { error } = editar
       ? await supabase.from('fin_contas').update(dados).eq('id', editar.id)
       : await supabase.from('fin_contas').insert(dados);
@@ -411,7 +414,7 @@ export const ContaModal: React.FC<{ fin: DadosFin; editar?: Conta | null; onFech
           </select>
         </div>
         <div>
-          <label className={labelCls}>{editar ? 'Saldo inicial' : 'Saldo de hoje'}</label>
+          <label className={labelCls}>Saldo de hoje</label>
           <input className={inputCls} inputMode="decimal" placeholder="0,00" value={saldo} onChange={e => setSaldo(e.target.value)} />
         </div>
       </div>
