@@ -36,7 +36,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
       // Pretty URLs for the public help center: /ajuda/... → /#/ajuda/... (the app uses hash routing)
-      if (/^\/ajuda(\/|$)/.test(location.pathname)) location.replace('/#' + location.pathname + location.search);
+      if (/^\/(ajuda|sistema)(\/|$)/.test(location.pathname)) location.replace('/#' + location.pathname + location.search);
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from './supabase';
+import { empresaId } from './empresa';
 
 // A collaborator logs in with an app_users id, but bookings store the colaboradoras_rh id
 // (chosen in the calendar). Both ids identify her; the RH record is matched by name.
@@ -47,7 +48,7 @@ export function useMinhaRemuneracao(collab: { name?: string } | null | undefined
       const { data } = await supabase.from('colaboradoras_rh').select('cargo_atual, commission_rate').ilike('nome', collab.name!).limit(1);
       const cargo: string | null = data?.[0]?.cargo_atual ?? null;
       const porHora = Number(data?.[0]?.commission_rate) || 40;
-      let diarias = cargo ? PADRAO[cargo] ?? null : null;
+      let diarias = cargo && empresaId() === 1 ? PADRAO[cargo] ?? null : null;
       if (cargo) {
         const { data: cfg } = await supabase.from('configuracao_remuneracao').select('diaria_4h, diaria_6h, diaria_8h')
           .eq('cargo', cargo).is('vigencia_fim', null).order('created_at', { ascending: false }).limit(1);

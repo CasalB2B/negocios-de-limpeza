@@ -27,9 +27,6 @@ function todayBR(): string {
   return `${d}/${m}/${y}`;
 }
 
-// Pago por inteiro (baixa manual antiga 'PAID'/'PAGO' ou InfinitePay 'FULL_PAID').
-const pago = (st: string | null) => st === 'PAID' || st === 'PAGO' || st === 'FULL_PAID';
-
 function parseDateBR(s: string): Date | null {
   if (!s) return null;
   const parts = s.split('/');
@@ -53,6 +50,7 @@ interface ServiceRow {
   status: string | null;
   price: number | null;
   payment_status: string | null;
+  signal_amount?: number | null;
 }
 
 interface ColabRow {
@@ -83,7 +81,7 @@ export const AdminDashboard: React.FC = () => {
     const fetch = async () => {
       const { data: svc } = await supabase
         .from('services')
-        .select('id, client_name, collaborator_name, type, date, time, status, price, payment_status');
+        .select('id, client_name, collaborator_name, type, date, time, status, price, payment_status, signal_amount');
       const { data: col } = await supabase
         .from('colaboradoras_rh')
         .select('id, nome, status, data_nascimento');
@@ -120,13 +118,18 @@ export const AdminDashboard: React.FC = () => {
     return d && d.getMonth() + 1 === curMonth && d.getFullYear() === curYear;
   });
 
-  const receitaMes = monthServices
-    .filter(s => pago(s.payment_status))
-    .reduce((sum, s) => sum + (s.price ?? 0), 0);
+  // What came in: full payments (manual "PAID" or InfinitePay "FULL_PAID") and deposits already paid.
+  const recebido = (s: ServiceRow) => {
+    const preco = Number(s.price) || 0;
+    if (['PAID', 'FULL_PAID', 'PAGO'].includes(s.payment_status ?? '')) return preco;
+    if (s.payment_status === 'SIGNAL_PAID') return Number(s.signal_amount) || preco / 2;
+    return 0;
+  };
+  const receitaMes = monthServices.reduce((sum, s) => sum + recebido(s), 0);
 
   const aReceber = monthServices
-    .filter(s => s.status !== 'CANCELLED' && !pago(s.payment_status))
-    .reduce((sum, s) => sum + (s.price ?? 0), 0);
+    .filter(s => s.status !== 'CANCELLED')
+    .reduce((sum, s) => sum + Math.max(0, (Number(s.price) || 0) - recebido(s)), 0);
 
   const ativasCount = colabs.filter(c => c.status === 'ATIVA').length;
   const afastadasCount = colabs.filter(c => c.status === 'AFASTADA').length;
@@ -134,7 +137,7 @@ export const AdminDashboard: React.FC = () => {
   const semPagamento = services.filter(s => {
     if (!s.date) return false;
     const d = parseDateBR(s.date);
-    return d && d < today && s.status === 'COMPLETED' && !pago(s.payment_status);
+    return d && d < today && s.status === 'COMPLETED' && !s.payment_status;
   }).length;
 
   const emProcesso = candidatas.filter(c => {
@@ -189,8 +192,8 @@ export const AdminDashboard: React.FC = () => {
   }
 
   // ── Donut chart — payment breakdown ──────────────────────────────────────
-  const paidCount   = monthServices.filter(s => pago(s.payment_status)).length;
-  const pendingCount = monthServices.filter(s => s.status !== 'CANCELLED' && !pago(s.payment_status)).length;
+  const paidCount   = monthServices.filter(s => ['PAID', 'FULL_PAID', 'PAGO'].includes(s.payment_status ?? '')).length;
+  const pendingCount = monthServices.filter(s => s.status !== 'CANCELLED' && !['PAID', 'FULL_PAID', 'PAGO'].includes(s.payment_status ?? '')).length;
   const totalMonthCount = monthServices.length;
   const circumference = 2 * Math.PI * 50; // ~314.16
   const paidDash    = totalMonthCount > 0 ? (paidCount / totalMonthCount) * circumference : 0;
@@ -488,7 +491,7 @@ export const AdminDashboard: React.FC = () => {
 
               if (semPagamento > 0)
                 alerts.push(
-                  <button key="pag" onClick={() => navigate('/admin/financeiro/recebimentos')}
+                  <button key="pag" onClick={() => navigate('/admin/payments')}
                     className="w-full flex items-center gap-2 text-left px-3 py-2.5 rounded-xl bg-yellow-50 border border-yellow-100 hover:bg-yellow-100 transition-colors">
                     <DollarSign size={14} className="text-yellow-600 shrink-0" />
                     <span className="text-sm text-yellow-700 flex-1">{semPagamento} serviço{semPagamento > 1 ? 's' : ''} sem pagamento</span>
@@ -547,7 +550,7 @@ export const AdminDashboard: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
               { label: 'Nova OS',         icon: <Plus size={18}/>,         path: '/admin/os',                cls: 'text-teal-700 bg-teal-50 hover:bg-teal-100 border-teal-100' },
-              { label: 'Financeiro',      icon: <DollarSign size={18}/>,   path: '/admin/financeiro',           cls: 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-100' },
+              { label: 'Financeiro',      icon: <DollarSign size={18}/>,   path: '/admin/payments',          cls: 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-100' },
               { label: 'Calendário',      icon: <Calendar size={18}/>,     path: '/admin/calendar',          cls: 'text-blue-700 bg-blue-50 hover:bg-blue-100 border-blue-100' },
               { label: 'Clientes',        icon: <Users size={18}/>,        path: '/admin/clients',           cls: 'text-violet-700 bg-violet-50 hover:bg-violet-100 border-violet-100' },
               { label: 'Colaboradoras',   icon: <UserPlus size={18}/>,     path: '/admin/rh/colaboradoras',  cls: 'text-pink-700 bg-pink-50 hover:bg-pink-100 border-pink-100' },

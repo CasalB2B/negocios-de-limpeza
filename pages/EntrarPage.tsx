@@ -265,7 +265,7 @@ export const EntrarPage: React.FC = () => {
           </div>
         </div>
         <p className="text-xs text-lightText dark:text-darkTextSecondary">
-          © {new Date().getFullYear()} Negócios de Limpeza · <a href="/privacidade" className="hover:text-primary">Privacidade</a> · <a href="/termos" className="hover:text-primary">Termos</a>
+          © {new Date().getFullYear()} Negócios de Limpeza · <a href="/sistema" className="hover:text-primary">Conheça o sistema</a> · <a href="/privacidade" className="hover:text-primary">Privacidade</a> · <a href="/termos" className="hover:text-primary">Termos</a>
         </p>
       </div>
 

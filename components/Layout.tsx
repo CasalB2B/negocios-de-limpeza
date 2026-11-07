@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
 import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight, Eye, Package, Contact, Lock, Landmark, List, CreditCard } from 'lucide-react';
 import { GeminiChat } from './GeminiChat';
+import { empresaId } from '../lib/empresa';
 import { FaixaTeste, TesteEncerrado, useEmpresaAtual } from './TesteGratis';
 import { Button } from './Button';
 import { ThemeToggle } from './ThemeToggle';
@@ -251,7 +252,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
         { icon: <Users size={15} />,      label: 'Colaboradoras',    path: '/admin/rh/colaboradoras' },
         { icon: <MessageSquare size={15}/>,label: 'Avaliações',      path: '/admin/rh/avaliacoes' },
         { icon: <BarChart2 size={15} />,  label: 'Desempenho',       path: '/admin/rh/desempenho' },
-        { icon: <BookOpen size={15} />,   label: 'Plano de Carreira',path: '/admin/rh/plano-carreira' },
+        ...(empresaId() === 1 ? [{ icon: <BookOpen size={15} />, label: 'Plano de Carreira', path: '/admin/rh/plano-carreira' }] : []),
         { icon: <Settings size={15} />,   label: 'Config. RH',       path: '/admin/rh/configuracoes' },
       ],
     },
@@ -277,7 +278,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       items: [
         { icon: <Settings size={15} />,   label: 'Configurações', path: '/admin/settings' },
         { icon: <HelpCircle size={15} />, label: 'Central de Ajuda', path: '/ajuda' },
-        { icon: <Sparkles size={15} />, label: 'Aprendizado da IA', path: '/admin/ajuda-ia' },
+        // The shared help base is curated by the software owner only.
+        ...(localStorage.getItem('ndl_dono') === '1' ? [{ icon: <Sparkles size={15} />, label: 'Aprendizado da IA', path: '/admin/ajuda-ia' }] : []),
         { icon: <MessageCircle size={15} />, label: 'WhatsApp',   path: '/admin/whatsapp' },
       ],
     },
@@ -479,7 +481,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           </button>
 
           {/* Vista Rápida — Super Admin only */}
-          {role === UserRole.ADMIN && !reviewerMode && (
+          {role === UserRole.ADMIN && !reviewerMode && localStorage.getItem('ndl_dono') === '1' && (
             <div className="relative mt-2 border-t border-gray-100 pt-2">
               <button
                 onClick={openPreviewPanel}
@@ -554,11 +556,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Mobile Header (Admin/Collab) */}
         <header className="md:hidden bg-white dark:bg-darkSurface border-b border-gray-200 dark:border-darkBorder p-4 flex justify-between items-center z-10 transition-colors duration-300 shadow-sm h-16">
-           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center text-white">
-              <CheckCircle size={18} />
-            </div>
-            <h1 className="font-bold text-sm text-darkText dark:text-darkTextPrimary leading-tight">Negócios de<br/>Limpeza</h1>
+           <div className="flex items-center">
+            <img src="/img/logo-lilas.png" alt="Negócios de Limpeza" className="h-9 w-auto dark:hidden" />
+            <img src="/img/logo-bege.png" alt="Negócios de Limpeza" className="h-9 w-auto hidden dark:block" />
           </div>
           <div className="flex gap-4 items-center">
             <ThemeToggle />
@@ -648,7 +648,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                        </div>
                      ))}
 
-                     {!reviewerMode && (
+                     {!reviewerMode && localStorage.getItem('ndl_dono') === '1' && (
                      <div className="border-t border-gray-100 dark:border-darkBorder pt-4 space-y-2">
                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">Visualizar como</p>
                        <div className="grid grid-cols-2 gap-2">

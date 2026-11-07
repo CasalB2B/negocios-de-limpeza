@@ -227,6 +227,12 @@ const DEFAULT_CONFIG_BONUS: ConfiguracaoBonusLider = {
   createdAt: '2000-01-01T00:00:00.000Z',
 };
 
+// Leader bonus starts empty for companies other than Negócios de Limpeza: each one sets its own rules.
+const bonusPadrao = (): ConfiguracaoBonusLider => empresaId() === 1 ? DEFAULT_CONFIG_BONUS : {
+  ...DEFAULT_CONFIG_BONUS, multiplicadorFaxina: 0, bonusAvaliacao: 0, bonusAvaliacao5estrelas: 0,
+  metaAvaliacao: 0, metaFaxinasMes: 0, salarioFixo: 0,
+};
+
 // Fixed past dates so real Supabase/LS data always wins in newestDate comparison.
 // Using new Date() here (module-load time) would make defaults appear "newer" than
 // historical Supabase saves on fresh devices, causing saved values to be ignored.
@@ -490,9 +496,9 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const lsDes    = lsGet<DesempenhoMensalRH[]>('rh_desempenho', empresaId() === 1 ? buildVanielenDesempenho() : []);
     const lsPros   = lsGet<PromocaoRH[]>('rh_promocoes', []);
     const lsBons   = lsGet<BonusMensalRH[]>('rh_bonus_mensal', []);
-    const lsCfg    = lsGet<ConfiguracaoBonusLider>('rh_config_bonus', DEFAULT_CONFIG_BONUS);
+    const lsCfg    = lsGet<ConfiguracaoBonusLider>('rh_config_bonus', bonusPadrao());
     // Prefere o backup (_bkp) se o principal foi limpo mas o backup tem saves do usuário
-    const _lsRems     = lsGet<ConfiguracaoRemuneracaoRH[]>('rh_config_remuneracao', DEFAULT_CONFIG_REMUNERACAO);
+    const _lsRems     = lsGet<ConfiguracaoRemuneracaoRH[]>('rh_config_remuneracao', empresaId() === 1 ? DEFAULT_CONFIG_REMUNERACAO : []);
     const _lsRemsBkp  = lsGet<ConfiguracaoRemuneracaoRH[]>('rh_config_remuneracao_bkp', []);
     const _lsCris     = lsGet<ConfiguracaoCriteriosRH[]>('rh_config_criterios', DEFAULT_CONFIG_CRITERIOS);
     const _lsCrisBkp  = lsGet<ConfiguracaoCriteriosRH[]>('rh_config_criterios_bkp', []);
@@ -545,8 +551,8 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
       // Active config: no vigenciaFim
       // Read LS first — used as fallback when Supabase returns empty (RLS blocks anon reads)
-      const lsBonusConfig = lsGet<ConfiguracaoBonusLider>('rh_config_bonus', DEFAULT_CONFIG_BONUS);
-      const lsRemConfig   = lsGet<ConfiguracaoRemuneracaoRH[]>('rh_config_remuneracao', DEFAULT_CONFIG_REMUNERACAO);
+      const lsBonusConfig = lsGet<ConfiguracaoBonusLider>('rh_config_bonus', bonusPadrao());
+      const lsRemConfig   = lsGet<ConfiguracaoRemuneracaoRH[]>('rh_config_remuneracao', empresaId() === 1 ? DEFAULT_CONFIG_REMUNERACAO : []);
       const lsCriConfig   = lsGet<ConfiguracaoCriteriosRH[]>('rh_config_criterios', DEFAULT_CONFIG_CRITERIOS);
 
       const activeBonus = cfgBons.find(c => !c.vigenciaFim) ?? cfgBons[0] ?? lsBonusConfig;
@@ -590,7 +596,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
       const finalRems = lsRemIsUserSaved
         ? dedupeRems(lsRemConfig)
-        : (activeRems.length ? dedupeRems(activeRems) : DEFAULT_CONFIG_REMUNERACAO);
+        : (activeRems.length ? dedupeRems(activeRems) : (empresaId() === 1 ? DEFAULT_CONFIG_REMUNERACAO : []));
       const finalCris = lsCriIsUserSaved
         ? dedupeCris(lsCriConfig)
         : (activeCris.length ? dedupeCris(activeCris) : DEFAULT_CONFIG_CRITERIOS);
@@ -848,7 +854,7 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   // ── Bônus ──────────────────────────────────────────────────────────────────
 
   const calcularBonus = useCallback((totalFaxinas: number, mediaAvaliacao: number): BonusCalculo => {
-    const cfg = configBonusLider ?? DEFAULT_CONFIG_BONUS;
+    const cfg = configBonusLider ?? bonusPadrao();
     // Bônus de faxinas: só ativa se SUPERAR a meta (> metaFaxinasMes)
     const metaAtingida = totalFaxinas > cfg.metaFaxinasMes;
     const valorBonusFaxinas = metaAtingida ? totalFaxinas * cfg.multiplicadorFaxina : 0;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { empresaId } from '../../../lib/empresa';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../../components/Layout';
 import { UserRole, CargoRH } from '../../../types';
@@ -13,7 +14,7 @@ import {
   RefreshCw, Link2, Zap, Eye, EyeOff, Copy,
 } from 'lucide-react';
 
-const TAB_KEYS = ['remuneracao', 'bonus', 'criterios', 'integracoes'] as const;
+const TAB_KEYS = ['remuneracao', 'bonus', 'criterios'] as const;
 
 const CARGO_LABEL: Record<string, string> = {
   JUNIOR:       'Auxiliar de Limpeza',
@@ -27,7 +28,6 @@ const TAB_LABELS: Record<Tab, string> = {
   remuneracao:  'Remuneração',
   bonus:        'Bônus / Líder',
   criterios:    'Critérios de Promoção',
-  integracoes:  '🔗 Integrações',
 };
 
 // ── Gendo helpers ─────────────────────────────────────────────────────────────
@@ -49,14 +49,14 @@ const fmtDate = (d: string) => new Date(d).toLocaleDateString('pt-BR');
 // Defined outside the page: a component created inside render is a new type on every keystroke,
 // so React remounted the input and it lost focus after each digit.
 const CellInput: React.FC<{ value: number; onChange: (v: number) => void }> = ({ value, onChange }) => {
-  const [texto, setTexto] = useState(String(value));
+  const [texto, setTexto] = useState(value ? String(value) : '');
   const [editando, setEditando] = useState(false);
-  useEffect(() => { if (!editando) setTexto(String(value)); }, [value, editando]);
+  useEffect(() => { if (!editando) setTexto(value ? String(value) : ''); }, [value, editando]);
   return (
     <input
-      type="number" inputMode="decimal" step="1" value={texto}
+      type="number" inputMode="decimal" step="1" placeholder="—" value={texto}
       onFocus={() => setEditando(true)}
-      onBlur={() => { setEditando(false); setTexto(String(value)); }}
+      onBlur={() => { setEditando(false); setTexto(value ? String(value) : ''); }}
       onChange={e => { setTexto(e.target.value); onChange(parseFloat(e.target.value.replace(',', '.')) || 0); }}
       className="w-full border border-input bg-background dark:bg-darkBg rounded-lg px-2 py-1.5 text-sm text-darkText dark:text-darkTextPrimary text-center focus:outline-none focus:ring-2 focus:ring-primary/30"
     />
@@ -89,9 +89,12 @@ export const AdminRHConfiguracoes: React.FC = () => {
   const remSenior = latestFor('SENIOR');
   const remProf   = latestFor('PROFISSIONAL');
 
-  const [remJ, setRemJ] = useState({ diaria4h: 80,  diaria6h: 120, diaria8h: 140, passagem: 10.20 });
-  const [remS, setRemS] = useState({ diaria4h: 100, diaria6h: 140, diaria8h: 160, passagem: 10.20 });
-  const [remP, setRemP] = useState({ diaria4h: 120, diaria6h: 160, diaria8h: 180, passagem: 10.20 });
+  // Negócios de Limpeza's own values are the starting point only for it; other companies start empty.
+  const nossa = empresaId() === 1;
+  const vazio = { diaria4h: 0, diaria6h: 0, diaria8h: 0, passagem: 0 };
+  const [remJ, setRemJ] = useState(nossa ? { diaria4h: 80,  diaria6h: 120, diaria8h: 140, passagem: 10.20 } : vazio);
+  const [remS, setRemS] = useState(nossa ? { diaria4h: 100, diaria6h: 140, diaria8h: 160, passagem: 10.20 } : vazio);
+  const [remP, setRemP] = useState(nossa ? { diaria4h: 120, diaria6h: 160, diaria8h: 180, passagem: 10.20 } : vazio);
 
   // Re-sync form fields whenever the context config changes (Phase 1 LS load OR Phase 2 Supabase sync).
   // Deps include all field values so the form updates even when only values change (same record ID).
@@ -100,10 +103,10 @@ export const AdminRHConfiguracoes: React.FC = () => {
   useEffect(() => { if (remProf)   setRemP({ diaria4h: remProf.diaria4h,   diaria6h: remProf.diaria6h,   diaria8h: remProf.diaria8h,   passagem: remProf.passagem   }); }, [remProf?.id, remProf?.diaria4h, remProf?.diaria6h, remProf?.diaria8h, remProf?.passagem]);
 
   // ── Bônus config ────────────────────────────────────────────────────────────
-  const [bonusCfg, setBonusCfg] = useState({
+  const [bonusCfg, setBonusCfg] = useState(nossa ? {
     salarioFixo: 2800, multiplicadorFaxina: 3, bonusAvaliacao: 150,
     bonusAvaliacao5estrelas: 300, metaAvaliacao: 4.5, metaFaxinasMes: 100,
-  });
+  } : { salarioFixo: 0, multiplicadorFaxina: 0, bonusAvaliacao: 0, bonusAvaliacao5estrelas: 0, metaAvaliacao: 0, metaFaxinasMes: 0 });
   // calcMeta = meta do bônus da líder (total da equipe)
   // relMeta  = meta INDIVIDUAL por colaboradora no relatório Gendo
   const [calcMeta, setCalcMeta] = useState(100);
@@ -621,9 +624,7 @@ export const AdminRHConfiguracoes: React.FC = () => {
                             <RefreshCw size={10} className={gendoSyncing ? 'animate-spin' : ''}/>
                             {gendoSyncing ? 'Buscando...' : 'Gendo'}
                           </button>
-                        ) : (
-                          <span className="text-[10px] text-lightText italic">Configure Gendo na aba Integrações</span>
-                        )}
+                        ) : null}
                       </div>
                       <Input type="number" placeholder={`Ex: ${meta + 1}`} value={faxinas} onChange={e => setFaxinas(e.target.value)}/>
                       {/* Meta inline edit */}
@@ -835,7 +836,7 @@ export const AdminRHConfiguracoes: React.FC = () => {
         )}
 
         {/* ═══ TAB: INTEGRAÇÕES ═══ */}
-        {tab === 'integracoes' && (
+        {(tab as string) === 'integracoes' && (
           <div className="space-y-5">
 
             {/* Gendo */}
