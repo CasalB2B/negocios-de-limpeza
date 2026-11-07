@@ -71,6 +71,8 @@ Marque com `[x]` conforme for fazendo. Quando terminar a sua parte, é só me ch
 
 ## 🤖 Próximas construções (não dependem de você)
 
+- [ ] **Rastreamento da página de vendas (pedido 07/11/2026):** no painel Plataforma (só o dono), aba "Integrações" para colar o ID do **Google Tag Manager** e do **Pixel da Meta**. Carregar só nas páginas públicas (/sistema, /criar-conta), nunca dentro do app das empresas. Eventos: visita à página de vendas, clique em "Testar grátis", **teste grátis criado** (conversão Lead/CompleteRegistration) e **assinatura paga** (Purchase com valor). O ideal é usar o GTM da Negócios de Limpeza.
+
 - [x] Botão Gemini com dois modos: **Ajuda** (como usar a plataforma) e **Gestão** (faturamento, relatórios e análises com os dados da empresa) — feito em 24/10/2026
 - [ ] 💡 *Ideia para o SaaS (na gaveta):* **guia de implantação com IA** — quando uma empresa nova criar conta, o assistente conduz a configuração: pergunta como é a operação hoje (quantas colaboradoras, serviços, preços, como agenda e cobra) e leva passo a passo até tudo funcionar (cadastrar equipe e serviços, conectar WhatsApp, Google, nota fiscal). Prioridade baixa enquanto só o administrador usa.
 - [ ] Gestão: botão "Exportar para Google Planilhas" nas respostas (depois do "Conectar com Google")
