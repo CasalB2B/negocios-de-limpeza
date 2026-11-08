@@ -1,0 +1,2 @@
+-- See the applied migration "excluir_empresa": public.excluir_empresa(p_id) deletes a client company and all rows
+-- with its company_id (service role only; company 1 is protected). Called by the `plataforma` function.

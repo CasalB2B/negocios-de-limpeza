@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
   const token = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
   const { data: quem } = await db.auth.getUser(token);
   const { data: eu } = quem?.user
-    ? await db.from('app_users').select('dono_plataforma').eq('auth_id', quem.user.id).maybeSingle()
+    ? await db.from('app_users').select('dono_plataforma, company_id').eq('auth_id', quem.user.id).maybeSingle()
     : { data: null };
   if (!eu?.dono_plataforma) return json({ ok: false, erro: 'Acesso só para o dono da plataforma.' }, 403);
 
@@ -69,6 +69,25 @@ Deno.serve(async (req) => {
         cadastros: cadastros ?? [],
         custos: custos ?? null,
       });
+    }
+
+    // Deletes a client company and everything in it (data and logins). Never the platform's own company.
+    if (body.acao === 'excluir') {
+      const id = Number(body.id);
+      if (!id || id === 1 || id === eu.company_id) return json({ ok: false, erro: 'Esta empresa não pode ser excluída.' }, 400);
+      const { data: emp } = await db.from('empresas').select('id, nome').eq('id', id).maybeSingle();
+      if (!emp) return json({ ok: false, erro: 'Empresa não encontrada.' }, 404);
+      const norm = (t: string) => String(t || '').trim().toLowerCase();
+      if (norm(body.confirmacao) !== norm(emp.nome)) return json({ ok: false, erro: 'Digite o nome da empresa exatamente como aparece para confirmar.' }, 400);
+      const { data: pessoas } = await db.from('app_users').select('auth_id').eq('company_id', id).not('auth_id', 'is', null);
+      const { data: resumo, error } = await db.rpc('excluir_empresa', { p_id: id });
+      if (error) return json({ ok: false, erro: error.message }, 500);
+      let logins = 0;
+      for (const p of pessoas ?? []) {
+        const { error: e } = await db.auth.admin.deleteUser(p.auth_id);
+        if (!e) logins++;
+      }
+      return json({ ok: true, resumo, logins });
     }
 
     if (body.acao === 'salvar_custos') {

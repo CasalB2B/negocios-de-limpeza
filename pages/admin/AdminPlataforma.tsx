@@ -3,7 +3,7 @@ import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import {
   Building2, Loader2, Plus, Minus, MessageCircle, Users, CalendarClock, Sparkles, Search, Mail, Wallet,
-  TrendingUp, Send, Trash2, Copy, Check, Activity, Smartphone,
+  TrendingUp, Send, Trash2, Copy, Check, Activity, Smartphone, User, Phone, MapPin, FileText, X,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { PLANOS, mensalNoAnual } from '../../supabase/functions/_shared/planos';
@@ -155,7 +155,7 @@ export const AdminPlataforma: React.FC = () => {
 
             {filtradas.length === 0 && <p className="text-sm text-lightText py-10 text-center">Nenhuma empresa encontrada.</p>}
             <div className="grid md:grid-cols-2 gap-4">
-              {filtradas.map(e => <CartaoEmpresa key={e.id} e={e} salvando={salvando === e.id} atualizar={atualizar} />)}
+              {filtradas.map(e => <CartaoEmpresa key={e.id} e={e} salvando={salvando === e.id} atualizar={atualizar} aoExcluir={carregar} />)}
             </div>
 
             {empresas.filter(e => e.id === 1).map(e => (
@@ -175,7 +175,37 @@ export const AdminPlataforma: React.FC = () => {
   );
 };
 
-const CartaoEmpresa: React.FC<{ e: Empresa & { whatsappConn?: { status: string; numero: string | null } | null }; salvando: boolean; atualizar: (id: number, m: Record<string, unknown>) => void }> = ({ e, salvando, atualizar }) => {
+// Line with an icon, a label and a value that can be selected/copied.
+const Dado: React.FC<{ icone: React.ReactNode; rotulo: string; valor?: string | null; copiar?: boolean }> = ({ icone, rotulo, valor, copiar }) => {
+  const [copiado, setCopiado] = useState(false);
+  if (!valor) return null;
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      <span className="text-lightText shrink-0">{icone}</span>
+      <span className="text-[11px] text-lightText shrink-0 w-[4.5rem]">{rotulo}</span>
+      <span className="text-sm font-semibold text-darkText dark:text-darkTextPrimary truncate select-all">{valor}</span>
+      {copiar && (
+        <button type="button" onClick={() => { navigator.clipboard?.writeText(valor).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 1500); }).catch(() => {}); }}
+          className="shrink-0 text-lightText hover:text-primary" aria-label={`Copiar ${rotulo}`}>{copiado ? <Check size={13} className="text-green-600" /> : <Copy size={13} />}</button>
+      )}
+    </div>
+  );
+};
+
+const CartaoEmpresa: React.FC<{ e: Empresa & { whatsappConn?: { status: string; numero: string | null } | null }; salvando: boolean; atualizar: (id: number, m: Record<string, unknown>) => void; aoExcluir: () => void }> = ({ e, salvando, atualizar, aoExcluir }) => {
+  const [excluindo, setExcluindo] = useState(false);
+  const [confirmacao, setConfirmacao] = useState('');
+  const [ocupado, setOcupado] = useState(false);
+  const [erroExcluir, setErroExcluir] = useState('');
+  const excluir = async () => {
+    setOcupado(true); setErroExcluir('');
+    const { data: r, error } = await supabase.functions.invoke('plataforma', { body: { acao: 'excluir', id: e.id, confirmacao } });
+    let resp = r;
+    if (error && !r) { try { resp = await (error as any)?.context?.json(); } catch { /* ignore */ } }
+    setOcupado(false);
+    if (resp?.ok) { setExcluindo(false); aoExcluir(); }
+    else setErroExcluir(resp?.erro || 'Não foi possível excluir.');
+  };
   const s = situacao(e);
   const plano = planoDe(e);
   const limite = plano?.lembretes ?? (e.status === 'teste' ? PLANOS[PLANOS.length - 1].lembretes : 0);
@@ -199,6 +229,15 @@ const CartaoEmpresa: React.FC<{ e: Empresa & { whatsappConn?: { status: string; 
         </div>
       </div>
 
+      <div className="rounded-xl border border-gray-100 dark:border-darkBorder p-3 space-y-1.5">
+        <Dado icone={<User size={13} />} rotulo="Responsável" valor={e.responsavel || e.admin?.name} />
+        <Dado icone={<Mail size={13} />} rotulo="E-mail" valor={email} copiar />
+        <Dado icone={<Phone size={13} />} rotulo="WhatsApp" valor={e.whatsapp || e.admin?.phone} copiar />
+        <Dado icone={<MapPin size={13} />} rotulo="Cidade" valor={e.cidade} />
+        <Dado icone={<FileText size={13} />} rotulo="CNPJ" valor={e.cnpj} copiar />
+        <Dado icone={<Users size={13} />} rotulo="Equipe" valor={e.tamanho_equipe ? `${e.tamanho_equipe} (informado no cadastro)` : null} />
+      </div>
+
       <div className="grid grid-cols-3 gap-2 text-center">
         {[['Profissionais', e.colaboradoras], ['Clientes', e.clientes], ['Serviços', e.servicos]].map(([r, v]) => (
           <div key={r as string} className="rounded-xl bg-gray-50 dark:bg-darkBg py-2">
@@ -211,7 +250,7 @@ const CartaoEmpresa: React.FC<{ e: Empresa & { whatsappConn?: { status: string; 
       <div className="space-y-2 text-sm">
         <p className="flex items-center gap-2 text-darkText dark:text-darkTextPrimary">
           <Wallet size={14} className="text-primary shrink-0" />
-          {plano ? `${plano.nome} ${e.ciclo === 'anual' ? 'anual' : e.ciclo === 'mensal' ? 'mensal' : ''}` : e.status === 'teste' ? 'Teste com tudo liberado' : 'Sem plano'}
+          {e.status === 'teste' ? `Teste grátis (plano ${plano?.nome || e.plano || 'Empresa'} liberado)` : plano ? `Plano ${plano.nome} ${e.ciclo === 'anual' ? 'anual' : e.ciclo === 'mensal' ? 'mensal' : ''}` : 'Sem plano'}
           {receitaMensal(e) > 0 && <span className="text-lightText">· {brl(receitaMensal(e))}/mês</span>}
         </p>
         {prazo && (
@@ -253,7 +292,29 @@ const CartaoEmpresa: React.FC<{ e: Empresa & { whatsappConn?: { status: string; 
           <option value="cancelada">Cancelada</option>
         </select>
         {salvando && <Loader2 size={14} className="animate-spin text-primary" />}
+        {e.id !== 1 && (
+          <button onClick={() => { setExcluindo(true); setConfirmacao(''); setErroExcluir(''); }} className="text-xs font-bold px-2.5 py-1.5 rounded-lg text-red-600 hover:bg-red-50 flex items-center gap-1" aria-label={`Excluir ${e.nome}`}>
+            <Trash2 size={13} /> Excluir
+          </button>
+        )}
       </div>
+
+      {excluindo && (
+        <div className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 p-3 space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-sm font-bold text-red-700 dark:text-red-300">Excluir “{e.nome}” de vez?</p>
+            <button onClick={() => setExcluindo(false)} className="text-red-400" aria-label="Fechar"><X size={16} /></button>
+          </div>
+          <p className="text-xs text-red-700 dark:text-red-300">Apaga a empresa e tudo dela: {e.colaboradoras} profissionais, {e.clientes} clientes, {e.servicos} serviços, financeiro, WhatsApp e os logins das pessoas. Não dá para desfazer.</p>
+          <input value={confirmacao} onChange={ev => setConfirmacao(ev.target.value)} placeholder={`Digite ${e.nome} para confirmar`}
+            className="w-full text-sm px-3 py-2 rounded-lg border border-red-200 bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary" />
+          {erroExcluir && <p className="text-xs font-semibold text-red-700">{erroExcluir}</p>}
+          <button disabled={ocupado || confirmacao.trim().toLowerCase() !== e.nome.trim().toLowerCase()} onClick={excluir}
+            className="w-full text-sm font-bold py-2 rounded-lg bg-red-600 text-white disabled:opacity-40 flex items-center justify-center gap-2">
+            {ocupado ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />} Excluir definitivamente
+          </button>
+        </div>
+      )}
     </div>
   );
 };
