@@ -12,6 +12,7 @@ import { supabase } from '../../lib/supabase';
 import { ClientesSumidosCard } from '../../components/ClientesSumidos';
 import { MapaColaboradoras } from '../../components/MapaColaboradoras';
 import { PedidosExclusao } from '../../components/ExcluirConta';
+import { NotificacoesCelular } from '../../components/NotificacoesCelular';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -253,6 +254,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
 
+        <NotificacoesCelular modo="aviso" />
         <PedidosExclusao />
 
         {/* ── Row 1: KPI cards ── */}

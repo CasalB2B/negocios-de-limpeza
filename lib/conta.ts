@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { desligarPush } from './push';
 import { definirEmpresa } from './empresa';
 
 // Secure login (Supabase Auth). app_users stays the profile table (role, company, photo...).
@@ -29,6 +30,7 @@ export async function entrar(email: string, senha: string, papeis: Papel[]): Pro
 }
 
 export async function sair() {
+  await desligarPush().catch(() => {});
   definirEmpresa(null);
   try { localStorage.removeItem('ndl_dono'); } catch {}
   await supabase.auth.signOut().catch(() => {});

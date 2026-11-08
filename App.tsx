@@ -9,6 +9,7 @@ import { UserRole } from './types';
 import { EntrarPage } from './pages/EntrarPage';
 import { VendasPage } from './pages/VendasPage';
 import { RecursoPage } from './pages/RecursoPage';
+import { ativarPush, noAppNativo } from './lib/push';
 import { ClientDashboard } from './pages/client/ClientDashboard';
 import { ClientRequest } from './pages/client/ClientRequest';
 import { ClientBudget } from './pages/client/ClientBudget';
@@ -79,6 +80,18 @@ const abertoComoApp = () => {
   } catch { return false; }
 };
 
+// Phone app: ask for notification permission and register the phone when someone is logged in.
+function PushAutoRegistro() {
+  React.useEffect(() => {
+    if (!noAppNativo()) return;
+    const tentar = () => { ativarPush().catch(() => {}); };
+    tentar();
+    window.addEventListener('ndl-login', tentar);
+    return () => window.removeEventListener('ndl-login', tentar);
+  }, []);
+  return null;
+}
+
 // ── Troca o manifest dinamicamente conforme a rota ────────────────────────────
 function ManifestSwitcher() {
   React.useEffect(() => {
@@ -112,6 +125,7 @@ const App: React.FC = () => {
         {/* PWA: manifest dinâmico + install prompt + notifications */}
         <ManifestSwitcher />
         <PWAManager />
+        <PushAutoRegistro />
         {/* RH: agenda-based push notifications for ligações/entrevistas */}
         <RHNotificationsWatcher />
         <HashRouter>
