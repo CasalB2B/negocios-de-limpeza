@@ -134,6 +134,14 @@ export interface ClientUser {
   password?: string;
   photo?: string;
   createdAt: number;
+  // Registration data (invoice, birthday messages)
+  ddi?: string;
+  documento?: string;
+  tipoDocumento?: 'CPF' | 'CNPJ' | string;
+  nascimento?: string; // YYYY-MM-DD
+  sexo?: string;
+  bloqueado?: boolean;
+  descricao?: string;
 }
 
 export interface CollaboratorUser {
@@ -399,6 +407,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isMain: !!a.is_main
     })) : [],
     type: u.type || 'AVULSO',
+    ddi: u.ddi || '55',
+    documento: u.documento || '',
+    tipoDocumento: u.tipo_documento || 'CPF',
+    nascimento: u.nascimento || '',
+    sexo: u.sexo || '',
+    bloqueado: !!u.bloqueado,
+    descricao: u.descricao || '',
     photo: u.photo || undefined,
     password: u.password || undefined,
     createdAt: u.created_at ? new Date(u.created_at).getTime() : Date.now()
@@ -853,6 +868,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // No e-mail is stored as null: the e-mail column is unique and '' would block the next client without one.
         name: client.name, email: client.email?.trim() || null, phone: client.phone, address: client.address,
         role: 'CLIENT', type: client.type || 'NOVO',
+        ddi: client.ddi || '55', documento: client.documento || null, tipo_documento: client.documento ? (client.tipoDocumento || 'CPF') : null,
+        nascimento: client.nascimento || null, sexo: client.sexo || null, bloqueado: !!client.bloqueado, descricao: client.descricao || null,
     }).select().single();
     if (error || !userData) throw new Error(error?.message || 'Não foi possível salvar o cliente.');
     const finalClient = mapDbUserToClient(userData, []);
@@ -877,8 +894,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (data.email) updates.email = data.email;
     if (data.phone) updates.phone = data.phone;
     if (data.photo) updates.photo = data.photo;
+    if (data.type !== undefined) updates.type = data.type;
+    if (data.ddi !== undefined) updates.ddi = data.ddi || '55';
+    if (data.documento !== undefined) updates.documento = data.documento || null;
+    if (data.tipoDocumento !== undefined) updates.tipo_documento = data.tipoDocumento || null;
+    if (data.nascimento !== undefined) updates.nascimento = data.nascimento || null;
+    if (data.sexo !== undefined) updates.sexo = data.sexo || null;
+    if (data.bloqueado !== undefined) updates.bloqueado = !!data.bloqueado;
+    if (data.descricao !== undefined) updates.descricao = data.descricao || null;
 
-    await supabase.from('app_users').update(updates).eq('id', id);
+    const { error } = await supabase.from('app_users').update(updates).eq('id', id);
+    if (error) throw new Error(error.message);
   };
 
   const deleteClient = async (id: string) => {

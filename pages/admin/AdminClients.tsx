@@ -11,6 +11,7 @@ import {
 import { useData, ClientUser } from '../../components/DataContext';
 import { Address } from '../../types';
 import { CamposEndereco } from '../../components/CamposEndereco';
+import { CamposCliente, CLIENTE_VAZIO, DadosCliente, documentoValido, idade, telefoneParaSalvar, telefoneParaEditar } from '../../components/CamposCliente';
 import { enderecoEmTexto } from '../../lib/cep';
 
 // Client type describes the relationship (new, fixed with a frequency, occasional) — not the service.
@@ -60,11 +61,12 @@ export const AdminClients: React.FC = () => {
 
   // Edit info
   const [editInfo, setEditInfo] = useState(false);
-  const [infoForm, setInfoForm] = useState(BLANK_CLIENT);
+  const [infoForm, setInfoForm] = useState<DadosCliente>(CLIENTE_VAZIO);
+  const [erroInfo, setErroInfo] = useState('');
 
   // Add client modal
   const [showAdd, setShowAdd] = useState(false);
-  const [addForm, setAddForm] = useState(BLANK_CLIENT);
+  const [addForm, setAddForm] = useState<DadosCliente>(CLIENTE_VAZIO);
   const [addEndereco, setAddEndereco] = useState<Partial<Address>>(BLANK_ADDR);
   const [salvandoCliente, setSalvandoCliente] = useState(false);
   const [erroCliente, setErroCliente] = useState('');
@@ -96,16 +98,36 @@ export const AdminClients: React.FC = () => {
     setOpen(c);
     setTab('info');
     setEditInfo(false);
-    setInfoForm({ name: c.name, email: c.email, phone: c.phone || '', address: c.address || '', type: normalizaTipo(c.type) });
+    setInfoForm({
+      name: c.name, email: c.email || '', ddi: c.ddi || '55', phone: telefoneParaEditar(c.phone || '', c.ddi || '55'),
+      tipoDocumento: (c.tipoDocumento === 'CNPJ' ? 'CNPJ' : 'CPF'), documento: c.documento || '', nascimento: c.nascimento || '',
+      sexo: c.sexo || '', type: normalizaTipo(c.type), bloqueado: !!c.bloqueado, descricao: c.descricao || '',
+    });
+    setErroInfo('');
     setAddingAddr(false);
     setEditingAddrId(null);
   };
 
+  const dadosParaSalvar = (f: DadosCliente) => ({
+    name: f.name.trim(), email: f.email.trim(), ddi: f.ddi, phone: telefoneParaSalvar(f.phone, f.ddi),
+    documento: f.documento, tipoDocumento: f.documento ? f.tipoDocumento : '', nascimento: f.nascimento, sexo: f.sexo,
+    type: f.type, bloqueado: f.bloqueado, descricao: f.descricao.trim(),
+  });
+  const erroDocumento = (f: DadosCliente) => f.documento && !documentoValido(f.documento, f.tipoDocumento) ? `${f.tipoDocumento} inválido. Confira os números ou deixe em branco.` : '';
+
   const handleSaveInfo = async () => {
-    if (!open) return;
-    await updateClient(open.id, infoForm);
-    setOpen(prev => prev ? { ...prev, ...infoForm } : null);
-    setEditInfo(false);
+    if (!open || !infoForm.name.trim()) return;
+    const e = erroDocumento(infoForm);
+    if (e) { setErroInfo(e); return; }
+    const dados = dadosParaSalvar(infoForm);
+    try {
+      await updateClient(open.id, dados);
+      setOpen(prev => prev ? { ...prev, ...dados } : null);
+      setEditInfo(false);
+      setErroInfo('');
+    } catch (err: any) {
+      setErroInfo(/duplicate|unique|email/i.test(String(err?.message)) ? 'Já existe um cadastro com este e-mail.' : 'Não foi possível salvar. Tente de novo.');
+    }
   };
 
   const handleSaveAddress = async () => {
@@ -129,17 +151,19 @@ export const AdminClients: React.FC = () => {
     setOpen(prev => prev ? { ...prev, addresses: prev.addresses.filter(a => a.id !== addrId) } : null);
   };
 
-  const fecharNovoCliente = () => { setShowAdd(false); setAddForm(BLANK_CLIENT); setAddEndereco(BLANK_ADDR); setErroCliente(''); };
+  const fecharNovoCliente = () => { setShowAdd(false); setAddForm(CLIENTE_VAZIO); setAddEndereco(BLANK_ADDR); setErroCliente(''); };
 
   const handleAddClient = async () => {
     if (!addForm.name.trim() || salvandoCliente) return;
+    const e = erroDocumento(addForm);
+    if (e) { setErroCliente(e); return; }
     setSalvandoCliente(true);
     setErroCliente('');
     try {
       const temEndereco = !!(addEndereco.street || addEndereco.cep);
       const novo = await registerClient({
-        id: '', name: addForm.name.trim(), email: addForm.email.trim(), phone: addForm.phone,
-        address: temEndereco ? enderecoEmTexto(addEndereco) : '', addresses: [], type: addForm.type, createdAt: Date.now(),
+        id: '', ...dadosParaSalvar(addForm),
+        address: temEndereco ? enderecoEmTexto(addEndereco) : '', addresses: [], createdAt: Date.now(),
       });
       if (temEndereco && novo?.id) {
         await addClientAddress(novo.id, { ...BLANK_ADDR, ...addEndereco, alias: 'Principal', isMain: true, id: `addr_${Date.now()}` } as Address);
@@ -177,7 +201,7 @@ export const AdminClients: React.FC = () => {
     return 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20';
   };
 
-  const setAF = (patch: Partial<typeof BLANK_CLIENT>) => setAddForm(f => ({ ...f, ...patch }));
+  const setAF = (patch: Partial<DadosCliente>) => setAddForm(f => ({ ...f, ...patch }));
 
   return (
     <Layout role={UserRole.ADMIN}>
@@ -244,6 +268,7 @@ export const AdminClients: React.FC = () => {
                           </div>
                           <div className="min-w-0">
                             <p className="font-bold text-darkText dark:text-darkTextPrimary truncate max-w-[160px]">{client.name}</p>
+                            {client.bloqueado && <span className="inline-block text-[10px] font-bold text-red-600 bg-red-50 dark:bg-red-900/20 rounded-full px-2 py-0.5">Bloqueado</span>}
                             <p className="text-xs text-lightText dark:text-darkTextSecondary">#{client.id.slice(-6)}</p>
                           </div>
                         </div>
@@ -321,23 +346,10 @@ export const AdminClients: React.FC = () => {
         }
       >
         <div className="space-y-4">
-          <Input label="Nome Completo *" placeholder="Ex: Maria da Silva" value={addForm.name} onChange={e => setAF({ name: e.target.value })} />
-          <Input label="Telefone / WhatsApp" placeholder="(00) 00000-0000" inputMode="tel" value={addForm.phone} onChange={e => setAF({ phone: e.target.value })} />
-          <Input label="E-mail (opcional)" placeholder="email@exemplo.com" type="email" value={addForm.email} onChange={e => setAF({ email: e.target.value })} />
+          <CamposCliente valor={addForm} onChange={patch => setAF(patch)} tipos={TYPE_OPTIONS} />
           <div className="pt-2 border-t border-gray-100 dark:border-darkBorder">
             <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary mb-3">Endereço principal</p>
             <CamposEndereco valor={addEndereco} onChange={patch => setAddEndereco(f => ({ ...f, ...patch }))} />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Tipo de Cliente</label>
-            <select
-              className="w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary"
-              value={addForm.type}
-              onChange={e => setAF({ type: e.target.value as ClientType })}
-            >
-              {TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label} — {o.hint}</option>)}
-            </select>
-            <p className="text-xs text-lightText dark:text-darkTextSecondary mt-1.5">O tipo de serviço (1ª limpeza, pós-obra, passadoria…) é escolhido no agendamento.</p>
           </div>
           {erroCliente && <p className="text-sm font-semibold text-red-600 bg-red-50 dark:bg-red-900/20 rounded-xl px-3 py-2">{erroCliente}</p>}
         </div>
@@ -396,20 +408,8 @@ export const AdminClients: React.FC = () => {
                 <div className="space-y-4">
                   {editInfo ? (
                     <>
-                      <Input label="Nome" value={infoForm.name} onChange={e => setInfoForm(f => ({ ...f, name: e.target.value }))} />
-                      <Input label="E-mail" value={infoForm.email} onChange={e => setInfoForm(f => ({ ...f, email: e.target.value }))} />
-                      <Input label="Telefone" value={infoForm.phone} onChange={e => setInfoForm(f => ({ ...f, phone: e.target.value }))} />
-                      <Input label="Endereço Principal" value={infoForm.address} onChange={e => setInfoForm(f => ({ ...f, address: e.target.value }))} />
-                      <div>
-                        <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Tipo</label>
-                        <select
-                          className="w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary"
-                          value={infoForm.type}
-                          onChange={e => setInfoForm(f => ({ ...f, type: e.target.value as ClientType }))}
-                        >
-                          {TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label} — {o.hint}</option>)}
-                        </select>
-                      </div>
+                      <CamposCliente valor={infoForm} onChange={patch => setInfoForm(f => ({ ...f, ...patch }))} tipos={TYPE_OPTIONS} />
+                      {erroInfo && <p className="text-sm font-semibold text-red-600 bg-red-50 dark:bg-red-900/20 rounded-xl px-3 py-2">{erroInfo}</p>}
                       <div className="flex gap-3 pt-2">
                         <Button onClick={handleSaveInfo} icon={<Save size={16} />} fullWidth>Salvar</Button>
                         <button onClick={() => setEditInfo(false)} className="flex-1 py-2 font-bold text-lightText hover:bg-gray-100 dark:hover:bg-darkBorder rounded-xl transition-colors text-sm">Cancelar</button>
@@ -417,11 +417,18 @@ export const AdminClients: React.FC = () => {
                     </>
                   ) : (
                     <>
+                      {open.bloqueado && (
+                        <p className="rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 text-sm font-bold px-3 py-2">🚫 Cliente bloqueado</p>
+                      )}
                       {[
-                        { label: 'E-mail', value: open.email, icon: <Mail size={14} /> },
                         { label: 'Telefone', value: open.phone, icon: <Phone size={14} /> },
+                        { label: 'E-mail', value: open.email, icon: <Mail size={14} /> },
+                        { label: open.tipoDocumento === 'CNPJ' ? 'CNPJ' : 'CPF', value: open.documento, icon: null },
+                        { label: 'Aniversário', value: open.nascimento ? `${open.nascimento.split('-').reverse().join('/')}${idade(open.nascimento) !== null ? ` · ${idade(open.nascimento)} anos` : ''}` : '', icon: null },
+                        { label: 'Sexo', value: open.sexo === 'F' ? 'Feminino' : open.sexo === 'M' ? 'Masculino' : '', icon: null },
                         { label: 'Endereço', value: open.address, icon: <MapPin size={14} /> },
-                      ].map(item => (
+                        { label: 'Descrição', value: open.descricao, icon: null },
+                      ].filter(item => item.value || ['Telefone', 'Endereço'].includes(item.label)).map(item => (
                         <div key={item.label} className="bg-gray-50 dark:bg-darkBg rounded-xl p-3">
                           <p className="text-[10px] text-lightText dark:text-darkTextSecondary font-bold uppercase mb-1 flex items-center gap-1">{item.icon} {item.label}</p>
                           <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">{item.value || '–'}</p>

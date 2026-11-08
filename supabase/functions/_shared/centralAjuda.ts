@@ -131,10 +131,14 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     resumo: 'Dados, endereços e histórico de cada cliente.',
     passos: [
       'Operações → Clientes → Novo Cliente.',
-      'Preencha nome, WhatsApp (necessário para lembretes e cobranças), e-mail, endereço e o tipo de cliente.',
-      'Clique no cliente para ver as abas Informações, Endereços e Histórico de serviços.',
+      'Preencha o nome e o WhatsApp (escolha o país pela bandeira; é necessário para lembretes e cobranças). O e-mail é opcional.',
+      'CPF ou CNPJ: marque o tipo e digite os números; o sistema avisa se estiver errado. É usado na nota fiscal.',
+      'Aniversário (mostra a idade) e sexo ajudam nas mensagens de aniversário. Em Descrição anote preferências e cuidados.',
+      'Endereço: digite o CEP que a rua, o bairro, a cidade e o estado aparecem sozinhos; complete o número, o complemento e as observações (portaria, chave, ponto de referência). O link "Conferir no mapa" mostra se o endereço está certo.',
+      'Bloquear cliente: deixa um aviso vermelho na lista e na ficha, para ninguém agendar por engano.',
+      'Clique no cliente para ver as abas Informações, Endereços e Histórico de serviços. Em Editar Informações dá para mudar todos esses dados.',
     ],
-    palavras: ['cliente', 'cadastro', 'endereço', 'telefone', 'histórico'],
+    palavras: ['cliente', 'cadastro', 'endereço', 'telefone', 'histórico', 'cpf', 'cnpj', 'cep', 'aniversário', 'bloquear', 'nota fiscal'],
   },
 
   // ── Pagamentos ────────────────────────────────────────────────────────
