@@ -339,7 +339,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     titulo: 'Mapa da equipe em tempo real',
     resumo: 'Veja no Dashboard onde cada colaboradora está.',
     texto: [
-      'O mapa do Dashboard mostra um pino por colaboradora: verde se a posição foi atualizada nos últimos 15 minutos, cinza com a última posição conhecida.',
+      'O mapa do Dashboard mostra um pino por colaboradora: lilás se a posição foi atualizada nos últimos 15 minutos, cinza com a última posição conhecida.',
       'A posição aparece quando a colaboradora abre o app e permite a localização.',
     ],
     palavras: ['mapa', 'localização', 'tempo real', 'gps', 'onde está'],

@@ -35,7 +35,7 @@ const isActive = (loc: CollabLocation) => Date.now() - new Date(loc.updated_at).
 const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
 function pinIcon(google: any, ativa: boolean, letra: string) {
-  const cor = ativa ? '#16a34a' : '#9ca3af';
+  const cor = ativa ? '#a163ff' : '#9ca3af';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="46" viewBox="0 0 36 46">
     <path d="M18 45C18 45 34 28.5 34 17A16 16 0 0 0 2 17c0 11.5 16 28 16 28z" fill="${cor}" stroke="#fff" stroke-width="2"/>
     <circle cx="18" cy="17" r="10" fill="#fff"/>
@@ -190,7 +190,7 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
 
   const legenda = (
     <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-gray-500 dark:text-darkTextSecondary">
-      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-600" /> Atualizou nos últimos 15 min</span>
+      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#a163ff]" /> Atualizou nos últimos 15 min</span>
       <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-gray-400" /> Última posição conhecida</span>
       <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-600 ring-2 ring-white" /> Você</span>
     </div>
