@@ -40,7 +40,10 @@ const Login: React.FC<{ onCriar: () => void }> = ({ onCriar }) => {
     if (!senha) { setErro('Informe a senha.'); return; }
     setCarregando(true);
     try {
-      const r = await entrarUnico(email, senha);
+      // Never spin forever: after 25 s show a message (the login may still finish and move on by itself).
+      const limite = new Promise<{ destino: null; erro: string }>(res =>
+        setTimeout(() => res({ destino: null, erro: 'Está demorando para entrar. Confira a internet ou feche e abra o app de novo.' }), 25000));
+      const r = await Promise.race([entrarUnico(email, senha), limite]);
       if (r.destino) navigate(r.destino, { replace: true });
       else setErro(r.erro || 'E-mail ou senha incorretos.');
     } finally { setCarregando(false); }

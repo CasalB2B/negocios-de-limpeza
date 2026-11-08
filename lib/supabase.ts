@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, processLock } from '@supabase/supabase-js';
 
 // As variáveis de ambiente devem ser configuradas no arquivo .env na raiz do projeto
 // Exemplo: VITE_SUPABASE_URL=https://sua-url.supabase.co
@@ -15,4 +15,7 @@ if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
   console.warn('⚠️ Supabase URL ou Key não encontradas. O app está rodando com credenciais de placeholder e não conectará ao banco real.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+// In-memory session lock instead of the browser-wide one (navigator.locks): inside the Android app that lock
+// stayed stuck after a system dialog (the notification permission) and every login then waited forever.
+// The bridge script may not exist yet when this file loads, so it is used everywhere (web works the same).
+export const supabase = createClient(supabaseUrl, supabaseKey, { auth: { lock: processLock } });
