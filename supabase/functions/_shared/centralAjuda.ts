@@ -319,6 +319,21 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     palavras: ['app', 'colaboradora', 'check-in', 'checkout', 'fotos', 'agenda', 'quanto recebe', 'valor da faxina'],
   },
   {
+    id: 'notificacoes-celular',
+    categoria: 'App da colaboradora',
+    titulo: 'Notificações no celular',
+    resumo: 'Avisos de novos serviços, mudanças, lembretes e pagamentos no app do celular.',
+    texto: [
+      'As notificações funcionam no app para Android (e no iPhone quando o app for publicado na App Store). No site pelo navegador elas não aparecem.',
+      'Ao entrar no app, ele pede permissão para enviar notificações: toque em Permitir. Para conferir, a colaboradora abre Perfil → Notificações no celular; a administradora vê o aviso no Dashboard enquanto não estiverem ativas. O botão Testar envia uma notificação de teste.',
+      'A colaboradora recebe: nova faxina na agenda, faxina alterada (data, horário ou endereço), faxina retirada ou cancelada, o resumo do dia às 7h, os serviços de amanhã às 19h, um lembrete se o check-in atrasar e o aviso para enviar as fotos e fazer o check-out depois do horário do serviço.',
+      'A administradora recebe: sinal ou pagamento recebido, cliente confirmou, check-in feito, faxina concluída, check-in atrasado, o resumo do dia às 7h, os clientes que ainda não confirmaram a faxina de amanhã (às 17h) e, aos domingos às 19h, o resumo da próxima semana.',
+      'Tocar na notificação abre a tela certa do app. Se as notificações foram bloqueadas sem querer: Configurações do Android → Apps → Negócios de Limpeza → Notificações → ativar.',
+      'Ao sair da conta, aquele celular para de receber os avisos dessa pessoa.',
+    ],
+    palavras: ['notificação', 'notificações', 'push', 'aviso', 'alerta', 'lembrete', 'celular', 'app', 'não recebo'],
+  },
+  {
     id: 'mapa-equipe',
     categoria: 'App da colaboradora',
     titulo: 'Mapa da equipe em tempo real',
