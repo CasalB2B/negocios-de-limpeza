@@ -1,0 +1,41 @@
+TEXTOS DA PÁGINA DO APP NO GOOGLE PLAY
+(copie e cole cada parte no campo com o mesmo nome)
+
+=== Nome do app (até 30) ===
+Negócios de Limpeza: Gestão
+
+=== Descrição curta (até 80) ===
+Agenda da equipe, cobrança automática e financeiro para empresas de limpeza.
+
+=== Descrição completa (até 4.000) ===
+O Negócios de Limpeza é o sistema de gestão feito para empresas de limpeza e faxina. Ele nasceu dentro de uma empresa de limpeza de verdade, em Guarapari/ES, para resolver os problemas do dia a dia: agenda embolada, cobrança esquecida, cliente que não lembra da faxina e o financeiro no caderno.
+
+PARA A DONA DA EMPRESA
+• Agenda da equipe: o dia de todas as colaboradoras lado a lado, a semana de cada uma e o mês inteiro.
+• Ordens de serviço: cada faxina andando pelas etapas, do aguardando sinal ao concluído.
+• Clientes: fixos, eventuais e novos, com endereços, histórico e clientes sumidos para chamar de volta.
+• Cobrança automática: link de sinal e de restante pela InfinitePay, com Pix ou cartão e baixa automática quando o pagamento cai.
+• Lembretes no WhatsApp: confirmação do agendamento, lembrete na véspera e pedido de avaliação, saindo do número da sua empresa.
+• Financeiro: contas, cartões, categorias, calendário de vencimentos e quanto sobrou no mês.
+• Equipe e RH: contratação por etapas, cargos, diárias, avaliações dos clientes e desempenho.
+• Assistente com inteligência artificial: pergunte "quanto tenho a receber?" e receba a resposta com os números da sua empresa.
+
+PARA A COLABORADORA
+• Os serviços do dia e da semana no celular.
+• Endereço com um toque para abrir o mapa.
+• Check-in, fotos do serviço e quanto vai receber.
+• Aviso na hora quando a agenda muda.
+
+SEGURANÇA
+Cada empresa acessa somente os próprios dados, com login protegido. A colaboradora vê apenas os serviços dela.
+
+COMO COMEÇAR
+Crie a conta da sua empresa em app.negociosdelimpeza.com.br e teste grátis por 14 dias, com tudo liberado e sem cartão. As colaboradoras usam o app sem pagar nada: o acesso delas está incluído no plano da empresa.
+
+Dúvidas? Acesse a Central de Ajuda em app.negociosdelimpeza.com.br/ajuda.
+
+=== Imagens (nesta mesma pasta) ===
+Ícone do app (512 x 512) ............ icone-512.png
+Gráfico de recursos (1024 x 500) .... destaque-1024x500.png
+Capturas de tela do telefone ........ celular-1.png, celular-2.png, celular-3.png, celular-4.png (nessa ordem)
+Tablet ............................... não é obrigatório, pode deixar em branco
