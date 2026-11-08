@@ -35,19 +35,49 @@ function loadGoogleMaps(key: string): Promise<any> {
 const isActive = (loc: CollabLocation) => Date.now() - new Date(loc.updated_at).getTime() < ATIVA_MS;
 const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-function pinIcon(google: any, ativa: boolean, letra: string) {
-  const cor = ativa ? '#a163ff' : '#9ca3af';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="46" viewBox="0 0 36 46">
-    <path d="M18 45C18 45 34 28.5 34 17A16 16 0 0 0 2 17c0 11.5 16 28 16 28z" fill="${cor}" stroke="#fff" stroke-width="2"/>
-    <circle cx="18" cy="17" r="10" fill="#fff"/>
-    <text x="18" y="21.5" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="700" fill="${cor}">${letra}</text>
-  </svg>`;
-  return {
-    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(36, 46),
-    anchor: new google.maps.Point(18, 45),
-  };
+// Map marker drawn with HTML (a round photo/logo bubble) on top of Google Maps (OverlayView).
+// Anchored at the bubble's bottom tip.
+function marcadorHtml(google: any, map: any, aoClicar: () => void) {
+  class Marcador extends google.maps.OverlayView {
+    div: HTMLDivElement; pos: any = null;
+    constructor() {
+      super();
+      this.div = document.createElement('div');
+      this.div.style.cssText = 'position:absolute;transform:translate(-50%,-100%);cursor:pointer;';
+      this.div.addEventListener('click', e => { e.stopPropagation(); aoClicar(); });
+    }
+    onAdd() { this.getPanes().overlayMouseTarget.appendChild(this.div); }
+    draw() {
+      if (!this.pos) return;
+      const p = this.getProjection()?.fromLatLngToDivPixel(this.pos);
+      if (p) { this.div.style.left = `${p.x}px`; this.div.style.top = `${p.y}px`; }
+    }
+    onRemove() { this.div.remove(); }
+    setPosition(pos: any) { this.pos = pos instanceof google.maps.LatLng ? pos : new google.maps.LatLng(pos.lat, pos.lng); this.draw(); }
+    getPosition() { return this.pos; }
+    setHtml(html: string, z: number) { this.div.innerHTML = html; this.div.style.zIndex = String(z); }
+  }
+  const m = new Marcador();
+  m.setMap(map);
+  return m;
 }
+
+const escapar = (t: string) => t.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+
+function bolha(conteudo: string, cor: string, tamanho = 40) {
+  return `<div style="display:flex;flex-direction:column;align-items:center">
+    <div style="width:${tamanho}px;height:${tamanho}px;border-radius:50%;border:3px solid ${cor};background:#fff;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center">${conteudo}</div>
+    <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid ${cor};margin-top:-1px"></div>
+  </div>`;
+}
+const htmlColaboradora = (nome: string, foto: string | undefined, ativa: boolean) => {
+  const cor = ativa ? '#a163ff' : '#9ca3af';
+  const miolo = foto
+    ? `<img src="${escapar(foto)}" alt="" style="width:100%;height:100%;object-fit:cover;${ativa ? '' : 'filter:grayscale(.6);'}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${escapar(nome.charAt(0).toUpperCase())}'}))">`
+    : `<span style="font:700 16px system-ui,sans-serif;color:${cor}">${escapar(nome.charAt(0).toUpperCase())}</span>`;
+  return bolha(miolo, cor);
+};
+const HTML_EU = bolha('<img src="/icons/icon-192.png" alt="" style="width:100%;height:100%;object-fit:cover">', '#2563eb', 44);
 
 export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = false }) => {
   const [locations, setLocations] = useState<CollabLocation[]>([]);
@@ -81,6 +111,15 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
   }, [aberto, mapsKey]);
   // The viewer's own position as a blue dot (only on this screen, never saved), so the admin sees the map working.
   const [minhaPos, setMinhaPos] = useState<{ lat: number; lng: number } | null>(null);
+  // Collaborators' photos come from the RH records (same name, same company), like the collaborator app does.
+  const [fotos, setFotos] = useState<Record<string, string>>({});
+  useEffect(() => {
+    supabase.from('colaboradoras_rh').select('nome, foto').then(({ data }) => {
+      const r: Record<string, string> = {};
+      for (const c of data ?? []) if (c.foto && c.nome) r[String(c.nome).trim().toLowerCase()] = c.foto;
+      setFotos(r);
+    });
+  }, []);
   const meuMarcador = useRef<any>(null);
 
   const [minhaPosErro, setMinhaPosErro] = useState('');
@@ -158,8 +197,7 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
       const pos = { lat: loc.lat, lng: loc.lng };
       let m = markersRef.current.get(loc.collab_id);
       if (!m) {
-        m = new google.maps.Marker({ map, position: pos, title: nome });
-        m.addListener('click', () => {
+        m = marcadorHtml(google, map, () => {
           const atual = m.__loc as CollabLocation;
           const el = document.createElement('div');
           el.style.cssText = 'font:13px system-ui,sans-serif;min-width:140px';
@@ -170,32 +208,35 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
           p.textContent = isActive(atual) ? `Ativa agora · ${hora(atual.updated_at)}` : `Última atualização: ${hora(atual.updated_at)}`;
           el.append(t, p);
           infoRef.current.setContent(el);
-          infoRef.current.open({ map, anchor: m });
+          infoRef.current.setOptions({ pixelOffset: new google.maps.Size(0, -52) });
+          infoRef.current.setPosition(m.getPosition());
+          infoRef.current.open(map);
         });
         markersRef.current.set(loc.collab_id, m);
       }
       m.__loc = loc;
       m.setPosition(pos);
-      m.setIcon(pinIcon(google, ativa, nome.charAt(0).toUpperCase()));
-      m.setZIndex(ativa ? 2 : 1);
+      m.setHtml(htmlColaboradora(nome, fotos[nome.toLowerCase()], ativa), ativa ? 2 : 1);
     }
     for (const [id, m] of markersRef.current) {
       if (!vistos.has(id)) { m.setMap(null); markersRef.current.delete(id); }
     }
     // Frame everyone the first time positions arrive; afterwards leave the user's zoom alone.
     if (!ajustouZoom.current && vistos.size > 0) enquadrarTodos();
-  }, [locations]);
+  }, [locations, fotos]);
 
   useEffect(() => {
     const google = (window as any).google;
     const map = mapRef.current;
     if (!google?.maps || !map || !minhaPos) return;
     if (!meuMarcador.current) {
-      meuMarcador.current = new google.maps.Marker({
-        map, title: 'Você está aqui', zIndex: 3,
-        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#2563eb', fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 3 },
+      meuMarcador.current = marcadorHtml(google, map, () => {
+        infoRef.current?.setContent('<strong style="font:13px system-ui">Você está aqui</strong>');
+        infoRef.current?.setOptions({ pixelOffset: new google.maps.Size(0, -56) });
+        infoRef.current?.setPosition(meuMarcador.current.getPosition());
+        infoRef.current?.open(map);
       });
-      meuMarcador.current.addListener('click', () => { infoRef.current?.setContent('<strong style="font:13px system-ui">Você está aqui</strong>'); infoRef.current?.open({ map, anchor: meuMarcador.current }); });
+      meuMarcador.current.setHtml(HTML_EU, 3);
       meuMarcador.current.setPosition(minhaPos);
       enquadrarTodos();
     }
@@ -228,7 +269,7 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
     <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-gray-500 dark:text-darkTextSecondary">
       <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#a163ff]" /> Atualizou nos últimos 15 min</span>
       <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-gray-400" /> Última posição conhecida</span>
-      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-600 ring-2 ring-white" /> Você</span>
+      <span className="flex items-center gap-1.5"><img src="/icons/icon-192.png" alt="" className="w-3.5 h-3.5 rounded-full ring-2 ring-blue-600" /> Você</span>
     </div>
   );
 
@@ -285,7 +326,7 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
       {mapsKey && (
         <p className="text-[11px] mt-2 px-1 flex items-center gap-1.5 text-gray-500 dark:text-darkTextSecondary">
           <span className={`w-2 h-2 rounded-full ${minhaPos ? 'bg-blue-600' : 'bg-gray-300'}`} />
-          {minhaPos ? 'Sua localização aparece no mapa (ponto azul).' : minhaPosErro ? `Sua localização: ${minhaPosErro}.` : 'Buscando a sua localização...'}
+          {minhaPos ? 'Você aparece no mapa com a logo.' : minhaPosErro ? `Sua localização: ${minhaPosErro}.` : 'Buscando a sua localização...'}
         </p>
       )}
       {mapsKey && locations.length === 0 && (
