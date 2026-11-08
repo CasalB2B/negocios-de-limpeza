@@ -60,6 +60,18 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
   // Small static preview on the dashboard; a tap opens it full screen where it can be dragged and zoomed.
   // While small it ignores touch, so scrolling the page never scrolls the map.
   const [aberto, setAberto] = useState(false);
+  // The viewer's own position as a blue dot (only on this screen, never saved), so the admin sees the map working.
+  const [minhaPos, setMinhaPos] = useState<{ lat: number; lng: number } | null>(null);
+  const meuMarcador = useRef<any>(null);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    const pegar = () => navigator.geolocation.getCurrentPosition(
+      p => setMinhaPos({ lat: p.coords.latitude, lng: p.coords.longitude }), () => {}, { enableHighAccuracy: true, maximumAge: 60_000 });
+    pegar();
+    const t = setInterval(pegar, 2 * 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -106,6 +118,7 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
       });
       infoRef.current = new google.maps.InfoWindow();
       setLocations(l => [...l]);
+      setMinhaPos(p => (p ? { ...p } : p));
     }).catch(e => setErroMapa(e.message));
   }, [mapsKey]);
 
@@ -157,12 +170,29 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
     }
   }, [locations]);
 
+  useEffect(() => {
+    const google = (window as any).google;
+    const map = mapRef.current;
+    if (!google?.maps || !map || !minhaPos) return;
+    if (!meuMarcador.current) {
+      meuMarcador.current = new google.maps.Marker({
+        map, title: 'Você está aqui', zIndex: 3,
+        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#2563eb', fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 3 },
+      });
+      meuMarcador.current.addListener('click', () => { infoRef.current?.setContent('<strong style="font:13px system-ui">Você está aqui</strong>'); infoRef.current?.open({ map, anchor: meuMarcador.current }); });
+      // Nobody from the team on the map yet: center on the viewer.
+      if (!ajustouZoom.current) { map.setCenter(minhaPos); map.setZoom(14); }
+    }
+    meuMarcador.current.setPosition(minhaPos);
+  }, [minhaPos, mapsKey, locations.length]);
+
   const ativas = locations.filter(isActive);
 
   const legenda = (
     <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-gray-500 dark:text-darkTextSecondary">
       <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-600" /> Atualizou nos últimos 15 min</span>
       <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-gray-400" /> Última posição conhecida</span>
+      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-600 ring-2 ring-white" /> Você</span>
     </div>
   );
 
