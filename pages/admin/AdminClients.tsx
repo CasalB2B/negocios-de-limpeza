@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
 import { Button } from '../../components/Button';
@@ -151,7 +151,30 @@ export const AdminClients: React.FC = () => {
     setOpen(prev => prev ? { ...prev, addresses: prev.addresses.filter(a => a.id !== addrId) } : null);
   };
 
-  const fecharNovoCliente = () => { setShowAdd(false); setAddForm(CLIENTE_VAZIO); setAddEndereco(BLANK_ADDR); setErroCliente(''); };
+  // Draft of the new client kept on this device: closing the app or tapping outside does not lose what was typed.
+  // Only "Cancelar" (or saving) clears it.
+  const CHAVE_RASCUNHO = 'ndl_rascunho_cliente';
+  const [temRascunho, setTemRascunho] = useState(false);
+  const abrirNovoCliente = () => {
+    try {
+      const r = JSON.parse(localStorage.getItem(CHAVE_RASCUNHO) || 'null');
+      if (r?.form) { setAddForm({ ...CLIENTE_VAZIO, ...r.form }); setAddEndereco({ ...BLANK_ADDR, ...(r.endereco || {}) }); setTemRascunho(true); }
+    } catch { /* no draft */ }
+    setShowAdd(true);
+  };
+  useEffect(() => {
+    if (!showAdd) return;
+    const vazio = !addForm.name && !addForm.phone && !addForm.email && !addForm.documento && !addEndereco.cep && !addEndereco.street;
+    try {
+      if (vazio) localStorage.removeItem(CHAVE_RASCUNHO);
+      else localStorage.setItem(CHAVE_RASCUNHO, JSON.stringify({ form: addForm, endereco: addEndereco }));
+    } catch { /* storage full or blocked */ }
+  }, [showAdd, addForm, addEndereco]);
+  const limparFormNovo = () => { setAddForm(CLIENTE_VAZIO); setAddEndereco(BLANK_ADDR); setErroCliente(''); setTemRascunho(false); };
+  const descartarRascunho = () => { try { localStorage.removeItem(CHAVE_RASCUNHO); } catch {} limparFormNovo(); };
+  // Close keeping the draft (X, tapping outside) vs. cancel discarding it.
+  const fecharNovoCliente = () => { setShowAdd(false); setErroCliente(''); setTemRascunho(false); };
+  const cancelarNovoCliente = () => { descartarRascunho(); setShowAdd(false); };
 
   const handleAddClient = async () => {
     if (!addForm.name.trim() || salvandoCliente) return;
@@ -168,7 +191,8 @@ export const AdminClients: React.FC = () => {
       if (temEndereco && novo?.id) {
         await addClientAddress(novo.id, { ...BLANK_ADDR, ...addEndereco, alias: 'Principal', isMain: true, id: `addr_${Date.now()}` } as Address);
       }
-      fecharNovoCliente();
+      descartarRascunho();
+      setShowAdd(false);
     } catch (e: any) {
       const m = String(e?.message || '');
       setErroCliente(/duplicate|unique|app_users_email/i.test(m)
@@ -212,7 +236,7 @@ export const AdminClients: React.FC = () => {
             <h1 className="text-2xl md:text-3xl font-display font-bold text-darkText dark:text-darkTextPrimary">Clientes</h1>
             <p className="text-lightText dark:text-darkTextSecondary mt-1 text-sm">{clients.length} clientes cadastrados</p>
           </div>
-          <Button icon={<UserPlus size={18} />} onClick={() => setShowAdd(true)}>Novo Cliente</Button>
+          <Button icon={<UserPlus size={18} />} onClick={abrirNovoCliente}>Novo Cliente</Button>
         </div>
 
         {/* Filters */}
@@ -340,12 +364,18 @@ export const AdminClients: React.FC = () => {
       <Modal isOpen={showAdd} onClose={fecharNovoCliente} title="Cadastrar Cliente"
         footer={
           <>
-            <button onClick={fecharNovoCliente} className="px-6 py-3 font-bold text-lightText hover:bg-gray-100 dark:hover:bg-darkBorder rounded-xl transition-colors">Cancelar</button>
+            <button onClick={cancelarNovoCliente} className="px-6 py-3 font-bold text-lightText hover:bg-gray-100 dark:hover:bg-darkBorder rounded-xl transition-colors">Cancelar</button>
             <Button onClick={handleAddClient} icon={<Check size={18} />} disabled={!addForm.name.trim() || salvandoCliente}>{salvandoCliente ? 'Salvando...' : 'Salvar'}</Button>
           </>
         }
       >
         <div className="space-y-4">
+          {temRascunho && (
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2">
+              <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Continuando o cadastro que você começou.</p>
+              <button type="button" onClick={descartarRascunho} className="text-xs font-bold text-amber-800 dark:text-amber-300 underline shrink-0">Começar do zero</button>
+            </div>
+          )}
           <CamposCliente valor={addForm} onChange={patch => setAF(patch)} tipos={TYPE_OPTIONS} />
           <div className="pt-2 border-t border-gray-100 dark:border-darkBorder">
             <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary mb-3">Endereço principal</p>
