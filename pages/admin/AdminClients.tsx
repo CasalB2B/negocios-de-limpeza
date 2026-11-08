@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { useData, ClientUser } from '../../components/DataContext';
 import { Address } from '../../types';
+import { CamposEndereco } from '../../components/CamposEndereco';
+import { enderecoEmTexto } from '../../lib/cep';
 
 // Client type describes the relationship (new, fixed with a frequency, occasional) — not the service.
 // Stored in app_users.type; frequency travels in the value (FIXO_QUINZENAL…).
@@ -63,6 +65,9 @@ export const AdminClients: React.FC = () => {
   // Add client modal
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState(BLANK_CLIENT);
+  const [addEndereco, setAddEndereco] = useState<Partial<Address>>(BLANK_ADDR);
+  const [salvandoCliente, setSalvandoCliente] = useState(false);
+  const [erroCliente, setErroCliente] = useState('');
 
   // Address editing
   const [addingAddr, setAddingAddr] = useState(false);
@@ -124,14 +129,30 @@ export const AdminClients: React.FC = () => {
     setOpen(prev => prev ? { ...prev, addresses: prev.addresses.filter(a => a.id !== addrId) } : null);
   };
 
+  const fecharNovoCliente = () => { setShowAdd(false); setAddForm(BLANK_CLIENT); setAddEndereco(BLANK_ADDR); setErroCliente(''); };
+
   const handleAddClient = async () => {
-    if (!addForm.name) return;
-    await registerClient({
-      id: '', name: addForm.name, email: addForm.email, phone: addForm.phone,
-      address: addForm.address, addresses: [], type: addForm.type, createdAt: Date.now(),
-    });
-    setShowAdd(false);
-    setAddForm(BLANK_CLIENT);
+    if (!addForm.name.trim() || salvandoCliente) return;
+    setSalvandoCliente(true);
+    setErroCliente('');
+    try {
+      const temEndereco = !!(addEndereco.street || addEndereco.cep);
+      const novo = await registerClient({
+        id: '', name: addForm.name.trim(), email: addForm.email.trim(), phone: addForm.phone,
+        address: temEndereco ? enderecoEmTexto(addEndereco) : '', addresses: [], type: addForm.type, createdAt: Date.now(),
+      });
+      if (temEndereco && novo?.id) {
+        await addClientAddress(novo.id, { ...BLANK_ADDR, ...addEndereco, alias: 'Principal', isMain: true, id: `addr_${Date.now()}` } as Address);
+      }
+      fecharNovoCliente();
+    } catch (e: any) {
+      const m = String(e?.message || '');
+      setErroCliente(/duplicate|unique|app_users_email/i.test(m)
+        ? 'Já existe um cadastro com este e-mail. Use outro e-mail ou deixe em branco.'
+        : 'Não foi possível salvar o cliente. Confira a internet e tente de novo.');
+    } finally {
+      setSalvandoCliente(false);
+    }
   };
 
   const handleDeleteClient = async (id: string) => {
@@ -291,19 +312,22 @@ export const AdminClients: React.FC = () => {
       </div>
 
       {/* Add Client Modal */}
-      <Modal isOpen={showAdd} onClose={() => { setShowAdd(false); setAddForm(BLANK_CLIENT); }} title="Cadastrar Cliente"
+      <Modal isOpen={showAdd} onClose={fecharNovoCliente} title="Cadastrar Cliente"
         footer={
           <>
-            <button onClick={() => { setShowAdd(false); setAddForm(BLANK_CLIENT); }} className="px-6 py-3 font-bold text-lightText hover:bg-gray-100 dark:hover:bg-darkBorder rounded-xl transition-colors">Cancelar</button>
-            <Button onClick={handleAddClient} icon={<Check size={18} />} disabled={!addForm.name}>Salvar</Button>
+            <button onClick={fecharNovoCliente} className="px-6 py-3 font-bold text-lightText hover:bg-gray-100 dark:hover:bg-darkBorder rounded-xl transition-colors">Cancelar</button>
+            <Button onClick={handleAddClient} icon={<Check size={18} />} disabled={!addForm.name.trim() || salvandoCliente}>{salvandoCliente ? 'Salvando...' : 'Salvar'}</Button>
           </>
         }
       >
         <div className="space-y-4">
           <Input label="Nome Completo *" placeholder="Ex: Maria da Silva" value={addForm.name} onChange={e => setAF({ name: e.target.value })} />
-          <Input label="E-mail" placeholder="email@exemplo.com" value={addForm.email} onChange={e => setAF({ email: e.target.value })} />
-          <Input label="Telefone / WhatsApp" placeholder="(00) 00000-0000" value={addForm.phone} onChange={e => setAF({ phone: e.target.value })} />
-          <Input label="Endereço Principal" placeholder="Rua, Número, Bairro, Cidade" value={addForm.address} onChange={e => setAF({ address: e.target.value })} />
+          <Input label="Telefone / WhatsApp" placeholder="(00) 00000-0000" inputMode="tel" value={addForm.phone} onChange={e => setAF({ phone: e.target.value })} />
+          <Input label="E-mail (opcional)" placeholder="email@exemplo.com" type="email" value={addForm.email} onChange={e => setAF({ email: e.target.value })} />
+          <div className="pt-2 border-t border-gray-100 dark:border-darkBorder">
+            <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary mb-3">Endereço principal</p>
+            <CamposEndereco valor={addEndereco} onChange={patch => setAddEndereco(f => ({ ...f, ...patch }))} />
+          </div>
           <div>
             <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Tipo de Cliente</label>
             <select
@@ -315,6 +339,7 @@ export const AdminClients: React.FC = () => {
             </select>
             <p className="text-xs text-lightText dark:text-darkTextSecondary mt-1.5">O tipo de serviço (1ª limpeza, pós-obra, passadoria…) é escolhido no agendamento.</p>
           </div>
+          {erroCliente && <p className="text-sm font-semibold text-red-600 bg-red-50 dark:bg-red-900/20 rounded-xl px-3 py-2">{erroCliente}</p>}
         </div>
       </Modal>
 
@@ -459,19 +484,7 @@ export const AdminClients: React.FC = () => {
                     <div className="bg-gray-50 dark:bg-darkBg rounded-xl p-4 border border-primary/30 space-y-3">
                       <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">{editingAddrId ? 'Editar Endereço' : 'Novo Endereço'}</p>
                       <Input label="Nome (ex: Casa, Trabalho)" value={addrForm.alias || ''} onChange={e => setAddrForm(f => ({ ...f, alias: e.target.value }))} />
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="col-span-2">
-                          <Input label="Rua / Avenida" value={addrForm.street || ''} onChange={e => setAddrForm(f => ({ ...f, street: e.target.value }))} />
-                        </div>
-                        <Input label="Número" value={addrForm.number || ''} onChange={e => setAddrForm(f => ({ ...f, number: e.target.value }))} />
-                      </div>
-                      <Input label="Complemento" value={addrForm.complement || ''} onChange={e => setAddrForm(f => ({ ...f, complement: e.target.value }))} />
-                      <Input label="Bairro" value={addrForm.district || ''} onChange={e => setAddrForm(f => ({ ...f, district: e.target.value }))} />
-                      <div className="grid grid-cols-2 gap-3">
-                        <Input label="Cidade" value={addrForm.city || ''} onChange={e => setAddrForm(f => ({ ...f, city: e.target.value }))} />
-                        <Input label="Estado" value={addrForm.state || ''} onChange={e => setAddrForm(f => ({ ...f, state: e.target.value }))} />
-                      </div>
-                      <Input label="CEP" value={addrForm.cep || ''} onChange={e => setAddrForm(f => ({ ...f, cep: e.target.value }))} />
+                      <CamposEndereco valor={addrForm} onChange={patch => setAddrForm(f => ({ ...f, ...patch }))} />
                       <div className="flex gap-2 pt-1">
                         <Button onClick={handleSaveAddress} icon={<Save size={15} />} size="sm" fullWidth>Salvar</Button>
                         <button

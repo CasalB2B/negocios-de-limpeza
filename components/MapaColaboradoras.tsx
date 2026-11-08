@@ -83,13 +83,16 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
   const [minhaPos, setMinhaPos] = useState<{ lat: number; lng: number } | null>(null);
   const meuMarcador = useRef<any>(null);
 
+  const [minhaPosErro, setMinhaPosErro] = useState('');
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    const pegar = () => navigator.geolocation.getCurrentPosition(
-      p => setMinhaPos({ lat: p.coords.latitude, lng: p.coords.longitude }), () => {}, { enableHighAccuracy: true, maximumAge: 60_000 });
-    pegar();
-    const t = setInterval(pegar, 2 * 60_000);
-    return () => clearInterval(t);
+    if (!navigator.geolocation) { setMinhaPosErro('este aparelho não informa a localização'); return; }
+    const ok = (p: GeolocationPosition) => { setMinhaPos({ lat: p.coords.latitude, lng: p.coords.longitude }); setMinhaPosErro(''); };
+    const falhou = (e: GeolocationPositionError) => setMinhaPosErro(
+      e.code === 1 ? 'permissão de localização negada para o app' : e.code === 2 ? 'GPS desligado ou sem sinal' : 'demorou demais para encontrar');
+    // Quick network position first (high accuracy alone can wait forever indoors), then keep it updated.
+    navigator.geolocation.getCurrentPosition(ok, () => {}, { enableHighAccuracy: false, timeout: 10_000, maximumAge: 5 * 60_000 });
+    const id = navigator.geolocation.watchPosition(ok, falhou, { enableHighAccuracy: true, timeout: 30_000, maximumAge: 60_000 });
+    return () => navigator.geolocation.clearWatch(id);
   }, []);
 
   useEffect(() => {
@@ -256,6 +259,12 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
         </div>
       )}
       {erroMapa && <p className="text-xs text-red-600 mt-2">{erroMapa}</p>}
+      {mapsKey && (
+        <p className="text-[11px] mt-2 px-1 flex items-center gap-1.5 text-gray-500 dark:text-darkTextSecondary">
+          <span className={`w-2 h-2 rounded-full ${minhaPos ? 'bg-blue-600' : 'bg-gray-300'}`} />
+          {minhaPos ? 'Sua localização aparece no mapa (ponto azul).' : minhaPosErro ? `Sua localização: ${minhaPosErro}.` : 'Buscando a sua localização...'}
+        </p>
+      )}
       {mapsKey && locations.length === 0 && (
         <p className="text-[11px] text-gray-400 mt-2 px-1">A posição aparece quando a colaboradora abre o app e permite a localização.</p>
       )}

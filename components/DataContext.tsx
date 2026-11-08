@@ -394,8 +394,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         city: a.city || '',
         state: a.state || '',
         cep: a.zip || '',
-        type: 'HOUSE', 
-        isMain: false
+        type: (a.type as any) || 'HOUSE',
+        notes: a.notes || '',
+        isMain: !!a.is_main
     })) : [],
     type: u.type || 'AVULSO',
     photo: u.photo || undefined,
@@ -849,7 +850,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Record only, no login.
     const { data: userData, error } = await supabase.from('app_users').insert({
-        name: client.name, email: client.email, phone: client.phone, address: client.address,
+        // No e-mail is stored as null: the e-mail column is unique and '' would block the next client without one.
+        name: client.name, email: client.email?.trim() || null, phone: client.phone, address: client.address,
         role: 'CLIENT', type: client.type || 'NOVO',
     }).select().single();
     if (error || !userData) throw new Error(error?.message || 'Não foi possível salvar o cliente.');
@@ -923,9 +925,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         neighborhood: address.district,
         city: address.city,
         state: address.state,
-        zip: address.cep
+        zip: address.cep,
+        type: address.type || 'HOUSE',
+        is_main: !!address.isMain,
+        notes: address.notes || null
     };
-    await supabase.from('addresses').insert(dbAddress).select();
+    setClients(prev => prev.map(c => c.id === clientId && !(currentUser && currentUser.id === clientId) ? { ...c, addresses: [...(c.addresses || []), address] } : c));
+    const { error } = await supabase.from('addresses').insert({ ...dbAddress, id: String(address.id) });
+    if (error) throw new Error(error.message);
   };
 
   const updateClientAddress = async (clientId: string, address: Address) => {
@@ -945,7 +952,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         neighborhood: address.district,
         city: address.city,
         state: address.state,
-        zip: address.cep
+        zip: address.cep,
+        type: address.type || 'HOUSE',
+        is_main: !!address.isMain,
+        notes: address.notes || null
     };
     await supabase.from('addresses').update(dbAddress).eq('id', address.id);
   };
