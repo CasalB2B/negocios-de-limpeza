@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
-import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight, Eye, Package, Contact, Lock, Landmark, List, CreditCard } from 'lucide-react';
+import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight, Eye, Package, Contact, Lock, Landmark, List, CreditCard , BellRing } from 'lucide-react';
 import { GeminiChat } from './GeminiChat';
 import { empresaId } from '../lib/empresa';
 import { FaixaTeste, TesteEncerrado, useEmpresaAtual } from './TesteGratis';
@@ -250,6 +250,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       items: [
         { icon: <UserPlus size={15} />,   label: 'Contratação',      path: '/admin/rh/contratacao' },
         { icon: <Users size={15} />,      label: 'Profissionais',    path: '/admin/rh/colaboradoras' },
+        { icon: <BellRing size={15} />,   label: 'Avisos para a equipe', path: '/admin/avisos' },
         { icon: <MessageSquare size={15}/>,label: 'Avaliações',      path: '/admin/rh/avaliacoes' },
         { icon: <BarChart2 size={15} />,  label: 'Desempenho',       path: '/admin/rh/desempenho' },
         ...(empresaId() === 1 ? [{ icon: <BookOpen size={15} />, label: 'Plano de Carreira', path: '/admin/rh/plano-carreira' }] : []),

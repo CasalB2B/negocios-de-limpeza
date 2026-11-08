@@ -257,6 +257,41 @@ Deno.serve(async (req) => {
     if (!Deno.env.get('FIREBASE_SERVICE_ACCOUNT')) return json({ ok: false, erro: 'Firebase não configurado' }, 500);
     await tokenFirebase();
 
+    // Admin's own notice to the team (meeting reminder, news...), with an optional link.
+    if (body.acao === 'aviso' || body.acao === 'aviso_info') {
+      const jwt = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
+      const { data: quem } = await db.auth.getUser(jwt);
+      if (!quem?.user) return json({ ok: false, erro: 'Entre no sistema primeiro.' }, 401);
+      const { data: eu } = await db.from('app_users').select('id, company_id, role').eq('auth_id', quem.user.id).maybeSingle();
+      if (!eu || eu.role !== 'ADMIN') return json({ ok: false, erro: 'Só administradores enviam avisos.' }, 403);
+      const empresa = eu.company_id ?? 1;
+      const { data: pessoas } = await db.from('app_users').select('id, name, role').eq('company_id', empresa).in('role', ['ADMIN', 'COLLABORATOR']).not('auth_id', 'is', null).order('name');
+      const { data: aparelhos } = await db.from('push_dispositivos').select('usuario_id').eq('company_id', empresa);
+      const comApp = new Set((aparelhos ?? []).map(a => a.usuario_id));
+      if (body.acao === 'aviso_info') {
+        const { data: hist } = await db.from('push_fila').select('titulo, corpo, rota, criado_em, resultado, usuario_id')
+          .eq('company_id', empresa).like('chave', 'aviso:%').order('id', { ascending: false }).limit(60);
+        return json({ ok: true, pessoas: (pessoas ?? []).map(p => ({ ...p, temApp: comApp.has(String(p.id)) })), historico: hist ?? [] });
+      }
+      const titulo = String(body.titulo ?? '').trim().slice(0, 65);
+      const corpo = String(body.corpo ?? '').trim().slice(0, 240);
+      const link = String(body.link ?? '').trim().slice(0, 500);
+      if (!titulo || !corpo) return json({ ok: false, erro: 'Escreva o título e a mensagem.' }, 400);
+      if (link && !/^https?:\/\//i.test(link)) return json({ ok: false, erro: 'O link precisa começar com http:// ou https://' }, 400);
+      const ids = new Set((Array.isArray(body.usuarios) ? body.usuarios : []).map(String));
+      const alvo = (pessoas ?? []).filter(p => body.destino === 'equipe' ? p.role === 'COLLABORATOR'
+        : body.destino === 'admins' ? p.role === 'ADMIN' && String(p.id) !== String(eu.id)
+        : body.destino === 'todos' ? String(p.id) !== String(eu.id)
+        : ids.has(String(p.id)));
+      if (!alvo.length) return json({ ok: false, erro: 'Escolha para quem enviar.' }, 400);
+      const lote = crypto.randomUUID();
+      await db.from('push_fila').insert(alvo.map(p => ({
+        company_id: empresa, destino: 'usuario', usuario_id: String(p.id), titulo, corpo, rota: link || null, chave: `aviso:${lote}:${p.id}`,
+      })));
+      await processarFila();
+      return json({ ok: true, pessoas: alvo.length, comApp: alvo.filter(p => comApp.has(String(p.id))).length });
+    }
+
     if (body.acao === 'teste') {
       const jwt = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
       const { data: quem } = await db.auth.getUser(jwt);

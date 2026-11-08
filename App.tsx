@@ -9,6 +9,7 @@ import { UserRole } from './types';
 import { EntrarPage } from './pages/EntrarPage';
 import { VendasPage } from './pages/VendasPage';
 import { RecursoPage } from './pages/RecursoPage';
+import { AdminAvisos } from './pages/admin/AdminAvisos';
 import { ativarPush, noAppNativo } from './lib/push';
 import { ClientDashboard } from './pages/client/ClientDashboard';
 import { ClientRequest } from './pages/client/ClientRequest';
@@ -226,6 +227,7 @@ const App: React.FC = () => {
               <Route path="/admin/rh/contratacao" element={<AdminRHContratacao />} />
               <Route path="/admin/rh/plano-carreira" element={<AdminRHPlanoCarreira />} />
               <Route path="/admin/marketing" element={<AdminMarketing />} />
+              <Route path="/admin/avisos" element={<AdminAvisos />} />
               <Route path="/admin/estoque" element={<AdminEstoque />} />
               <Route path="/admin/nfe" element={<AdminNFe />} />
             </Route>

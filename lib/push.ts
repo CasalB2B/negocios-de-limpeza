@@ -11,7 +11,9 @@ let ouvintes = false;
 let ultimoToken: string | null = null;
 
 function abrirRota(rota?: string) {
-  if (rota && rota.startsWith('/')) window.location.hash = '#' + rota;
+  if (!rota) return;
+  if (rota.startsWith('/')) window.location.hash = '#' + rota;
+  else if (/^https?:\/\//i.test(rota)) window.open(rota, '_blank'); // link from a team notice (opens outside the app)
 }
 
 // Small banner when a notification arrives with the app open (Android does not show it by itself then).

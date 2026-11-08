@@ -335,6 +335,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       'A administradora recebe: novo agendamento feito por outra pessoa (equipe ou pedido do cliente; os que ela mesma cria não geram aviso), sinal ou pagamento recebido, cliente confirmou, check-in feito, faxina concluída, check-in atrasado, o resumo do dia às 7h, os clientes que ainda não confirmaram a faxina de amanhã (às 17h), aos domingos às 19h o resumo da próxima semana, e lembretes de entrevistas e ligações com candidatas marcadas na Contratação (1 hora e 15 minutos antes).',
       'Tocar na notificação abre a tela certa do app. Se as notificações foram bloqueadas sem querer: Configurações do Android → Apps → Negócios de Limpeza → Notificações → ativar.',
       'Ao sair da conta, aquele celular para de receber os avisos dessa pessoa.',
+      'Avisos para a equipe (menu Recursos Humanos): escolha Toda a equipe, Administradores ou pessoas específicas, escreva o título e a mensagem, coloque um link se quiser (ex.: reunião online) e toque em Enviar aviso agora. Chega como notificação no celular de quem tem o app; não usa WhatsApp. Embaixo fica o histórico com quantas pessoas receberam.',
     ],
     palavras: ['notificação', 'notificações', 'push', 'aviso', 'alerta', 'lembrete', 'celular', 'app', 'não recebo'],
   },
