@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
-import { MapPin, Loader2, Maximize2, X } from 'lucide-react';
+import { MapPin, Loader2, Maximize2, X, LocateFixed } from 'lucide-react';
 
 interface CollabLocation {
   collab_id: string;
@@ -183,13 +183,7 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
       if (!vistos.has(id)) { m.setMap(null); markersRef.current.delete(id); }
     }
     // Frame everyone the first time positions arrive; afterwards leave the user's zoom alone.
-    if (!ajustouZoom.current && vistos.size > 0) {
-      const b = new google.maps.LatLngBounds();
-      for (const id of vistos) b.extend(markersRef.current.get(id).getPosition());
-      if (vistos.size === 1) { map.setCenter(b.getCenter()); map.setZoom(14); }
-      else map.fitBounds(b, 48);
-      ajustouZoom.current = true;
-    }
+    if (!ajustouZoom.current && vistos.size > 0) enquadrarTodos();
   }, [locations]);
 
   useEffect(() => {
@@ -202,11 +196,31 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
         icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#2563eb', fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 3 },
       });
       meuMarcador.current.addListener('click', () => { infoRef.current?.setContent('<strong style="font:13px system-ui">Você está aqui</strong>'); infoRef.current?.open({ map, anchor: meuMarcador.current }); });
-      // Nobody from the team on the map yet: center on the viewer.
-      if (!ajustouZoom.current) { map.setCenter(minhaPos); map.setZoom(14); }
+      meuMarcador.current.setPosition(minhaPos);
+      enquadrarTodos();
     }
     meuMarcador.current.setPosition(minhaPos);
   }, [minhaPos, mapsKey, locations.length]);
+
+  // Fits the team pins and the viewer's dot on screen (the dot used to fall outside the team-only framing).
+  function enquadrarTodos() {
+    const google = (window as any).google;
+    const map = mapRef.current;
+    if (!google?.maps || !map) return;
+    const b = new google.maps.LatLngBounds();
+    let n = 0;
+    for (const m of markersRef.current.values()) { b.extend(m.getPosition()); n++; }
+    if (meuMarcador.current?.getPosition()) { b.extend(meuMarcador.current.getPosition()); n++; }
+    if (!n) return;
+    if (n === 1) { map.setCenter(b.getCenter()); map.setZoom(14); } else map.fitBounds(b, 48);
+    ajustouZoom.current = true;
+  }
+  const centralizarEmMim = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!minhaPos || !mapRef.current) return;
+    mapRef.current.setCenter(minhaPos);
+    mapRef.current.setZoom(15);
+  };
 
   const ativas = locations.filter(isActive);
 
@@ -244,12 +258,21 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
               <Maximize2 size={13} /> Ampliar
             </span>
           </button>
+          {minhaPos && (
+            <button onClick={centralizarEmMim} aria-label="Mostrar onde estou"
+              className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1.5 rounded-full bg-white/95 dark:bg-darkSurface/95 shadow-md text-xs font-bold text-blue-700 px-3 py-1.5">
+              <LocateFixed size={13} /> Eu
+            </button>
+          )}
           {aberto && createPortal(
             <div className="fixed inset-0 z-[200] bg-black/75 backdrop-blur-sm px-3 md:px-8 flex flex-col gap-3"
               style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}>
               <div className="flex items-center justify-between text-white">
                 <p className="font-bold flex items-center gap-2"><MapPin size={16} /> Mapa em tempo real · {ativas.length} ativa{ativas.length !== 1 ? 's' : ''}</p>
-                <button onClick={() => setAberto(false)} className="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Fechar mapa"><X size={20} /></button>
+                <div className="flex items-center gap-2">
+                  {minhaPos && <button onClick={centralizarEmMim} className="h-10 px-3 rounded-full bg-white/15 hover:bg-white/25 inline-flex items-center gap-1.5 text-sm font-bold" aria-label="Mostrar onde estou"><LocateFixed size={16} /> Eu</button>}
+                  <button onClick={() => setAberto(false)} className="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Fechar mapa"><X size={20} /></button>
+                </div>
               </div>
               <div ref={hostGrande} className="flex-1 min-h-0 rounded-2xl overflow-hidden bg-gray-100 dark:bg-darkBg" />
               <div className="bg-white/95 dark:bg-darkSurface rounded-xl px-3 py-2">{legenda}</div>
