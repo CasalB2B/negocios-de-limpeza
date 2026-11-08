@@ -188,18 +188,19 @@ export const CollaboratorProfile: React.FC = () => {
                   <ChevronRight size={18} className="text-gray-300" />
                </button>
 
-               <button className="w-full bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between hover:bg-gray-50 transition-all group active:scale-[0.98]">
+               {/* Push notifications are not wired yet (Firebase): show it as coming soon instead of a dead button. */}
+               <div className="w-full bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                     <div className="w-12 h-12 bg-purple-50 text-primary rounded-2xl flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+                     <div className="w-12 h-12 bg-purple-50 text-primary rounded-2xl flex items-center justify-center">
                         <Bell size={22} />
                      </div>
                      <div className="text-left">
                         <p className="font-bold text-darkText text-sm">Notificações</p>
-                        <p className="text-xs text-lightText">Gerencie seus alertas e mensagens</p>
+                        <p className="text-xs text-lightText">Em breve: aviso de novo serviço e lembrete da véspera no celular</p>
                      </div>
                   </div>
-                  <ChevronRight size={18} className="text-gray-300" />
-               </button>
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-primary bg-purple-50 px-2 py-1 rounded-full shrink-0">Em breve</span>
+               </div>
             </div>
 
             <button 
