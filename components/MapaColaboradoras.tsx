@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { MapPin, Loader2, Maximize2, X } from 'lucide-react';
 
@@ -52,7 +53,16 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
   const [locations, setLocations] = useState<CollabLocation[]>([]);
   const [mapsKey, setMapsKey] = useState<string | null | undefined>(undefined);
   const [erroMapa, setErroMapa] = useState('');
-  const mapDiv = useRef<HTMLDivElement>(null);
+  // The map lives in one element created once and moved between the small preview and the full-screen view.
+  // Full screen is rendered on <body> (portal): inside the app's layout a fixed overlay was clipped by the parents.
+  const mapDiv = useRef<HTMLDivElement | null>(null);
+  if (!mapDiv.current && typeof document !== 'undefined') {
+    const d = document.createElement('div');
+    d.style.cssText = 'width:100%;height:100%';
+    mapDiv.current = d;
+  }
+  const hostPequeno = useRef<HTMLDivElement>(null);
+  const hostGrande = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markersRef = useRef<Map<string, any>>(new Map());
   const infoRef = useRef<any>(null);
@@ -60,6 +70,15 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
   // Small static preview on the dashboard; a tap opens it full screen where it can be dragged and zoomed.
   // While small it ignores touch, so scrolling the page never scrolls the map.
   const [aberto, setAberto] = useState(false);
+
+  useLayoutEffect(() => {
+    const host = aberto ? hostGrande.current : hostPequeno.current;
+    const el = mapDiv.current;
+    if (!host || !el || el.parentNode === host) return;
+    const centro = mapRef.current?.getCenter?.();
+    host.appendChild(el);
+    if (centro) setTimeout(() => mapRef.current?.setCenter(centro), 50);
+  }, [aberto, mapsKey]);
   // The viewer's own position as a blue dot (only on this screen, never saved), so the admin sees the map working.
   const [minhaPos, setMinhaPos] = useState<{ lat: number; lng: number } | null>(null);
   const meuMarcador = useRef<any>(null);
@@ -215,23 +234,25 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
           <p className="text-blue-600 dark:text-blue-400 text-xs mt-1">Configurações → Integrações → Google Maps</p>
         </div>
       ) : (
-        <div className={aberto ? 'fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm p-3 md:p-8 flex flex-col gap-3' : 'relative'}
-          style={aberto ? { paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' } : undefined}>
-          {aberto && (
-            <div className="flex items-center justify-between text-white">
-              <p className="font-bold flex items-center gap-2"><MapPin size={16} /> Mapa em tempo real · {ativas.length} ativa{ativas.length !== 1 ? 's' : ''}</p>
-              <button onClick={() => setAberto(false)} className="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Fechar mapa"><X size={20} /></button>
-            </div>
+        <div className="relative">
+          <div ref={hostPequeno} className="w-full h-44 md:h-60 rounded-2xl overflow-hidden bg-gray-100 dark:bg-darkBg" />
+          <button onClick={() => setAberto(true)} className="absolute inset-0 rounded-2xl" aria-label="Ampliar o mapa">
+            <span className="absolute bottom-2.5 right-2.5 inline-flex items-center gap-1.5 rounded-full bg-white/95 dark:bg-darkSurface/95 shadow-md text-xs font-bold text-gray-700 dark:text-darkTextPrimary px-3 py-1.5">
+              <Maximize2 size={13} /> Ampliar
+            </span>
+          </button>
+          {aberto && createPortal(
+            <div className="fixed inset-0 z-[200] bg-black/75 backdrop-blur-sm px-3 md:px-8 flex flex-col gap-3"
+              style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}>
+              <div className="flex items-center justify-between text-white">
+                <p className="font-bold flex items-center gap-2"><MapPin size={16} /> Mapa em tempo real · {ativas.length} ativa{ativas.length !== 1 ? 's' : ''}</p>
+                <button onClick={() => setAberto(false)} className="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Fechar mapa"><X size={20} /></button>
+              </div>
+              <div ref={hostGrande} className="flex-1 min-h-0 rounded-2xl overflow-hidden bg-gray-100 dark:bg-darkBg" />
+              <div className="bg-white/95 dark:bg-darkSurface rounded-xl px-3 py-2">{legenda}</div>
+            </div>,
+            document.body,
           )}
-          <div ref={mapDiv} className={`w-full rounded-2xl overflow-hidden bg-gray-100 dark:bg-darkBg ${aberto ? 'flex-1' : 'h-44 md:h-60'}`} />
-          {!aberto && (
-            <button onClick={() => setAberto(true)} className="absolute inset-0 rounded-2xl" aria-label="Ampliar o mapa">
-              <span className="absolute bottom-2.5 right-2.5 inline-flex items-center gap-1.5 rounded-full bg-white/95 dark:bg-darkSurface/95 shadow-md text-xs font-bold text-gray-700 dark:text-darkTextPrimary px-3 py-1.5">
-                <Maximize2 size={13} /> Ampliar
-              </span>
-            </button>
-          )}
-          {aberto && <div className="bg-white/95 dark:bg-darkSurface rounded-xl px-3 py-2">{legenda}</div>}
         </div>
       )}
       {erroMapa && <p className="text-xs text-red-600 mt-2">{erroMapa}</p>}
