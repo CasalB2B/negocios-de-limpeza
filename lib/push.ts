@@ -70,7 +70,7 @@ export async function ativarPush(): Promise<EstadoPush> {
 // Before logging out, so the next person who uses this phone does not get these notifications.
 export async function desligarPush() {
   if (!noAppNativo() || !ultimoToken) return;
-  await supabase.rpc('remover_dispositivo', { p_token: ultimoToken }).catch(() => {});
+  try { await supabase.rpc('remover_dispositivo', { p_token: ultimoToken }); } catch { /* offline: ignore */ }
 }
 
 export async function testarPush(): Promise<string> {
