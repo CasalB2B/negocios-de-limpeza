@@ -389,12 +389,8 @@ async function saveQuote(conn: Connection, cfg: BotConfig, phone: string, q: Rec
 
   await supabase.from('page_analytics').insert({ event_type: 'whatsapp_completed', source: 'whatsapp', session_id: phone }).then(() => {}, () => {});
 
-  if (q.email) {
-    await supabase.from('app_users').upsert(
-      { name: q.name, email: q.email, phone, role: 'CLIENT', password: phone.slice(-4) || '0000', type: 'AVULSO' },
-      { onConflict: 'email', ignoreDuplicates: true },
-    );
-  }
+  // Clients are registered by the company in the panel (owner's decision, 08/11/2026). The bot no longer creates
+  // client records: the old version gave them the last 4 phone digits as password, which allowed signing in as them.
 
   await saveSession(phone, history, { ...meta, step: 'human', waitReplied: true, lastUserMessageAt: new Date().toISOString(), followUpSentSteps: [] });
   await notifyTeam(conn, cfg, `Novo orçamento pelo WhatsApp: ${q.name} (+${phone})${q.serviceOption ? `, ${q.serviceOption}` : ''}${q.propertyType ? `, ${q.propertyType}` : ''}${q.rooms ? `, ${q.rooms}` : ''}.`);
