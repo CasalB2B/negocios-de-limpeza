@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 // Client registration data, same layout in "Novo cliente" and "Editar informações":
 // name, phone with country, e-mail, CPF/CNPJ, birthday (with age), sex, client type, blocked, description.
@@ -93,6 +93,40 @@ export const telefoneParaEditar = (phone: string, ddi: string) => {
   return ddi !== '55' && d.startsWith(ddi) ? d.slice(ddi.length) : mascaraTelefone(d, ddi || '55');
 };
 
+// Birthday typed as DD/MM/AAAA (the phone's date picker makes going back decades painful).
+const paraTexto = (iso: string) => /^\d{4}-\d{2}-\d{2}$/.test(iso || '') ? iso.split('-').reverse().join('/') : '';
+const mascaraData = (v: string) => {
+  const d = dig(v).slice(0, 8);
+  return d.length > 4 ? `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}` : d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d;
+};
+const paraIso = (texto: string): string | null => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(texto);
+  if (!m) return null;
+  const [dia, mes, ano] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const dt = new Date(ano, mes - 1, dia);
+  if (dt.getFullYear() !== ano || dt.getMonth() !== mes - 1 || dt.getDate() !== dia || ano < 1900 || dt > new Date()) return null;
+  return `${m[3]}-${m[2]}-${m[1]}`;
+};
+
+const CampoNascimento: React.FC<{ valor: string; onChange: (iso: string) => void }> = ({ valor, onChange }) => {
+  const [texto, setTexto] = useState(paraTexto(valor));
+  useEffect(() => { if (paraTexto(valor) !== texto && (valor || texto.length === 10)) setTexto(paraTexto(valor)); }, [valor]);
+  const completo = texto.length === 10;
+  const iso = completo ? paraIso(texto) : null;
+  return (
+    <>
+      <input className={`${campo} ${completo && !iso ? 'border-red-400' : ''}`} inputMode="numeric" placeholder="DD/MM/AAAA" value={texto}
+        onChange={e => {
+          const t = mascaraData(e.target.value);
+          setTexto(t);
+          const i = t.length === 10 ? paraIso(t) : null;
+          onChange(i || (t ? '' : ''));
+        }} />
+      {completo && !iso && <p className="text-xs text-red-600 mt-1">Data inválida</p>}
+    </>
+  );
+};
+
 const campo = 'w-full p-3.5 bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl outline-none focus:border-primary text-darkText dark:text-darkTextPrimary';
 const rotulo = 'block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5';
 
@@ -151,7 +185,7 @@ export const CamposCliente: React.FC<{
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className={rotulo}>Aniversário</label>
-          <input className={campo} type="date" value={valor.nascimento} onChange={e => onChange({ nascimento: e.target.value })} />
+          <CampoNascimento valor={valor.nascimento} onChange={iso => onChange({ nascimento: iso })} />
           {anos !== null && <p className="text-xs text-lightText mt-1">{anos} anos</p>}
         </div>
         <div>
