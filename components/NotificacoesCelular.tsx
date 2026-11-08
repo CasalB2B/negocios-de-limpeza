@@ -3,8 +3,7 @@ import { Bell, BellOff, CheckCircle2, Send } from 'lucide-react';
 import { ativarPush, estadoPush, testarPush, noAppNativo, type EstadoPush } from '../lib/push';
 
 // Phone notifications status card (only inside the Android/iPhone app).
-// modo 'perfil': always visible (collaborator profile). modo 'aviso' (admin dashboard): while not active, or until
-// the first test, since Android 12 and older activate without asking anything.
+// modo 'perfil': always visible (collaborator profile). modo 'aviso' (admin dashboard): only while not active.
 export const NotificacoesCelular: React.FC<{ modo?: 'perfil' | 'aviso' }> = ({ modo = 'perfil' }) => {
   const [estado, setEstado] = useState<EstadoPush>('indisponivel');
   const [acabouDeAtivar, setAcabouDeAtivar] = useState(false);
@@ -14,7 +13,7 @@ export const NotificacoesCelular: React.FC<{ modo?: 'perfil' | 'aviso' }> = ({ m
 
   useEffect(() => { estadoPush().then(setEstado).catch(() => {}); }, []);
   if (!noAppNativo() || estado === 'indisponivel') return null;
-  if (modo === 'aviso' && estado === 'ativo' && testado && !acabouDeAtivar) return null;
+  if (modo === 'aviso' && estado === 'ativo' && !acabouDeAtivar) return null;
 
   const ativar = async () => {
     setOcupado(true);
