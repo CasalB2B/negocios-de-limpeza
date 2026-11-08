@@ -229,10 +229,16 @@ export const EntrarPage: React.FC = () => {
   const [splash, setSplash] = useState(() => { try { return !sessionStorage.getItem(SPLASH_KEY); } catch { return false; } });
 
   // Already logged in: go straight to the right area (also fixes the installed app reopening here).
+  // Also checks again every second: if the login finished but the screen did not move on, it goes on by itself.
   useEffect(() => {
-    if (localStorage.getItem('auth_admin') === 'true') navigate(localStorage.getItem('auth_reviewer') === 'true' ? '/admin/whatsapp' : '/admin/dashboard', { replace: true });
-    else if (localStorage.getItem('auth_collab')) navigate('/collab/agenda', { replace: true });
-    else if (localStorage.getItem('auth_client')) navigate('/client/dashboard', { replace: true });
+    const ir = () => {
+      if (localStorage.getItem('auth_admin') === 'true') navigate(localStorage.getItem('auth_reviewer') === 'true' ? '/admin/whatsapp' : '/admin/dashboard', { replace: true });
+      else if (localStorage.getItem('auth_collab')) navigate('/collab/agenda', { replace: true });
+      else if (localStorage.getItem('auth_client')) navigate('/client/dashboard', { replace: true });
+    };
+    ir();
+    const t = window.setInterval(ir, 1000);
+    return () => window.clearInterval(t);
   }, [navigate]);
 
   useEffect(() => { document.title = modoCriar ? 'Criar conta — Negócios de Limpeza' : 'Entrar — Negócios de Limpeza'; }, [modoCriar]);

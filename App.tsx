@@ -84,10 +84,20 @@ const abertoComoApp = () => {
 function PushAutoRegistro() {
   React.useEffect(() => {
     if (!noAppNativo()) return;
-    const tentar = () => { ativarPush().catch(() => {}); };
+    // Ask for the notification permission only after the person is inside the app: the system dialog in the
+    // middle of the login froze the login screen on Android.
+    let t: number | undefined;
+    const tentar = () => {
+      window.clearTimeout(t);
+      t = window.setTimeout(() => {
+        if (/^#\/(entrar|criar-conta|admin\/login|collab\/login|client\/login)?$/.test(window.location.hash || '#/')) return;
+        ativarPush().catch(() => {});
+      }, 2500);
+    };
     tentar();
     window.addEventListener('ndl-login', tentar);
-    return () => window.removeEventListener('ndl-login', tentar);
+    window.addEventListener('hashchange', tentar);
+    return () => { window.clearTimeout(t); window.removeEventListener('ndl-login', tentar); window.removeEventListener('hashchange', tentar); };
   }, []);
   return null;
 }
