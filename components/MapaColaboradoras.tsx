@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { MapPin, Loader2 } from 'lucide-react';
+import { MapPin, Loader2, Maximize2, X } from 'lucide-react';
 
 interface CollabLocation {
   collab_id: string;
@@ -57,6 +57,20 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
   const markersRef = useRef<Map<string, any>>(new Map());
   const infoRef = useRef<any>(null);
   const ajustouZoom = useRef(false);
+  // Small static preview on the dashboard; a tap opens it full screen where it can be dragged and zoomed.
+  // While small it ignores touch, so scrolling the page never scrolls the map.
+  const [aberto, setAberto] = useState(false);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map) map.setOptions({ gestureHandling: aberto ? 'greedy' : 'none', zoomControl: aberto, keyboardShortcuts: aberto });
+    if (!aberto) return;
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setAberto(false); };
+    window.addEventListener('keydown', esc);
+    const antes = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', esc); document.body.style.overflow = antes; };
+  }, [aberto]);
 
   useEffect(() => {
     supabase.functions.invoke('get-maps-key')
@@ -85,9 +99,9 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
       mapRef.current = new google.maps.Map(mapDiv.current, {
         center: GUARAPARI,
         zoom: grande ? 13 : 12,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: true,
+        disableDefaultUI: true,
+        gestureHandling: 'none',
+        keyboardShortcuts: false,
         clickableIcons: false,
       });
       infoRef.current = new google.maps.InfoWindow();
@@ -145,39 +159,54 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
 
   const ativas = locations.filter(isActive);
 
+  const legenda = (
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-gray-500 dark:text-darkTextSecondary">
+      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-600" /> Atualizou nos últimos 15 min</span>
+      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-gray-400" /> Última posição conhecida</span>
+    </div>
+  );
+
   return (
-    <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-100 dark:border-darkBorder shadow-sm p-5">
-      <div className="flex items-center justify-between mb-3 gap-2">
-        <h3 className="font-bold text-gray-900 dark:text-darkTextPrimary text-sm flex items-center gap-2">
-          <MapPin size={15} className="text-blue-500" />
-          Mapa em Tempo Real
+    <div>
+      <div className="flex items-center justify-between mb-2 gap-2 px-1">
+        <h3 className="font-bold text-gray-900 dark:text-darkTextPrimary text-sm flex items-center gap-1.5">
+          <MapPin size={14} className="text-primary" /> Mapa em tempo real
         </h3>
-        <span className="text-xs bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-medium px-2 py-0.5 rounded-full">
+        <span className="text-[11px] bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-semibold px-2 py-0.5 rounded-full">
           {ativas.length} ativa{ativas.length !== 1 ? 's' : ''} agora
         </span>
       </div>
 
       {mapsKey === undefined ? (
-        <div className={`${grande ? 'h-[60vh] min-h-[360px] max-h-[640px]' : 'h-72'} flex items-center justify-center`}><Loader2 className="animate-spin text-gray-400" size={24} /></div>
+        <div className="h-44 md:h-60 rounded-2xl bg-gray-100 dark:bg-darkBg flex items-center justify-center"><Loader2 className="animate-spin text-gray-400" size={22} /></div>
       ) : mapsKey === null ? (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 text-center">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 text-center">
           <p className="text-blue-700 dark:text-blue-300 text-sm font-medium">Configure a chave do Google Maps</p>
           <p className="text-blue-600 dark:text-blue-400 text-xs mt-1">Configurações → Integrações → Google Maps</p>
         </div>
       ) : (
-        <>
-          <div ref={mapDiv} className={`w-full ${grande ? 'h-[60vh] min-h-[360px] max-h-[640px]' : 'h-72 md:h-80'} rounded-xl overflow-hidden bg-gray-100 dark:bg-darkBg`} />
-          {erroMapa && <p className="text-xs text-red-600 mt-2">{erroMapa}</p>}
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-[11px] text-gray-500 dark:text-darkTextSecondary">
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-600" /> Atualizou nos últimos 15 min</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-gray-400" /> Última posição conhecida</span>
-          </div>
-          {locations.length === 0 && (
-            <p className="text-xs text-gray-400 mt-2">
-              Nenhuma colaboradora compartilhou localização ainda. A posição aparece quando ela abre o app e permite a localização.
-            </p>
+        <div className={aberto ? 'fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm p-3 md:p-8 flex flex-col gap-3' : 'relative'}
+          style={aberto ? { paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' } : undefined}>
+          {aberto && (
+            <div className="flex items-center justify-between text-white">
+              <p className="font-bold flex items-center gap-2"><MapPin size={16} /> Mapa em tempo real · {ativas.length} ativa{ativas.length !== 1 ? 's' : ''}</p>
+              <button onClick={() => setAberto(false)} className="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Fechar mapa"><X size={20} /></button>
+            </div>
           )}
-        </>
+          <div ref={mapDiv} className={`w-full rounded-2xl overflow-hidden bg-gray-100 dark:bg-darkBg ${aberto ? 'flex-1' : 'h-44 md:h-60'}`} />
+          {!aberto && (
+            <button onClick={() => setAberto(true)} className="absolute inset-0 rounded-2xl" aria-label="Ampliar o mapa">
+              <span className="absolute bottom-2.5 right-2.5 inline-flex items-center gap-1.5 rounded-full bg-white/95 dark:bg-darkSurface/95 shadow-md text-xs font-bold text-gray-700 dark:text-darkTextPrimary px-3 py-1.5">
+                <Maximize2 size={13} /> Ampliar
+              </span>
+            </button>
+          )}
+          {aberto && <div className="bg-white/95 dark:bg-darkSurface rounded-xl px-3 py-2">{legenda}</div>}
+        </div>
+      )}
+      {erroMapa && <p className="text-xs text-red-600 mt-2">{erroMapa}</p>}
+      {mapsKey && locations.length === 0 && (
+        <p className="text-[11px] text-gray-400 mt-2 px-1">A posição aparece quando a colaboradora abre o app e permite a localização.</p>
       )}
     </div>
   );

@@ -329,7 +329,7 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         {/* ── Mapa ao vivo da equipe (largura total, logo abaixo dos números) ── */}
-        <MapaColaboradoras grande />
+        <MapaColaboradoras />
 
         {/* ── Clientes Sumidos ── */}
         <ClientesSumidosCard services={services} />
