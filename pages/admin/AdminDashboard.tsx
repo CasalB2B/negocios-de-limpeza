@@ -72,6 +72,7 @@ export const AdminDashboard: React.FC = () => {
   const [colabs, setColabs] = useState<ColabRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [notifPerm, setNotifPerm] = useState<NotificationPermission>('default');
+  const noAppNativo = !!(window as any).Capacitor?.isNativePlatform?.();
 
   useEffect(() => {
     if ('Notification' in window) setNotifPerm(Notification.permission);
@@ -237,15 +238,15 @@ export const AdminDashboard: React.FC = () => {
           </button>
         </header>
 
-        {/* ── Notification banners ── */}
-        {notifPerm === 'default' && (
+        {/* ── Notification banners (browser only: inside the phone app web notifications do not exist; push comes with Firebase) ── */}
+        {notifPerm === 'default' && !noAppNativo && (
           <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
             <BellRing size={16} className="text-amber-500 shrink-0" />
             <p className="text-sm text-amber-700 flex-1">Ative as notificações para receber alertas de compromissos</p>
             <button onClick={requestNotifPermission} className="text-xs font-bold bg-amber-500 text-white px-3 py-1 rounded-lg hover:bg-amber-600">Ativar</button>
           </div>
         )}
-        {notifPerm === 'denied' && (
+        {notifPerm === 'denied' && !noAppNativo && (
           <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
             <BellOff size={14} className="text-red-500 shrink-0" />
             <p className="text-xs text-red-600">Notificações bloqueadas. Ative nas configurações do navegador.</p>
