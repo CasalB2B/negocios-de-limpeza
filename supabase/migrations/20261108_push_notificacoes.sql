@@ -112,6 +112,12 @@ begin
         values (coalesce(new.company_id, 1), 'colab', ids, 'Nova faxina na sua agenda', quando || ' · ' || cliente, '/collab/agenda');
         enfileirou := true;
       end if;
+      -- Admins hear about new bookings made by someone else (team, client portal, quote); not the ones they create.
+      if not cancelado and coalesce(meu_papel(), '') <> 'ADMIN' then
+        insert into push_fila (company_id, destino, titulo, corpo, rota)
+        values (coalesce(new.company_id, 1), 'admin', '📅 Novo agendamento', cliente || ' · ' || quando, '/admin/calendar');
+        enfileirou := true;
+      end if;
     else
       old_ids := push_ids_servico(old.collaborator_ids, old.collaborator_id);
       era_cancelado := upper(coalesce(old.status, '')) in ('CANCELED', 'CANCELLED', 'CANCELADO');
