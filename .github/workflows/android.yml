@@ -35,3 +35,39 @@ jobs:
         with:
           name: negocios-de-limpeza-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
+
+  # Signed .aab for Google Play. Runs only when started by hand (Actions → Android → Run workflow)
+  # and only if the ANDROID_KEYSTORE_BASE64 and ANDROID_KEYSTORE_PASSWORD secrets exist.
+  release:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npx vite build
+      - run: npx cap sync android
+      - name: Decode upload key
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KS" ]; then echo "Faltam os segredos ANDROID_KEYSTORE_BASE64 e ANDROID_KEYSTORE_PASSWORD no GitHub."; exit 1; fi
+          echo "$KS" | base64 -d > "$RUNNER_TEMP/upload-keystore.p12"
+      - name: Build signed AAB
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/upload-keystore.p12
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_VERSION_CODE: ${{ github.run_number }}
+        run: chmod +x gradlew && ./gradlew bundleRelease --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: negocios-de-limpeza-google-play-aab
+          path: android/app/build/outputs/bundle/release/*.aab

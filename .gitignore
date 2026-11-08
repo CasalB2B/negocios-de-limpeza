@@ -24,3 +24,9 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Android upload key (never commit)
+chave-android/
+*.p12
+*.jks
+*.keystore
