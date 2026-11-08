@@ -3,16 +3,18 @@ import { Bell, BellOff, CheckCircle2, Send } from 'lucide-react';
 import { ativarPush, estadoPush, testarPush, noAppNativo, type EstadoPush } from '../lib/push';
 
 // Phone notifications status card (only inside the Android/iPhone app).
-// modo 'perfil': always visible (collaborator profile). modo 'aviso': only while not active (admin dashboard).
+// modo 'perfil': always visible (collaborator profile). modo 'aviso' (admin dashboard): while not active, or until
+// the first test, since Android 12 and older activate without asking anything.
 export const NotificacoesCelular: React.FC<{ modo?: 'perfil' | 'aviso' }> = ({ modo = 'perfil' }) => {
   const [estado, setEstado] = useState<EstadoPush>('indisponivel');
   const [acabouDeAtivar, setAcabouDeAtivar] = useState(false);
   const [msg, setMsg] = useState('');
   const [ocupado, setOcupado] = useState(false);
+  const [testado, setTestado] = useState(() => { try { return localStorage.getItem('ndl_push_testado') === '1'; } catch { return false; } });
 
   useEffect(() => { estadoPush().then(setEstado).catch(() => {}); }, []);
   if (!noAppNativo() || estado === 'indisponivel') return null;
-  if (modo === 'aviso' && estado === 'ativo' && !acabouDeAtivar) return null;
+  if (modo === 'aviso' && estado === 'ativo' && testado && !acabouDeAtivar) return null;
 
   const ativar = async () => {
     setOcupado(true);
@@ -21,7 +23,15 @@ export const NotificacoesCelular: React.FC<{ modo?: 'perfil' | 'aviso' }> = ({ m
     if (e === 'ativo') setAcabouDeAtivar(true);
     setOcupado(false);
   };
-  const testar = async () => { setOcupado(true); setMsg(await testarPush()); setOcupado(false); };
+  const testar = async () => {
+    setOcupado(true);
+    // Make sure this phone is registered before testing (no-op if it already is).
+    await ativarPush().catch(() => {});
+    const r = await testarPush();
+    setMsg(r);
+    if (r.startsWith('Pronto')) { setTestado(true); try { localStorage.setItem('ndl_push_testado', '1'); } catch {} }
+    setOcupado(false);
+  };
 
   return (
     <div className={`w-full p-4 rounded-2xl border shadow-sm ${estado === 'ativo' ? 'bg-white border-gray-100' : 'bg-amber-50 border-amber-200'}`}>

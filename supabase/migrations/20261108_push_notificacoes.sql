@@ -203,6 +203,6 @@ create trigger push_servico_evento after insert or update on public.services
 -- Timed notifications (eve, morning, pending confirmations, weekly summary, late check-in, photos)
 -- and a safety net for anything left in the queue.
 select cron.unschedule('push-agendados') where exists (select 1 from cron.job where jobname = 'push-agendados');
-select cron.schedule('push-agendados', '*/15 * * * *',
+select cron.schedule('push-agendados', '*/5 * * * *',
   $c$ select net.http_post(url := 'https://yhdxmutbreihrtlnbcaf.supabase.co/functions/v1/push',
        headers := '{"Content-Type": "application/json"}'::jsonb, body := '{"acao":"agendados"}'::jsonb); $c$);

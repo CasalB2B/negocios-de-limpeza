@@ -327,7 +327,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       'As notificações funcionam no app para Android (e no iPhone quando o app for publicado na App Store). No site pelo navegador elas não aparecem.',
       'Ao entrar no app, ele pede permissão para enviar notificações: toque em Permitir. Para conferir, a colaboradora abre Perfil → Notificações no celular; a administradora vê o aviso no Dashboard enquanto não estiverem ativas. O botão Testar envia uma notificação de teste.',
       'A colaboradora recebe: nova faxina na agenda, faxina alterada (data, horário ou endereço), faxina retirada ou cancelada, o resumo do dia às 7h, os serviços de amanhã às 19h, um lembrete se o check-in atrasar e o aviso para enviar as fotos e fazer o check-out depois do horário do serviço.',
-      'A administradora recebe: sinal ou pagamento recebido, cliente confirmou, check-in feito, faxina concluída, check-in atrasado, o resumo do dia às 7h, os clientes que ainda não confirmaram a faxina de amanhã (às 17h) e, aos domingos às 19h, o resumo da próxima semana.',
+      'A administradora recebe: sinal ou pagamento recebido, cliente confirmou, check-in feito, faxina concluída, check-in atrasado, o resumo do dia às 7h, os clientes que ainda não confirmaram a faxina de amanhã (às 17h), aos domingos às 19h o resumo da próxima semana, e lembretes de entrevistas e ligações com candidatas marcadas na Contratação (1 hora e 15 minutos antes).',
       'Tocar na notificação abre a tela certa do app. Se as notificações foram bloqueadas sem querer: Configurações do Android → Apps → Negócios de Limpeza → Notificações → ativar.',
       'Ao sair da conta, aquele celular para de receber os avisos dessa pessoa.',
     ],

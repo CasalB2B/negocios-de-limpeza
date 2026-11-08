@@ -206,8 +206,31 @@ async function agendados() {
     }
   }
 
-  // All day: late check-in (20 to 90 min after the start) and "send the photos" after the service length
+  // RH: interviews and phone calls scheduled with candidates → admins, 1 hour and 15 minutes before
   const agoraMin = hoje.h * 60 + hoje.m;
+  if (empresasAdmin.length) {
+    const { data: candidatas } = await db.from('candidatas_rh').select('id, nome, company_id, dados_formulario')
+      .in('company_id', empresasAdmin).ilike('dados_formulario', `%${hoje.iso}%`).limit(500);
+    for (const c of candidatas ?? []) {
+      let f: Record<string, any> = {};
+      try { f = JSON.parse(c.dados_formulario || '{}'); } catch { continue; }
+      for (const [tipo, data, hora] of [['ligacao', f.ligacaoData, f.ligacaoHorario], ['entrevista', f.entrevistaData, f.entrevistaHorario]] as const) {
+        if (data !== hoje.iso) continue;
+        const inicio = minutos(hora);
+        if (inicio === null) continue;
+        const falta = inicio - agoraMin;
+        const aviso = falta >= 50 && falta <= 65 ? '60' : falta >= 8 && falta <= 20 ? '15' : null;
+        if (!aviso) continue;
+        const nomeTipo = tipo === 'ligacao' ? 'Ligação' : 'Entrevista';
+        await enfileirar({ company_id: c.company_id ?? 1, destino: 'admin', chave: `${tipo}-${aviso}:${c.id}:${hoje.iso}:${hora}`,
+          rota: `/admin/rh/contratacao?candidataId=${c.id}`,
+          titulo: `${tipo === 'ligacao' ? '📞' : '🎤'} ${nomeTipo} com ${c.nome || 'candidata'}`,
+          corpo: `${aviso === '60' ? 'Em 1 hora' : 'Em 15 minutos'}, às ${hora}. Toque para ver a ficha.` });
+      }
+    }
+  }
+
+  // All day: late check-in (20 to 90 min after the start) and "send the photos" after the service length
   for (const s of deHoje) {
     const inicio = minutos(s.time);
     const status = String(s.status || '').toUpperCase();
