@@ -188,7 +188,7 @@ const PaginaRecurso: React.FC<{ r: Recurso }> = ({ r }) => {
         </div>
       </section>
 
-      <Precos titulo={<>Assine sem pagar a mais por colaboradora <span className="text-primary">(o app da equipe está incluído)</span></>} />
+      <Precos titulo={<>Assine sem pagar a mais por profissional <span className="text-primary">(o app da equipe está incluído)</span></>} />
 
       {/* FAQ */}
       {r.perguntas.length > 0 && (
@@ -253,7 +253,7 @@ export const RecursoPage: React.FC<{ slug?: string }> = ({ slug }) => {
   useEffect(() => {
     const base = 'https://app.negociosdelimpeza.com.br';
     if (r) definirMeta(`${r.titulo} | Negócios de Limpeza`, r.descricao, `${base}/recursos/${r.slug}`);
-    else definirMeta('Recursos do sistema para empresas de limpeza | Negócios de Limpeza', 'Agenda da equipe, clientes, cobrança automática, lembretes no WhatsApp, financeiro, RH, app da colaboradora e assistente com IA para empresas de limpeza.', `${base}/recursos`);
+    else definirMeta('Recursos do sistema para empresas de limpeza | Negócios de Limpeza', 'Agenda da equipe, clientes, cobrança automática, lembretes no WhatsApp, financeiro, RH, app da profissional e assistente com IA para empresas de limpeza.', `${base}/recursos`);
     window.scrollTo(0, 0);
   }, [r]);
   return (

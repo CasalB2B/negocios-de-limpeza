@@ -70,7 +70,7 @@ export const FinContas: React.FC = () => {
             <p className={`text-xl font-extrabold ${totPrev < 0 ? 'text-red-500' : 'text-darkText dark:text-darkTextPrimary'}`}>{brl(totPrev)}</p>
           </div>
           <p className="text-xs text-lightText dark:text-darkTextSecondary px-1">
-            Pagamentos pela InfinitePay entram sozinhos na conta InfinitePay. Pagamentos de colaboradoras registrados no RH saem da conta principal.
+            Pagamentos pela InfinitePay entram sozinhos na conta InfinitePay. Pagamentos de profissionais registrados no RH saem da conta principal.
           </p>
         </div>
       </div>

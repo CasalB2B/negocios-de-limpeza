@@ -276,7 +276,7 @@ const mockServiceDefinitions: ServiceDefinition[] = [
   {
     id: 'srv_1',
     name: 'Primeira Limpeza',
-    description: 'Limpeza profunda e completa. Foco nas suas prioridades. 1 ou 2 colaboradoras.',
+    description: 'Limpeza profunda e completa. Foco nas suas prioridades. 1 ou 2 profissionais.',
     icon: 'sparkles',
     pricingModel: 'ROOMS',
     basePrice: 320.00,    // 1 colaboradora — até 2 quartos/banheiros
@@ -288,7 +288,7 @@ const mockServiceDefinitions: ServiceDefinition[] = [
       {id: 'ex_3', label: 'Limpeza de Janelas (todas)', price: 60},
     ],
     pricingTiers: [
-      { id: 'tier_grande', name: '2 Colaboradoras (3+ quartos ou banheiros)', value: 3, price: 520 }
+      { id: 'tier_grande', name: '2 Profissionais (3+ quartos ou banheiros)', value: 3, price: 520 }
     ],
     active: true
   },
@@ -421,7 +421,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const mapDbUserToCollab = (u: any): CollaboratorUser => ({
     id: u.id,
-    name: u.name || 'Colaboradora',
+    name: u.name || 'Profissional',
     email: u.email || '',
     phone: u.phone || '',
     photo: u.photo,

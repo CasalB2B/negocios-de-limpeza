@@ -21,7 +21,7 @@ export const CATEGORIAS_AJUDA = [
   'WhatsApp e lembretes',
   'Equipe e RH',
   'Financeiro e estoque',
-  'App da colaboradora',
+  'App da profissional',
   'Integrações',
   'Assistente com IA',
   'Conta e assinatura',
@@ -36,7 +36,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     resumo: 'Onde fica cada área do sistema no computador e no celular.',
     texto: [
       'No computador, o menu fica na lateral esquerda. No celular, a barra inferior tem Início, Agenda, OS e Clientes, e o botão Menu abre todas as áreas.',
-      'Áreas principais: Dashboard (serviços do dia, receita do mês, quanto falta receber e mapa da equipe), Operações (Agendamento, OS, Clientes e Serviços), Recursos Humanos (Contratação, Colaboradoras, Avaliações, Desempenho e Config. RH), Financeiro (Financeiro, Estoque e Nota Fiscal) e Configurações (Configurações, Assinatura, Central de Ajuda e WhatsApp).',
+      'Áreas principais: Dashboard (serviços do dia, receita do mês, quanto falta receber e mapa da equipe), Operações (Agendamento, OS, Clientes e Serviços), Recursos Humanos (Contratação, Profissionais, Avaliações, Desempenho e Config. RH), Financeiro (Financeiro, Estoque e Nota Fiscal) e Configurações (Configurações, Assinatura, Central de Ajuda e WhatsApp).',
       'Os grupos do menu ficam fechados; o grupo da tela em que você está abre sozinho. Clique no nome do grupo para abrir ou fechar.',
     ],
     palavras: ['menu', 'onde fica', 'navegação', 'celular', 'dashboard'],
@@ -49,7 +49,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     passos: [
       'Cadastre os seus serviços e preços em Operações → Serviços.',
       'Defina quanto cada cargo recebe por faxina em Recursos Humanos → Config. RH → Remuneração (diária de 4h, 6h e 8h). Na conta nova a tabela começa vazia.',
-      'Cadastre a equipe em Recursos Humanos → Colaboradoras e crie o acesso de cada uma ao app (botão Dar acesso).',
+      'Cadastre a equipe em Recursos Humanos → Profissionais e crie o acesso de cada uma ao app (botão Dar acesso).',
       'Conecte onde você recebe em Configurações → Integrações → Recebimentos (InfinitePay).',
       'Conecte o WhatsApp da empresa na tela WhatsApp para lembretes e cobranças automáticas.',
       'Cadastre os clientes em Operações → Clientes, escolhendo o tipo (Novo, Fixo ou Eventual).',
@@ -62,11 +62,11 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     titulo: 'Usuários e permissões',
     resumo: 'Quem tem acesso ao sistema da sua empresa.',
     passos: [
-      'Configurações → Usuários & Permissões mostra os administradores e as colaboradoras que têm acesso ao app.',
-      'O acesso de uma colaboradora é criado em Recursos Humanos → Colaboradoras → abra a colaboradora → Dar acesso (e-mail e senha de pelo menos 6 caracteres). Ali também dá para trocar a senha dela.',
+      'Configurações → Usuários & Permissões mostra os administradores e as profissionais que têm acesso ao app.',
+      'O acesso de uma profissional é criado em Recursos Humanos → Profissionais → abra a profissional → Dar acesso (e-mail e senha de pelo menos 6 caracteres). Ali também dá para trocar a senha dela.',
     ],
     dicas: ['Em breve: perfis de acesso (líder, financeiro, atendimento), escolhendo o que cada pessoa pode ver.'],
-    palavras: ['usuário', 'permissão', 'acesso', 'senha da colaboradora', 'dar acesso', 'login da equipe'],
+    palavras: ['usuário', 'permissão', 'acesso', 'senha da profissional', 'dar acesso', 'login da equipe'],
   },
 
   // ── Agenda e OS ───────────────────────────────────────────────────────
@@ -78,7 +78,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     passos: [
       'Vá em Operações → Agendamento e clique no dia desejado (a data já vem preenchida) ou no botão Agendar.',
       'Escolha o cliente, o endereço e o tipo de serviço. O valor é sugerido pelo serviço e pode ser ajustado.',
-      'Defina horário, duração e marque quantas colaboradoras forem necessárias.',
+      'Defina horário, duração e marque quantas profissionais forem necessárias.',
       'Clique em Agendar. Se o pré-agendamento com sinal estiver ligado e o cliente não for fixo, o botão aparece como "Pré-agendar (aguarda sinal)".',
     ],
     dicas: ['Os cards do calendário mostram horário, cliente, serviço, observação e as fotos da equipe.'],
@@ -88,13 +88,13 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     id: 'visoes-calendario',
     categoria: 'Agenda e ordens de serviço',
     titulo: 'Visões do calendário: Mês, Semana, Equipe e Pessoa',
-    resumo: 'Veja a agenda do jeito que precisa, inclusive uma colaboradora por vez.',
+    resumo: 'Veja a agenda do jeito que precisa, inclusive uma profissional por vez.',
     texto: [
       'Mês e Semana: todos os serviços no período.',
-      'Equipe: o dia com as colaboradoras lado a lado. Clique no nome de uma colaboradora para abrir a semana dela.',
-      'Pessoa: a semana de uma colaboradora por vez, com total de serviços e horas. No celular, arraste para o lado para ir à próxima, ou toque na foto no topo. Em um dia "Livre", toque para agendar já com ela escolhida.',
+      'Equipe: o dia com as profissionais lado a lado. Clique no nome de uma profissional para abrir a semana dela.',
+      'Pessoa: a semana de uma profissional por vez, com total de serviços e horas. No celular, arraste para o lado para ir à próxima, ou toque na foto no topo. Em um dia "Livre", toque para agendar já com ela escolhida.',
     ],
-    palavras: ['calendário', 'visão', 'equipe', 'pessoa', 'semana da colaboradora', 'agenda individual'],
+    palavras: ['calendário', 'visão', 'equipe', 'pessoa', 'semana da profissional', 'agenda individual'],
   },
   {
     id: 'status-os',
@@ -104,7 +104,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     texto: [
       'Aguardando sinal: pré-agendamento esperando o pagamento do sinal. Vira Agendado sozinho quando o cliente paga.',
       'Agendado: data reservada. Confirmado: o cliente confirmou (pelo botão "Confirmo" do lembrete no WhatsApp, ou manualmente).',
-      'Em andamento: a colaboradora fez check-in no app. Concluído: a colaboradora fez check-out. Cancelado: cancelado manualmente ou pré-agendamento cujo sinal não foi pago no prazo.',
+      'Em andamento: a profissional fez check-in no app. Concluído: a profissional fez check-out. Cancelado: cancelado manualmente ou pré-agendamento cujo sinal não foi pago no prazo.',
       'Você também pode avançar a OS manualmente pelo botão "Avançar para" dentro da OS.',
     ],
     palavras: ['status', 'etapas', 'pipeline', 'confirmado', 'em andamento', 'concluído', 'aguardando sinal'],
@@ -184,7 +184,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     texto: [
       'Se o cliente não pagar, recebe até 2 lembretes. Passado o prazo (ex.: 24 h), o pré-agendamento é cancelado, o horário liberado e a equipe recebe um aviso para chamar o cliente.',
       'Quando o sinal é pago, a OS vira Agendado e o cliente recebe "Recebemos o seu sinal… seu agendamento está confirmado".',
-      'Na primeira limpeza, depois que a colaboradora conclui, o link do restante é enviado automaticamente no prazo escolhido.',
+      'Na primeira limpeza, depois que a profissional conclui, o link do restante é enviado automaticamente no prazo escolhido.',
       'Requer InfinitePay conectada, WhatsApp conectado e os modelos de mensagem aprovados pela Meta.',
     ],
     palavras: ['pré-agendamento', 'pre agendamento', 'sinal', '50%', 'automático', 'aguardando sinal', 'expirar', 'liberar horário'],
@@ -222,16 +222,16 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
   {
     id: 'avaliacoes-automaticas',
     categoria: 'WhatsApp e lembretes',
-    titulo: 'Pedido de avaliação: Google e colaboradora',
-    resumo: 'Primeira limpeza pede avaliação no Google; clientes recorrentes avaliam a colaboradora.',
+    titulo: 'Pedido de avaliação: Google e profissional',
+    resumo: 'Primeira limpeza pede avaliação no Google; clientes recorrentes avaliam a profissional.',
     passos: [
       'No Google, abra o seu Perfil da Empresa → "Pedir avaliações" → copie o link.',
       'Tela WhatsApp → Geral → Pós-serviço e avaliação → cole o link do Google.',
-      'Escolha de quanto em quanto tempo os clientes recorrentes recebem o link de avaliação da colaboradora (ex.: a cada 2 meses).',
+      'Escolha de quanto em quanto tempo os clientes recorrentes recebem o link de avaliação da profissional (ex.: a cada 2 meses).',
     ],
     texto: [
       '1 hora depois de concluída a primeira limpeza, o cliente recebe o link do Google. Sem link configurado, recebe o pedido de nota de 1 a 5.',
-      'Clientes recorrentes recebem o link de avaliação da colaboradora que atendeu (estrelas e comentário), no máximo no intervalo escolhido. As notas aparecem em Recursos Humanos → Avaliações.',
+      'Clientes recorrentes recebem o link de avaliação da profissional que atendeu (estrelas e comentário), no máximo no intervalo escolhido. As notas aparecem em Recursos Humanos → Avaliações.',
     ],
     palavras: ['avaliação', 'google', 'meu negócio', 'estrelas', 'nota', 'feedback', 'review'],
   },
@@ -240,14 +240,14 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
   {
     id: 'colaboradoras',
     categoria: 'Equipe e RH',
-    titulo: 'Cadastro de colaboradoras e acesso ao app',
+    titulo: 'Cadastro de profissionais e acesso ao app',
     resumo: 'Perfil, cargo, acesso ao app, financeiro e link de avaliação.',
     passos: [
-      'Recursos Humanos → Colaboradoras → Nova. Preencha os dados, a foto e o cargo (Auxiliar de Limpeza, Faxineira, Faxineira Profissional ou Líder).',
-      'Para ela usar o app: abra a colaboradora → Dar acesso → e-mail e senha (mínimo de 6 caracteres). Ela entra em app.negociosdelimpeza.com.br/entrar (ou pelo app do celular) com esses dados.',
+      'Recursos Humanos → Profissionais → Nova. Preencha os dados, a foto e o cargo (Auxiliar de Limpeza, Faxineira, Faxineira Profissional ou Líder).',
+      'Para ela usar o app: abra a profissional → Dar acesso → e-mail e senha (mínimo de 6 caracteres). Ela entra em app.negociosdelimpeza.com.br/entrar (ou pelo app do celular) com esses dados.',
       'No perfil: abas Dados, Comportamental, Diário, Avaliações e Financeiro (registrar pagamento ou adiantamento). O link de avaliação pode ser enviado pelo WhatsApp.',
     ],
-    dicas: ['Quando uma colaboradora é promovida, registre a promoção para o cargo mudar e o app passar a mostrar a diária do novo cargo.'],
+    dicas: ['Quando uma profissional é promovida, registre a promoção para o cargo mudar e o app passar a mostrar a diária do novo cargo.'],
     palavras: ['colaboradora', 'equipe', 'cadastro', 'cargo', 'dar acesso', 'senha', 'adiantamento', 'pagamento'],
   },
   {
@@ -260,7 +260,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       'Bônus / Líder: salário fixo e bônus da líder (opcional).',
       'Critérios de Promoção: tempo mínimo, meses sem reclamação e metas para cada cargo.',
     ],
-    texto: ['O app da colaboradora mostra quanto ela recebe por serviço usando a diária do cargo dela. Cada alteração cria uma nova versão; o histórico não é afetado.'],
+    texto: ['O app da profissional mostra quanto ela recebe por serviço usando a diária do cargo dela. Cada alteração cria uma nova versão; o histórico não é afetado.'],
     palavras: ['remuneração', 'diária', 'quanto recebe', 'cargo', 'bônus', 'líder', 'promoção', 'config rh'],
   },
   {
@@ -285,7 +285,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     resumo: 'Contas, cartões, categorias, lançamentos e próximos compromissos.',
     texto: [
       'Financeiro → Financeiro organiza o dinheiro da empresa: contas, cartões de crédito (com parcelas e faturas), categorias, lançamentos, calendário e próximos compromissos.',
-      'Pagamentos recebidos pelos links da InfinitePay entram sozinhos como receita, e os pagamentos às colaboradoras registrados no RH entram como despesa.',
+      'Pagamentos recebidos pelos links da InfinitePay entram sozinhos como receita, e os pagamentos às profissionais registrados no RH entram como despesa.',
       'Dá para importar o histórico de outro aplicativo (como o Mobills) ou de uma planilha.',
       'No Dashboard, os cartões "Receita do mês" e "A receber" somam os pagamentos confirmados (inclusive sinais) e o que ainda falta receber.',
     ],
@@ -311,11 +311,11 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
   // ── App da colaboradora ───────────────────────────────────────────────
   {
     id: 'app-colaboradora',
-    categoria: 'App da colaboradora',
-    titulo: 'Como a colaboradora usa o app',
+    categoria: 'App da profissional',
+    titulo: 'Como a profissional usa o app',
     resumo: 'Agenda, check-in, checklist, fotos, check-out e quanto vai receber.',
     texto: [
-      'A colaboradora entra em app.negociosdelimpeza.com.br/entrar (ou pelo app do celular) com o e-mail e a senha criados em Dar acesso.',
+      'A profissional entra em app.negociosdelimpeza.com.br/entrar (ou pelo app do celular) com o e-mail e a senha criados em Dar acesso.',
       'Ela vê a agenda de hoje e da semana, abre o serviço com o endereço, faz check-in ao chegar (a OS vai para Em andamento), segue o checklist, tira fotos de antes e depois e faz check-out (a OS vai para Concluído).',
       'Em cada serviço aparece quanto ela vai receber (a diária do cargo dela para 4h, 6h ou 8h), nunca o valor que o cliente paga.',
       'No Financeiro dela aparecem serviços pendentes, pagamentos recebidos, adiantamentos e a projeção do mês. No Perfil ela troca a senha e pode pedir a exclusão da conta.',
@@ -324,13 +324,13 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
   },
   {
     id: 'notificacoes-celular',
-    categoria: 'App da colaboradora',
+    categoria: 'App da profissional',
     titulo: 'Notificações no celular',
     resumo: 'Avisos de novos serviços, mudanças, lembretes e pagamentos no app do celular.',
     texto: [
       'As notificações funcionam no app para Android (e no iPhone quando o app for publicado na App Store). No site pelo navegador elas não aparecem.',
-      'Ao entrar no app, ele pede permissão para enviar notificações: toque em Permitir. Para conferir, a colaboradora abre Perfil → Notificações no celular; a administradora vê o aviso no Dashboard enquanto não estiverem ativas. O botão Testar envia uma notificação de teste.',
-      'A colaboradora recebe: nova faxina na agenda, faxina alterada (data, horário ou endereço), faxina retirada ou cancelada, o resumo do dia às 7h, os serviços de amanhã às 19h, um lembrete se o check-in atrasar e o aviso para enviar as fotos e fazer o check-out depois do horário do serviço.',
+      'Ao entrar no app, ele pede permissão para enviar notificações: toque em Permitir. Para conferir, a profissional abre Perfil → Notificações no celular; a administradora vê o aviso no Dashboard enquanto não estiverem ativas. O botão Testar envia uma notificação de teste.',
+      'A profissional recebe: nova faxina na agenda, faxina alterada (data, horário ou endereço), faxina retirada ou cancelada, o resumo do dia às 7h, os serviços de amanhã às 19h, um lembrete se o check-in atrasar e o aviso para enviar as fotos e fazer o check-out depois do horário do serviço.',
       'A administradora recebe: novo agendamento feito por outra pessoa (equipe ou pedido do cliente; os que ela mesma cria não geram aviso), sinal ou pagamento recebido, cliente confirmou, check-in feito, faxina concluída, check-in atrasado, o resumo do dia às 7h, os clientes que ainda não confirmaram a faxina de amanhã (às 17h), aos domingos às 19h o resumo da próxima semana, e lembretes de entrevistas e ligações com candidatas marcadas na Contratação (1 hora e 15 minutos antes).',
       'Tocar na notificação abre a tela certa do app. Se as notificações foram bloqueadas sem querer: Configurações do Android → Apps → Negócios de Limpeza → Notificações → ativar.',
       'Ao sair da conta, aquele celular para de receber os avisos dessa pessoa.',
@@ -339,12 +339,12 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
   },
   {
     id: 'mapa-equipe',
-    categoria: 'App da colaboradora',
+    categoria: 'App da profissional',
     titulo: 'Mapa da equipe em tempo real',
-    resumo: 'Veja no Dashboard onde cada colaboradora está.',
+    resumo: 'Veja no Dashboard onde cada profissional está.',
     texto: [
-      'O mapa do Dashboard mostra cada colaboradora com a foto dela (a foto do cadastro no RH): borda lilás se a posição foi atualizada nos últimos 15 minutos, cinza com a última posição conhecida. Você aparece com a logo; o botão Eu centraliza o mapa em você e Ampliar abre o mapa em tela cheia.',
-      'A posição aparece quando a colaboradora abre o app e permite a localização.',
+      'O mapa do Dashboard mostra cada profissional com a foto dela (a foto do cadastro no RH): borda lilás se a posição foi atualizada nos últimos 15 minutos, cinza com a última posição conhecida. Você aparece com a logo; o botão Eu centraliza o mapa em você e Ampliar abre o mapa em tela cheia.',
+      'A posição aparece quando a profissional abre o app e permite a localização.',
     ],
     palavras: ['mapa', 'localização', 'tempo real', 'gps', 'onde está'],
   },
@@ -372,7 +372,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     texto: [
       'Botão roxo com estrelinhas, no canto inferior direito de todas as telas do painel.',
       'Ajuda: responde como usar o sistema com base nesta Central de Ajuda.',
-      'Gestão: consulta os dados registrados — faturamento, quanto há a receber, links não pagos, pré-agendamentos aguardando sinal, retorno por colaboradora, clientes sumidos, avaliações, estoque e pagamentos.',
+      'Gestão: consulta os dados registrados — faturamento, quanto há a receber, links não pagos, pré-agendamentos aguardando sinal, retorno por profissional, clientes sumidos, avaliações, estoque e pagamentos.',
     ],
     palavras: ['assistente', 'ia', 'gemini', 'chat', 'perguntar', 'relatório'],
   },
@@ -382,10 +382,10 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     id: 'entrar',
     categoria: 'Conta e assinatura',
     titulo: 'Entrar no sistema e trocar a senha',
-    resumo: 'Uma tela de login para administrador, colaboradora e cliente.',
+    resumo: 'Uma tela de login para administrador, profissional e cliente.',
     passos: [
       'Acesse app.negociosdelimpeza.com.br/entrar (ou clique em Entrar no topo do site) e entre com e-mail e senha. No app do celular, o login abre direto. Cada pessoa vai direto para a área dela.',
-      'A colaboradora troca a senha no Perfil do app. O administrador troca a senha de uma colaboradora em Recursos Humanos → Colaboradoras → Dar acesso → Alterar senha.',
+      'A profissional troca a senha no Perfil do app. O administrador troca a senha de uma profissional em Recursos Humanos → Profissionais → Dar acesso → Alterar senha.',
       'Esqueceu a senha? Por enquanto, peça uma nova ao administrador da empresa. Em breve o link de troca chegará por e-mail.',
     ],
     dicas: ['As senhas ficam guardadas de forma protegida. Ninguém da equipe consegue ver a sua senha.'],
@@ -418,7 +418,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       'Toque em Assinar no plano desejado e pague na página segura da InfinitePay. Assim que o pagamento é confirmado, a empresa é liberada sozinha.',
     ],
     texto: [
-      'Planos: Inicial (até 3 colaboradoras), Profissional (até 8) e Empresa (até 20). Acima de 20, fale com a equipe.',
+      'Planos: Inicial (até 3 profissionais), Profissional (até 8) e Empresa (até 20). Acima de 20, fale com a equipe.',
       'Perto do vencimento aparece o aviso "Sua assinatura vence em X dias" com o botão Renovar. Renovar antes do vencimento soma o tempo, sem perder dias.',
     ],
     palavras: ['plano', 'assinatura', 'pagar', 'renovar', 'mensal', 'anual', 'preço', 'valor do sistema', 'vencida'],
@@ -426,10 +426,10 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
   {
     id: 'excluir-conta',
     categoria: 'Conta e assinatura',
-    titulo: 'Excluir a conta (cliente e colaboradora)',
+    titulo: 'Excluir a conta (cliente e profissional)',
     resumo: 'Pedido de exclusão dos dados pelo app.',
     texto: [
-      'Colaboradora: Perfil → Excluir minha conta. Cliente: Perfil → configurações → Excluir minha conta.',
+      'Profissional: Perfil → Excluir minha conta. Cliente: Perfil → configurações → Excluir minha conta.',
       'O pedido aparece em vermelho no Dashboard do administrador. Depois de excluir os dados, toque em "Já excluí". O prazo é de até 15 dias.',
     ],
     palavras: ['excluir conta', 'apagar dados', 'lgpd', 'deletar'],

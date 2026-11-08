@@ -54,7 +54,7 @@ export const AdminCollaborators: React.FC = () => {
         e.preventDefault();
         e.stopPropagation();
     }
-    if (window.confirm("Tem certeza que deseja excluir esta colaboradora? O acesso dela será revogado imediatamente.")) {
+    if (window.confirm("Tem certeza que deseja excluir esta profissional? O acesso dela será revogado imediatamente.")) {
         deleteCollaborator(id);
         setViewCollab(null);
     }
@@ -112,11 +112,11 @@ export const AdminCollaborators: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
            <div>
-              <h1 className="text-2xl md:text-3xl font-display font-bold text-darkText dark:text-darkTextPrimary">Colaboradoras</h1>
+              <h1 className="text-2xl md:text-3xl font-display font-bold text-darkText dark:text-darkTextPrimary">Profissionais</h1>
               <p className="text-lightText dark:text-darkTextSecondary mt-1 text-sm md:text-base">Gerencie e acompanhe o status da sua equipe em tempo real.</p>
            </div>
            <div className="w-full md:w-auto">
-              <Button icon={<UserPlus size={18} />} onClick={() => { setShowAddModal(true); setCollabData({ name: '', email: '', phone: '', password: generatePassword(), photo: '', level: 'JUNIOR' }); }} fullWidth>Adicionar Colaboradora</Button>
+              <Button icon={<UserPlus size={18} />} onClick={() => { setShowAddModal(true); setCollabData({ name: '', email: '', phone: '', password: generatePassword(), photo: '', level: 'JUNIOR' }); }} fullWidth>Adicionar Profissional</Button>
            </div>
         </div>
 
@@ -140,7 +140,7 @@ export const AdminCollaborators: React.FC = () => {
              <table className="w-full text-left min-w-[320px]">
                 <thead className="bg-gray-50/50 dark:bg-darkBg/50 border-b border-gray-100 dark:border-darkBorder">
                    <tr>
-                      <th className="p-4 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Colaboradora</th>
+                      <th className="p-4 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Profissional</th>
                       <th className="p-4 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider hidden sm:table-cell">Classificação</th>
                       <th className="p-4 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider hidden md:table-cell">Contato</th>
                       <th className="p-4 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider hidden sm:table-cell">Status</th>
@@ -264,7 +264,7 @@ export const AdminCollaborators: React.FC = () => {
         <Modal
             isOpen={showAddModal}
             onClose={() => setShowAddModal(false)}
-            title="Nova Colaboradora"
+            title="Nova Profissional"
             footer={
                 <>
                    <button onClick={() => setShowAddModal(false)} className="px-6 py-3 font-bold text-lightText hover:text-darkText hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>

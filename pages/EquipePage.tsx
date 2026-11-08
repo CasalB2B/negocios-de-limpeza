@@ -179,7 +179,7 @@ function TeamCards({ colabs, avaliacoes }: { colabs: Colab[]; avaliacoes: Avalia
   if (sortedColabs.length === 0) {
     return (
       <div className="text-center py-12 text-gray-400 text-sm">
-        Nenhuma colaboradora cadastrada ainda.
+        Nenhuma profissional cadastrada ainda.
       </div>
     );
   }
@@ -367,7 +367,7 @@ export const EquipePage: React.FC = () => {
             <div className="flex justify-center gap-8 mt-7">
               <div className="text-center">
                 <p className="text-2xl font-extrabold">{colabs.length}</p>
-                <p className="text-purple-200 text-xs mt-0.5">colaboradoras ativas</p>
+                <p className="text-purple-200 text-xs mt-0.5">profissionais ativas</p>
               </div>
               {totalAvals > 0 && (
                 <>

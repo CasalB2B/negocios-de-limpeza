@@ -193,7 +193,7 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
       if (typeof loc.lat !== 'number' || typeof loc.lng !== 'number') continue;
       vistos.add(loc.collab_id);
       const ativa = isActive(loc);
-      const nome = (loc.collab_name || 'Colaboradora').trim();
+      const nome = (loc.collab_name || 'Profissional').trim();
       const pos = { lat: loc.lat, lng: loc.lng };
       let m = markersRef.current.get(loc.collab_id);
       if (!m) {
@@ -202,7 +202,7 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
           const el = document.createElement('div');
           el.style.cssText = 'font:13px system-ui,sans-serif;min-width:140px';
           const t = document.createElement('strong');
-          t.textContent = (atual.collab_name || 'Colaboradora').trim();
+          t.textContent = (atual.collab_name || 'Profissional').trim();
           const p = document.createElement('div');
           p.style.cssText = 'color:#555;margin-top:2px';
           p.textContent = isActive(atual) ? `Ativa agora · ${hora(atual.updated_at)}` : `Última atualização: ${hora(atual.updated_at)}`;
@@ -330,7 +330,7 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
         </p>
       )}
       {mapsKey && locations.length === 0 && (
-        <p className="text-[11px] text-gray-400 mt-2 px-1">A posição aparece quando a colaboradora abre o app e permite a localização.</p>
+        <p className="text-[11px] text-gray-400 mt-2 px-1">A posição aparece quando a profissional abre o app e permite a localização.</p>
       )}
     </div>
   );

@@ -19,7 +19,7 @@ export const DESCONTO_ANUAL = 0.15;
 export const PLANOS: Plano[] = [
   {
     id: 'inicial', nome: 'Inicial', mensal: 89, para: 'Até 3 colaboradoras', colaboradoras: 3, lembretes: 150,
-    itens: ['Agenda e ordens de serviço', 'App da colaboradora', 'Clientes', 'Cobrança automática', '150 lembretes no WhatsApp por mês', 'Assistente com IA (dúvidas)'],
+    itens: ['Agenda e ordens de serviço', 'App da profissional', 'Clientes', 'Cobrança automática', '150 lembretes no WhatsApp por mês', 'Assistente com IA (dúvidas)'],
   },
   {
     id: 'profissional', nome: 'Profissional', mensal: 179, para: 'Até 8 colaboradoras', colaboradoras: 8, lembretes: 500, destaque: true,

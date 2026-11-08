@@ -249,7 +249,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       icon: <Users size={16} />,
       items: [
         { icon: <UserPlus size={15} />,   label: 'Contratação',      path: '/admin/rh/contratacao' },
-        { icon: <Users size={15} />,      label: 'Colaboradoras',    path: '/admin/rh/colaboradoras' },
+        { icon: <Users size={15} />,      label: 'Profissionais',    path: '/admin/rh/colaboradoras' },
         { icon: <MessageSquare size={15}/>,label: 'Avaliações',      path: '/admin/rh/avaliacoes' },
         { icon: <BarChart2 size={15} />,  label: 'Desempenho',       path: '/admin/rh/desempenho' },
         ...(empresaId() === 1 ? [{ icon: <BookOpen size={15} />, label: 'Plano de Carreira', path: '/admin/rh/plano-carreira' }] : []),
@@ -489,11 +489,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                 className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-400 hover:bg-purple-50 hover:text-purple-600 rounded-lg transition-colors"
               >
                 <Eye size={13} />
-                Ver como colaboradora...
+                Ver como profissional...
               </button>
               {showPreviewPanel && (
                 <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-gray-100 dark:bg-darkSurface dark:border-darkBorder rounded-xl shadow-xl overflow-hidden">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">Escolha uma colaboradora</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">Escolha uma profissional</p>
                   <div className="max-h-44 overflow-y-auto">
                     {loadingPreviewCollabs ? (
                       <p className="text-xs text-gray-400 p-3 text-center">Carregando...</p>
@@ -657,7 +657,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                            onClick={() => { setShowClientPanel(false); openPreviewPanel(); }}
                            className={`flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-semibold ${showPreviewPanel ? 'bg-purple-600 text-white' : 'bg-purple-50 text-purple-700'}`}
                          >
-                           <Eye size={14} /> Colaboradora
+                           <Eye size={14} /> Profissional
                          </button>
                          <button
                            onClick={openClientPanel}

@@ -201,7 +201,7 @@ export const AdminRHColaboradoras: React.FC = () => {
     setSyncMsg('');
     const { synced, errors } = await syncToSupabase();
     setSyncing(false);
-    if (synced > 0) setSyncMsg(`✅ Sincronizado! Colaboradoras + avaliações enviadas.`);
+    if (synced > 0) setSyncMsg(`✅ Sincronizado! Profissionais + avaliações enviadas.`);
     else if (errors > 0) setSyncMsg(`⚠️ ${errors} erro(s) ao sincronizar.`);
     else setSyncMsg('✅ Tudo já está no banco!');
     setTimeout(() => setSyncMsg(''), 4000);
@@ -383,7 +383,7 @@ export const AdminRHColaboradoras: React.FC = () => {
     setAltSenhaLoading(true);
     setAltSenhaMsg(null);
     const alvo = acessoExistente?.email ? { email: acessoExistente.email } : null;
-    const r = alvo ? await definirSenha(alvo, altSenha) : { ok: false, erro: 'Esta colaboradora ainda não tem acesso.' };
+    const r = alvo ? await definirSenha(alvo, altSenha) : { ok: false, erro: 'Esta profissional ainda não tem acesso.' };
     setAltSenhaLoading(false);
     if (!r.ok) {
       setAltSenhaMsg({ ok: false, msg: r.erro || 'Não foi possível alterar a senha.' });
@@ -498,7 +498,7 @@ export const AdminRHColaboradoras: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Excluir esta colaboradora? Todos os registros serão removidos.')) return;
+    if (!window.confirm('Excluir esta profissional? Todos os registros serão removidos.')) return;
     await deleteColaboradora(id);
     setEditing(null);
     if (perfilAberto?.id === id) setPerfilAberto(null);
@@ -569,7 +569,7 @@ export const AdminRHColaboradoras: React.FC = () => {
         {/* Header — compact for mobile */}
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-darkText dark:text-darkTextPrimary">Colaboradoras</h1>
+            <h1 className="text-2xl font-bold text-darkText dark:text-darkTextPrimary">Profissionais</h1>
             <p className="text-sm text-lightText dark:text-darkTextSecondary mt-0.5">
               {colaboradoras.filter(c => c.status === StatusColaboradoraRH.ATIVA).length} ativas
               {rhSyncing && (
@@ -654,7 +654,7 @@ export const AdminRHColaboradoras: React.FC = () => {
                   <button key={c}
                     onClick={() => setFilterCargo(c as CargoRH | 'TODOS')}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterCargo === c ? 'bg-primary text-white' : 'bg-white dark:bg-darkSurface text-lightText dark:text-darkTextSecondary border border-gray-200 dark:border-darkBorder hover:border-primary/40'}`}>
-                    {c === 'TODOS' ? 'Todos' : c === 'JUNIOR' ? 'Auxiliar' : c === 'SENIOR' ? 'Faxineira' : c === 'PROFISSIONAL' ? 'Profissional' : c === 'LIDER' ? 'Líder' : 'Gerente'}
+                    {c === 'TODOS' ? 'Todos' : c === 'JUNIOR' ? 'Auxiliar' : c === 'SENIOR' ? 'Faxineira' : c === 'PROFISSIONAL' ? 'Faxineira Prof.' : c === 'LIDER' ? 'Líder' : 'Gerente'}
                   </button>
                 ))}
               </div>
@@ -730,7 +730,7 @@ export const AdminRHColaboradoras: React.FC = () => {
           <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-lightText dark:text-darkTextSecondary">
-            <p className="font-bold">Nenhuma colaboradora encontrada.</p>
+            <p className="font-bold">Nenhuma profissional encontrada.</p>
             <p className="text-sm mt-1">Clique em "Nova" para cadastrar.</p>
           </div>
         ) : (
@@ -836,7 +836,7 @@ export const AdminRHColaboradoras: React.FC = () => {
         )}
 
         {/* Modal Add */}
-        <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Nova Colaboradora">
+        <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Nova Profissional">
           <ColaboradoraForm form={form} setForm={setForm} photoRef={photoRef} contratoRef={contratoRef} onPhotoSelect={file => handlePhoto(file, false)} onContratoSelect={handleContrato} />
           {formError && <p className="mt-2 text-xs font-bold text-red-500">{formError}</p>}
           <div className="flex gap-3 mt-4">
@@ -847,7 +847,7 @@ export const AdminRHColaboradoras: React.FC = () => {
 
         {/* Modal Edit */}
         {editing && (
-          <Modal isOpen={!!editing} onClose={() => setEditing(null)} title="Editar Colaboradora">
+          <Modal isOpen={!!editing} onClose={() => setEditing(null)} title="Editar Profissional">
             <div className="flex flex-col items-center mb-4">
               <div className="relative w-20 h-20 rounded-2xl bg-gray-100 dark:bg-darkBg flex items-center justify-center text-3xl font-bold text-lightText overflow-hidden cursor-pointer" onClick={() => photoRef.current?.click()}>
                 {editing.foto ? <img src={editing.foto} alt={editing.nome} className="w-full h-full object-cover" /> : editing.nome[0]}
@@ -1232,7 +1232,7 @@ export const AdminRHColaboradoras: React.FC = () => {
                 {perfilTab === 'comportamental' && (
                   <div className="space-y-5">
                     <p className="text-sm text-lightText dark:text-darkTextSecondary">
-                      Registre características comportamentais para acompanhar o desenvolvimento desta colaboradora.
+                      Registre características comportamentais para acompanhar o desenvolvimento desta profissional.
                     </p>
 
                     <PerfilComportamentalForm colaboradora={perfilAberto} onSave={async (data) => {
@@ -1621,7 +1621,7 @@ export const AdminRHColaboradoras: React.FC = () => {
                 {perfilTab === 'financeiro' && (
                   <div className="space-y-4">
                     <p className="text-xs text-lightText dark:text-darkTextSecondary">
-                      Registre pagamentos e adiantamentos. A colaboradora vê isso no app em "Meu Financeiro".
+                      Registre pagamentos e adiantamentos. A profissional vê isso no app em "Meu Financeiro".
                     </p>
 
                     {/* Action buttons */}
@@ -1764,10 +1764,10 @@ export const AdminRHColaboradoras: React.FC = () => {
           ) : (
             <>
               <p className="text-xs text-lightText dark:text-darkTextSecondary mb-4">
-                Crie um login para esta colaboradora acessar o app mobile.
+                Crie um login para esta profissional acessar o app mobile.
               </p>
               <div className="space-y-3">
-                <Input label="E-mail de acesso" type="email" value={acessoEmail} onChange={e => setAcessoEmail(e.target.value)} placeholder="colaboradora@email.com" />
+                <Input label="E-mail de acesso" type="email" value={acessoEmail} onChange={e => setAcessoEmail(e.target.value)} placeholder="profissional@email.com" />
                 <div className="relative">
                   <Input label="Senha temporária" type={acessoShowPwd ? 'text' : 'password'} value={acessoSenha} onChange={e => setAcessoSenha(e.target.value)} placeholder="mínimo 6 caracteres" />
                   <button type="button" onClick={() => setAcessoShowPwd(p => !p)} className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors">
@@ -1986,7 +1986,7 @@ const PerfilComportamentalForm: React.FC<PerfilFormProps> = ({ colaboradora, onS
           <span className="w-2 h-2 bg-primary rounded-full" /> Perfil Comportamental
         </label>
         <textarea value={perfil} onChange={e => setPerfil(e.target.value)} rows={4}
-          placeholder="Descreva o perfil geral desta colaboradora: como ela se relaciona com a equipe, como reage a desafios, estilo de trabalho, histórico de comportamento..."
+          placeholder="Descreva o perfil geral desta profissional: como ela se relaciona com a equipe, como reage a desafios, estilo de trabalho, histórico de comportamento..."
           className="w-full border border-input bg-background dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" />
       </div>
       <button onClick={handleSave} disabled={saving}

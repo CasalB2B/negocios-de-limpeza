@@ -136,7 +136,7 @@ export const CollaboratorProfile: React.FC = () => {
 
                <div className="bg-green-50 text-green-700 px-4 py-2 rounded-full inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider">
                   <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                  Colaboradora Verificada
+                  Profissional Verificada
                </div>
             </div>
 

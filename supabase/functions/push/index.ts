@@ -240,7 +240,7 @@ async function agendados() {
       await enfileirar({ company_id: s.company_id ?? 1, destino: 'colab', colab_ids: ids, chave: `checkin-colab:${s.id}`, rota: '/collab/agenda',
         titulo: '📍 Já chegou na faxina?', corpo: `Não esqueça de fazer o check-in · ${s.client_name || 'cliente'} às ${s.time}.` });
       await enfileirar({ company_id: s.company_id ?? 1, destino: 'admin', chave: `checkin-admin:${s.id}`, rota: '/admin/os',
-        titulo: '⏰ Check-in atrasado', corpo: `${s.collaborator_name || 'A colaboradora'} ainda não fez check-in na faxina das ${s.time} de ${s.client_name || 'cliente'}.` });
+        titulo: '⏰ Check-in atrasado', corpo: `${s.collaborator_name || 'A profissional'} ainda não fez check-in na faxina das ${s.time} de ${s.client_name || 'cliente'}.` });
     }
     const horas = Number(String(s.duration || '').replace(/\D/g, '')) || 4;
     if (s.checked_in_at && Date.now() >= new Date(s.checked_in_at).getTime() + horas * 3600_000 && ids.length) {

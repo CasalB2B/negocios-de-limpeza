@@ -110,7 +110,7 @@ export const AdminRHDashboard: React.FC = () => {
 
         {/* Stats cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard icon={<Users size={20} />} label="Colaboradoras Ativas" value={String(ativas.length)} color="primary" />
+          <StatCard icon={<Users size={20} />} label="Profissionais Ativas" value={String(ativas.length)} color="primary" />
           <StatCard
             icon={<Star size={20} />}
             label="Média Avaliação"
@@ -169,7 +169,7 @@ export const AdminRHDashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Avaliações mensais */}
           <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-100 dark:border-darkBorder p-5">
-            <h2 className="font-bold text-darkText dark:text-darkTextPrimary text-sm mb-4">Avaliações por Colaboradora (6 meses)</h2>
+            <h2 className="font-bold text-darkText dark:text-darkTextPrimary text-sm mb-4">Avaliações por Profissional (6 meses)</h2>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={chartAvaliacoes}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -209,14 +209,14 @@ export const AdminRHDashboard: React.FC = () => {
                 <span className="text-sm text-lightText dark:text-darkTextSecondary">{cargo}</span>
               </div>
             ))}
-            {distribuicao.length === 0 && <p className="text-sm text-lightText dark:text-darkTextSecondary">Nenhuma colaboradora ativa.</p>}
+            {distribuicao.length === 0 && <p className="text-sm text-lightText dark:text-darkTextSecondary">Nenhuma profissional ativa.</p>}
           </div>
         </div>
 
         {/* Quick links */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Colaboradoras', path: '/admin/rh/colaboradoras', icon: <Users size={18}/> },
+            { label: 'Profissionais', path: '/admin/rh/colaboradoras', icon: <Users size={18}/> },
             { label: 'Desempenho', path: '/admin/rh/desempenho', icon: <TrendingUp size={18}/> },
             { label: 'Bônus', path: '/admin/rh/bonus', icon: <Star size={18}/> },
             { label: 'Promoções', path: '/admin/rh/promocoes', icon: <Award size={18}/> },

@@ -15,7 +15,7 @@
       },
       {
         "t": "Vários endereços por cliente",
-        "d": "Casa, escritório, casa de praia: a colaboradora recebe o endereço certo do serviço, com o mapa."
+        "d": "Casa, escritório, casa de praia: a profissional recebe o endereço certo do serviço, com o mapa."
       },
       {
         "t": "Histórico completo",
@@ -67,21 +67,21 @@
   {
     "slug": "agenda",
     "nome": "Agenda da equipe",
-    "menu": "Dia, semana, mês e por colaboradora",
+    "menu": "Dia, semana, mês e por profissional",
     "titulo": "Agenda de faxinas e escala da equipe de limpeza",
-    "descricao": "Agenda online para empresa de limpeza: veja o dia de todas as colaboradoras lado a lado, a semana de cada uma e o mês inteiro. Agende faxinas em segundos.",
+    "descricao": "Agenda online para empresa de limpeza: veja o dia de todas as profissionais lado a lado, a semana de cada uma e o mês inteiro. Agende faxinas em segundos.",
     "chamada": "A agenda da equipe inteira numa tela, sem conflito de horário",
-    "subtitulo": "Quem vai em qual casa, que horas e em qual endereço. Agende em segundos e cada colaboradora vê a própria agenda no celular.",
+    "subtitulo": "Quem vai em qual casa, que horas e em qual endereço. Agende em segundos e cada profissional vê a própria agenda no celular.",
     "imagem": "agenda-equipe.webp",
     "imagem2": "agenda-mes.webp",
     "beneficios": [
       {
         "t": "Visão da equipe",
-        "d": "O dia de todas as colaboradoras lado a lado, para encaixar faxinas sem choque de horário."
+        "d": "O dia de todas as profissionais lado a lado, para encaixar faxinas sem choque de horário."
       },
       {
         "t": "Visão por pessoa",
-        "d": "A semana de uma colaboradora por vez. No celular, arraste para o lado para ver a próxima."
+        "d": "A semana de uma profissional por vez. No celular, arraste para o lado para ver a próxima."
       },
       {
         "t": "Mês inteiro",
@@ -96,14 +96,14 @@
         "d": "Faxina de 4, 6 ou 8 horas ocupa o espaço certo na agenda e no pagamento da equipe."
       },
       {
-        "t": "Aviso para a colaboradora",
+        "t": "Aviso para a profissional",
         "d": "Mudou a agenda? Ela recebe o aviso no celular e vê o novo serviço no app."
       }
     ],
     "passos": [
-      "Cadastre suas colaboradoras e os serviços",
+      "Cadastre suas profissionais e os serviços",
       "Agende escolhendo cliente, data, horário e quem vai",
-      "A colaboradora vê tudo no app e o cliente recebe a confirmação"
+      "A profissional vê tudo no app e o cliente recebe a confirmação"
     ],
     "perguntas": [
       {
@@ -111,8 +111,8 @@
         "r": "Sim. A agenda funciona no navegador do celular e nos apps para Android e iPhone."
       },
       {
-        "p": "Posso ter mais de uma colaboradora no mesmo serviço?",
-        "r": "Sim. Faxinas grandes podem ter duas ou mais colaboradoras, e cada uma vê o serviço na própria agenda."
+        "p": "Posso ter mais de uma profissional no mesmo serviço?",
+        "r": "Sim. Faxinas grandes podem ter duas ou mais profissionais, e cada uma vê o serviço na própria agenda."
       }
     ],
     "destaques": [
@@ -124,12 +124,12 @@
       },
       {
         "t": "O mês inteiro para planejar a escala",
-        "d": "Todos os agendamentos com cliente, serviço e colaboradora, para você enxergar a semana que vem.",
+        "d": "Todos os agendamentos com cliente, serviço e profissional, para você enxergar a semana que vem.",
         "visual": "agenda-mes.webp",
         "chip": "32 faxinas no mês"
       },
       {
-        "t": "A semana de cada colaboradora no celular",
+        "t": "A semana de cada profissional no celular",
         "d": "Ela vê só a agenda dela e recebe o aviso quando algo muda.",
         "visual": "celular:celular-pessoa.webp",
         "chip": "Agenda da Ana atualizada"
@@ -152,7 +152,7 @@
         "d": "Aguardando sinal, confirmado, em andamento e concluído. Nada se perde no meio do caminho."
       },
       {
-        "t": "Check-in da colaboradora",
+        "t": "Check-in da profissional",
         "d": "Ela marca a chegada e a saída pelo app, e você acompanha em tempo real."
       },
       {
@@ -165,22 +165,22 @@
       },
       {
         "t": "Observações do cliente",
-        "d": "Chave na portaria, cachorro em casa, produto especial: tudo anotado para a colaboradora."
+        "d": "Chave na portaria, cachorro em casa, produto especial: tudo anotado para a profissional."
       },
       {
         "t": "Avaliação no fim",
-        "d": "Depois do serviço o cliente recebe o pedido de avaliação da faxina e da colaboradora."
+        "d": "Depois do serviço o cliente recebe o pedido de avaliação da faxina e da profissional."
       }
     ],
     "passos": [
       "Agende a faxina e a ordem de serviço nasce sozinha",
       "O sinal é pago e a faxina fica confirmada",
-      "A colaboradora faz check-in, fotos e conclui pelo app"
+      "A profissional faz check-in, fotos e conclui pelo app"
     ],
     "perguntas": [
       {
         "p": "Preciso mudar as etapas na mão?",
-        "r": "Não. Com a cobrança automática ligada, as etapas mudam sozinhas conforme o cliente paga e a colaboradora faz o check-in."
+        "r": "Não. Com a cobrança automática ligada, as etapas mudam sozinhas conforme o cliente paga e a profissional faz o check-in."
       }
     ],
     "destaques": [
@@ -283,7 +283,7 @@
       },
       {
         "t": "Menos faxina perdida",
-        "d": "Cliente avisado não esquece, e a colaboradora não chega em casa vazia."
+        "d": "Cliente avisado não esquece, e a profissional não chega em casa vazia."
       },
       {
         "t": "Link de pagamento",
@@ -291,7 +291,7 @@
       },
       {
         "t": "Pedido de avaliação",
-        "d": "Depois da faxina o cliente avalia o serviço e a colaboradora."
+        "d": "Depois da faxina o cliente avalia o serviço e a profissional."
       },
       {
         "t": "API oficial da Meta",
@@ -362,7 +362,7 @@
       },
       {
         "t": "Pagamento da equipe",
-        "d": "Calculado pela diária do cargo de cada colaboradora, já somado no mês."
+        "d": "Calculado pela diária do cargo de cada profissional, já somado no mês."
       }
     ],
     "passos": [
@@ -406,8 +406,8 @@
     "nome": "Equipe e RH",
     "menu": "Contratação, cargos, diárias e avaliações",
     "titulo": "Gestão de equipe e RH para empresa de limpeza",
-    "descricao": "Contrate, organize e mantenha boas colaboradoras: candidatas por etapa, cargos e diárias, avaliações dos clientes, desempenho e bônus.",
-    "chamada": "Contrate, acompanhe e mantenha as melhores colaboradoras",
+    "descricao": "Contrate, organize e mantenha boas profissionais: candidatas por etapa, cargos e diárias, avaliações dos clientes, desempenho e bônus.",
+    "chamada": "Contrate, acompanhe e mantenha as melhores profissionais",
     "subtitulo": "Candidatas, entrevistas, cargos, diárias, avaliações dos clientes e desempenho: tudo o que hoje fica em planilhas soltas.",
     "imagem": "equipe-rh.webp",
     "beneficios": [
@@ -425,7 +425,7 @@
       },
       {
         "t": "Avaliações dos clientes",
-        "d": "A nota de cada colaboradora vem das avaliações reais dos clientes."
+        "d": "A nota de cada profissional vem das avaliações reais dos clientes."
       },
       {
         "t": "Desempenho e bônus",
@@ -433,30 +433,30 @@
       },
       {
         "t": "Acesso ao app",
-        "d": "Cada colaboradora ganha login próprio e vê só o que é dela."
+        "d": "Cada profissional ganha login próprio e vê só o que é dela."
       }
     ],
     "passos": [
-      "Cadastre as colaboradoras e os cargos",
+      "Cadastre as profissionais e os cargos",
       "Defina as diárias e os critérios de avaliação",
       "Acompanhe desempenho e contratações num lugar só"
     ],
     "perguntas": [
       {
-        "p": "As colaboradoras pagam alguma coisa?",
+        "p": "As profissionais pagam alguma coisa?",
         "r": "Não. O acesso delas está incluído no plano da empresa."
       }
     ],
     "destaques": [
       {
         "t": "Sua equipe organizada",
-        "d": "Cargo, diária, desempenho e avaliações de cada colaboradora, num lugar só.",
+        "d": "Cargo, diária, desempenho e avaliações de cada profissional, num lugar só.",
         "visual": "equipe-rh.webp",
         "chip": "Nova candidata hoje"
       },
       {
         "t": "Cada uma com a agenda no celular",
-        "d": "Ao dar o acesso, a colaboradora passa a ver os serviços dela no app.",
+        "d": "Ao dar o acesso, a profissional passa a ver os serviços dela no app.",
         "visual": "celular:celular-pessoa.webp",
         "chip": "Acesso liberado"
       }
@@ -464,11 +464,11 @@
   },
   {
     "slug": "app-colaboradora",
-    "nome": "App da colaboradora",
+    "nome": "App da profissional",
     "menu": "Agenda, endereço, check-in e fotos",
-    "titulo": "App para colaboradoras de empresa de limpeza",
+    "titulo": "App para profissionais de empresa de limpeza",
     "descricao": "App para a equipe de limpeza: agenda do dia, endereço com mapa, check-in, fotos do serviço e quanto vai receber. Android, iPhone e navegador.",
-    "chamada": "A agenda da colaboradora no bolso, sem você ficar mandando áudio",
+    "chamada": "A agenda da profissional no bolso, sem você ficar mandando áudio",
     "subtitulo": "Ela abre o app, vê os serviços do dia, toca no endereço para abrir o mapa, faz check-in, tira as fotos e sabe quanto vai receber.",
     "celular": "celular-pessoa.webp",
     "imagem": "agenda-equipe.webp",
@@ -499,7 +499,7 @@
       }
     ],
     "passos": [
-      "Dê acesso à colaboradora com e-mail e senha",
+      "Dê acesso à profissional com e-mail e senha",
       "Ela instala o app ou entra pelo navegador",
       "Pronto: a agenda dela atualiza sozinha"
     ],
@@ -529,7 +529,7 @@
     "nome": "Assistente com IA",
     "menu": "Pergunte e receba a resposta com números",
     "titulo": "Assistente com inteligência artificial para empresa de limpeza",
-    "descricao": "Pergunte em português sobre a sua empresa de limpeza: faturamento, clientes sumidos, melhores colaboradoras, faxinas da semana. A IA responde com os seus números.",
+    "descricao": "Pergunte em português sobre a sua empresa de limpeza: faturamento, clientes sumidos, melhores profissionais, faxinas da semana. A IA responde com os seus números.",
     "chamada": "Pergunte do seu jeito e receba a resposta com os números da empresa",
     "subtitulo": "Quanto tenho a receber? Quais clientes sumiram? Quem teve as melhores avaliações? O assistente responde na hora e ainda ensina a usar o sistema.",
     "ia": true,

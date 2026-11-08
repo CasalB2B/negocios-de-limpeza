@@ -212,7 +212,7 @@ export const AdminSettings: React.FC = () => {
           <div className="space-y-8 animate-in fade-in duration-300">
              <div className="bg-purple-50 dark:bg-primary/10 p-4 rounded-xl border border-purple-100 dark:border-primary/30">
                 <p className="text-sm text-primary font-bold flex items-center gap-2">
-                   <DollarSign size={16} /> Quanto cada colaboradora recebe por faxina (4h, 6h e 8h) fica em Recursos Humanos → Config. RH → Remuneração.
+                   <DollarSign size={16} /> Quanto cada profissional recebe por faxina (4h, 6h e 8h) fica em Recursos Humanos → Config. RH → Remuneração.
                 </p>
                 <a href="#/admin/rh/configuracoes" className="inline-block mt-2 text-sm font-bold text-primary underline">Abrir a tabela de diárias</a>
              </div>
@@ -309,13 +309,13 @@ export const AdminSettings: React.FC = () => {
                            <p className="text-xs text-lightText dark:text-darkTextSecondary truncate">{u.email}</p>
                         </div>
                         <span className={`shrink-0 text-xs font-bold px-2 py-1 rounded ${u.role === 'ADMIN' ? 'bg-primary/10 text-primary' : 'bg-blue-50 text-blue-700'}`}>
-                           {u.role === 'ADMIN' ? 'Administrador' : 'Colaboradora (app)'}
+                           {u.role === 'ADMIN' ? 'Administrador' : 'Profissional (app)'}
                         </span>
                      </div>
                   ))}
                </div>
                <p className="text-xs text-lightText dark:text-darkTextSecondary">
-                  O acesso das colaboradoras ao app é criado em Recursos Humanos → Colaboradoras → Dar acesso.
+                  O acesso das profissionais ao app é criado em Recursos Humanos → Profissionais → Dar acesso.
                   Em breve: perfis de acesso (líder, financeiro, atendimento) escolhendo o que cada pessoa pode ver.
                </p>
 
@@ -331,7 +331,7 @@ export const AdminSettings: React.FC = () => {
                         <a href="#/collab/agenda" target="_blank" rel="noopener noreferrer"
                            className="flex items-center gap-4 p-5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-2xl hover:shadow-md transition-all">
                            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white text-xl">🧹</div>
-                           <div><p className="font-bold text-darkText dark:text-darkTextPrimary">Portal da Colaboradora</p><p className="text-xs text-lightText">Ver tela como colaboradora</p></div>
+                           <div><p className="font-bold text-darkText dark:text-darkTextPrimary">Portal da Profissional</p><p className="text-xs text-lightText">Ver tela como profissional</p></div>
                         </a>
                      </div>
                   </div>
@@ -452,7 +452,7 @@ export const AdminSettings: React.FC = () => {
                   </div>
                   <div>
                     <h4 className="font-bold text-darkText dark:text-darkTextPrimary text-base">Google Maps</h4>
-                    <p className="text-xs text-lightText dark:text-darkTextSecondary">Mapa de localização em tempo real das colaboradoras</p>
+                    <p className="text-xs text-lightText dark:text-darkTextSecondary">Mapa de localização em tempo real das profissionais</p>
                   </div>
                 </div>
                 <span className={`flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${mapsKey ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400'}`}>

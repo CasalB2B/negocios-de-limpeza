@@ -288,8 +288,8 @@ export const AdminCalendar: React.FC = () => {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <Users size={40} className="mx-auto mb-3 text-gray-300" />
-            <p className="text-sm text-gray-500 font-medium">Nenhuma colaboradora ativa</p>
-            <p className="text-xs text-gray-400 mt-1">Ative colaboradoras em Recursos Humanos</p>
+            <p className="text-sm text-gray-500 font-medium">Nenhuma profissional ativa</p>
+            <p className="text-xs text-gray-400 mt-1">Ative profissionais em Recursos Humanos</p>
           </div>
         </div>
       );
@@ -429,7 +429,7 @@ export const AdminCalendar: React.FC = () => {
 
   const renderPessoa = () => {
     if (colaboradoras.length === 0) {
-      return <div className="flex-1 flex items-center justify-center p-8 text-sm text-gray-500">Nenhuma colaboradora ativa</div>;
+      return <div className="flex-1 flex items-center justify-center p-8 text-sm text-gray-500">Nenhuma profissional ativa</div>;
     }
     const hoje = formatDateBR(new Date());
     const doDia = (c: RHColaboradora, d: Date) => svcsForDay(d)
@@ -744,7 +744,7 @@ export const AdminCalendar: React.FC = () => {
 
           <div>
             <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">
-              Colaboradoras
+              Profissionais
             </label>
             {selectedCollabs.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2">
@@ -758,7 +758,7 @@ export const AdminCalendar: React.FC = () => {
             )}
             <div className="max-h-40 overflow-y-auto bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl divide-y divide-gray-100 dark:divide-darkBorder">
               {colaboradoras.length === 0 ? (
-                <p className="text-xs text-lightText p-3">Nenhuma colaboradora ativa</p>
+                <p className="text-xs text-lightText p-3">Nenhuma profissional ativa</p>
               ) : colaboradoras.map(c => {
                 const checked = !!selectedCollabs.find(x => x.id === c.id);
                 return (
@@ -824,7 +824,7 @@ export const AdminCalendar: React.FC = () => {
                 <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">{selectedEvent.address}</p>
               </div>
               <div className="bg-gray-50 dark:bg-darkBg rounded-xl p-3">
-                <p className="text-[10px] font-bold text-lightText dark:text-darkTextSecondary uppercase mb-1 flex items-center gap-1"><User size={10} /> Colaboradora</p>
+                <p className="text-[10px] font-bold text-lightText dark:text-darkTextSecondary uppercase mb-1 flex items-center gap-1"><User size={10} /> Profissional</p>
                 {selectedEvent.collaboratorName ? (
                   <div className="flex items-center gap-2">
                     <CheckCircle2 size={14} className="text-green-500" />
@@ -833,7 +833,7 @@ export const AdminCalendar: React.FC = () => {
                 ) : (
                   <div className="flex items-center gap-2">
                     <AlertTriangle size={14} className="text-orange-500" />
-                    <p className="text-sm text-orange-600 dark:text-orange-400 font-bold">Sem colaboradora</p>
+                    <p className="text-sm text-orange-600 dark:text-orange-400 font-bold">Sem profissional</p>
                   </div>
                 )}
               </div>

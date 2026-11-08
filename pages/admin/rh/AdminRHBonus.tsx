@@ -142,7 +142,7 @@ export const AdminRHBonus: React.FC = () => {
           {lideres.length === 0 ? (
             <div className="flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl p-3">
               <AlertCircle size={15} className="shrink-0"/>
-              Nenhuma Líder de Equipe ativa cadastrada. Cadastre em Colaboradoras.
+              Nenhuma Líder de Equipe ativa cadastrada. Cadastre em Profissionais.
             </div>
           ) : (
             <>

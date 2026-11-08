@@ -68,7 +68,7 @@ export const AdminRHPromocoes: React.FC = () => {
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-darkText dark:text-darkTextPrimary">Promoções</h1>
-          <p className="text-sm text-lightText dark:text-darkTextSecondary mt-0.5">Registre a promoção de uma colaboradora</p>
+          <p className="text-sm text-lightText dark:text-darkTextSecondary mt-0.5">Registre a promoção de uma profissional</p>
         </div>
 
         {/* Fluxo de promoção */}
@@ -89,7 +89,7 @@ export const AdminRHPromocoes: React.FC = () => {
           {/* Step 1: Selecionar */}
           {step === 1 && (
             <div className="space-y-3">
-              <h3 className="font-bold text-darkText dark:text-darkTextPrimary">Selecione a colaboradora</h3>
+              <h3 className="font-bold text-darkText dark:text-darkTextPrimary">Selecione a profissional</h3>
               <div className="space-y-2">
                 {promovivel.map(col => {
                   const eleg = getElegibilidade(col);
@@ -182,7 +182,7 @@ export const AdminRHPromocoes: React.FC = () => {
                 <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Observações</label>
                 <textarea value={obs} onChange={e => setObs(e.target.value)} rows={2}
                   className="w-full border border-input bg-background dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-                  placeholder="Contexto, motivo, destaques da colaboradora..." />
+                  placeholder="Contexto, motivo, destaques da profissional..." />
               </div>
 
               <div className="flex gap-3">

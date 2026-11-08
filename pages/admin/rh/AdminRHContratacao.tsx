@@ -1237,7 +1237,7 @@ export const AdminRHContratacao: React.FC = () => {
                   {pipeline.etapa === 'CONTRATADA' && (
                     <div className="bg-green-50 dark:bg-green-900/20 rounded-2xl p-4">
                       <div className="flex items-center gap-2 text-green-700 dark:text-green-400"><CheckCircle size={15} /><p className="text-sm font-bold">🎉 Contratada com sucesso!</p></div>
-                      <p className="text-xs text-green-600 dark:text-green-500 mt-1">Lembre de cadastrar a nova colaboradora na aba Colaboradoras.</p>
+                      <p className="text-xs text-green-600 dark:text-green-500 mt-1">Lembre de cadastrar a nova profissional na aba Profissionais.</p>
                     </div>
                   )}
 

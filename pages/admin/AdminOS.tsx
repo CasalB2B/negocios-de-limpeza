@@ -344,7 +344,7 @@ export const AdminOS: React.FC = () => {
 
           <div>
             <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">
-              Colaboradoras
+              Profissionais
             </label>
             {selectedCollabs.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2">
@@ -358,7 +358,7 @@ export const AdminOS: React.FC = () => {
             )}
             <div className="max-h-40 overflow-y-auto bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder rounded-xl divide-y divide-gray-100 dark:divide-darkBorder">
               {colaboradoras.length === 0 ? (
-                <p className="text-xs text-lightText p-3">Nenhuma colaboradora ativa</p>
+                <p className="text-xs text-lightText p-3">Nenhuma profissional ativa</p>
               ) : colaboradoras.map(c => {
                 const checked = !!selectedCollabs.find(x => x.id === c.id);
                 return (
@@ -498,7 +498,7 @@ const OSCard: React.FC<CardProps> = ({ service, col, next, onOpen, onAdvance }) 
       <User size={11} className="shrink-0" />
       {service.collaboratorName
         ? <span className="truncate">{service.collaboratorName.split(' ')[0]}</span>
-        : <span className="text-orange-500 font-medium">Sem colaboradora</span>
+        : <span className="text-orange-500 font-medium">Sem profissional</span>
       }
     </p>
     <div className="flex items-center justify-between gap-1">
@@ -626,7 +626,7 @@ const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose
 
           {/* Collaborator assignment */}
           <div>
-            <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary mb-2">Colaboradora</p>
+            <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary mb-2">Profissional</p>
             {service.collaboratorName ? (
               <div className="flex items-center gap-3 bg-green-50 dark:bg-green-900/20 p-3 rounded-xl border border-green-100 dark:border-green-800">
                 <CheckCircle2 size={18} className="text-green-600 dark:text-green-400 shrink-0" />
@@ -641,7 +641,7 @@ const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose
             ) : (
               <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-xl border border-orange-100 dark:border-orange-800 space-y-2">
                 <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400 text-xs font-bold">
-                  <AlertCircle size={14} /> Sem colaboradora atribuída
+                  <AlertCircle size={14} /> Sem profissional atribuída
                 </div>
                 <select
                   className="w-full p-2.5 bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder rounded-xl text-sm outline-none text-darkText dark:text-darkTextPrimary"
@@ -657,7 +657,7 @@ const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose
                   const c = colaboradoras.find(c => c.id === assignId);
                   if (c) onAssignCollab(c.id, c.nome);
                 }} disabled={!assignId}>
-                  Atribuir Colaboradora
+                  Atribuir Profissional
                 </Button>
               </div>
             )}

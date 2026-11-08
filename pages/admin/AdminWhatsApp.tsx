@@ -601,7 +601,7 @@ export const AdminWhatsApp: React.FC = () => {
                   />
                   <ToggleRow
                     title="Pós-serviço e avaliação"
-                    desc="1 hora depois de concluído: na primeira limpeza manda o link do Google; para clientes recorrentes, de tempos em tempos, o link de avaliação da colaboradora que atendeu."
+                    desc="1 hora depois de concluído: na primeira limpeza manda o link do Google; para clientes recorrentes, de tempos em tempos, o link de avaliação da profissional que atendeu."
                     on={cfg.send_post_service !== false} onChange={v => patch({ send_post_service: v })}
                   />
                   {cfg.send_post_service !== false && (
@@ -620,7 +620,7 @@ export const AdminWhatsApp: React.FC = () => {
                         </span>
                       </label>
                       <label className="block sm:col-span-2">
-                        <span className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1">Clientes recorrentes: pedir avaliação da colaboradora</span>
+                        <span className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1">Clientes recorrentes: pedir avaliação da profissional</span>
                         <select value={cfg.review_interval_days ?? 60} onChange={e => patch({ review_interval_days: Number(e.target.value) })} className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkBg text-sm text-darkText dark:text-darkTextPrimary">
                           {[30, 60, 90].map(d => <option key={d} value={d}>No máximo a cada {d === 30 ? '1 mês' : `${d / 30} meses`}</option>)}
                         </select>
@@ -677,7 +677,7 @@ export const AdminWhatsApp: React.FC = () => {
                         <label className="block sm:col-span-2">
                           <span className="block text-xs font-bold text-gray-600 dark:text-darkTextSecondary mb-1">Primeira limpeza: cobrar o restante</span>
                           <select value={cfg.remainder_after_hours ?? 1} onChange={e => patch({ remainder_after_hours: Number(e.target.value) })} className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-darkBorder bg-white dark:bg-darkBg text-sm text-darkText dark:text-darkTextPrimary">
-                            {[0, 1, 2, 4].map(h => <option key={h} value={h}>{h === 0 ? 'Assim que a colaboradora concluir' : `${h} hora${h > 1 ? 's' : ''} depois de concluída`}</option>)}
+                            {[0, 1, 2, 4].map(h => <option key={h} value={h}>{h === 0 ? 'Assim que a profissional concluir' : `${h} hora${h > 1 ? 's' : ''} depois de concluída`}</option>)}
                           </select>
                         </label>
                         <p className="text-[11px] text-gray-500 dark:text-darkTextSecondary sm:col-span-2">

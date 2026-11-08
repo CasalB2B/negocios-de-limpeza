@@ -146,7 +146,7 @@ export const CollaboratorAgenda: React.FC = () => {
         <div className="pt-2">
           <p className="text-sm text-gray-500">{greeting()},</p>
           <h1 className="text-2xl font-bold text-gray-900">
-            {currentCollaborator?.name?.split(' ')[0] || 'Colaboradora'} 👋
+            {currentCollaborator?.name?.split(' ')[0] || 'Profissional'} 👋
           </h1>
           <p className="text-xs text-gray-400 mt-0.5 capitalize">{dayLabel}</p>
         </div>

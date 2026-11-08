@@ -51,9 +51,9 @@ export const AdminRHDesempenho: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!form.colaboradoraId) { alert('Selecione a colaboradora.'); return; }
+    if (!form.colaboradoraId) { alert('Selecione a profissional.'); return; }
     const exists = desempenhoMensal.some(d => d.colaboradoraId === form.colaboradoraId && d.mes === form.mes && d.ano === form.ano && d.id !== editing?.id);
-    if (exists) { alert('Já existe um registro para esta colaboradora neste mês.'); return; }
+    if (exists) { alert('Já existe um registro para esta profissional neste mês.'); return; }
     if (editing) {
       await updateDesempenho(editing.id, form);
       setEditing(null);
@@ -125,7 +125,7 @@ export const AdminRHDesempenho: React.FC = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-darkBorder">
-                    <th className="text-left px-4 py-3 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Colaboradora</th>
+                    <th className="text-left px-4 py-3 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Profissional</th>
                     <th className="text-center px-4 py-3 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Faxinas</th>
                     <th className="text-center px-4 py-3 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Avaliação</th>
                     <th className="text-center px-4 py-3 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wider">Ocorrências</th>
@@ -169,7 +169,7 @@ export const AdminRHDesempenho: React.FC = () => {
             <div className="overflow-x-auto border-t border-gray-100 dark:border-darkBorder">
               <table className="w-full text-sm">
                 <thead><tr className="border-b border-gray-50 dark:border-darkBorder">
-                  <th className="text-left px-4 py-2 text-xs font-bold text-lightText uppercase">Colaboradora</th>
+                  <th className="text-left px-4 py-2 text-xs font-bold text-lightText uppercase">Profissional</th>
                   <th className="text-center px-4 py-2 text-xs font-bold text-lightText uppercase">Mês/Ano</th>
                   <th className="text-center px-4 py-2 text-xs font-bold text-lightText uppercase">Faxinas</th>
                   <th className="text-center px-4 py-2 text-xs font-bold text-lightText uppercase">Avaliação</th>
@@ -225,7 +225,7 @@ interface DFormProps {
 const DesempenhoForm: React.FC<DFormProps> = ({ form, setForm, colaboradoras, editing }) => (
   <div className="space-y-4">
     <div>
-      <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Colaboradora *</label>
+      <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Profissional *</label>
       <select value={form.colaboradoraId} onChange={e => setForm(p => ({ ...p, colaboradoraId: e.target.value }))} disabled={editing}
         className="w-full border border-input bg-background dark:bg-darkBg rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60">
         <option value="">Selecionar...</option>

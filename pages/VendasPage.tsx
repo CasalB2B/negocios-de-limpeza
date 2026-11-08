@@ -31,14 +31,14 @@ const DORES = [
   { icon: Users, titulo: 'Equipe de 5, 10 pessoas e ninguém sabe direito onde ir', texto: 'Quem vai em qual casa, que horas, qual endereço, quem cobre a falta. Tudo isso passando por áudio e print de conversa.' },
   { icon: Calculator, titulo: 'Faxina feita e cobrança esquecida', texto: 'Com muitas faxinas no mesmo dia, um sinal não cobrado, um restante que ficou para depois e um cliente que nunca pagou.' },
   { icon: NotebookPen, titulo: 'Caderno e WhatsApp não são um sistema', texto: 'A informação fica espalhada, só você sabe de tudo, e se o celular quebra ou você viaja a empresa para.' },
-  { icon: Wallet, titulo: 'Sem saber quanto entra e quanto sai', texto: 'Quanto faturou no mês, quanto falta receber, quanto pagar para cada colaboradora: sem número, a decisão vira achismo.' },
-  { icon: PhoneOff, titulo: 'Cliente que esquece e faxina perdida', texto: 'Sem lembrete na véspera, a colaboradora chega e não tem ninguém. É deslocamento pago e dia sem receita.' },
+  { icon: Wallet, titulo: 'Sem saber quanto entra e quanto sai', texto: 'Quanto faturou no mês, quanto falta receber, quanto pagar para cada profissional: sem número, a decisão vira achismo.' },
+  { icon: PhoneOff, titulo: 'Cliente que esquece e faxina perdida', texto: 'Sem lembrete na véspera, a profissional chega e não tem ninguém. É deslocamento pago e dia sem receita.' },
   { icon: UserX, titulo: 'Contratar e manter gente boa', texto: 'Candidatas, avaliações dos clientes e promoções em planilhas soltas. Você perde as melhores sem perceber.' },
 ];
 
 const ANTES_DEPOIS: [string, string][] = [
   ['Agenda no caderno e em conversas de WhatsApp', 'Agenda da equipe inteira numa tela, por dia, semana ou pessoa'],
-  ['Colaboradora pergunta o endereço toda vez', 'Ela abre o app, vê o serviço e toca no endereço para abrir o mapa'],
+  ['Profissional pergunta o endereço toda vez', 'Ela abre o app, vê o serviço e toca no endereço para abrir o mapa'],
   ['Você lembra cada cliente na véspera, um por um', 'Lembrete automático no WhatsApp, saindo do seu número'],
   ['Pix cobrado na mão e conferido no extrato', 'Link de sinal enviado sozinho e baixa automática quando cai'],
   ['Faturamento só no fim do mês, se der tempo', 'Receitas, despesas e quanto falta receber na mesma tela'],
@@ -46,34 +46,34 @@ const ANTES_DEPOIS: [string, string][] = [
 ];
 
 const RECURSOS: { icon: React.ElementType; t: string; slug?: string; d: string }[] = [
-  { icon: CalendarDays, t: 'Agenda da equipe', slug: 'agenda', d: 'Mês, semana, equipe lado a lado e a semana de cada colaboradora.' },
+  { icon: CalendarDays, t: 'Agenda da equipe', slug: 'agenda', d: 'Mês, semana, equipe lado a lado e a semana de cada profissional.' },
   { icon: Kanban, t: 'Ordens de serviço', slug: 'ordens-de-servico', d: 'Do aguardando sinal ao concluído, com o status de cada faxina.' },
   { icon: Contact, t: 'Clientes', slug: 'clientes', d: 'Fixos, eventuais e novos, com histórico, endereços e clientes sumidos.' },
   { icon: Wallet, t: 'Cobrança automática', slug: 'cobranca', d: 'Link de sinal e de restante pela InfinitePay, com baixa sozinha.' },
   { icon: MessageCircle, t: 'WhatsApp automático', slug: 'whatsapp', d: 'Confirmação, lembrete na véspera e pós-serviço do seu número.' },
   { icon: BarChart3, t: 'Financeiro', slug: 'financeiro', d: 'Contas, cartões, categorias, lançamentos e quanto sobrou no mês.' },
-  { icon: Smartphone, t: 'App da colaboradora', slug: 'app-colaboradora', d: 'Agenda, endereço no mapa, check-in, fotos e quanto vai receber.' },
+  { icon: Smartphone, t: 'App da profissional', slug: 'app-colaboradora', d: 'Agenda, endereço no mapa, check-in, fotos e quanto vai receber.' },
   { icon: Users, t: 'Equipe e RH', slug: 'equipe', d: 'Cargos, diárias, desempenho, bônus e plano de carreira.' },
   { icon: UserPlus, t: 'Contratação', d: 'Candidatas por etapa, entrevista e banco de freelas.' },
-  { icon: Star, t: 'Avaliações', d: 'Pedido de avaliação no Google e nota de cada colaboradora.' },
-  { icon: MapPin, t: 'Mapa da equipe', d: 'Onde cada colaboradora está, em tempo real.' },
+  { icon: Star, t: 'Avaliações', d: 'Pedido de avaliação no Google e nota de cada profissional.' },
+  { icon: MapPin, t: 'Mapa da equipe', d: 'Onde cada profissional está, em tempo real.' },
   { icon: Package, t: 'Estoque', d: 'Produtos e equipamentos com alerta de estoque baixo.' },
   { icon: FileText, t: 'Nota fiscal', d: 'NFS-e com o CNPJ da sua empresa (adicional).' },
   { icon: Sparkles, t: 'Assistente com IA', slug: 'assistente-ia', d: 'Pergunte sobre o seu negócio e receba a resposta com números.' },
-  { icon: BellRing, t: 'Avisos para a equipe', d: 'Mudou a agenda? A colaboradora recebe o aviso no celular.' },
+  { icon: BellRing, t: 'Avisos para a equipe', d: 'Mudou a agenda? A profissional recebe o aviso no celular.' },
 ];
 
 const PERGUNTAS_IA = [
   'Quanto tenho a receber este mês?',
   'Quais clientes não agendam há 3 meses?',
-  'Qual colaboradora teve as melhores avaliações?',
+  'Qual profissional teve as melhores avaliações?',
   'Quantas faxinas fizemos na semana passada?',
 ];
 
 const FAQ = [
   { p: 'Preciso instalar alguma coisa?', r: 'Não. Funciona no navegador do computador e do celular, e também nos apps para Android e iPhone.' },
   { p: 'Como funciona o teste grátis?', r: 'São 14 dias com todas as funções liberadas, sem cartão. Você cria a conta, configura e usa com a sua equipe. No fim, escolhe o plano.' },
-  { p: 'Minhas colaboradoras pagam alguma coisa?', r: 'Não. O acesso delas ao app está incluído no plano da sua empresa.' },
+  { p: 'Minhas profissionais pagam alguma coisa?', r: 'Não. O acesso delas ao app está incluído no plano da sua empresa.' },
   { p: 'O WhatsApp continua no meu celular?', r: 'Sim. As mensagens automáticas (confirmação, lembrete da véspera, pós-serviço) saem do seu próprio número, e você continua usando o WhatsApp Business normalmente.' },
   { p: 'Quanto custa o WhatsApp?', r: 'Cada plano inclui um limite de lembretes automáticos por mês. A Meta cobra direto no seu cartão só o que for enviado (centavos por mensagem). Para enviar mais ou usar o atendimento automático, há o adicional.' },
   { p: 'Meus dados ficam seguros?', r: 'Sim. Cada empresa só acessa os próprios dados, com login protegido. Nenhuma outra empresa vê seus clientes, sua equipe ou seu financeiro.' },
@@ -249,7 +249,7 @@ export const VendasPage: React.FC = () => {
               O sistema completo para gestão de <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">empresas de limpeza</span>
             </h1>
             <p className="mt-5 text-lg text-lightText dark:text-darkTextSecondary max-w-2xl mx-auto">
-              Agenda da equipe, app da colaboradora, cobrança automática, lembretes no WhatsApp e financeiro. Tudo num lugar só, para você parar de apagar incêndio e fazer a empresa crescer.
+              Agenda da equipe, app da profissional, cobrança automática, lembretes no WhatsApp e financeiro. Tudo num lugar só, para você parar de apagar incêndio e fazer a empresa crescer.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
               <Link to="/criar-conta" className={botaoTeste}>Testar grátis por 14 dias <ArrowRight size={18} /></Link>
@@ -267,7 +267,7 @@ export const VendasPage: React.FC = () => {
         <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16 md:py-24">
           <p className="text-center text-xs font-bold uppercase tracking-wider text-primary">Se a sua empresa cresceu, você conhece isso</p>
           <h2 className="mt-2 text-3xl md:text-5xl font-bold text-center max-w-3xl mx-auto" style={balance}>
-            Com 5, 10 colaboradoras, o caderno e o WhatsApp não dão mais conta
+            Com 5, 10 profissionais, o caderno e o WhatsApp não dão mais conta
           </h2>
           <p className="mt-4 text-center text-lightText dark:text-darkTextSecondary max-w-2xl mx-auto">
             No começo dá para lembrar de tudo de cabeça. Quando a equipe cresce, a agenda embola, a cobrança escapa e você passa o dia resolvendo problema em vez de fazer a empresa crescer.
@@ -317,11 +317,11 @@ export const VendasPage: React.FC = () => {
           <div className="mt-12 grid md:grid-cols-6 gap-4">
             <div className={`${cartao} p-6 md:p-8 md:col-span-4 flex flex-col`}>
               <h3 className="text-xl font-bold">Agenda da equipe sem confusão</h3>
-              <p className="mt-2 text-sm text-lightText dark:text-darkTextSecondary max-w-lg">O dia de todas as colaboradoras lado a lado, a semana de cada uma e o mês inteiro. Agende em segundos com cliente, serviço, endereço e quem vai.</p>
+              <p className="mt-2 text-sm text-lightText dark:text-darkTextSecondary max-w-lg">O dia de todas as profissionais lado a lado, a semana de cada uma e o mês inteiro. Agende em segundos com cliente, serviço, endereço e quem vai.</p>
               <div className="mt-6 flex-1"><Recorte src="agenda-equipe.webp" alt="Agenda da equipe" altura="h-64 md:h-full md:min-h-[20rem]" /></div>
             </div>
             <div className="rounded-3xl bg-gradient-to-br from-primary to-secondary text-white p-6 md:p-8 md:col-span-2 flex flex-col shadow-xl shadow-primary/25">
-              <h3 className="text-xl font-bold">No celular de cada colaboradora</h3>
+              <h3 className="text-xl font-bold">No celular de cada profissional</h3>
               <p className="mt-2 text-sm text-white/85">Ela vê os serviços, abre o endereço, faz check-in, tira as fotos e sabe quanto vai receber.</p>
               <div className="mt-6 flex-1 flex items-end justify-center"><CelularGirando /></div>
             </div>
@@ -458,7 +458,7 @@ export const VendasPage: React.FC = () => {
           </div>
           <ol className="mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              ['Cadastre sua equipe', 'Colaboradoras, cargos e a diária de cada uma. Cada uma ganha o acesso ao app.'],
+              ['Cadastre sua equipe', 'Profissionais, cargos e a diária de cada uma. Cada uma ganha o acesso ao app.'],
               ['Cadastre os clientes', 'Fixos, eventuais e novos, com endereço e WhatsApp.'],
               ['Conecte WhatsApp e recebimentos', 'Lembretes saindo do seu número e cobrança pela InfinitePay.'],
               ['Agende e acompanhe', 'O sistema confirma, lembra, cobra e mostra tudo no painel.'],

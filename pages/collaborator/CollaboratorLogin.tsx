@@ -37,7 +37,7 @@ export const CollaboratorLogin: React.FC = () => {
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8 relative z-10 border border-gray-100">
         <button onClick={() => navigate('/')} className="text-lightText flex items-center gap-2 mb-6 hover:text-darkText text-sm font-bold"><ArrowLeft size={16} /> Voltar</button>
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-darkText mb-2">Portal da Colaboradora</h1>
+          <h1 className="text-2xl font-bold text-darkText mb-2">Portal da Profissional</h1>
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
             <input type="text" autoComplete="email" className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50" value={loginData.email} onChange={e => setLoginData({...loginData, email: e.target.value})} placeholder="E-mail" />

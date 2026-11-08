@@ -133,7 +133,7 @@ export const AdminRHAvaliacoes: React.FC = () => {
           </div>
           <select value={colabFiltro} onChange={e => setColabFiltro(e.target.value)}
             className="border border-input bg-white dark:bg-darkSurface rounded-xl px-3 py-2 text-sm text-darkText dark:text-darkTextPrimary focus:outline-none focus:ring-2 focus:ring-primary/30">
-            <option value="">Todas as colaboradoras</option>
+            <option value="">Todas as profissionais</option>
             {ativas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         </div>

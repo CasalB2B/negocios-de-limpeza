@@ -311,7 +311,7 @@ export const AdminDashboard: React.FC = () => {
 
           <div className="rounded-2xl p-6 bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-200/60 text-white">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-violet-100 text-sm font-medium">Colaboradoras ativas</span>
+              <span className="text-violet-100 text-sm font-medium">Profissionais ativas</span>
               <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
                 <Users size={18} className="text-white" />
               </div>
@@ -507,7 +507,7 @@ export const AdminDashboard: React.FC = () => {
                   <button key="afas" onClick={() => navigate('/admin/rh/colaboradoras')}
                     className="w-full flex items-center gap-2 text-left px-3 py-2.5 rounded-xl bg-orange-50 border border-orange-100 hover:bg-orange-100 transition-colors">
                     <Users size={14} className="text-orange-600 shrink-0" />
-                    <span className="text-sm text-orange-700 flex-1">{afastadasCount} colaboradora{afastadasCount > 1 ? 's' : ''} afastada{afastadasCount > 1 ? 's' : ''}</span>
+                    <span className="text-sm text-orange-700 flex-1">{afastadasCount} profissional{afastadasCount > 1 ? 's' : ''} afastada{afastadasCount > 1 ? 's' : ''}</span>
                     <ArrowRight size={12} className="text-orange-400" />
                   </button>
                 );
@@ -556,7 +556,7 @@ export const AdminDashboard: React.FC = () => {
               { label: 'Financeiro',      icon: <DollarSign size={18}/>,   path: '/admin/payments',          cls: 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-100' },
               { label: 'Calendário',      icon: <Calendar size={18}/>,     path: '/admin/calendar',          cls: 'text-blue-700 bg-blue-50 hover:bg-blue-100 border-blue-100' },
               { label: 'Clientes',        icon: <Users size={18}/>,        path: '/admin/clients',           cls: 'text-violet-700 bg-violet-50 hover:bg-violet-100 border-violet-100' },
-              { label: 'Colaboradoras',   icon: <UserPlus size={18}/>,     path: '/admin/rh/colaboradoras',  cls: 'text-pink-700 bg-pink-50 hover:bg-pink-100 border-pink-100' },
+              { label: 'Profissionais',   icon: <UserPlus size={18}/>,     path: '/admin/rh/colaboradoras',  cls: 'text-pink-700 bg-pink-50 hover:bg-pink-100 border-pink-100' },
               { label: 'Contratação',     icon: <BookOpen size={18}/>,     path: '/admin/rh/contratacao',    cls: 'text-orange-700 bg-orange-50 hover:bg-orange-100 border-orange-100' },
               { label: 'Desempenho',      icon: <BarChart2 size={18}/>,    path: '/admin/rh/desempenho',     cls: 'text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-100' },
               { label: 'Configurações',   icon: <Settings size={18}/>,     path: '/admin/settings',          cls: 'text-gray-600 bg-gray-50 hover:bg-gray-100 border-gray-100' },
@@ -582,7 +582,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {[
-              { label: 'Colaboradoras ativas',  value: ativasCount,        path: '/admin/rh/colaboradoras', color: 'from-violet-500 to-purple-600' },
+              { label: 'Profissionais ativas',  value: ativasCount,        path: '/admin/rh/colaboradoras', color: 'from-violet-500 to-purple-600' },
               { label: 'Em processo',           value: emProcesso,         path: '/admin/rh/contratacao',   color: 'from-orange-400 to-orange-500' },
               { label: 'Avaliações',            value: avaliacoes.length,  path: '/admin/rh/avaliacoes',    color: 'from-pink-500 to-rose-500' },
             ].map(item => (

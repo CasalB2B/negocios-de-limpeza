@@ -586,7 +586,7 @@ export const AdminRHConfiguracoes: React.FC = () => {
 
               {lideres.length === 0 ? (
                 <p className="text-sm text-lightText dark:text-darkTextSecondary bg-gray-50 dark:bg-darkBg rounded-xl p-3">
-                  Nenhuma Líder de Equipe ativa. Cadastre em <strong>Colaboradoras</strong>.
+                  Nenhuma Líder de Equipe ativa. Cadastre em <strong>Profissionais</strong>.
                 </p>
               ) : (
                 <>
@@ -848,7 +848,7 @@ export const AdminRHConfiguracoes: React.FC = () => {
               </div>
               <div className="p-5 space-y-4">
                 <p className="text-xs text-lightText dark:text-darkTextSecondary">
-                  Conecte sua conta Gendo para que o sistema busque automaticamente a contagem de faxinas finalizadas de cada colaboradora e pré-preencha o calculador de bônus.
+                  Conecte sua conta Gendo para que o sistema busque automaticamente a contagem de faxinas finalizadas de cada profissional e pré-preencha o calculador de bônus.
                 </p>
 
                 <div className="grid grid-cols-1 gap-3">
@@ -931,11 +931,11 @@ export const AdminRHConfiguracoes: React.FC = () => {
             <div className="bg-white dark:bg-darkSurface rounded-2xl border border-gray-100 dark:border-darkBorder overflow-hidden">
               <div className="px-5 py-3 border-b border-gray-50 dark:border-darkBorder flex items-center gap-2">
                 <TrendingUp size={15} className="text-primary"/>
-                <h3 className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Relatório de Faxinas por Colaboradora</h3>
+                <h3 className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Relatório de Faxinas por Profissional</h3>
               </div>
               <div className="p-5 space-y-4">
                 <p className="text-xs text-lightText dark:text-darkTextSecondary">
-                  Veja quantas faxinas cada colaboradora tem agendada no Gendo em um determinado mês.
+                  Veja quantas faxinas cada profissional tem agendada no Gendo em um determinado mês.
                 </p>
 
                 {/* Seletor mês/ano + meta + botão */}
@@ -964,7 +964,7 @@ export const AdminRHConfiguracoes: React.FC = () => {
                       className="w-24 border border-primary/50 bg-primary/5 dark:bg-primary/10 rounded-xl px-3 py-2 text-sm font-bold text-primary text-center focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
                     <p className="text-[10px] text-lightText dark:text-darkTextSecondary mt-1 leading-tight">
-                      Padrão global. Colaboradoras com meta individual cadastrada no perfil usam o valor próprio.
+                      Padrão global. Profissionais com meta individual cadastrada no perfil usam o valor próprio.
                     </p>
                   </div>
                   <Button onClick={fetchRelatorio} disabled={relLoading}>
@@ -1013,7 +1013,7 @@ export const AdminRHConfiguracoes: React.FC = () => {
                           <thead>
                             <tr className="bg-gray-50 dark:bg-darkBg">
                               <th className="text-left px-4 py-3 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">#</th>
-                              <th className="text-left px-4 py-3 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Colaboradora</th>
+                              <th className="text-left px-4 py-3 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Profissional</th>
                               <th className="text-left px-4 py-3 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Cargo (Sistema)</th>
                               <th className="text-center px-4 py-3 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Faxinas</th>
                               <th className="text-center px-4 py-3 text-xs font-bold text-lightText dark:text-darkTextSecondary uppercase tracking-wide">Meta</th>

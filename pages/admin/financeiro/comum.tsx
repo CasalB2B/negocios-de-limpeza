@@ -429,7 +429,7 @@ export const ContaModal: React.FC<{ fin: DadosFin; editar?: Conta | null; onFech
       </div>
       <label className="flex items-center gap-2 text-sm font-bold text-darkText dark:text-darkTextPrimary cursor-pointer">
         <input type="checkbox" checked={padrao} onChange={e => setPadrao(e.target.checked)} className="w-4 h-4 accent-primary" />
-        Conta principal (pagamentos das colaboradoras saem daqui)
+        Conta principal (pagamentos das profissionais saem daqui)
       </label>
       {msg && <p className="text-sm text-red-500">{msg}</p>}
       <div className="flex gap-2">

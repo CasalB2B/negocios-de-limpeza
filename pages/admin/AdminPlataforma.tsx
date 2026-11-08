@@ -161,7 +161,7 @@ export const AdminPlataforma: React.FC = () => {
             {empresas.filter(e => e.id === 1).map(e => (
               <div key={e.id} className={`${cartao} p-4 flex items-center gap-3 text-sm`}>
                 <Sparkles size={16} className="text-primary shrink-0" />
-                <span className="text-darkText dark:text-darkTextPrimary"><strong>{e.nome}</strong>: empresa dona da plataforma, tudo liberado sem custo · {e.colaboradoras} colaboradoras · {e.clientes} clientes · {e.envios_mes} lembretes no mês</span>
+                <span className="text-darkText dark:text-darkTextPrimary"><strong>{e.nome}</strong>: empresa dona da plataforma, tudo liberado sem custo · {e.colaboradoras} profissionais · {e.clientes} clientes · {e.envios_mes} lembretes no mês</span>
               </div>
             ))}
           </>
@@ -200,7 +200,7 @@ const CartaoEmpresa: React.FC<{ e: Empresa & { whatsappConn?: { status: string; 
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-center">
-        {[['Colaboradoras', e.colaboradoras], ['Clientes', e.clientes], ['Serviços', e.servicos]].map(([r, v]) => (
+        {[['Profissionais', e.colaboradoras], ['Clientes', e.clientes], ['Serviços', e.servicos]].map(([r, v]) => (
           <div key={r as string} className="rounded-xl bg-gray-50 dark:bg-darkBg py-2">
             <p className="text-lg font-bold text-darkText dark:text-darkTextPrimary tabular-nums">{v}</p>
             <p className="text-[10px] text-lightText">{r}</p>
