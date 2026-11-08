@@ -6,6 +6,7 @@ import { useRH, ColaboradoraRH, ObservacaoColaboradora } from '../../../componen
 import { Button } from '../../../components/Button';
 import { Input } from '../../../components/Input';
 import { Modal } from '../../../components/Modal';
+import { EnviarAcesso } from '../../../components/EnviarAcesso';
 import { Badge } from '../../../components/Badge';
 import { supabase } from '../../../lib/supabase';
 import {
@@ -389,6 +390,7 @@ export const AdminRHColaboradoras: React.FC = () => {
       setAltSenhaMsg({ ok: false, msg: r.erro || 'Não foi possível alterar a senha.' });
     } else {
       setAltSenhaMsg({ ok: true, msg: 'Senha alterada com sucesso!' });
+      setAcessoCreatedPwd(altSenha);
       setAltSenha('');
     }
   };
@@ -1760,6 +1762,7 @@ export const AdminRHColaboradoras: React.FC = () => {
                   <code className="font-mono text-blue-900 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded">{acessoCreatedPwd}</code>
                 </div>
               )}
+              <EnviarAcesso nome={acessoModal.nome} telefone={acessoModal.telefone} email={acessoExistente.email} senha={acessoCreatedPwd || undefined} />
             </div>
           ) : (
             <>

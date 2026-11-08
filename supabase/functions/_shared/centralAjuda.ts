@@ -245,6 +245,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     passos: [
       'Recursos Humanos → Profissionais → Nova. Preencha os dados, a foto e o cargo (Auxiliar de Limpeza, Faxineira, Faxineira Profissional ou Líder).',
       'Para ela usar o app: abra a profissional → Dar acesso → e-mail e senha (mínimo de 6 caracteres). Ela entra em app.negociosdelimpeza.com.br/entrar (ou pelo app do celular) com esses dados.',
+      'Para mandar o acesso: na mesma janela aparece a mensagem pronta com o e-mail, a senha e os links para baixar o app. Toque em Enviar pelo WhatsApp (abre o seu WhatsApp com a mensagem, sem gastar crédito) ou Copiar mensagem.',
       'No perfil: abas Dados, Comportamental, Diário, Avaliações e Financeiro (registrar pagamento ou adiantamento). O link de avaliação pode ser enviado pelo WhatsApp.',
     ],
     dicas: ['Quando uma profissional é promovida, registre a promoção para o cargo mudar e o app passar a mostrar a diária do novo cargo.'],
