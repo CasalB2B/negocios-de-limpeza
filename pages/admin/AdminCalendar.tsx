@@ -7,6 +7,7 @@ import { Modal } from '../../components/Modal';
 import {
   Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, LayoutGrid, List, Users,
   Clock, MapPin, User, X, AlertTriangle, CheckCircle2, ArrowRight, Search, UserRound,
+  Copy,
 } from 'lucide-react';
 import { useData, Service } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
@@ -53,6 +54,10 @@ export const AdminCalendar: React.FC = () => {
   const setF = (p: Partial<typeof BLANK>) => setForm(f => ({ ...f, ...p }));
 
   const [selectedCollabs, setSelectedCollabs] = useState<SelectedCollab[]>([]);
+  // Repeat the booking (fixed clients): every week, every 15 days or every month, for up to 3 months.
+  const [repetir, setRepetir] = useState<'nao' | 'semanal' | 'quinzenal' | 'mensal'>('nao');
+  const [repetirMeses, setRepetirMeses] = useState(1);
+  const [criando, setCriando] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
   const [showClientDrop, setShowClientDrop] = useState(false);
   const clientRef = useRef<HTMLDivElement>(null);
@@ -155,20 +160,55 @@ export const AdminCalendar: React.FC = () => {
     setSelectedCollabs([]);
     setClientSearch('');
     setShowClientDrop(false);
+    setRepetir('nao');
+    setRepetirMeses(1);
     setShowCreate(true);
   };
 
+  // Same booking again (other date): opens the form with everything filled in except the date.
+  const duplicar = (s: any) => {
+    setPrefillDate('');
+    setForm({
+      ...BLANK, clientId: s.clientId || '', type: s.type || '', time: s.time || '08:00',
+      price: s.price ? String(s.price) : '', duration: String(s.duration || '4'), notes: s.notes || '', addressText: s.address || '',
+    });
+    const ids: string[] = s.collaboratorIds?.length ? s.collaboratorIds : s.collaboratorId ? [s.collaboratorId] : [];
+    const nomes: string[] = s.collaboratorNames?.length ? s.collaboratorNames : s.collaboratorName ? [s.collaboratorName] : [];
+    setSelectedCollabs(ids.map((id, i) => ({ id, nome: nomes[i] || '' })));
+    setClientSearch(s.clientName || '');
+    setShowClientDrop(false);
+    setRepetir('nao');
+    setRepetirMeses(1);
+    setShowDetail(false);
+    setShowCreate(true);
+  };
+
+  // Dates of a repeated booking, starting on the chosen date (YYYY-MM-DD in, DD/MM/YYYY out).
+  const datasRepeticao = (isoInicio: string): string[] => {
+    const [y, m, d] = isoInicio.split('-').map(Number);
+    if (!y || !m || !d) return [];
+    const inicio = new Date(y, m - 1, d);
+    const fim = new Date(y, m - 1 + (repetir === 'nao' ? 0 : repetirMeses), d);
+    const lista: Date[] = [];
+    for (let i = 0; lista.length < 14; i++) {
+      const dt = repetir === 'mensal' ? new Date(y, m - 1 + i, d)
+        : new Date(y, m - 1, d + i * (repetir === 'quinzenal' ? 14 : 7));
+      if (i > 0 && (repetir === 'nao' || dt >= fim)) break;
+      lista.push(dt);
+      if (repetir === 'nao') break;
+    }
+    return lista.map(dt => `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`);
+  };
+
   const handleCreate = async () => {
-    if (!form.clientId || !form.date || !form.type) return;
+    if (!form.clientId || !form.date || !form.type || criando) return;
     const client = clients.find(c => c.id === form.clientId);
     // date is stored as DD/MM/YYYY
-    let dateBR = form.date;
-    if (form.date.includes('-')) {
-      const [y, m, d] = form.date.split('-');
-      dateBR = `${d}/${m}/${y}`;
-    }
+    const iso = form.date.includes('-') ? form.date : (() => { const [d, m, y] = form.date.split('/'); return `${y}-${m}-${d}`; })();
+    const datas = datasRepeticao(iso);
     const primary = selectedCollabs[0];
-    await addService({
+    setCriando(true);
+    for (const dateBR of datas) await addService({
       id: '',
       clientId: form.clientId,
       clientName: client?.name || '',
@@ -186,6 +226,7 @@ export const AdminCalendar: React.FC = () => {
       duration: parseInt(form.duration) as 4 | 6 | 8,
       createdAt: Date.now(),
     });
+    setCriando(false);
     setShowCreate(false);
     setForm(BLANK);
     setSelectedCollabs([]);
@@ -650,7 +691,7 @@ export const AdminCalendar: React.FC = () => {
         footer={
           <>
             <button onClick={() => { setShowCreate(false); setForm(BLANK); setSelectedCollabs([]); setClientSearch(''); setShowClientDrop(false); }} className="px-6 py-3 font-bold text-lightText hover:bg-gray-100 dark:hover:bg-darkBorder rounded-xl transition-colors">Cancelar</button>
-            <Button onClick={handleCreate} disabled={!form.clientId || !form.date || !form.type}>{statusNovo === 'PRE_SCHEDULED' ? 'Pré-agendar (aguarda sinal)' : 'Agendar'}</Button>
+            <Button onClick={handleCreate} disabled={!form.clientId || !form.date || !form.type || criando}>{criando ? 'Agendando...' : statusNovo === 'PRE_SCHEDULED' ? 'Pré-agendar (aguarda sinal)' : repetir !== 'nao' ? 'Agendar todas' : 'Agendar'}</Button>
           </>
         }
       >
@@ -783,6 +824,37 @@ export const AdminCalendar: React.FC = () => {
             </div>
           </div>
 
+          <div className="rounded-xl border border-gray-200 dark:border-darkBorder p-3 space-y-2">
+            <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary">Repetir</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {([['nao', 'Não repetir'], ['semanal', 'Toda semana'], ['quinzenal', 'A cada 15 dias'], ['mensal', 'Todo mês']] as const).map(([v, r]) => (
+                <button key={v} type="button" onClick={() => setRepetir(v)}
+                  className={`text-xs font-bold rounded-lg px-2 py-2 border ${repetir === v ? 'border-primary bg-primary/10 text-primary' : 'border-gray-200 dark:border-darkBorder text-lightText'}`}>{r}</button>
+              ))}
+            </div>
+            {repetir !== 'nao' && (
+              <>
+                <div className="flex items-center gap-2 text-sm text-darkText dark:text-darkTextPrimary">
+                  <span>Por</span>
+                  {[1, 2, 3].map(n => (
+                    <button key={n} type="button" onClick={() => setRepetirMeses(n)}
+                      className={`text-xs font-bold rounded-lg px-3 py-1.5 border ${repetirMeses === n ? 'border-primary bg-primary/10 text-primary' : 'border-gray-200 dark:border-darkBorder text-lightText'}`}>{n} {n === 1 ? 'mês' : 'meses'}</button>
+                  ))}
+                </div>
+                {form.date && (() => {
+                  const iso = form.date.includes('-') ? form.date : '';
+                  const datas = iso ? datasRepeticao(iso) : [];
+                  return datas.length ? (
+                    <p className="text-[11px] text-lightText">Cria {datas.length} faxinas: {datas.slice(0, 6).map(d => d.slice(0, 5)).join(', ')}{datas.length > 6 ? `… até ${datas[datas.length - 1].slice(0, 5)}` : ''}.</p>
+                  ) : null;
+                })()}
+                {statusNovo === 'PRE_SCHEDULED' && (
+                  <p className="text-[11px] text-amber-700">Esta cliente não é fixa: cada faxina vai pedir o sinal. Para repetir sem sinal, marque a cliente como Fixa.</p>
+                )}
+              </>
+            )}
+          </div>
+
           <div>
             <label className="block text-sm font-bold text-darkText dark:text-darkTextPrimary mb-1.5">Observações</label>
             <textarea
@@ -845,6 +917,7 @@ export const AdminCalendar: React.FC = () => {
               ) : null}
             </div>
             <div className="p-5 border-t border-gray-100 dark:border-darkBorder flex gap-3">
+              <Button size="sm" variant="secondary" onClick={() => duplicar(selectedEvent)} icon={<Copy size={14} />}>Duplicar</Button>
               {selectedEvent.status === 'SCHEDULED' || selectedEvent.status === 'WAITING_SIGNAL' ? (
                 <Button
                   size="sm"

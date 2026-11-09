@@ -80,9 +80,11 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       'Escolha o cliente, o endereço e o tipo de serviço. O valor é sugerido pelo serviço e pode ser ajustado.',
       'Defina horário, duração e marque quantas profissionais forem necessárias.',
       'Clique em Agendar. Se o pré-agendamento com sinal estiver ligado e o cliente não for fixo, o botão aparece como "Pré-agendar (aguarda sinal)".',
+      'Para cliente fixo, use Repetir: Toda semana, A cada 15 dias ou Todo mês, por 1, 2 ou 3 meses. O sistema mostra as datas antes e cria todas de uma vez (botão Agendar todas). Se a cliente não for fixa, cada faxina vai pedir o sinal.',
+      'Para repetir um agendamento em outra data: clique na faxina no calendário → Duplicar. Abre o formulário com tudo preenchido; é só escolher a nova data.',
     ],
-    dicas: ['Os cards do calendário mostram horário, cliente, serviço, observação e as fotos da equipe.'],
-    palavras: ['agendar', 'nova os', 'calendário', 'marcar faxina', 'agendamento'],
+    dicas: ['Os cards do calendário mostram horário, cliente, serviço, observação e as fotos da equipe.', 'O lembrete da véspera sai às 9h do dia anterior: uma faxina marcada para o mesmo dia não recebe lembrete.'],
+    palavras: ['agendar', 'nova os', 'calendário', 'marcar faxina', 'agendamento', 'repetir', 'recorrente', 'semanal', 'quinzenal', 'mensal', 'duplicar'],
   },
   {
     id: 'visoes-calendario',
