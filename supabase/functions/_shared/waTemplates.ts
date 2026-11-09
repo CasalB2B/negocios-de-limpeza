@@ -16,10 +16,10 @@ export const WA_TEMPLATES: WaTemplateDef[] = [
     name: 'lembrete_servico',
     label: 'Lembrete D-1',
     category: 'UTILITY',
-    body: 'Olá, {{1}}! Passando para lembrar do seu atendimento de {{2}} amanhã, {{3}}, às {{4}}.\n\nEndereço: {{5}}\n\nPode confirmar pelo botão abaixo. Se precisar reagendar, é só responder esta mensagem.',
-    example: ['Ana', 'Limpeza Residencial', '05/11/2026', '09:00', 'Rua das Flores, 50 - Centro'],
+    body: 'Olá, {{1}}! Amanhã, {{3}}, às {{4}}, {{6}} vai até você para o seu atendimento de {{2}}.\n\nEndereço: {{5}}\n\nPode confirmar pelo botão abaixo. Se precisar reagendar, é só responder esta mensagem.',
+    example: ['Ana', 'Limpeza Residencial', '05/11/2026', '09:00', 'Rua das Flores, 50 - Centro', 'Maria'],
     buttons: ['Confirmo', 'Preciso reagendar'],
-    usedFor: 'Enviado todo dia às 9h para os serviços do dia seguinte.',
+    usedFor: 'Enviado todo dia às 9h para os serviços do dia seguinte, com o nome da profissional (ou "nossa equipe" se ainda não houver).',
   },
   {
     name: 'confirmacao_agendamento',
