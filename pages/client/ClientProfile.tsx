@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { ExcluirConta } from '../../components/ExcluirConta';
 import { useData } from '../../components/DataContext'; // Import useData
 import { Modal } from '../../components/Modal';
+import { reduzirFoto } from '../../lib/foto';
 
 export const ClientProfile: React.FC = () => {
   const navigate = useNavigate();
@@ -46,12 +47,7 @@ export const ClientProfile: React.FC = () => {
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0] && currentUser) {
       const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const dataUrl = ev.target?.result as string;
-        updateClient(currentUser.id, { photo: dataUrl });
-      };
-      reader.readAsDataURL(file);
+      reduzirFoto(file).then(foto => updateClient(currentUser.id, { photo: foto })).catch(() => {});
     }
   };
 

@@ -7,6 +7,7 @@ import { Badge } from '../../components/Badge';
 import { Modal } from '../../components/Modal';
 import { Search, UserPlus, Edit, Trash2, Lock, Camera, Star, DollarSign } from 'lucide-react';
 import { useData } from '../../components/DataContext';
+import { reduzirFoto } from '../../lib/foto';
 
 export const AdminCollaborators: React.FC = () => {
   const { collaborators, transactions, registerCollaborator, updateCollaborator, deleteCollaborator } = useData();
@@ -61,13 +62,10 @@ export const AdminCollaborators: React.FC = () => {
   };
 
   const handlePhotoSelect = (file: File, isEdit: boolean) => {
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target?.result as string;
+    reduzirFoto(file).then(dataUrl => {
       if (isEdit) setViewCollab((prev: any) => ({ ...prev, photo: dataUrl }));
       else setCollabData(prev => ({ ...prev, photo: dataUrl }));
-    };
-    reader.readAsDataURL(file);
+    }).catch(() => {});
   };
 
   const handleRegister = () => {

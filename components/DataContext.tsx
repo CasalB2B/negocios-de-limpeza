@@ -5,6 +5,7 @@ import { entrar, sair, criarAcesso, definirSenha, excluirAcesso, cadastrarClient
 import { ServiceStatus, Address } from '../types';
 import { supabase } from '../lib/supabase';
 import { sendBookingConfirmation } from '../lib/whatsapp';
+import { fotoParaGuardar } from '../lib/foto';
 
 // --- CACHE HELPERS (stale-while-revalidate) ---
 const CACHE_VER = '2';
@@ -23,6 +24,14 @@ function getCached<T>(key: string): T | null {
 function setCache<T>(key: string, data: T): void {
   try { localStorage.setItem(`ndl_cache_${key}`, JSON.stringify({ d: data, t: Date.now(), v: CACHE_VER })); } catch {}
 }
+
+
+// The logged-in person is kept on the device. Never with a heavy embedded photo (it does not fit in the
+// device storage and broke a login), and a full storage never stops the app.
+const guardarSessao = (chave: 'auth_client' | 'auth_collab', obj: any) => {
+  try { localStorage.setItem(chave, JSON.stringify({ ...obj, photo: fotoParaGuardar(obj?.photo) })); }
+  catch { try { localStorage.setItem(chave, JSON.stringify({ ...obj, photo: undefined })); } catch { /* storage full */ } }
+};
 
 export function clearCache(): void {
   try { Object.keys(localStorage).filter(k => k.startsWith('ndl_cache_')).forEach(k => localStorage.removeItem(k)); } catch {}
@@ -876,7 +885,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setClients(prev => [...prev, finalClient]);
     if (!doPainel) {
         setCurrentUser(finalClient);
-        localStorage.setItem('auth_client', JSON.stringify(finalClient));
+        guardarSessao('auth_client', finalClient);
     }
     return finalClient;
   };
@@ -886,7 +895,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (currentUser && currentUser.id === id) {
         const updatedUser = { ...currentUser, ...data };
         setCurrentUser(updatedUser);
-        localStorage.setItem('auth_client', JSON.stringify(updatedUser));
+        guardarSessao('auth_client', updatedUser);
     }
 
     const updates: any = {};
@@ -917,7 +926,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: addrs } = await supabase.from('addresses').select('*').eq('user_id', user.id);
     const clientObj = mapDbUserToClient(user, addrs || []);
     setCurrentUser(clientObj);
-    localStorage.setItem('auth_client', JSON.stringify(clientObj));
+    guardarSessao('auth_client', clientObj);
     return clientObj;
   };
 
@@ -938,7 +947,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const updatedAddresses = [...currentUser.addresses, address];
         const updatedUser = { ...currentUser, addresses: updatedAddresses };
         setCurrentUser(updatedUser);
-        localStorage.setItem('auth_client', JSON.stringify(updatedUser));
+        guardarSessao('auth_client', updatedUser);
         setClients(prev => prev.map(c => c.id === currentUser.id ? updatedUser : c));
     }
 
@@ -966,7 +975,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const updatedAddresses = currentUser.addresses.map(a => a.id === address.id ? address : a);
         const updatedUser = { ...currentUser, addresses: updatedAddresses };
         setCurrentUser(updatedUser);
-        localStorage.setItem('auth_client', JSON.stringify(updatedUser));
+        guardarSessao('auth_client', updatedUser);
         setClients(prev => prev.map(c => c.id === currentUser.id ? updatedUser : c));
      }
 
@@ -991,7 +1000,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const updatedAddresses = currentUser.addresses.filter(a => a.id !== addressId);
         const updatedUser = { ...currentUser, addresses: updatedAddresses };
         setCurrentUser(updatedUser);
-        localStorage.setItem('auth_client', JSON.stringify(updatedUser));
+        guardarSessao('auth_client', updatedUser);
         setClients(prev => prev.map(c => c.id === currentUser.id ? updatedUser : c));
     }
     await supabase.from('addresses').delete().eq('id', addressId);
@@ -1013,7 +1022,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (currentCollaborator?.id === id) {
         const updatedCollab = { ...currentCollaborator, ...data };
         setCurrentCollaborator(updatedCollab);
-        localStorage.setItem('auth_collab', JSON.stringify(updatedCollab));
+        guardarSessao('auth_collab', updatedCollab);
     }
 
     const updates: any = {};
@@ -1037,7 +1046,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const aplicarLoginColaboradora = (user: any) => {
     const collabObj = mapDbUserToCollab(user);
     setCurrentCollaborator(collabObj);
-    localStorage.setItem('auth_collab', JSON.stringify(collabObj));
+    guardarSessao('auth_collab', collabObj);
   };
 
   const loginCollaborator = async (email: string, password: string): Promise<boolean> => {

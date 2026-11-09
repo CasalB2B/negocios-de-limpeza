@@ -10,6 +10,7 @@ import { ExcluirConta } from '../../components/ExcluirConta';
 import { useData } from '../../components/DataContext';
 import { useMyCollabIds, isMyService, useMinhaRemuneracao, valorDaColab } from '../../lib/collabIdentity';
 import { NotificacoesCelular } from '../../components/NotificacoesCelular';
+import { reduzirFoto } from '../../lib/foto';
 
 export const CollaboratorProfile: React.FC = () => {
   const navigate = useNavigate();
@@ -46,8 +47,7 @@ export const CollaboratorProfile: React.FC = () => {
   const handleUpdatePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0] && currentCollaborator) {
       const file = e.target.files[0];
-      const imageUrl = URL.createObjectURL(file);
-      updateCollaborator(currentCollaborator.id, { photo: imageUrl });
+      reduzirFoto(file).then(foto => updateCollaborator(currentCollaborator.id, { photo: foto })).catch(() => {});
     }
   };
 

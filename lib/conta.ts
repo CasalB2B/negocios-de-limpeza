@@ -24,6 +24,15 @@ export async function entrar(email: string, senha: string, papeis: Papel[]): Pro
     await supabase.auth.signOut();
     return { perfil: null };
   }
+  // Copies of the previous person's data (RH, panel cache) stay on the device: wipe them when someone else logs in.
+  try {
+    const antes = localStorage.getItem('ndl_usuario');
+    if (antes !== String(perfil.id)) {
+      Object.keys(localStorage).filter(k => k.startsWith('rh_') || k.startsWith('ndl_cache_') || k === 'ndl_push_testado').forEach(k => localStorage.removeItem(k));
+    }
+    localStorage.setItem('ndl_usuario', String(perfil.id));
+    localStorage.setItem('ndl_papel', perfil.role);
+  } catch { /* storage unavailable */ }
   definirEmpresa(perfil.company_id);
   try { perfil.dono_plataforma ? localStorage.setItem('ndl_dono', '1') : localStorage.removeItem('ndl_dono'); } catch {}
   return { perfil };
@@ -31,6 +40,7 @@ export async function entrar(email: string, senha: string, papeis: Papel[]): Pro
 
 export async function sair() {
   await desligarPush().catch(() => {});
+  try { localStorage.removeItem('ndl_papel'); } catch {}
   definirEmpresa(null);
   try { localStorage.removeItem('ndl_dono'); } catch {}
   await supabase.auth.signOut().catch(() => {});

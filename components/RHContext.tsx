@@ -7,6 +7,14 @@ import { CargoRH, StatusColaboradoraRH, ElegibilidadeRH } from '../types';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
+// Logged-in role saved at login (lib/conta.ts). Older sessions only have the admin flag.
+const ehGestao = () => {
+  try {
+    const papel = localStorage.getItem('ndl_papel');
+    return papel ? papel === 'ADMIN' : localStorage.getItem('auth_admin') === 'true';
+  } catch { return false; }
+};
+
 export interface ColaboradoraRH {
   id: string;
   nome: string;
@@ -439,6 +447,9 @@ export const RHProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   }, []);
 
   const loadAll = async (backgroundOnly = false) => {
+    // RH (recruiting, pay, performance, photos) is for whoever manages the company only. Professionals and
+    // clients never load or sync it: on a phone that had an admin logged in before, that heavy work froze the login.
+    if (!ehGestao()) return;
     // ── Phase 1: instant load from localStorage ──────────────────────────────
     // Skipped on background refreshes (visibility / polling) to avoid a stale
     // data flash — Phase 1 would just re-set the same values that are already
