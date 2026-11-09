@@ -136,6 +136,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       'Aniversário (mostra a idade) e sexo ajudam nas mensagens de aniversário. Em Descrição anote preferências e cuidados.',
       'Endereço: digite o CEP que a rua, o bairro, a cidade e o estado aparecem sozinhos; complete o número, o complemento e as observações (portaria, chave, ponto de referência). O link "Conferir no mapa" mostra se o endereço está certo.',
       'Bloquear cliente: deixa um aviso vermelho na lista e na ficha, para ninguém agendar por engano.',
+      'Se você fechar o app ou tocar fora no meio do cadastro, os dados ficam guardados como rascunho naquele aparelho: ao abrir Novo Cliente de novo aparece "Continuando o cadastro que você começou". O botão Cancelar (ou Começar do zero) apaga o rascunho.',
       'Clique no cliente para ver as abas Informações, Endereços e Histórico de serviços. Em Editar Informações dá para mudar todos esses dados.',
     ],
     palavras: ['cliente', 'cadastro', 'endereço', 'telefone', 'histórico', 'cpf', 'cnpj', 'cep', 'aniversário', 'bloquear', 'nota fiscal'],
