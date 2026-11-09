@@ -7,11 +7,12 @@ import { Modal } from '../../components/Modal';
 import {
   Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, LayoutGrid, List, Users,
   Clock, MapPin, User, X, AlertTriangle, CheckCircle2, ArrowRight, Search, UserRound,
-  Copy,
+  Copy, Pencil,
 } from 'lucide-react';
 import { useData, Service } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
 import { usePreAgendamentoAtivo, statusInicial } from '../../lib/preAgendamento';
+import { EditarAgendamento } from '../../components/EditarAgendamento';
 
 type ViewMode = 'month' | 'week' | 'team' | 'pessoa';
 interface RHColaboradora { id: string; nome: string; foto?: string; }
@@ -58,6 +59,7 @@ export const AdminCalendar: React.FC = () => {
   const [repetir, setRepetir] = useState<'nao' | 'semanal' | 'quinzenal' | 'mensal'>('nao');
   const [repetirMeses, setRepetirMeses] = useState(1);
   const [criando, setCriando] = useState(false);
+  const [editando, setEditando] = useState<Service | null>(null);
   const [clientSearch, setClientSearch] = useState('');
   const [showClientDrop, setShowClientDrop] = useState(false);
   const clientRef = useRef<HTMLDivElement>(null);
@@ -208,7 +210,7 @@ export const AdminCalendar: React.FC = () => {
     const datas = datasRepeticao(iso);
     const primary = selectedCollabs[0];
     setCriando(true);
-    for (const dateBR of datas) await addService({
+    for (const [i, dateBR] of datas.entries()) await addService({
       id: '',
       clientId: form.clientId,
       clientName: client?.name || '',
@@ -225,7 +227,7 @@ export const AdminCalendar: React.FC = () => {
       notes: form.notes,
       duration: parseInt(form.duration) as 4 | 6 | 8,
       createdAt: Date.now(),
-    });
+    }, { semConfirmacao: i > 0 });
     setCriando(false);
     setShowCreate(false);
     setForm(BLANK);
@@ -917,6 +919,7 @@ export const AdminCalendar: React.FC = () => {
               ) : null}
             </div>
             <div className="p-5 border-t border-gray-100 dark:border-darkBorder flex gap-3">
+              <Button size="sm" variant="secondary" onClick={() => { setEditando(selectedEvent); setShowDetail(false); }} icon={<Pencil size={14} />}>Editar</Button>
               <Button size="sm" variant="secondary" onClick={() => duplicar(selectedEvent)} icon={<Copy size={14} />}>Duplicar</Button>
               {selectedEvent.status === 'SCHEDULED' || selectedEvent.status === 'WAITING_SIGNAL' ? (
                 <Button
@@ -950,6 +953,7 @@ export const AdminCalendar: React.FC = () => {
           </div>
         </div>
       )}
+      {editando && <EditarAgendamento servico={editando} profissionais={colaboradoras} onClose={() => setEditando(null)} />}
     </Layout>
   );
 };

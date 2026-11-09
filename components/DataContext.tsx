@@ -235,7 +235,8 @@ interface DataContextType {
   loading: boolean;
   isRefreshing: boolean;
 
-  addService: (service: Service) => Promise<void>;
+  addService: (service: Service, opcoes?: { semConfirmacao?: boolean }) => Promise<void>;
+  updateService: (id: string, dados: Partial<Service>) => Promise<{ ok: boolean; erro?: string }>;
   updateServiceStatus: (id: string, status: string, additionalData?: Partial<Service>) => Promise<void>;
   
   addServiceDefinition: (def: ServiceDefinition) => Promise<void>;
@@ -733,7 +734,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // --- ACTIONS: SERVICES ---
-  const addService = async (service: Service) => {
+  const addService = async (service: Service, opcoes?: { semConfirmacao?: boolean }) => {
     const estimatedDuration = service.duration || (service.price && service.price > 300 ? 8 : service.price && service.price > 180 ? 6 : 4);
     const enrichedService = { ...service, duration: estimatedDuration };
 
@@ -767,13 +768,41 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (data && !error) {
         setServices(prev => [mapDbServiceToApp(data[0]), ...prev.filter(s => s.id !== service.id)]);
         clearCache();
-        if (['SCHEDULED', 'CONFIRMED'].includes(service.status)) sendBookingConfirmation(data[0].id);
+        // Repeated bookings send the WhatsApp confirmation only for the first one.
+        if (['SCHEDULED', 'CONFIRMED'].includes(service.status) && !opcoes?.semConfirmacao) sendBookingConfirmation(data[0].id);
     } else {
         // A booking that only exists on screen can't be charged, reminded or seen by the team.
         setServices(prev => prev.filter(s => s.id !== service.id));
         console.error('[addService]', error);
         window.alert(`Não foi possível salvar o agendamento. Nada foi gravado.\n\nDetalhe: ${error?.message || 'sem resposta do servidor'}`);
     }
+  };
+
+  // Edits a booking (date, time, length, service, price, team, address, notes). Changing the date, time or
+  // team notifies the professionals on their phones (database trigger).
+  const updateService = async (id: string, dados: Partial<Service>): Promise<{ ok: boolean; erro?: string }> => {
+    const u: any = {};
+    if (dados.date !== undefined) u.date = dados.date;
+    if (dados.time !== undefined) u.time = dados.time;
+    if (dados.duration !== undefined) u.duration = String(dados.duration);
+    if (dados.type !== undefined) u.type = dados.type;
+    if (dados.price !== undefined) u.price = dados.price;
+    if (dados.address !== undefined) u.address = dados.address;
+    if (dados.notes !== undefined) u.notes = dados.notes;
+    if (dados.collaboratorIds !== undefined) {
+      u.collaborator_ids = dados.collaboratorIds;
+      u.collaborator_names = dados.collaboratorNames || [];
+      u.collaborator_id = dados.collaboratorIds[0] || null;
+      u.collaborator_name = (dados.collaboratorNames || [])[0] || null;
+    }
+    const { error } = await supabase.from('services').update(u).eq('id', id);
+    if (error) return { ok: false, erro: error.message };
+    setServices(prev => prev.map(s => s.id === id ? {
+      ...s, ...dados,
+      ...(dados.collaboratorIds ? { collaboratorId: dados.collaboratorIds[0], collaboratorName: (dados.collaboratorNames || [])[0] } : {}),
+    } : s));
+    clearCache();
+    return { ok: true };
   };
 
   const updateServiceStatus = async (id: string, status: string, additionalData?: Partial<Service>) => {
@@ -1245,7 +1274,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <DataContext.Provider value={{ 
       services, clients, collaborators, notifications, serviceDefinitions, transactions, platformSettings,
       currentUser, currentCollaborator, adminLoggedIn, reviewerMode, loading, isRefreshing,
-      addService, updateServiceStatus, 
+      addService, updateService, updateServiceStatus, 
       addServiceDefinition, updateServiceDefinition, deleteServiceDefinition,
       registerClient, updateClient, deleteClient, loginClient, logoutClient,
       addClientAddress, updateClientAddress, deleteClientAddress,

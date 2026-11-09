@@ -4,10 +4,11 @@ import { UserRole } from '../../types';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { Modal } from '../../components/Modal';
-import { Plus, X, User, Calendar, MapPin, Clock, DollarSign, ArrowRight, AlertCircle, CheckCircle2, Search, CreditCard, Copy, ExternalLink, MessageCircle } from 'lucide-react';
+import { Plus, X, User, Calendar, MapPin, Clock, DollarSign, ArrowRight, AlertCircle, CheckCircle2, Search, CreditCard, Copy, ExternalLink, MessageCircle, Pencil } from 'lucide-react';
 import { useData, Service } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
 import { usePreAgendamentoAtivo, statusInicial } from '../../lib/preAgendamento';
+import { EditarAgendamento } from '../../components/EditarAgendamento';
 
 type ColStatus = 'AGUARDANDO_SINAL' | 'AGENDADO' | 'CONFIRMADO' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'CANCELADO';
 
@@ -53,6 +54,7 @@ export const AdminOS: React.FC = () => {
   const [selectedCollabs, setSelectedCollabs] = useState<SelectedCollab[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [selected, setSelected] = useState<Service | null>(null);
+  const [editando, setEditando] = useState<Service | null>(null);
   type CompletionToast = null | 'sending' | { sent: true } | { sent: false; url: string };
   const [completionToast, setCompletionToast] = useState<CompletionToast>(null);
   const [periodFilter, setPeriodFilter] = useState<'all' | 'week' | 'month'>('all');
@@ -461,12 +463,17 @@ export const AdminOS: React.FC = () => {
           service={{ ...selected, ...(services.find(s => s.id === selected.id) ?? {}) }}
           colaboradoras={colaboradoras}
           onClose={() => setSelected(null)}
+          onEditar={() => setEditando({ ...selected, ...(services.find(s => s.id === selected.id) ?? {}) })}
           onStatusChange={next => handleAdvance(selected, next)}
           onAssignCollab={(id, name) => {
             updateServiceStatus(selected.id, selected.status, { collaboratorId: id, collaboratorName: name } as any);
             setSelected(s => s ? { ...s, collaboratorId: id, collaboratorName: name } : null);
           }}
         />
+      )}
+      {editando && (
+        <EditarAgendamento servico={editando} profissionais={colaboradoras} onClose={() => setEditando(null)}
+          onSalvo={s => setSelected(prev => prev && prev.id === s.id ? { ...prev, ...s } : prev)} />
       )}
     </Layout>
   );
@@ -521,6 +528,7 @@ interface DrawerProps {
   service: Service;
   colaboradoras: RHColaboradora[];
   onClose: () => void;
+  onEditar: () => void;
   onStatusChange: (next: ColStatus) => void;
   onAssignCollab: (id: string, name: string) => void;
 }
@@ -529,7 +537,7 @@ type PaymentState = null | 'loading' | { url: string; phone: string | null } | {
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose, onStatusChange, onAssignCollab }) => {
+const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose, onEditar, onStatusChange, onAssignCollab }) => {
   const currentCol = normCol(service.status);
   const nextStatus = NEXT[currentCol];
   const nextCol = nextStatus ? COLUMNS.find(c => c.key === nextStatus) : null;
@@ -586,9 +594,14 @@ const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose
               <span className="text-xs font-bold text-darkText dark:text-darkTextPrimary">{col.label}</span>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/50 dark:hover:bg-white/10 rounded-full text-lightText dark:text-darkTextSecondary">
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button onClick={onEditar} className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl bg-white/70 dark:bg-white/10 text-primary hover:bg-white">
+              <Pencil size={14} /> Editar
+            </button>
+            <button onClick={onClose} className="p-2 hover:bg-white/50 dark:hover:bg-white/10 rounded-full text-lightText dark:text-darkTextSecondary">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
