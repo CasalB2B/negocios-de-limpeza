@@ -66,7 +66,8 @@ const Toggle: React.FC<{ on: boolean; onChange: (v: boolean) => void; label?: st
     onClick={() => onChange(!on)}
     className={`relative w-12 h-6 rounded-full transition-colors shrink-0 overflow-hidden ${on ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}
   >
-    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${on ? 'translate-x-6' : 'translate-x-0.5'}`} />
+    {/* The knob needs an explicit left edge, otherwise it is pushed out of the pill when on. */}
+    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${on ? 'translate-x-6' : 'translate-x-0'}`} />
   </button>
 );
 
