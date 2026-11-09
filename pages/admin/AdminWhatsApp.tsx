@@ -11,6 +11,7 @@ import { supabase } from '../../lib/supabase';
 import { useData } from '../../components/DataContext';
 import { BotConfig, BotMode, MenuItem, TONES, DEFAULT_SCRIPT, buildBotPrompt } from '../../supabase/functions/_shared/botPrompt';
 import { WA_TEMPLATES, fillTemplate } from '../../supabase/functions/_shared/waTemplates';
+import { NovoModeloWhatsApp } from '../../components/NovoModeloWhatsApp';
 
 declare global {
   interface Window { FB?: any; fbAsyncInit?: () => void }
@@ -143,6 +144,8 @@ export const AdminWhatsApp: React.FC = () => {
 
   // Modelos
   const [tplStatus, setTplStatus] = useState<Record<string, { status: string; rejected_reason?: string | null }>>({});
+  // Templates of the company itself (created here or directly at Meta), besides the system ones.
+  const [tplProprios, setTplProprios] = useState<{ name: string; status: string; rejected_reason?: string | null; body?: string | null; category?: string }[]>([]);
   const [tplBusy, setTplBusy] = useState(false);
   const [tplMsg, setTplMsg] = useState('');
 
@@ -179,10 +182,11 @@ export const AdminWhatsApp: React.FC = () => {
   };
 
   const fetchTemplates = async () => {
-    const { data } = await supabase.from('whatsapp_templates').select('name, status, rejected_reason').eq('company_id', 1);
+    const { data } = await supabase.from('whatsapp_templates').select('name, status, rejected_reason, body, custom, category').eq('company_id', 1);
     const map: Record<string, { status: string; rejected_reason?: string | null }> = {};
     for (const t of data ?? []) map[t.name] = { status: t.status, rejected_reason: t.rejected_reason };
     setTplStatus(map);
+    setTplProprios((data ?? []).filter((t: any) => t.custom || !WA_TEMPLATES.some(w => w.name === t.name)));
   };
 
   useEffect(() => {
@@ -993,6 +997,27 @@ export const AdminWhatsApp: React.FC = () => {
               {!connected && <p className="text-xs text-red-500 mt-2">Conecte o WhatsApp primeiro.</p>}
               {tplMsg && <p className="text-xs font-bold text-darkText dark:text-darkTextPrimary mt-2">{tplMsg}</p>}
             </div>
+            <NovoModeloWhatsApp conectado={connected} aoEnviar={fetchTemplates} />
+            {tplProprios.length > 0 && (
+              <div className={card}>
+                <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary mb-2">Seus modelos</p>
+                <div className="space-y-2">
+                  {tplProprios.map(t => {
+                    const badge = STATUS_BADGE[t.status] ?? { label: t.status, cls: 'bg-gray-200 text-gray-600' };
+                    return (
+                      <div key={t.name} className="rounded-xl border border-gray-100 dark:border-darkBorder p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-[12px] font-mono text-darkText dark:text-darkTextPrimary break-all">{t.name} <span className="text-gray-400">· {t.category === 'MARKETING' ? 'marketing' : 'utilidade'}</span></p>
+                          <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
+                        </div>
+                        {t.body && <p className="text-xs text-gray-600 dark:text-darkTextSecondary mt-1 whitespace-pre-wrap">{t.body}</p>}
+                        {t.rejected_reason && <p className="text-[11px] text-red-500 mt-1">Motivo da rejeição: {t.rejected_reason}</p>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             {WA_TEMPLATES.map(t => {
               const st = tplStatus[t.name];
               const badge = st ? STATUS_BADGE[st.status] ?? { label: st.status, cls: 'bg-gray-200 text-gray-600' } : { label: 'Não enviado', cls: 'bg-gray-100 text-gray-500 dark:bg-darkBg' };

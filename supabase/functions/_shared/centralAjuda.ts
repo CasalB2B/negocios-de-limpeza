@@ -213,6 +213,19 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     palavras: ['whatsapp', 'conectar', 'qr code', 'coexistência', 'meta', 'número'],
   },
   {
+    id: 'whatsapp-token-modelos',
+    categoria: 'WhatsApp e lembretes',
+    titulo: 'Mensagens não chegam, trocar o token e criar modelos',
+    resumo: 'Token permanente da Meta, conexão manual sem desconectar e modelos próprios.',
+    passos: [
+      'Mensagens com erro de autenticação: o token da conexão venceu ou perdeu permissão (token temporário vale só 24h). No Gerenciador de Negócios da Meta, crie um Usuário do sistema, dê acesso ao app e à conta do WhatsApp e gere um token permanente com as permissões whatsapp_business_messaging e whatsapp_business_management.',
+      'Tela WhatsApp → Conexão → conexão manual: preencha o ID da conta do WhatsApp, o ID do número e cole o token novo. Não precisa desconectar: a conexão é atualizada.',
+      'Modelos: Enviar modelos para aprovação manda os modelos que o sistema usa e ainda não existem na Meta (ex.: pós-serviço).',
+      'Criar um modelo novo: Modelos → Criar um modelo novo → nome, categoria (Utilidade para avisos e lembretes; Marketing para promoções), texto com variáveis {{1}}, {{2}} e um exemplo para cada, botões opcionais → Enviar para aprovação da Meta. O status aparece em Seus modelos.',
+    ],
+    palavras: ['token', 'autenticação', 'authentication error', 'não chega', 'falhou', 'modelo', 'template', 'aprovação', 'criar modelo', 'reconectar'],
+  },
+  {
     id: 'lembretes-automaticos',
     categoria: 'WhatsApp e lembretes',
     titulo: 'Lembretes e avisos automáticos',

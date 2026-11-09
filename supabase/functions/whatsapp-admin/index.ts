@@ -195,6 +195,34 @@ Deno.serve(async (req) => {
       return json({ ok: true, results });
     }
 
+    // A new template written by the company in the panel, sent to Meta for approval.
+    if (action === 'template_custom') {
+      const name = String(body.name || '').trim().toLowerCase();
+      const texto = String(body.body || '').trim();
+      const category = body.category === 'MARKETING' ? 'MARKETING' : 'UTILITY';
+      const exemplos: string[] = Array.isArray(body.examples) ? body.examples.map((e: unknown) => String(e || '').trim()) : [];
+      const botoes: string[] = (Array.isArray(body.buttons) ? body.buttons : []).map((b: unknown) => String(b || '').trim()).filter(Boolean).slice(0, 3);
+      if (!/^[a-z0-9_]{3,100}$/.test(name)) return json({ ok: false, error: 'Nome do modelo: só letras minúsculas, números e _ (ex.: aviso_feriado).' }, 400);
+      if (WA_TEMPLATES.some(t => t.name === name)) return json({ ok: false, error: 'Esse nome já é usado por um modelo do sistema.' }, 400);
+      if (!texto || texto.length > 1024) return json({ ok: false, error: 'Escreva o texto (até 1024 caracteres).' }, 400);
+      const vars = [...texto.matchAll(/\{\{(\d+)\}\}/g)].map(m => Number(m[1]));
+      const maior = vars.length ? Math.max(...vars) : 0;
+      for (let i = 1; i <= maior; i++) if (!vars.includes(i)) return json({ ok: false, error: `Use as variáveis em sequência: falta {{${i}}}.` }, 400);
+      if (maior && exemplos.slice(0, maior).some(e => !e)) return json({ ok: false, error: 'Preencha um exemplo para cada variável.' }, 400);
+      if (botoes.some(b => b.length > 25)) return json({ ok: false, error: 'Cada botão pode ter até 25 caracteres.' }, 400);
+      const components: Record<string, unknown>[] = [{ type: 'BODY', text: texto, ...(maior ? { example: { body_text: [exemplos.slice(0, maior)] } } : {}) }];
+      if (botoes.length) components.push({ type: 'BUTTONS', buttons: botoes.map(text => ({ type: 'QUICK_REPLY', text })) });
+      const r = await graph(`${conn.waba_id}/message_templates`, conn.access_token, {
+        method: 'POST', body: JSON.stringify({ name, language: 'pt_BR', category, components }),
+      });
+      if (!r.ok) return json({ ok: false, error: `A Meta recusou: ${errMsg(r.data)}` }, 400);
+      await supabase.from('whatsapp_templates').upsert({
+        company_id: companyId, name, language: 'pt_BR', category: r.data?.category || category,
+        status: r.data?.status || 'PENDING', meta_id: r.data?.id || null, body: texto, custom: true, updated_at: new Date().toISOString(),
+      }, { onConflict: 'company_id,name,language' });
+      return json({ ok: true, status: r.data?.status || 'PENDING' });
+    }
+
     if (action === 'send_test') {
       const text = String(body.text || 'Mensagem de teste da plataforma Negócios de Limpeza.');
       const r = await sendTextOrTemplate(conn, String(body.phone || ''), text, { name: 'aviso_equipe', params: [text] });
