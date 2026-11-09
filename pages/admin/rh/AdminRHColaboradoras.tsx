@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { criarAcesso, definirSenha } from '../../../lib/conta';
+import { criarAcesso, definirSenha, trocarEmailAcesso } from '../../../lib/conta';
 import { Layout } from '../../../components/Layout';
 import { UserRole, CargoRH, StatusColaboradoraRH } from '../../../types';
 import { useRH, ColaboradoraRH, ObservacaoColaboradora } from '../../../components/RHContext';
@@ -115,7 +115,7 @@ const TIPO_OBS = {
 type ColaboradoraFormData = Omit<ColaboradoraRH, 'id' | 'createdAt' | 'updatedAt'>;
 
 const BLANK: ColaboradoraFormData = {
-  nome: '', telefone: '', foto: '', dataAdmissao: '',
+  nome: '', telefone: '', email: '', foto: '', dataAdmissao: '',
   cargoAtual: CargoRH.JUNIOR, status: StatusColaboradoraRH.ATIVA,
   observacoes: '', endereco: '', cep: '', contratoUrl: '', contratoNome: '',
   pontosFortes: '', areasDesenvolvimento: '', perfilComportamental: '',
@@ -328,7 +328,8 @@ export const AdminRHColaboradoras: React.FC = () => {
 
   const openAcessoModal = async (col: ColaboradoraRH) => {
     setAcessoModal(col);
-    setAcessoEmail('');
+    setAcessoEmail(col.email || '');
+    setTrocaEmailMsg(null);
     setAcessoSenha('');
     setAcessoStatus(null);
     setAcessoShowPwd(false);
@@ -340,6 +341,20 @@ export const AdminRHColaboradoras: React.FC = () => {
     const { data } = await supabase.from('app_users').select('id, email').eq('name', col.nome).eq('role', 'COLLABORATOR').limit(1);
     setAcessoExistente((data as any[])?.[0] ?? null);
     setAcessoCheckingExist(false);
+  };
+
+  // When the profile e-mail differs from the login e-mail, the admin can move the login to the profile e-mail.
+  const [trocaEmailMsg, setTrocaEmailMsg] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [trocandoEmail, setTrocandoEmail] = useState(false);
+  const handleTrocarEmail = async () => {
+    if (!acessoExistente?.email || !acessoModal?.email) return;
+    setTrocandoEmail(true);
+    const r = await trocarEmailAcesso(acessoExistente.email, acessoModal.email);
+    setTrocandoEmail(false);
+    if (r.ok) {
+      setAcessoExistente({ ...acessoExistente, email: acessoModal.email.trim().toLowerCase() });
+      setTrocaEmailMsg({ ok: true, msg: 'Pronto! Agora ela entra com o e-mail do cadastro.' });
+    } else setTrocaEmailMsg({ ok: false, msg: r.erro || 'Não foi possível trocar o e-mail.' });
   };
 
   const handleDarAcesso = async () => {
@@ -421,7 +436,7 @@ export const AdminRHColaboradoras: React.FC = () => {
     setPhotoChanged(false); // reset — user hasn't changed photo yet
     setSaveError('');
     setForm({
-      nome: c.nome, telefone: c.telefone || '', foto: c.foto || '',
+      nome: c.nome, telefone: c.telefone || '', email: c.email || '', foto: c.foto || '',
       dataAdmissao: c.dataAdmissao, cargoAtual: c.cargoAtual,
       status: c.status, observacoes: c.observacoes || '',
       endereco: c.endereco || '', cep: c.cep || '',
@@ -1756,6 +1771,15 @@ export const AdminRHColaboradoras: React.FC = () => {
                 <Check size={13} />
                 Acesso ativo — {acessoExistente.email}
               </div>
+              {acessoModal.email && acessoModal.email.trim().toLowerCase() !== String(acessoExistente.email).toLowerCase() && acessoExistente.id !== '(new)' && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 px-3 py-2.5 space-y-2">
+                  <p className="text-xs text-amber-800 dark:text-amber-300">O e-mail do cadastro é <b>{acessoModal.email}</b>, diferente do login. Quer que ela passe a entrar com o e-mail do cadastro?</p>
+                  <button onClick={handleTrocarEmail} disabled={trocandoEmail} className="text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 disabled:opacity-60">
+                    {trocandoEmail ? 'Trocando...' : 'Usar o e-mail do cadastro no login'}
+                  </button>
+                </div>
+              )}
+              {trocaEmailMsg && <p className={`text-xs font-semibold ${trocaEmailMsg.ok ? 'text-green-700' : 'text-red-600'}`}>{trocaEmailMsg.msg}</p>}
               {acessoStatus?.ok && acessoCreatedPwd && (
                 <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/30 rounded-xl px-3 py-2 text-xs">
                   <span className="text-blue-700 dark:text-blue-400 font-bold">Senha definida:</span>
@@ -1771,6 +1795,9 @@ export const AdminRHColaboradoras: React.FC = () => {
               </p>
               <div className="space-y-3">
                 <Input label="E-mail de acesso" type="email" value={acessoEmail} onChange={e => setAcessoEmail(e.target.value)} placeholder="profissional@email.com" />
+                {acessoModal.email && acessoEmail.trim().toLowerCase() === acessoModal.email.trim().toLowerCase() && (
+                  <p className="text-[11px] text-lightText -mt-1">E-mail do cadastro dela. Agora é só criar a senha.</p>
+                )}
                 <div className="relative">
                   <Input label="Senha temporária" type={acessoShowPwd ? 'text' : 'password'} value={acessoSenha} onChange={e => setAcessoSenha(e.target.value)} placeholder="mínimo 6 caracteres" />
                   <button type="button" onClick={() => setAcessoShowPwd(p => !p)} className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors">
@@ -1865,6 +1892,10 @@ const ColaboradoraForm: React.FC<FormProps> = ({ form, setForm, photoRef, contra
 
     {/* Dados básicos */}
     <Input label="Nome completo *" value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))} />
+    <div>
+      <SLabel>E-mail <span className="font-normal text-lightText">(também é o login dela no app)</span></SLabel>
+      <SInput type="email" value={form.email || ''} placeholder="nome@email.com" onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
+    </div>
     <div className="grid grid-cols-2 gap-3">
       <div><SLabel>Telefone</SLabel><SInput type="tel" value={form.telefone || ''} placeholder="(27) 99999-9999" onChange={e => setForm(p => ({ ...p, telefone: e.target.value }))} /></div>
       <div>

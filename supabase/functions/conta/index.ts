@@ -171,6 +171,25 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    // Changes the login e-mail of someone in the same company (e.g. to match the e-mail in the professional's profile).
+    if (acao === 'email') {
+      const novo = normaliza(body.novo);
+      if (!/^\S+@\S+\.\S+$/.test(novo)) return json({ ok: false, erro: 'Informe um e-mail válido.' }, 400);
+      const { data: perfil } = await db.from('app_users').select('id, auth_id, email')
+        .eq('email', normaliza(body.email)).eq('company_id', chamador.company_id).maybeSingle();
+      if (!perfil) return json({ ok: false, erro: 'Usuário não encontrado.' }, 404);
+      if (normaliza(perfil.email) === novo) return json({ ok: true });
+      const { data: usado } = await db.from('app_users').select('id').eq('email', novo).neq('id', perfil.id).maybeSingle();
+      if (usado) return json({ ok: false, erro: 'Este e-mail já é usado por outro cadastro.' }, 400);
+      if (perfil.auth_id) {
+        const { error } = await db.auth.admin.updateUserById(perfil.auth_id, { email: novo, email_confirm: true });
+        if (error) return json({ ok: false, erro: error.message }, 400);
+      }
+      const { error } = await db.from('app_users').update({ email: novo }).eq('id', perfil.id);
+      if (error) return json({ ok: false, erro: error.message }, 400);
+      return json({ ok: true });
+    }
+
     if (acao === 'excluir') {
       const { data: perfil } = await db.from('app_users').select('id, auth_id').eq('id', body.id).eq('company_id', chamador.company_id).maybeSingle();
       if (!perfil) return json({ ok: false, erro: 'Usuário não encontrado.' }, 404);

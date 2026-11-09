@@ -81,3 +81,5 @@ export const criarEmpresa = (dados: {
   nome: string; sobrenome?: string; whatsapp: string; email: string; senha: string;
   empresa: string; documento?: string; cidade?: string; tamanho_equipe?: string; como_agenda?: string;
 }) => chamar({ acao: 'criar_empresa', ...dados });
+
+export const trocarEmailAcesso = (atual: string, novo: string) => chamar({ acao: 'email', email: atual, novo });

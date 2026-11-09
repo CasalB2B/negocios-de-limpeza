@@ -69,6 +69,8 @@ function buildColRow(c: any) {
   };
   // Only include foto when it's a real value — never overwrite DB foto with null/empty
   if (c.foto) row.foto = c.foto;
+  // E-mail of the professional (also her app login); only when the form sends it.
+  if (c.email !== undefined) row.email = String(c.email || '').trim().toLowerCase() || null;
   // Only include data_nascimento when explicitly provided — never clear birthday on unrelated edits
   if (c.dataNascimento !== undefined) row.data_nascimento = c.dataNascimento || null;
   return row;

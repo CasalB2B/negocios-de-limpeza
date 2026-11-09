@@ -244,6 +244,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     resumo: 'Perfil, cargo, acesso ao app, financeiro e link de avaliação.',
     passos: [
       'Recursos Humanos → Profissionais → Nova. Preencha os dados, a foto e o cargo (Auxiliar de Limpeza, Faxineira, Faxineira Profissional ou Líder).',
+      'O e-mail da profissional fica no cadastro dela (Editar Profissional) e é o mesmo do login no app. Em Dar acesso o e-mail já vem preenchido: é só criar a senha. Se o e-mail do cadastro mudar, a janela Acesso ao App oferece passar o login para o e-mail novo.',
       'Para ela usar o app: abra a profissional → Dar acesso → e-mail e senha (mínimo de 6 caracteres). Ela entra em app.negociosdelimpeza.com.br/entrar (ou pelo app do celular) com esses dados.',
       'Para mandar o acesso: na mesma janela aparece a mensagem pronta com o e-mail, a senha e os links para baixar o app. Toque em Enviar pelo WhatsApp (abre o seu WhatsApp com a mensagem, sem gastar crédito) ou Copiar mensagem.',
       'No perfil: abas Dados, Comportamental, Diário, Avaliações e Financeiro (registrar pagamento ou adiantamento). O link de avaliação pode ser enviado pelo WhatsApp.',
