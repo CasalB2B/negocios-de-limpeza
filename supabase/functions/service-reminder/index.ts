@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
 
     const { data: services, error } = await supabase
       .from('services')
-      .select('id, client_id, client_name, type, date, time, address, status, notes')
+      .select('id, client_id, client_name, type, date, time, address, status, notes, collaborator_name')
       .eq('date', targetDate)
       .eq('company_id', conn.company_id) // only this WhatsApp number's company
       .in('status', ['SCHEDULED', 'CONFIRMED', 'SIGNAL_PAID', 'WAITING_SIGNAL']);
@@ -62,6 +62,7 @@ Deno.serve(async (req) => {
         svc.date,
         svc.time || 'horário combinado',
         svc.address || 'endereço cadastrado',
+        (svc.collaborator_name || '').trim().split(' ')[0] || 'nossa equipe',
       ];
       const r = await sendTemplate(conn, phone, REMINDER.name, params, fillTemplate(REMINDER.body, params));
       if (r.ok) {
