@@ -511,12 +511,12 @@ export const AdminWhatsApp: React.FC = () => {
               </div>
             )}
 
-            {!connected && !reviewerMode && (
+            {!reviewerMode && (
               <div className={card}>
                 <button onClick={() => setShowManual(s => !s)} className="w-full flex items-center justify-between text-left">
                   <div>
-                    <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">Conectei pela página da Meta</p>
-                    <p className="text-xs text-gray-500 dark:text-darkTextSecondary">Alternativa ao botão: cole os IDs do número e o token permanente do usuário do sistema.</p>
+                    <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">{connected ? 'Trocar o token ou o número (pela página da Meta)' : 'Conectei pela página da Meta'}</p>
+                    <p className="text-xs text-gray-500 dark:text-darkTextSecondary">Cole os IDs do número e o token permanente do usuário do sistema.{connected ? ' Não precisa desconectar: a conexão é atualizada.' : ' Alternativa ao botão.'}</p>
                   </div>
                   {showManual ? <ChevronUp size={18} className="text-gray-400 shrink-0" /> : <ChevronDown size={18} className="text-gray-400 shrink-0" />}
                 </button>
