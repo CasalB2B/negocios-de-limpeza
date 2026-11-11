@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
 import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight, Eye, Package, Contact, Lock, Landmark, List, CreditCard , BellRing } from 'lucide-react';
 import { GeminiChat } from './GeminiChat';
+import { PermissoesApp } from './PermissoesApp';
 import { empresaId } from '../lib/empresa';
 import { FaixaTeste, TesteEncerrado, useEmpresaAtual } from './TesteGratis';
 import { Button } from './Button';
@@ -572,6 +573,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
 
         <main ref={mainRef} className="flex-1 overflow-y-auto p-4 md:p-8 mobile-pb-nav md:pb-8">
           {isAdmin && <FaixaTeste empresa={empresaAtual} />}
+          {role === UserRole.COLLABORATOR && <PermissoesApp />}
           {children}
         </main>
         {isAdmin && <TesteEncerrado empresa={empresaAtual} onSair={handleLogout} naTelaDeAssinatura={location.pathname === '/admin/assinatura'} />}

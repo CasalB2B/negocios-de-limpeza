@@ -38,6 +38,7 @@ export const nomeDoCargo = (cargo: string | null) => (cargo && CARGO_LABEL[cargo
 // Same defaults the RH screens use when a position has no saved table.
 const PADRAO: Record<string, { d4: number; d6: number; d8: number }> = {
   JUNIOR: { d4: 80, d6: 120, d8: 140 }, SENIOR: { d4: 100, d6: 140, d8: 160 }, PROFISSIONAL: { d4: 120, d6: 160, d8: 180 },
+  LIDER: { d4: 120, d6: 160, d8: 180 },
 };
 
 export function useMinhaRemuneracao(collab: { name?: string } | null | undefined): Remuneracao {
@@ -70,4 +71,11 @@ export function valorDaColab(duration: unknown, r: Remuneracao): number {
   const h = horasDoServico(duration);
   if (r.diarias) return h === 4 ? r.diarias.d4 : h === 6 ? r.diarias.d6 : r.diarias.d8;
   return r.porHora * h;
+}
+
+// Everyone on the booking (new bookings keep the whole team in collaboratorNames; old ones only collaboratorName).
+export function nomesDaEquipe(s: { collaboratorNames?: string[]; collaboratorName?: string } | null | undefined): string[] {
+  const lista = (s?.collaboratorNames || []).map(n => (n || '').trim()).filter(Boolean);
+  if (lista.length) return lista;
+  return s?.collaboratorName ? [s.collaboratorName] : [];
 }

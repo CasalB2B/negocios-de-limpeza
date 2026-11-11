@@ -88,6 +88,7 @@ export const AdminRHConfiguracoes: React.FC = () => {
   const remJunior = latestFor('JUNIOR');
   const remSenior = latestFor('SENIOR');
   const remProf   = latestFor('PROFISSIONAL');
+  const remLider  = latestFor('LIDER');
 
   // Negócios de Limpeza's own values are the starting point only for it; other companies start empty.
   const nossa = empresaId() === 1;
@@ -95,11 +96,13 @@ export const AdminRHConfiguracoes: React.FC = () => {
   const [remJ, setRemJ] = useState(nossa ? { diaria4h: 80,  diaria6h: 120, diaria8h: 140, passagem: 10.20 } : vazio);
   const [remS, setRemS] = useState(nossa ? { diaria4h: 100, diaria6h: 140, diaria8h: 160, passagem: 10.20 } : vazio);
   const [remP, setRemP] = useState(nossa ? { diaria4h: 120, diaria6h: 160, diaria8h: 180, passagem: 10.20 } : vazio);
+  const [remL, setRemL] = useState(nossa ? { diaria4h: 120, diaria6h: 160, diaria8h: 180, passagem: 10.20 } : vazio);
 
   // Re-sync form fields whenever the context config changes (Phase 1 LS load OR Phase 2 Supabase sync).
   // Deps include all field values so the form updates even when only values change (same record ID).
   useEffect(() => { if (remJunior) setRemJ({ diaria4h: remJunior.diaria4h, diaria6h: remJunior.diaria6h, diaria8h: remJunior.diaria8h, passagem: remJunior.passagem }); }, [remJunior?.id, remJunior?.diaria4h, remJunior?.diaria6h, remJunior?.diaria8h, remJunior?.passagem]);
   useEffect(() => { if (remSenior) setRemS({ diaria4h: remSenior.diaria4h, diaria6h: remSenior.diaria6h, diaria8h: remSenior.diaria8h, passagem: remSenior.passagem }); }, [remSenior?.id, remSenior?.diaria4h, remSenior?.diaria6h, remSenior?.diaria8h, remSenior?.passagem]);
+  useEffect(() => { if (remLider)  setRemL({ diaria4h: remLider.diaria4h, diaria6h: remLider.diaria6h, diaria8h: remLider.diaria8h, passagem: remLider.passagem }); }, [remLider?.id, remLider?.diaria4h, remLider?.diaria6h, remLider?.diaria8h, remLider?.passagem]);
   useEffect(() => { if (remProf)   setRemP({ diaria4h: remProf.diaria4h,   diaria6h: remProf.diaria6h,   diaria8h: remProf.diaria8h,   passagem: remProf.passagem   }); }, [remProf?.id, remProf?.diaria4h, remProf?.diaria6h, remProf?.diaria8h, remProf?.passagem]);
 
   // ── Bônus config ────────────────────────────────────────────────────────────
@@ -319,6 +322,7 @@ export const AdminRHConfiguracoes: React.FC = () => {
       { cargo: 'JUNIOR',       ...remJ, vigenciaInicio: hoje, alteradoPor },
       { cargo: 'SENIOR',       ...remS, vigenciaInicio: hoje, alteradoPor },
       { cargo: 'PROFISSIONAL', ...remP, vigenciaInicio: hoje, alteradoPor },
+      { cargo: 'LIDER',        ...remL, vigenciaInicio: hoje, alteradoPor },
     ]);
   });
 
@@ -389,20 +393,22 @@ export const AdminRHConfiguracoes: React.FC = () => {
                       <th className="px-3 py-2.5 text-center text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Auxiliar de Limpeza</th>
                       <th className="px-3 py-2.5 text-center text-xs font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wide">Faxineira</th>
                       <th className="px-3 py-2.5 text-center text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Faxineira Profissional</th>
+                      <th className="px-3 py-2.5 text-center text-xs font-bold text-yellow-600 dark:text-yellow-400 uppercase tracking-wide">Líder de Equipe</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 dark:divide-darkBorder">
                     {[
-                      { label: 'Diária 4h', jVal: remJ.diaria4h, sVal: remS.diaria4h, pVal: remP.diaria4h, jSet: (v: number) => setRemJ(p => ({...p, diaria4h: v})), sSet: (v: number) => setRemS(p => ({...p, diaria4h: v})), pSet: (v: number) => setRemP(p => ({...p, diaria4h: v})) },
-                      { label: 'Diária 6h', jVal: remJ.diaria6h, sVal: remS.diaria6h, pVal: remP.diaria6h, jSet: (v: number) => setRemJ(p => ({...p, diaria6h: v})), sSet: (v: number) => setRemS(p => ({...p, diaria6h: v})), pSet: (v: number) => setRemP(p => ({...p, diaria6h: v})) },
-                      { label: 'Diária 8h', jVal: remJ.diaria8h, sVal: remS.diaria8h, pVal: remP.diaria8h, jSet: (v: number) => setRemJ(p => ({...p, diaria8h: v})), sSet: (v: number) => setRemS(p => ({...p, diaria8h: v})), pSet: (v: number) => setRemP(p => ({...p, diaria8h: v})) },
-                      { label: 'Passagem',  jVal: remJ.passagem,  sVal: remS.passagem,  pVal: remP.passagem,  jSet: (v: number) => setRemJ(p => ({...p, passagem: v})),  sSet: (v: number) => setRemS(p => ({...p, passagem: v})),  pSet: (v: number) => setRemP(p => ({...p, passagem: v})) },
-                    ].map(({ label, jVal, sVal, pVal, jSet, sSet, pSet }) => (
+                      { label: 'Diária 4h', jVal: remJ.diaria4h, sVal: remS.diaria4h, pVal: remP.diaria4h, jSet: (v: number) => setRemJ(p => ({...p, diaria4h: v})), sSet: (v: number) => setRemS(p => ({...p, diaria4h: v})), pSet: (v: number) => setRemP(p => ({...p, diaria4h: v})), lVal: remL.diaria4h, lSet: (v: number) => setRemL(p => ({...p, diaria4h: v})) },
+                      { label: 'Diária 6h', jVal: remJ.diaria6h, sVal: remS.diaria6h, pVal: remP.diaria6h, jSet: (v: number) => setRemJ(p => ({...p, diaria6h: v})), sSet: (v: number) => setRemS(p => ({...p, diaria6h: v})), pSet: (v: number) => setRemP(p => ({...p, diaria6h: v})), lVal: remL.diaria6h, lSet: (v: number) => setRemL(p => ({...p, diaria6h: v})) },
+                      { label: 'Diária 8h', jVal: remJ.diaria8h, sVal: remS.diaria8h, pVal: remP.diaria8h, jSet: (v: number) => setRemJ(p => ({...p, diaria8h: v})), sSet: (v: number) => setRemS(p => ({...p, diaria8h: v})), pSet: (v: number) => setRemP(p => ({...p, diaria8h: v})), lVal: remL.diaria8h, lSet: (v: number) => setRemL(p => ({...p, diaria8h: v})) },
+                      { label: 'Passagem',  jVal: remJ.passagem,  sVal: remS.passagem,  pVal: remP.passagem,  jSet: (v: number) => setRemJ(p => ({...p, passagem: v})),  sSet: (v: number) => setRemS(p => ({...p, passagem: v})),  pSet: (v: number) => setRemP(p => ({...p, passagem: v})), lVal: remL.passagem, lSet: (v: number) => setRemL(p => ({...p, passagem: v})) },
+                    ].map(({ label, jVal, sVal, pVal, lVal, jSet, sSet, pSet, lSet }) => (
                       <tr key={label} className="hover:bg-gray-50/50 dark:hover:bg-darkBg/50">
                         <td className="px-4 py-2.5 text-sm font-bold text-darkText dark:text-darkTextPrimary">{label}</td>
                         <td className="px-3 py-2"><CellInput value={jVal} onChange={jSet}/></td>
                         <td className="px-3 py-2"><CellInput value={sVal} onChange={sSet}/></td>
                         <td className="px-3 py-2"><CellInput value={pVal} onChange={pSet}/></td>
+                        <td className="px-3 py-2"><CellInput value={lVal} onChange={lSet}/></td>
                       </tr>
                     ))}
                   </tbody>
@@ -415,8 +421,8 @@ export const AdminRHConfiguracoes: React.FC = () => {
               <div className="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800/30 rounded-xl p-3">
                 <p className="text-xs font-bold text-yellow-700 dark:text-yellow-400">Líder de Equipe</p>
                 <p className="text-xs text-lightText dark:text-darkTextSecondary mt-0.5">
-                  Salário fixo + bônus por meta.<br/>
-                  Configure na aba <strong>Bônus / Líder</strong>.
+                  Diária por serviço na tabela acima.<br/>
+                  Salário fixo e bônus na aba <strong>Bônus / Líder</strong>.
                 </p>
               </div>
               <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30 rounded-xl p-3">

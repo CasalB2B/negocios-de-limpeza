@@ -13,6 +13,7 @@ import { useData, Service } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
 import { usePreAgendamentoAtivo, statusInicial } from '../../lib/preAgendamento';
 import { EditarAgendamento } from '../../components/EditarAgendamento';
+import { nomesDaEquipe } from '../../lib/collabIdentity';
 
 type ViewMode = 'month' | 'week' | 'team' | 'pessoa';
 interface RHColaboradora { id: string; nome: string; foto?: string; }
@@ -898,11 +899,15 @@ export const AdminCalendar: React.FC = () => {
                 <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">{selectedEvent.address}</p>
               </div>
               <div className="bg-gray-50 dark:bg-darkBg rounded-xl p-3">
-                <p className="text-[10px] font-bold text-lightText dark:text-darkTextSecondary uppercase mb-1 flex items-center gap-1"><User size={10} /> Profissional</p>
-                {selectedEvent.collaboratorName ? (
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 size={14} className="text-green-500" />
-                    <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">{selectedEvent.collaboratorName}</p>
+                <p className="text-[10px] font-bold text-lightText dark:text-darkTextSecondary uppercase mb-1 flex items-center gap-1"><User size={10} /> {nomesDaEquipe(selectedEvent).length > 1 ? 'Profissionais' : 'Profissional'}</p>
+                {nomesDaEquipe(selectedEvent).length ? (
+                  <div className="space-y-1">
+                    {nomesDaEquipe(selectedEvent).map(n => (
+                      <div key={n} className="flex items-center gap-2">
+                        <CheckCircle2 size={14} className="text-green-500" />
+                        <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary">{n}</p>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">

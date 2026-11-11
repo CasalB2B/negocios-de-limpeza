@@ -13,6 +13,7 @@ import { Address } from '../../types';
 import { CamposEndereco } from '../../components/CamposEndereco';
 import { CamposCliente, CLIENTE_VAZIO, DadosCliente, documentoValido, idade, telefoneParaSalvar, telefoneParaEditar } from '../../components/CamposCliente';
 import { enderecoEmTexto } from '../../lib/cep';
+import { nomesDaEquipe } from '../../lib/collabIdentity';
 
 // Client type describes the relationship (new, fixed with a frequency, occasional) — not the service.
 // Stored in app_users.type; frequency travels in the value (FIXO_QUINZENAL…).
@@ -573,8 +574,8 @@ export const AdminClients: React.FC = () => {
                             <div className="min-w-0">
                               <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary truncate">{svc.type}</p>
                               <p className="text-xs text-lightText dark:text-darkTextSecondary">{svc.date} {svc.time && `· ${svc.time}`}</p>
-                              {svc.collaboratorName && (
-                                <p className="text-xs text-lightText dark:text-darkTextSecondary">{svc.collaboratorName}</p>
+                              {nomesDaEquipe(svc).length > 0 && (
+                                <p className="text-xs text-lightText dark:text-darkTextSecondary">{nomesDaEquipe(svc).join(', ')}</p>
                               )}
                             </div>
                             <div className="flex flex-col items-end gap-1 shrink-0">

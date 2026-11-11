@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { empresaId } from '../../../lib/empresa';
 import { criarAcesso, definirSenha, trocarEmailAcesso } from '../../../lib/conta';
 import { Layout } from '../../../components/Layout';
 import { UserRole, CargoRH, StatusColaboradoraRH } from '../../../types';
@@ -208,8 +209,13 @@ export const AdminRHColaboradoras: React.FC = () => {
     setTimeout(() => setSyncMsg(''), 4000);
   };
 
+  // Daily rate of the position; positions without a saved table use NDL's standard values (company 1 only).
+  const PADRAO_REM: Record<string, { diaria4h: number; diaria6h: number; diaria8h: number; passagem: number }> = {
+    JUNIOR: { diaria4h: 80, diaria6h: 120, diaria8h: 140, passagem: 10.2 }, SENIOR: { diaria4h: 100, diaria6h: 140, diaria8h: 160, passagem: 10.2 },
+    PROFISSIONAL: { diaria4h: 120, diaria6h: 160, diaria8h: 180, passagem: 10.2 }, LIDER: { diaria4h: 120, diaria6h: 160, diaria8h: 180, passagem: 10.2 },
+  };
   const getRemuneracao = (cargo: CargoRH) =>
-    configRemuneracao.find(r => r.cargo === cargo) ?? null;
+    configRemuneracao.find(r => r.cargo === cargo) ?? (empresaId() === 1 ? PADRAO_REM[cargo] ?? null : null);
 
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 

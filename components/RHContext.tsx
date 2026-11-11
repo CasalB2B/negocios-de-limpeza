@@ -111,7 +111,7 @@ export interface BonusMensalRH {
 
 export interface ConfiguracaoRemuneracaoRH {
   id: string;
-  cargo: 'JUNIOR' | 'SENIOR' | 'PROFISSIONAL';
+  cargo: 'JUNIOR' | 'SENIOR' | 'PROFISSIONAL' | 'LIDER';
   diaria4h: number;
   diaria6h: number;
   diaria8h: number;
@@ -249,6 +249,8 @@ const DEFAULT_CONFIG_REMUNERACAO: ConfiguracaoRemuneracaoRH[] = [
   { id: 'rem_j', cargo: 'JUNIOR',       diaria4h: 80,  diaria6h: 120, diaria8h: 140, passagem: 10.20, vigenciaInicio: '2000-01-01', createdAt: '2000-01-01T00:00:00.000Z' },
   { id: 'rem_s', cargo: 'SENIOR',       diaria4h: 100, diaria6h: 140, diaria8h: 160, passagem: 10.20, vigenciaInicio: '2000-01-01', createdAt: '2000-01-01T00:00:00.000Z' },
   { id: 'rem_p', cargo: 'PROFISSIONAL', diaria4h: 120, diaria6h: 160, diaria8h: 180, passagem: 10.20, vigenciaInicio: '2000-01-01', createdAt: '2000-01-01T00:00:00.000Z' },
+  // Leader: paid per daily rate (same as Faxineira Profissional) or the fixed salary when the dailies add up to less (Bônus / Líder tab).
+  { id: 'rem_l', cargo: 'LIDER',        diaria4h: 120, diaria6h: 160, diaria8h: 180, passagem: 10.20, vigenciaInicio: '2000-01-01', createdAt: '2000-01-01T00:00:00.000Z' },
 ];
 
 const DEFAULT_CONFIG_CRITERIOS: ConfiguracaoCriteriosRH[] = [

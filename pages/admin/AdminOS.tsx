@@ -9,6 +9,7 @@ import { useData, Service } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
 import { usePreAgendamentoAtivo, statusInicial } from '../../lib/preAgendamento';
 import { EditarAgendamento } from '../../components/EditarAgendamento';
+import { nomesDaEquipe } from '../../lib/collabIdentity';
 
 type ColStatus = 'AGUARDANDO_SINAL' | 'AGENDADO' | 'CONFIRMADO' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'CANCELADO';
 
@@ -129,6 +130,15 @@ export const AdminOS: React.FC = () => {
   const preAgendamentoAtivo = usePreAgendamentoAtivo();
   const statusNovo = statusInicial(preAgendamentoAtivo, selectedClient?.type);
 
+  // Drag a card to another column to change its stage (mouse); on the phone use "Etapa" inside the card.
+  const [arrastando, setArrastando] = useState<string | null>(null);
+  const [colunaAlvo, setColunaAlvo] = useState<ColStatus | null>(null);
+  const soltarEm = (col: ColStatus) => {
+    const s = services.find(x => x.id === arrastando);
+    setArrastando(null); setColunaAlvo(null);
+    if (s && normCol(s.status) !== col) handleAdvance(s, col);
+  };
+
   const handleAdvance = (service: Service, next: ColStatus) => {
     updateServiceStatus(service.id, COL_TO_DB[next]);
     if (selected?.id === service.id) setSelected(prev => prev ? { ...prev, status: COL_TO_DB[next] } : null);
@@ -222,7 +232,11 @@ export const AdminOS: React.FC = () => {
         <div className="flex-1 overflow-x-auto pb-4">
           <div className="flex gap-3 min-w-[950px] h-full" style={{ minHeight: 'calc(100vh - 240px)' }}>
             {COLUMNS.map(col => (
-              <div key={col.key} className={`flex-1 min-w-[185px] rounded-2xl border ${col.bg} ${col.border} flex flex-col`}>
+              <div key={col.key}
+                onDragOver={e => { if (arrastando) { e.preventDefault(); if (colunaAlvo !== col.key) setColunaAlvo(col.key); } }}
+                onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setColunaAlvo(c => c === col.key ? null : c); }}
+                onDrop={e => { e.preventDefault(); soltarEm(col.key); }}
+                className={`flex-1 min-w-[185px] rounded-2xl border ${col.bg} ${col.border} flex flex-col transition-shadow ${colunaAlvo === col.key ? 'ring-2 ring-primary ring-offset-1' : ''}`}>
                 <div className="px-3 pt-3 pb-2 flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${col.dotColor}`} />
@@ -247,6 +261,8 @@ export const AdminOS: React.FC = () => {
                           next={NEXT[col.key] ? COLUMNS.find(c => c.key === NEXT[col.key])! : null}
                           onOpen={() => setSelected(service)}
                           onAdvance={next => handleAdvance(service, next)}
+                          onDragStart={() => setArrastando(service.id)}
+                          onDragEnd={() => { setArrastando(null); setColunaAlvo(null); }}
                         />
                       ))
                   )}
@@ -465,10 +481,6 @@ export const AdminOS: React.FC = () => {
           onClose={() => setSelected(null)}
           onEditar={() => setEditando({ ...selected, ...(services.find(s => s.id === selected.id) ?? {}) })}
           onStatusChange={next => handleAdvance(selected, next)}
-          onAssignCollab={(id, name) => {
-            updateServiceStatus(selected.id, selected.status, { collaboratorId: id, collaboratorName: name } as any);
-            setSelected(s => s ? { ...s, collaboratorId: id, collaboratorName: name } : null);
-          }}
         />
       )}
       {editando && (
@@ -485,10 +497,15 @@ interface CardProps {
   next: typeof COLUMNS[0] | null;
   onOpen: () => void;
   onAdvance: (next: ColStatus) => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
 }
 
-const OSCard: React.FC<CardProps> = ({ service, col, next, onOpen, onAdvance }) => (
+const OSCard: React.FC<CardProps> = ({ service, col, next, onOpen, onAdvance, onDragStart, onDragEnd }) => (
   <div
+    draggable
+    onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', service.id); onDragStart(); }}
+    onDragEnd={onDragEnd}
     onClick={onOpen}
     className={`bg-white dark:bg-darkSurface rounded-xl border border-l-4 ${col.cardBorder} border-gray-100 dark:border-darkBorder shadow-sm hover:shadow-md transition-all cursor-pointer p-3 group`}
   >
@@ -503,8 +520,8 @@ const OSCard: React.FC<CardProps> = ({ service, col, next, onOpen, onAdvance }) 
     </p>
     <p className="text-xs text-lightText dark:text-darkTextSecondary mb-2 flex items-center gap-1 truncate">
       <User size={11} className="shrink-0" />
-      {service.collaboratorName
-        ? <span className="truncate">{service.collaboratorName.split(' ')[0]}</span>
+      {nomesDaEquipe(service).length
+        ? <span className="truncate">{nomesDaEquipe(service).map(n => n.split(' ')[0]).join(', ')}</span>
         : <span className="text-orange-500 font-medium">Sem profissional</span>
       }
     </p>
@@ -530,18 +547,16 @@ interface DrawerProps {
   onClose: () => void;
   onEditar: () => void;
   onStatusChange: (next: ColStatus) => void;
-  onAssignCollab: (id: string, name: string) => void;
 }
 
 type PaymentState = null | 'loading' | { url: string; phone: string | null } | { error: string };
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose, onEditar, onStatusChange, onAssignCollab }) => {
+const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose, onEditar, onStatusChange }) => {
   const currentCol = normCol(service.status);
   const nextStatus = NEXT[currentCol];
   const nextCol = nextStatus ? COLUMNS.find(c => c.key === nextStatus) : null;
-  const [assignId, setAssignId] = useState(service.collaboratorId || '');
   const col = COLUMNS.find(c => c.key === currentCol)!;
   const [paymentState, setPaymentState] = useState<PaymentState>(null);
   const [copied, setCopied] = useState(false);
@@ -637,43 +652,43 @@ const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose
             </div>
           )}
 
-          {/* Collaborator assignment */}
+          {/* Team (one or more professionals) */}
           <div>
-            <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary mb-2">Profissional</p>
-            {service.collaboratorName ? (
-              <div className="flex items-center gap-3 bg-green-50 dark:bg-green-900/20 p-3 rounded-xl border border-green-100 dark:border-green-800">
-                <CheckCircle2 size={18} className="text-green-600 dark:text-green-400 shrink-0" />
-                <span className="font-bold text-green-700 dark:text-green-300 text-sm">{service.collaboratorName}</span>
-                <button
-                  onClick={() => onAssignCollab('', '')}
-                  className="ml-auto text-xs text-red-500 hover:underline shrink-0"
-                >
-                  Trocar
-                </button>
+            <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary mb-2">{nomesDaEquipe(service).length > 1 ? 'Profissionais' : 'Profissional'}</p>
+            {nomesDaEquipe(service).length ? (
+              <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl border border-green-100 dark:border-green-800 space-y-2">
+                {nomesDaEquipe(service).map(n => {
+                  const foto = colaboradoras.find(c => c.nome === n)?.foto;
+                  return (
+                    <div key={n} className="flex items-center gap-2.5">
+                      {foto ? <img src={foto} alt="" className="w-7 h-7 rounded-full object-cover" /> : <CheckCircle2 size={18} className="text-green-600 dark:text-green-400 shrink-0" />}
+                      <span className="font-bold text-green-700 dark:text-green-300 text-sm">{n}</span>
+                    </div>
+                  );
+                })}
+                <button onClick={onEditar} className="text-xs font-bold text-primary hover:underline">Trocar ou adicionar profissionais</button>
               </div>
             ) : (
               <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-xl border border-orange-100 dark:border-orange-800 space-y-2">
                 <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400 text-xs font-bold">
                   <AlertCircle size={14} /> Sem profissional atribuída
                 </div>
-                <select
-                  className="w-full p-2.5 bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder rounded-xl text-sm outline-none text-darkText dark:text-darkTextPrimary"
-                  value={assignId}
-                  onChange={e => setAssignId(e.target.value)}
-                >
-                  <option value="">Selecione...</option>
-                  {colaboradoras.map(c => (
-                    <option key={c.id} value={c.id}>{c.nome}</option>
-                  ))}
-                </select>
-                <Button size="sm" fullWidth onClick={() => {
-                  const c = colaboradoras.find(c => c.id === assignId);
-                  if (c) onAssignCollab(c.id, c.nome);
-                }} disabled={!assignId}>
-                  Atribuir Profissional
-                </Button>
+                <Button size="sm" fullWidth onClick={onEditar}>Escolher profissionais</Button>
               </div>
             )}
+          </div>
+
+          {/* Stage: move to any column (also reopens a finished or cancelled order) */}
+          <div>
+            <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary mb-2">Etapa</p>
+            <div className="flex flex-wrap gap-1.5">
+              {COLUMNS.map(c => (
+                <button key={c.key} onClick={() => c.key !== currentCol && onStatusChange(c.key)}
+                  className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-full border transition-colors ${c.key === currentCol ? `${c.bg} ${c.border} text-darkText dark:text-darkTextPrimary` : 'border-gray-200 dark:border-darkBorder text-lightText dark:text-darkTextSecondary hover:border-primary hover:text-primary'}`}>
+                  <span className={`w-2 h-2 rounded-full ${c.dotColor}`} /> {c.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

@@ -5,6 +5,7 @@ import { UserRole } from '../../types';
 import { Button } from '../../components/Button';
 import { ArrowLeft, Calendar, Clock, MapPin, CheckCircle, XCircle, AlertTriangle, FileText, Star, Shield, Download, DollarSign, Camera } from 'lucide-react';
 import { useData } from '../../components/DataContext';
+import { nomesDaEquipe } from '../../lib/collabIdentity';
 
 export const ClientAppointmentDetail: React.FC = () => {
   const { id } = useParams();
@@ -171,17 +172,21 @@ export const ClientAppointmentDetail: React.FC = () => {
             </div>
 
             {/* Profissional (Só aparece se confirmado e tiver ID) */}
-            {appointment.collaboratorName && appointment.status === 'CONFIRMED' && (
+            {nomesDaEquipe(appointment).length > 0 && ['CONFIRMED', 'IN_PROGRESS', 'COMPLETED'].includes(appointment.status) && (
               <div className="bg-white dark:bg-darkSurface p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-darkBorder">
-                <h3 className="font-bold text-darkText dark:text-darkTextPrimary mb-4">Profissional</h3>
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl">
-                      {appointment.collaboratorName.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="font-bold text-darkText dark:text-darkTextPrimary">{appointment.collaboratorName}</p>
-                    <p className="text-xs text-lightText dark:text-darkTextSecondary">Confirmado</p>
-                  </div>
+                <h3 className="font-bold text-darkText dark:text-darkTextPrimary mb-4">{nomesDaEquipe(appointment).length > 1 ? 'Profissionais' : 'Profissional'}</h3>
+                <div className="space-y-3">
+                  {nomesDaEquipe(appointment).map(n => (
+                    <div key={n} className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+                        {n.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-bold text-darkText dark:text-darkTextPrimary">{n}</p>
+                        <p className="text-xs text-lightText dark:text-darkTextSecondary">{appointment.status === 'COMPLETED' ? 'Atendeu' : 'Confirmada'}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
