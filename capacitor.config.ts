@@ -14,9 +14,18 @@ const config: CapacitorConfig = {
   },
   android: {
     allowMixedContent: false,
+    // Each push plugin only on its platform (two FCM services on Android would conflict).
+    includePlugins: ['@capacitor/push-notifications'],
   },
   ios: {
     contentInset: 'automatic',
+    includePlugins: ['@capacitor-firebase/messaging'],
+  },
+  plugins: {
+    FirebaseMessaging: { presentationOptions: ['alert', 'badge', 'sound'] },
+  },
+  experimental: {
+    ios: { spm: { packageOptions: { '@capacitor-firebase/messaging': { symlink: true } } } },
   },
 };
 

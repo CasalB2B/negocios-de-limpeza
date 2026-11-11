@@ -49,7 +49,7 @@
 	<string>Main</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
@@ -72,6 +72,10 @@
 	<string>A câmera é usada para tirar as fotos de antes e depois da limpeza.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>A galeria é usada para enviar fotos do serviço e do perfil.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

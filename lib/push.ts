@@ -3,9 +3,19 @@
 // screen of a notification when it is tapped. The server side is the `push` edge function.
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
+import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import { supabase } from './supabase';
 
+// Android uses @capacitor/push-notifications (FCM token directly). iPhone uses the Firebase Messaging plugin,
+// which turns the Apple token into an FCM token, so the server sends to both the same way.
+// (capacitor.config.ts includes each plugin only on its platform.)
 export const noAppNativo = () => Capacitor.isNativePlatform();
+const ehIos = () => Capacitor.getPlatform() === 'ios';
+
+async function registrarToken(value: string) {
+  ultimoToken = value;
+  await supabase.rpc('registrar_dispositivo', { p_token: value, p_plataforma: Capacitor.getPlatform() });
+}
 
 let ouvintes = false;
 let ultimoToken: string | null = null;
@@ -30,17 +40,23 @@ function avisoNaTela(titulo: string, corpo: string, rota?: string) {
   setTimeout(() => el.remove(), 6000);
 }
 
+async function prepararOuvintesIos() {
+  await FirebaseMessaging.addListener('tokenReceived', ({ token }) => { registrarToken(token); });
+  await FirebaseMessaging.addListener('notificationReceived', ({ notification: n }) =>
+    avisoNaTela(n.title || 'Negócios de Limpeza', n.body || '', (n.data as any)?.rota));
+  await FirebaseMessaging.addListener('notificationActionPerformed', ({ notification: n }) =>
+    abrirRota((n.data as any)?.rota));
+}
+
 async function prepararOuvintes() {
   if (ouvintes) return;
   ouvintes = true;
+  if (ehIos()) return prepararOuvintesIos();
   await PushNotifications.createChannel({
     id: 'avisos', name: 'Avisos da agenda', description: 'Novos serviços, lembretes e pagamentos',
     importance: 4, visibility: 1, sound: 'default', vibration: true, lightColor: '#A163FF',
   }).catch(() => {});
-  await PushNotifications.addListener('registration', async ({ value }) => {
-    ultimoToken = value;
-    await supabase.rpc('registrar_dispositivo', { p_token: value, p_plataforma: Capacitor.getPlatform() });
-  });
+  await PushNotifications.addListener('registration', ({ value }) => registrarToken(value));
   await PushNotifications.addListener('registrationError', e => console.warn('push: registro falhou', e));
   await PushNotifications.addListener('pushNotificationReceived', n =>
     avisoNaTela(n.title || 'Negócios de Limpeza', n.body || '', (n.data as any)?.rota));
@@ -52,7 +68,7 @@ export type EstadoPush = 'indisponivel' | 'ativo' | 'negado' | 'pendente';
 
 export async function estadoPush(): Promise<EstadoPush> {
   if (!noAppNativo()) return 'indisponivel';
-  const { receive } = await PushNotifications.checkPermissions();
+  const { receive } = ehIos() ? await FirebaseMessaging.checkPermissions() : await PushNotifications.checkPermissions();
   return receive === 'granted' ? 'ativo' : receive === 'denied' ? 'negado' : 'pendente';
 }
 
@@ -62,6 +78,14 @@ export async function ativarPush(): Promise<EstadoPush> {
   const { data } = await supabase.auth.getSession();
   if (!data.session) return 'pendente';
   await prepararOuvintes();
+  if (ehIos()) {
+    let { receive: r } = await FirebaseMessaging.checkPermissions();
+    if (r === 'prompt' || r === 'prompt-with-rationale') r = (await FirebaseMessaging.requestPermissions()).receive;
+    if (r !== 'granted') return r === 'denied' ? 'negado' : 'pendente';
+    const { token } = await FirebaseMessaging.getToken();
+    if (token) await registrarToken(token);
+    return 'ativo';
+  }
   let { receive } = await PushNotifications.checkPermissions();
   if (receive === 'prompt' || receive === 'prompt-with-rationale') receive = (await PushNotifications.requestPermissions()).receive;
   if (receive !== 'granted') return receive === 'denied' ? 'negado' : 'pendente';
