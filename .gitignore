@@ -30,3 +30,7 @@ chave-android/
 *.p12
 *.jks
 *.keystore
+
+# Claude Code worktrees
+.claude/worktrees/
+.claude/scheduled_tasks.lock
