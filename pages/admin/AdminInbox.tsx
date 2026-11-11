@@ -17,17 +17,13 @@ interface WaSession  {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-send`;
-const ANON_KEY  =  import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-
+// invoke() sends the logged-in admin's token; whatsapp-send refuses anonymous calls.
 async function sendViaProxy(phone: string, text: string): Promise<boolean> {
   try {
-    const res = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${ANON_KEY}` },
-      body: JSON.stringify({ action: 'sendText', payload: { number: phone, text } }),
+    const { data, error } = await supabase.functions.invoke('whatsapp-send', {
+      body: { action: 'sendText', payload: { number: phone, text } },
     });
-    return !!(await res.json()).ok;
+    return !error && !!data?.ok;
   } catch { return false; }
 }
 

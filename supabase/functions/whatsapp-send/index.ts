@@ -23,11 +23,44 @@ function fail(error: string, code?: number) {
   return json({ ok: false, error, code, data: { message: error } });
 }
 
+// Quem pode enviar:
+//  - painel: usuário logado (JWT do Supabase Auth) com perfil ADMIN ou REVIEWER; a empresa
+//    vem do perfil, nunca do corpo do pedido;
+//  - servidor→servidor: cabeçalho x-wa-internal-secret igual ao segredo WA_INTERNAL_SECRET
+//    (criado pelo dono no Supabase); aí o company_id do corpo é aceito.
+const INTERNAL_SECRET = Deno.env.get('WA_INTERNAL_SECRET') ?? '';
+const ALLOWED_ROLES = ['ADMIN', 'REVIEWER'];
+
+function sameSecret(a: string, b: string): boolean {
+  if (!a || !b || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+async function callerCompany(req: Request, bodyCompanyId: unknown): Promise<{ companyId: number } | { status: number; error: string }> {
+  const secret = req.headers.get('x-wa-internal-secret') ?? '';
+  if (secret) {
+    if (!sameSecret(secret, INTERNAL_SECRET)) return { status: 401, error: 'Não autorizado.' };
+    const companyId = Number(bodyCompanyId);
+    return companyId > 0 ? { companyId } : { status: 400, error: 'company_id obrigatório.' };
+  }
+  const token = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
+  if (!token) return { status: 401, error: 'Entre no sistema primeiro.' };
+  const { data } = await supabase.auth.getUser(token);
+  if (!data?.user) return { status: 401, error: 'Entre no sistema primeiro.' };
+  const { data: me } = await supabase.from('app_users').select('role, company_id, bloqueado').eq('auth_id', data.user.id).maybeSingle();
+  if (!me || me.bloqueado || !ALLOWED_ROLES.includes(me.role)) return { status: 403, error: 'Só administradores enviam mensagens de WhatsApp.' };
+  return { companyId: Number(me.company_id) || 1 };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
-    const { action, payload = {}, company_id } = await req.json();
-    const conn = await getConnection(Number(company_id) || 1);
+    const { action, payload = {}, company_id } = await req.json().catch(() => ({}));
+    const who = await callerCompany(req, company_id);
+    if ('status' in who) return json({ ok: false, error: who.error, data: { message: who.error } }, who.status);
+    const conn = await getConnection(who.companyId);
     if (!conn) return fail('WhatsApp não conectado. Conecte em Automação WhatsApp → Conexão.');
     // Confirmação automática quando um serviço é agendado no painel.
     if (action === 'bookingConfirmation') {
