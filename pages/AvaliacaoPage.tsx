@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useRH } from '../components/RHContext';
+import { supabase } from '../lib/supabase';
 import { Star, CheckCircle, AlertCircle } from 'lucide-react';
 
 const SUPABASE_URL  = (import.meta as any).env?.VITE_SUPABASE_URL ?? '';
@@ -24,6 +25,8 @@ interface ColabMin {
 export const AvaliacaoPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const colaboradoraId = searchParams.get('c') || '';
+  // ?s= comes in the WhatsApp link: the review is tied to that cleaning and to the client.
+  const servicoId = searchParams.get('s') || '';
 
   // Try to find the colaboradora from Supabase directly (device-independent)
   const { colaboradoras, addAvaliacao } = useRH();
@@ -67,21 +70,32 @@ export const AvaliacaoPage: React.FC = () => {
   const [enviado, setEnviado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
+  const [jaAvaliado, setJaAvaliado] = useState(false);
+
+  useEffect(() => {
+    if (!servicoId || !colaboradoraId) return;
+    supabase.functions.invoke('rh-write', { body: { action: 'avaliacao_info', data: { servico: servicoId, colaboradora: colaboradoraId } } })
+      .then(({ data }) => {
+        if (!data?.ok) return;
+        if (data.nome) setNomeCliente(n => n || data.nome);
+        if (data.data) setDataFaxina(d => d || data.data);
+        setJaAvaliado(!!data.jaAvaliado);
+      }).catch(() => {});
+  }, [servicoId, colaboradoraId]);
 
   const handleSubmit = async () => {
     if (!nomeCliente.trim()) { setErro('Por favor, informe seu nome.'); return; }
     if (estrelas === 0) { setErro('Por favor, selecione uma avaliação de 1 a 5 estrelas.'); return; }
     setErro('');
     setEnviando(true);
-    await addAvaliacao({
-      colaboradoraId,
-      nomeCliente: nomeCliente.trim(),
-      dataFaxina: dataFaxina || undefined,
-      estrelas,
-      comentario: comentario.trim() || undefined,
-    });
-    setEnviado(true);
+    // Saved on the server (the public visitor has no login); with ?s= it is tied to the cleaning and the client.
+    const { data, error } = await supabase.functions.invoke('rh-write', { body: { action: 'upsert_avaliacao', data: {
+      colaboradoraId, servicoId: servicoId || undefined, nomeCliente: nomeCliente.trim(),
+      dataFaxina: dataFaxina || null, estrelas, comentario: comentario.trim() || null,
+    } } });
     setEnviando(false);
+    if (error || !data?.ok) { setErro('Não foi possível enviar agora. Tente de novo em instantes.'); return; }
+    setEnviado(true);
   };
 
   if (loading) {
@@ -149,14 +163,16 @@ export const AvaliacaoPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background font-sans">
       {/* Header */}
       <div className="bg-white dark:bg-darkSurface border-b border-gray-100 dark:border-darkBorder py-4 px-6 flex items-center gap-3">
-        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white text-xs font-bold">NL</div>
-        <div>
-          <p className="font-bold text-sm text-darkText dark:text-darkTextPrimary leading-tight">Negócios de Limpeza</p>
-          <p className="text-[10px] text-lightText dark:text-darkTextSecondary">Guarapari, ES</p>
-        </div>
+        <img src="/img/logo-lilas.png" alt="Negócios de Limpeza" className="h-9 w-auto dark:hidden" />
+        <img src="/img/logo-bege.png" alt="Negócios de Limpeza" className="h-9 w-auto hidden dark:block" />
       </div>
 
       <div className="max-w-md mx-auto px-5 py-8 space-y-6">
+        {jaAvaliado && (
+          <div className="bg-primary/10 text-primary text-sm font-semibold rounded-2xl px-4 py-3 text-center">
+            Você já avaliou esta limpeza. Se enviar de novo, a nota anterior é atualizada.
+          </div>
+        )}
         {/* Colaboradora card */}
         <div className="bg-white dark:bg-darkSurface rounded-3xl border border-gray-100 dark:border-darkBorder p-6 flex flex-col items-center gap-3 shadow-sm">
           <div className="w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center text-4xl font-bold text-primary overflow-hidden">

@@ -145,15 +145,47 @@ Deno.serve(async (req) => {
     }
 
     // ── Upsert a single avaliação ─────────────────────────────────────────────
+    // Public review page opened from the WhatsApp link: who is reviewing (first name) and which cleaning.
+    if (action === 'avaliacao_info') {
+      const { data: s } = await supabase.from('services').select('id, client_name, date, collaborator_id, collaborator_ids')
+        .eq('id', String(data?.servico || '')).maybeSingle();
+      const ids = [...(Array.isArray(s?.collaborator_ids) ? s!.collaborator_ids : []), s?.collaborator_id].filter(Boolean).map(String);
+      if (!s || !ids.includes(String(data?.colaboradora || ''))) return json200({ ok: false });
+      const { count } = await supabase.from('avaliacoes_clientes').select('id', { count: 'exact', head: true }).eq('service_id', s.id).eq('colaboradora_id', data.colaboradora);
+      const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s.date || '');
+      return json200({ ok: true, nome: String(s.client_name || '').split(' ')[0], data: m ? `${m[3]}-${m[2]}-${m[1]}` : null, jaAvaliado: (count ?? 0) > 0 });
+    }
+
     if (action === 'upsert_avaliacao') {
       const a = data;
-      const { data: r, error } = await supabase.from('avaliacoes_clientes').insert({
+      // From the WhatsApp link the review is tied to the cleaning and the client (and the professional's company).
+      let servico: any = null;
+      if (a.servicoId) {
+        const { data: s } = await supabase.from('services').select('id, client_id, client_name, date, collaborator_id, collaborator_ids, company_id').eq('id', a.servicoId).maybeSingle();
+        const ids = [...(Array.isArray(s?.collaborator_ids) ? s!.collaborator_ids : []), s?.collaborator_id].filter(Boolean).map(String);
+        if (s && ids.includes(String(a.colaboradoraId))) servico = s;
+      }
+      const { data: colab } = await supabase.from('colaboradoras_rh').select('company_id').eq('id', a.colaboradoraId).maybeSingle();
+      const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(servico?.date || '');
+      const linha = {
         colaboradora_id: a.colaboradoraId,
-        nome_cliente:    a.nomeCliente,
-        data_faxina:     a.dataFaxina ?? null,
+        nome_cliente:    a.nomeCliente || servico?.client_name,
+        data_faxina:     a.dataFaxina ?? (m ? `${m[3]}-${m[2]}-${m[1]}` : null),
         estrelas:        a.estrelas,
         comentario:      a.comentario ?? null,
-      }).select('id').single();
+        service_id:      servico?.id ?? null,
+        client_id:       servico?.client_id ?? null,
+        company_id:      servico?.company_id ?? colab?.company_id ?? 1,
+      };
+      // Same cleaning + same professional: update the earlier review instead of duplicating.
+      let existente: string | null = null;
+      if (servico?.id) {
+        const { data: e } = await supabase.from('avaliacoes_clientes').select('id').eq('service_id', servico.id).eq('colaboradora_id', a.colaboradoraId).limit(1).maybeSingle();
+        existente = e?.id ?? null;
+      }
+      const { data: r, error } = existente
+        ? await supabase.from('avaliacoes_clientes').update(linha).eq('id', existente).select('id').single()
+        : await supabase.from('avaliacoes_clientes').insert(linha).select('id').single();
       if (error) return json200({ ok: false, error: error.message });
       // Return real UUID so the client can replace the local aval_ ID.
       // This ensures deleteAvaliacao tombstones the correct ID (prevents Phase-2 restore).

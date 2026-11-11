@@ -373,7 +373,8 @@ async function processarAutomacoes() {
           const colabNome = (Array.isArray(s.collaborator_names) && s.collaborator_names[0]) || s.collaborator_name;
           if (colabId && Date.now() - ultimo >= intervaloDias * 86400_000) {
             const t = tpl('avaliacao_colaboradora');
-            const params = [primeiroNome(s.client_name), primeiroNome(colabNome), `${APP_URL}/#/avaliar?c=${colabId}`];
+            // &s= ties the review to this cleaning (and the client) on the review page.
+            const params = [primeiroNome(s.client_name), primeiroNome(colabNome), `${APP_URL}/#/avaliar?c=${colabId}&s=${s.id}`];
             enviado = (await sendTextOrTemplate(conn, cli.phone, fillTemplate(t.body, params), { name: t.name, params })).ok;
             motivo = enviado ? 'colaboradora' : 'failed';
           }

@@ -249,6 +249,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     texto: [
       '1 hora depois de concluída a primeira limpeza, o cliente recebe o link do Google. Sem link configurado, recebe o pedido de nota de 1 a 5.',
       'Clientes recorrentes recebem o link de avaliação da profissional que atendeu (estrelas e comentário), no máximo no intervalo escolhido. As notas aparecem em Recursos Humanos → Avaliações.',
+      'O cliente não precisa entrar no sistema: o link enviado já vem com a limpeza dele. A nota fica registrada junto com o cliente, a data da limpeza e a profissional que atendeu (ex.: limpeza de 10/11, atendida pela Maria, 5 estrelas). Se o cliente abrir o link de novo, ele vê que já avaliou e, se enviar outra vez, a nota anterior é atualizada (não duplica).',
     ],
     palavras: ['avaliação', 'google', 'meu negócio', 'estrelas', 'nota', 'feedback', 'review'],
   },
