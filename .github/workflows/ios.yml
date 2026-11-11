@@ -33,7 +33,17 @@ jobs:
         run: |
           if [ -z "$P8" ] || [ -z "$KEY_ID" ]; then echo "Faltam os segredos APPLE_API_KEY_P8 / APPLE_API_KEY_ID no GitHub."; exit 1; fi
           mkdir -p "$RUNNER_TEMP/keys"
-          printf '%s\n' "$P8" > "$RUNNER_TEMP/keys/AuthKey.p8"
+          K="$RUNNER_TEMP/keys/AuthKey.p8"
+          # Rebuild a clean PEM whatever way it was pasted (Windows line breaks, spaces, one long line, "\n" typed).
+          CORPO=$(printf '%s' "$P8" | sed 's/\\n/\n/g' | tr -d '\r' \
+            | sed -e 's/-----BEGIN PRIVATE KEY-----//' -e 's/-----END PRIVATE KEY-----//' | tr -d ' \t\n')
+          { echo "-----BEGIN PRIVATE KEY-----"; printf '%s' "$CORPO" | fold -w 64; echo; echo "-----END PRIVATE KEY-----"; } > "$K"
+          if ! openssl pkey -in "$K" -noout 2>/dev/null; then
+            echo "A chave em APPLE_API_KEY_P8 não é válida (tamanho do conteúdo: ${#CORPO} caracteres; uma chave da Apple tem cerca de 200)."
+            echo "Abra o arquivo AuthKey_NT2NK6LRLQ.p8 no Bloco de Notas, copie TUDO (Ctrl+A, Ctrl+C) e cole de novo no segredo."
+            exit 1
+          fi
+          echo "Chave OK."
       - name: Montar o app (archive)
         working-directory: ios/App
         env:
