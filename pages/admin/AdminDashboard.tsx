@@ -11,6 +11,8 @@ import { useRH } from '../../components/RHContext';
 import { supabase } from '../../lib/supabase';
 import { ClientesSumidosCard } from '../../components/ClientesSumidos';
 import { MapaColaboradoras } from '../../components/MapaColaboradoras';
+import { PersonalizarPainel, painelAtual, type ConfigPainel, ACOES_RAPIDAS } from '../../components/PersonalizarPainel';
+import { podeVer } from '../../lib/acesso';
 import { PedidosExclusao } from '../../components/ExcluirConta';
 import { NotificacoesCelular } from '../../components/NotificacoesCelular';
 
@@ -225,45 +227,19 @@ export const AdminDashboard: React.FC = () => {
 
   // ─────────────────────────────────────────────────────────────────────────
 
-  return (
-    <Layout role={UserRole.ADMIN}>
-      <div className="w-full space-y-5 pb-8">
+  const [painel, setPainel] = useState<ConfigPainel>(painelAtual());
+  const [personalizando, setPersonalizando] = useState(false);
+  // Money cards only for who can see the money (access levels).
+  const veDinheiro = podeVer('/admin/financeiro/recebimentos');
+  const verKpi = (id: string) => !painel.ocultos.includes(id) && (veDinheiro || (id !== 'kpi_receita' && id !== 'kpi_receber'));
+  const kpisVisiveis = ['kpi_hoje', 'kpi_receita', 'kpi_receber', 'kpi_ativas'].filter(verKpi).length;
 
-        {/* ── Header ── */}
-        <header className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-500 text-sm mt-0.5">{finalDateString} · Visão geral do negócio</p>
-          </div>
-          <button
-            onClick={() => navigate('/admin/settings')}
-            className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors shadow-sm"
-          >
-            <Settings size={16} className="text-gray-500" />
-          </button>
-        </header>
+  // ── Dashboard blocks: each person chooses which ones to see and in what order (Personalizar) ──
+  const blocos: Record<string, React.ReactNode> = {
+    kpis: (<>
+        <div className={`grid grid-cols-2 ${kpisVisiveis >= 4 ? 'lg:grid-cols-4' : kpisVisiveis === 3 ? 'lg:grid-cols-3' : ''} gap-4`}>
 
-        {/* ── Notification banners (browser only: inside the phone app web notifications do not exist; push comes with Firebase) ── */}
-        {notifPerm === 'default' && !noAppNativo && (
-          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-            <BellRing size={16} className="text-amber-500 shrink-0" />
-            <p className="text-sm text-amber-700 flex-1">Ative as notificações para receber alertas de compromissos</p>
-            <button onClick={requestNotifPermission} className="text-xs font-bold bg-amber-500 text-white px-3 py-1 rounded-lg hover:bg-amber-600">Ativar</button>
-          </div>
-        )}
-        {notifPerm === 'denied' && !noAppNativo && (
-          <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-            <BellOff size={14} className="text-red-500 shrink-0" />
-            <p className="text-xs text-red-600">Notificações bloqueadas. Ative nas configurações do navegador.</p>
-          </div>
-        )}
-
-        <NotificacoesCelular modo="aviso" />
-        <PedidosExclusao />
-
-        {/* ── Row 1: KPI cards ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-
+          {verKpi('kpi_hoje') && (
           <div className="rounded-2xl p-4 xl:p-6 min-w-0 bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-200/60 text-white">
             <div className="flex items-center justify-between mb-3">
               <span className="text-blue-100 text-sm font-medium">Serviços hoje</span>
@@ -282,7 +258,8 @@ export const AdminDashboard: React.FC = () => {
               </>
             )}
           </div>
-
+          )}
+          {verKpi('kpi_receita') && (
           <div className="rounded-2xl p-4 xl:p-6 min-w-0 bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-200/60 text-white">
             <div className="flex items-center justify-between mb-3">
               <span className="text-emerald-100 text-sm font-medium">Receita do mês</span>
@@ -297,7 +274,8 @@ export const AdminDashboard: React.FC = () => {
               </>
             )}
           </div>
-
+          )}
+          {verKpi('kpi_receber') && (
           <div className="rounded-2xl p-4 xl:p-6 min-w-0 bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-200/60 text-white">
             <div className="flex items-center justify-between mb-3">
               <span className="text-amber-100 text-sm font-medium">A receber</span>
@@ -312,7 +290,8 @@ export const AdminDashboard: React.FC = () => {
               </>
             )}
           </div>
-
+          )}
+          {verKpi('kpi_ativas') && (
           <div className="rounded-2xl p-4 xl:p-6 min-w-0 bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-200/60 text-white">
             <div className="flex items-center justify-between mb-3">
               <span className="text-violet-100 text-sm font-medium">Profissionais ativas</span>
@@ -329,16 +308,16 @@ export const AdminDashboard: React.FC = () => {
               </>
             )}
           </div>
-
+          )}
         </div>
-
-        {/* ── Mapa ao vivo da equipe (largura total, logo abaixo dos números) ── */}
+    </>),
+    mapa: (<>
         <MapaColaboradoras />
-
-        {/* ── Clientes Sumidos ── */}
+    </>),
+    sumidos: (<>
         <ClientesSumidosCard services={services} />
-
-        {/* ── Row 2: Area chart + Donut ── */}
+    </>),
+    graficos: (<>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
 
           {/* Area chart — 3/5 */}
@@ -446,8 +425,8 @@ export const AdminDashboard: React.FC = () => {
             )}
           </div>
         </div>
-
-        {/* ── Row 3: Agenda + Alerts ── */}
+    </>),
+    agenda: (<>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
           {/* Agenda do dia */}
@@ -550,31 +529,25 @@ export const AdminDashboard: React.FC = () => {
             })()}
           </div>
         </div>
-
-        {/* ── Row 4: Ações Rápidas ── */}
+    </>),
+    acoes: (<>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <h2 className="font-bold text-gray-900 text-sm mb-4">Ações Rápidas</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-gray-900 text-sm">Ações Rápidas</h2>
+            <button onClick={() => setPersonalizando(true)} className="text-xs text-violet-600 font-medium hover:underline">Escolher botões</button>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { label: 'Nova OS',         icon: <Plus size={18}/>,         path: '/admin/os',                cls: 'text-teal-700 bg-teal-50 hover:bg-teal-100 border-teal-100' },
-              { label: 'Financeiro',      icon: <DollarSign size={18}/>,   path: '/admin/payments',          cls: 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-100' },
-              { label: 'Calendário',      icon: <Calendar size={18}/>,     path: '/admin/calendar',          cls: 'text-blue-700 bg-blue-50 hover:bg-blue-100 border-blue-100' },
-              { label: 'Clientes',        icon: <Users size={18}/>,        path: '/admin/clients',           cls: 'text-violet-700 bg-violet-50 hover:bg-violet-100 border-violet-100' },
-              { label: 'Profissionais',   icon: <UserPlus size={18}/>,     path: '/admin/rh/colaboradoras',  cls: 'text-pink-700 bg-pink-50 hover:bg-pink-100 border-pink-100' },
-              { label: 'Contratação',     icon: <BookOpen size={18}/>,     path: '/admin/rh/contratacao',    cls: 'text-orange-700 bg-orange-50 hover:bg-orange-100 border-orange-100' },
-              { label: 'Desempenho',      icon: <BarChart2 size={18}/>,    path: '/admin/rh/desempenho',     cls: 'text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-100' },
-              { label: 'Configurações',   icon: <Settings size={18}/>,     path: '/admin/settings',          cls: 'text-gray-600 bg-gray-50 hover:bg-gray-100 border-gray-100' },
-            ].map(a => (
+            {ACOES_RAPIDAS.filter(a => painel.acoes.includes(a.path) && podeVer(a.path)).sort((x, y) => painel.acoes.indexOf(x.path) - painel.acoes.indexOf(y.path)).map(a => (
               <button key={a.path} onClick={() => navigate(a.path)}
                 className={`flex items-center gap-2.5 px-4 py-3.5 rounded-xl border font-medium text-sm transition-colors active:scale-95 ${a.cls}`}
               >
-                {a.icon} {a.label}
+                <a.Icone size={18} /> {a.label}
               </button>
             ))}
           </div>
         </div>
-
-        {/* ── Row 5: Equipe & Contratações ── */}
+    </>),
+    equipe: (<>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-gray-900 text-sm flex items-center gap-2">
@@ -598,7 +571,49 @@ export const AdminDashboard: React.FC = () => {
             ))}
           </div>
         </div>
+    </>),
+  };
 
+  return (
+    <Layout role={UserRole.ADMIN}>
+      <div className="w-full space-y-5 pb-8">
+
+        {/* ── Header ── */}
+        <header className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-gray-500 text-sm mt-0.5">{finalDateString} · Visão geral do negócio</p>
+          </div>
+          <button
+            onClick={() => setPersonalizando(true)}
+            className="flex items-center gap-1.5 h-9 px-3 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:text-primary hover:border-primary transition-colors shadow-sm shrink-0"
+          >
+            <Settings size={15} /> Personalizar
+          </button>
+        </header>
+
+        {/* ── Notification banners (browser only: inside the phone app web notifications do not exist; push comes with Firebase) ── */}
+        {notifPerm === 'default' && !noAppNativo && (
+          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            <BellRing size={16} className="text-amber-500 shrink-0" />
+            <p className="text-sm text-amber-700 flex-1">Ative as notificações para receber alertas de compromissos</p>
+            <button onClick={requestNotifPermission} className="text-xs font-bold bg-amber-500 text-white px-3 py-1 rounded-lg hover:bg-amber-600">Ativar</button>
+          </div>
+        )}
+        {notifPerm === 'denied' && !noAppNativo && (
+          <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+            <BellOff size={14} className="text-red-500 shrink-0" />
+            <p className="text-xs text-red-600">Notificações bloqueadas. Ative nas configurações do navegador.</p>
+          </div>
+        )}
+
+        <NotificacoesCelular modo="aviso" />
+        <PedidosExclusao />
+
+        {painel.ordem.filter(id => !painel.ocultos.includes(id) && blocos[id] && (id !== 'graficos' || podeVer('/admin/financeiro/recebimentos'))).map(id => (
+          <React.Fragment key={id}>{blocos[id]}</React.Fragment>
+        ))}
+        {personalizando && <PersonalizarPainel valor={painel} onClose={() => setPersonalizando(false)} onSalvar={setPainel} />}
 
       </div>
     </Layout>

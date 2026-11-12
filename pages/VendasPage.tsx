@@ -63,6 +63,7 @@ const RECURSOS: { icon: React.ElementType; t: string; slug?: string; d: string }
   { icon: BellRing, t: 'Avisos para a equipe', d: 'Mudou a agenda? A profissional recebe o aviso no celular.' },
   { icon: ShieldCheck, t: 'Permissões por pessoa', d: 'A atendente vê a agenda e os clientes; o financeiro fica só com você.' },
   { icon: Pin, t: 'Meus atalhos', d: 'Cada pessoa fixa as telas que mais usa, no computador e na barra do celular.' },
+  { icon: TrendingUp, t: 'Dashboard do seu jeito', d: 'Escolha os números, blocos e botões da tela inicial. Cada pessoa monta o seu.' },
 ];
 
 const PERGUNTAS_IA = [
@@ -356,7 +357,7 @@ export const VendasPage: React.FC = () => {
             <div className={`${cartao} p-6 md:p-8 md:col-span-6 grid md:grid-cols-5 gap-6 items-center`}>
               <div className="md:col-span-2">
                 <h3 className="text-xl font-bold">Cada pessoa vê só o que precisa</h3>
-                <p className="mt-2 text-sm text-lightText dark:text-darkTextSecondary">Coloque a atendente, a líder ou quem cuida das contas no sistema e escolha o que cada uma acessa: perfis prontos ou área por área. E cada pessoa fixa nos atalhos as telas que mais usa.</p>
+                <p className="mt-2 text-sm text-lightText dark:text-darkTextSecondary">Coloque a atendente, a líder ou quem cuida das contas no sistema e escolha o que cada uma acessa: perfis prontos ou área por área. E cada pessoa fixa nos atalhos as telas que mais usa e monta o Dashboard do jeito dela.</p>
                 <ul className="mt-4 space-y-2 text-sm font-semibold">
                   {['Atendimento, Líder de equipe, Financeiro e RH prontos', 'O financeiro e as configurações ficam só com você', 'Atalhos no menu do computador e na barra do celular'].map(x => (
                     <li key={x} className="flex gap-2"><Check size={16} className="text-primary shrink-0 mt-0.5" />{x}</li>

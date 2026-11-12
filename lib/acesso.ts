@@ -112,6 +112,26 @@ export function salvarAtalhos(lista: string[]): Promise<void> {
   return filaAtalhos;
 }
 
+// ── Other personal preferences (e.g. the Dashboard layout) ─────────────────
+const LS_PREFS = 'ndl_preferencias';
+export function preferencia<T>(chave: string): T | undefined {
+  try { return (JSON.parse(localStorage.getItem(LS_PREFS) || '{}') ?? {})[chave]; } catch { return undefined; }
+}
+let filaPrefs: Promise<void> = Promise.resolve();
+export function salvarPreferencia(chave: string, valor: unknown): Promise<void> {
+  try {
+    const atual = JSON.parse(localStorage.getItem(LS_PREFS) || '{}') ?? {};
+    localStorage.setItem(LS_PREFS, JSON.stringify({ ...atual, [chave]: valor }));
+  } catch { /* ignore */ }
+  filaPrefs = filaPrefs.then(async () => {
+    const { data } = await supabase.auth.getUser();
+    if (!data?.user) return;
+    const { data: eu } = await supabase.from('app_users').select('preferencias').eq('auth_id', data.user.id).maybeSingle();
+    await supabase.from('app_users').update({ preferencias: { ...(eu?.preferencias ?? {}), [chave]: preferencia(chave) } }).eq('auth_id', data.user.id);
+  }).catch(() => {});
+  return filaPrefs;
+}
+
 // After login or when the panel opens: bring the access level and shortcuts from the database.
 export async function atualizarDoBanco(): Promise<{ perm: Permissoes | null; atalhos: string[] } | null> {
   const { data } = await supabase.auth.getUser();
@@ -121,7 +141,10 @@ export async function atualizarDoBanco(): Promise<{ perm: Permissoes | null; ata
   const perm = eu.permissoes && Array.isArray(eu.permissoes.areas) ? eu.permissoes as Permissoes : null;
   guardarPermissoes(perm);
   const atalhos = Array.isArray(eu.preferencias?.atalhos) ? eu.preferencias.atalhos : atalhosAtuais();
-  try { localStorage.setItem(LS_ATALHOS, JSON.stringify(atalhos)); } catch { /* ignore */ }
+  try {
+    localStorage.setItem(LS_ATALHOS, JSON.stringify(atalhos));
+    if (eu.preferencias) localStorage.setItem(LS_PREFS, JSON.stringify(eu.preferencias));
+  } catch { /* ignore */ }
   return { perm, atalhos };
 }
 

@@ -36,6 +36,7 @@ export async function entrar(email: string, senha: string, papeis: Papel[]): Pro
     perfil.permissoes && Array.isArray(perfil.permissoes.areas)
       ? localStorage.setItem('ndl_permissoes', JSON.stringify(perfil.permissoes)) : localStorage.removeItem('ndl_permissoes');
     localStorage.setItem('ndl_atalhos', JSON.stringify(Array.isArray(perfil.preferencias?.atalhos) ? perfil.preferencias.atalhos : []));
+    localStorage.setItem('ndl_preferencias', JSON.stringify(perfil.preferencias ?? {}));
   } catch { /* storage unavailable */ }
   definirEmpresa(perfil.company_id);
   try { perfil.dono_plataforma ? localStorage.setItem('ndl_dono', '1') : localStorage.removeItem('ndl_dono'); } catch {}
@@ -44,7 +45,7 @@ export async function entrar(email: string, senha: string, papeis: Papel[]): Pro
 
 export async function sair() {
   await desligarPush().catch(() => {});
-  try { ['ndl_papel', 'ndl_permissoes', 'ndl_atalhos'].forEach(k => localStorage.removeItem(k)); } catch {}
+  try { ['ndl_papel', 'ndl_permissoes', 'ndl_atalhos', 'ndl_preferencias'].forEach(k => localStorage.removeItem(k)); } catch {}
   definirEmpresa(null);
   try { localStorage.removeItem('ndl_dono'); } catch {}
   await supabase.auth.signOut().catch(() => {});

@@ -72,6 +72,21 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     palavras: ['usuário', 'permissão', 'permissões', 'acesso', 'perfil de acesso', 'atendente', 'secretária', 'equipe do escritório', 'senha da profissional', 'dar acesso', 'login da equipe', 'ver como'],
   },
   {
+    id: 'personalizar-dashboard',
+    categoria: 'Primeiros passos',
+    titulo: 'Personalizar o Dashboard',
+    resumo: 'Escolha os blocos e os números que aparecem na tela inicial e os botões de Ações rápidas.',
+    passos: [
+      'No Dashboard, clique em Personalizar (canto de cima, à direita).',
+      'Em Blocos, toque no olho para mostrar ou esconder cada bloco (Números do dia, Mapa da equipe, Clientes sumidos, Gráficos, Agenda do dia e alertas, Ações rápidas, Equipe e contratações) e use as setas para mudar a ordem.',
+      'Em Números do dia, escolha quais cartões aparecem: Serviços hoje, Receita do mês, A receber e Profissionais ativas.',
+      'Em Botões de Ações rápidas, marque as telas que você quer ter à mão (ex.: Contas, Recebimentos, Profissionais, Configurações). Também dá para abrir essa escolha pelo link "Escolher botões" no bloco Ações rápidas.',
+      'Clique em Salvar. O botão Padrão volta para o layout original.',
+    ],
+    texto: ['O Dashboard personalizado é de cada pessoa e acompanha a conta (computador e celular). Quem não tem acesso ao financeiro não vê os cartões de dinheiro nem os gráficos de pagamento.'],
+    palavras: ['dashboard', 'painel', 'tela inicial', 'personalizar', 'widget', 'widgets', 'esconder', 'ações rápidas', 'cartões', 'números'],
+  },
+  {
     id: 'atalhos-menu',
     categoria: 'Primeiros passos',
     titulo: 'Meus atalhos (menu personalizado)',
