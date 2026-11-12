@@ -545,6 +545,12 @@ export const AdminDashboard: React.FC = () => {
               </button>
             ))}
           </div>
+          {!ACOES_RAPIDAS.some(a => painel.acoes.includes(a.path) && podeVer(a.path)) && (
+            <button onClick={() => setPersonalizando(true)}
+              className="w-full mt-1 py-4 rounded-xl border-2 border-dashed border-violet-200 text-sm font-bold text-violet-600 hover:bg-violet-50">
+              Nenhum botão escolhido. Toque aqui para escolher as telas que você mais usa.
+            </button>
+          )}
         </div>
     </>),
     equipe: (<>

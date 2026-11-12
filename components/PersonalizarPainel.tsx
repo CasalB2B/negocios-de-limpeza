@@ -137,7 +137,10 @@ export const PersonalizarPainel: React.FC<{ valor: ConfigPainel; onClose: () => 
               );
             })}
           </div>
-          <p className="text-[11px] text-lightText mt-1.5">Os botões aparecem na ordem em que você marcar.</p>
+          <p className="text-[11px] text-lightText mt-1.5">Roxo = aparece no Dashboard. Os botões aparecem na ordem em que você marcar.</p>
+          {c.acoes.length === 0 && !c.ocultos.includes('acoes') && (
+            <p className="text-[11px] font-semibold text-amber-600 mt-1">Nenhum botão marcado: o bloco Ações rápidas vai ficar vazio. Marque alguns ou esconda o bloco lá em cima.</p>
+          )}
         </div>
 
         <div className="flex gap-2">
