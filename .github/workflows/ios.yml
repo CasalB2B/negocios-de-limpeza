@@ -59,6 +59,10 @@ jobs:
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             archive | tail -80
           test -d "$RUNNER_TEMP/App.xcarchive"
+          # An unsigned archive carries no entitlements, and the export re-signs with the ones it finds.
+          # A local (ad-hoc) signature keeps the push permission (aps-environment) in the app.
+          codesign --force --sign - --entitlements App/App.entitlements "$RUNNER_TEMP/App.xcarchive/Products/Applications/App.app"
+          codesign -d --entitlements - "$RUNNER_TEMP/App.xcarchive/Products/Applications/App.app" | grep -q aps-environment && echo "Permissão de notificações incluída."
       - name: Enviar para o TestFlight
         working-directory: ios/App
         env:

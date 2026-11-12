@@ -145,6 +145,10 @@
         background: #94a3b8;
       }
 
+      /* Inside the phone app the page fills the screen under the status bar: keep the content below it. */
+      .app-nativo #root { padding-top: env(safe-area-inset-top, 0px); }
+      .app-nativo #root .h-screen { height: calc(100vh - env(safe-area-inset-top, 0px)); }
+
       /* Safe area insets for notched phones (iPhone X+) */
       .pb-safe {
         padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
@@ -215,6 +219,8 @@
       }
     </style>
   <script>
+    // Inside the Android/iPhone app (Capacitor injects window.Capacitor before the page runs).
+    try { if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) document.documentElement.classList.add('app-nativo'); } catch (e) {}
     // Aplica o tema salvo ANTES do React renderizar — evita flash de tela errada
     (function () {
       try {
