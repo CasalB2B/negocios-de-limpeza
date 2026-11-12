@@ -311,9 +311,9 @@ export const AdminSettings: React.FC = () => {
             )}
 
             {/* WhatsApp Business (platform-level Meta app ids) */}
-            {souDono && <div className="bg-gray-50 dark:bg-darkBg rounded-2xl border border-gray-200 dark:border-darkBorder p-6">
-              <div className="flex items-start justify-between mb-5">
-                <div className="flex items-center gap-4">
+            {souDono && <div className="bg-gray-50 dark:bg-darkBg rounded-2xl border border-gray-200 dark:border-darkBorder p-4 md:p-6">
+              <div className="flex items-start justify-between gap-3 flex-wrap mb-5">
+                <div className="flex items-center gap-3 min-w-0 flex-1 basis-56">
                   <div className="w-12 h-12 rounded-2xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
                     <MessageCircle size={22} className="text-green-600" />
                   </div>
@@ -368,9 +368,9 @@ export const AdminSettings: React.FC = () => {
             </div>
 
             {/* Google Calendar */}
-            <div className="bg-gray-50 dark:bg-darkBg rounded-2xl border border-gray-200 dark:border-darkBorder p-6">
-              <div className="flex items-start justify-between mb-5">
-                <div className="flex items-center gap-4">
+            <div className="bg-gray-50 dark:bg-darkBg rounded-2xl border border-gray-200 dark:border-darkBorder p-4 md:p-6">
+              <div className="flex items-start justify-between gap-3 flex-wrap mb-5">
+                <div className="flex items-center gap-3 min-w-0 flex-1 basis-56">
                   <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
                     <Calendar size={22} className="text-blue-600" />
                   </div>
@@ -401,9 +401,9 @@ export const AdminSettings: React.FC = () => {
             </div>
 
             {/* Google Maps (platform key) */}
-            {souDono && <div className="bg-gray-50 dark:bg-darkBg rounded-2xl border border-gray-200 dark:border-darkBorder p-6">
-              <div className="flex items-start justify-between mb-5">
-                <div className="flex items-center gap-4">
+            {souDono && <div className="bg-gray-50 dark:bg-darkBg rounded-2xl border border-gray-200 dark:border-darkBorder p-4 md:p-6">
+              <div className="flex items-start justify-between gap-3 flex-wrap mb-5">
+                <div className="flex items-center gap-3 min-w-0 flex-1 basis-56">
                   <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 text-2xl">
                     🗺️
                   </div>
@@ -439,9 +439,9 @@ export const AdminSettings: React.FC = () => {
             </div>}
 
             {/* Gemini AI (platform) */}
-            {souDono && <div className="bg-gray-50 dark:bg-darkBg rounded-2xl border border-gray-200 dark:border-darkBorder p-6">
-              <div className="flex items-start justify-between mb-5">
-                <div className="flex items-center gap-4">
+            {souDono && <div className="bg-gray-50 dark:bg-darkBg rounded-2xl border border-gray-200 dark:border-darkBorder p-4 md:p-6">
+              <div className="flex items-start justify-between gap-3 flex-wrap mb-5">
+                <div className="flex items-center gap-3 min-w-0 flex-1 basis-56">
                   <div className="w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0 text-2xl">
                     🤖
                   </div>
@@ -507,7 +507,7 @@ export const AdminSettings: React.FC = () => {
 
             {/* Content Area */}
             <div className="md:col-span-3">
-               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 min-h-[500px]">
+               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 md:p-8 min-h-[500px]">
                   {renderContent()}
                </div>
             </div>
