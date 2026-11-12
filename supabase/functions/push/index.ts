@@ -129,7 +129,7 @@ async function enfileirar(linha: Record<string, unknown>) {
 
 async function servicosDos(dias: { iso: string; br: string }[]) {
   const { data } = await db.from('services')
-    .select('id, company_id, date, time, duration, status, client_name, price, collaborator_id, collaborator_ids, collaborator_name, checked_in_at, payment_status')
+    .select('id, company_id, date, time, duration, status, client_name, price, collaborator_id, collaborator_ids, collaborator_name, checked_in_at, payment_status, signal_amount')
     .in('date', dias.flatMap(d => [d.iso, d.br])).limit(5000);
   return (data ?? []).filter(s => !CANCELADOS.includes(String(s.status || '').toUpperCase()));
 }
@@ -160,7 +160,7 @@ async function agendados() {
       const total = l.reduce((t, s) => t + Number(s.price || 0), 0);
       await enfileirar({ company_id: emp, destino: 'admin', chave: `manha-admin:${emp}:${hoje.iso}`, rota: '/admin/calendar',
         titulo: `☀️ Bom dia! Hoje: ${l.length} ${l.length === 1 ? 'faxina' : 'faxinas'}`,
-        corpo: `${pessoas} ${pessoas === 1 ? 'colaboradora' : 'colaboradoras'} na rua${total ? ` · ${reais(total)} previstos` : ''}.` });
+        corpo: `${pessoas} ${pessoas === 1 ? 'profissional' : 'profissionais'} na rua${total ? ` · ${reais(total)} previstos` : ''}.` });
     }
     for (const [usuario, c] of colabs) {
       const l = daColab(deHoje, c);
@@ -181,6 +181,22 @@ async function agendados() {
       await enfileirar({ company_id: emp, destino: 'admin', chave: `confirmar:${emp}:${amanha.iso}`, rota: '/admin/os',
         titulo: `⏳ ${pendentes.length} ${pendentes.length === 1 ? 'cliente ainda não confirmou' : 'clientes ainda não confirmaram'} a faxina de amanhã`,
         corpo: nomes + (pendentes.length > 3 ? ' e outros.' : '.') });
+    }
+  }
+
+  // 18:00: cleanings already done (last 7 days) that the client has not fully paid
+  if (naJanela(18)) {
+    const ultimos = await servicosDos([0, 1, 2, 3, 4, 5, 6].map(n => partes(maisDias(agora, -n))));
+    for (const emp of empresasAdmin) {
+      const abertas = doDia(ultimos, emp).filter(s => String(s.status || '').toUpperCase() === 'COMPLETED'
+        && Number(s.price || 0) > 0 && String(s.payment_status || '').toUpperCase() !== 'FULL_PAID');
+      if (!abertas.length) continue;
+      const falta = abertas.reduce((t, s) => t + Number(s.price || 0)
+        - (String(s.payment_status || '').toUpperCase() === 'SIGNAL_PAID' ? Number(s.signal_amount || 0) : 0), 0);
+      const nomes = abertas.slice(0, 3).map(s => s.client_name).filter(Boolean).join(', ');
+      await enfileirar({ company_id: emp, destino: 'admin', chave: `abertas:${emp}:${hoje.iso}`, rota: '/admin/os',
+        titulo: `💸 ${abertas.length} ${abertas.length === 1 ? 'faxina feita ainda não foi paga' : 'faxinas feitas ainda não foram pagas'}`,
+        corpo: `${reais(falta)} em aberto · ${nomes}${abertas.length > 3 ? ' e outros' : ''}. Toque para cobrar.` });
     }
   }
 
