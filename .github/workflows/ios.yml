@@ -6,6 +6,13 @@ name: iOS
 
 on:
   workflow_dispatch:
+  # Also on its own when the native iPhone part changes (website changes reach the app without a new build).
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - 'capacitor.config.ts'
+      - '.github/workflows/ios.yml'
 
 jobs:
   testflight:

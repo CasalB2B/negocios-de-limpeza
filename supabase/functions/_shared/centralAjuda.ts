@@ -278,7 +278,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     resumo: 'Quanto cada cargo recebe por faxina e as regras do RH.',
     passos: [
       'Recursos Humanos → Config. RH → Remuneração: preencha a diária de 4h, 6h e 8h e a passagem de cada cargo (Auxiliar de Limpeza, Faxineira, Faxineira Profissional e Líder de Equipe) e clique em Salvar Tabela de Remuneração.',
-      'Bônus / Líder: salário fixo e bônus da líder. Em cada serviço, o app da líder mostra a diária da tabela (padrão igual à Faxineira Profissional).',
+      'Bônus / Líder: salário fixo e bônus da líder. A líder recebe por diária, como a Faxineira Profissional (o app dela mostra a diária em cada serviço). No fim do mês, em Recursos Humanos → Bônus, escolha a líder e o mês: o sistema soma as diárias das faxinas concluídas dela e compara com o salário fixo. Ela recebe o maior dos dois (ex.: fixo de R$ 2.800 e diárias de R$ 3.200 → recebe R$ 3.200; diárias de R$ 2.500 → recebe os R$ 2.800), mais os bônus de meta da equipe e de avaliação.',
       'Critérios de Promoção: tempo mínimo, meses sem reclamação e metas para cada cargo.',
     ],
     texto: ['O app da profissional mostra quanto ela recebe por serviço usando a diária do cargo dela (o cargo é o do perfil em Profissionais). Na lista de Profissionais aparece a diária de cada uma. Cada alteração cria uma nova versão; o histórico não é afetado.'],

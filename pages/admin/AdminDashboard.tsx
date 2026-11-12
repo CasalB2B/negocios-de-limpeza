@@ -65,6 +65,10 @@ const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julh
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+// Big money values shrink on narrow phones so "R$ 12.345,67" stays inside the card.
+const tamanhoValor = (t: string) =>
+  t.length > 12 ? 'text-lg sm:text-2xl md:text-3xl' : t.length > 9 ? 'text-xl sm:text-3xl' : 'text-2xl sm:text-3xl';
+
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { colaboradoras, candidatas, avaliacoes } = useRH();
@@ -260,7 +264,7 @@ export const AdminDashboard: React.FC = () => {
         {/* ── Row 1: KPI cards ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
-          <div className="rounded-2xl p-6 bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-200/60 text-white">
+          <div className="rounded-2xl p-4 md:p-6 min-w-0 bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-200/60 text-white">
             <div className="flex items-center justify-between mb-3">
               <span className="text-blue-100 text-sm font-medium">Serviços hoje</span>
               <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
@@ -279,7 +283,7 @@ export const AdminDashboard: React.FC = () => {
             )}
           </div>
 
-          <div className="rounded-2xl p-6 bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-200/60 text-white">
+          <div className="rounded-2xl p-4 md:p-6 min-w-0 bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-200/60 text-white">
             <div className="flex items-center justify-between mb-3">
               <span className="text-emerald-100 text-sm font-medium">Receita do mês</span>
               <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
@@ -288,13 +292,13 @@ export const AdminDashboard: React.FC = () => {
             </div>
             {loading ? <div className="h-10 bg-white/20 animate-pulse rounded-lg" /> : (
               <>
-                <p className="text-3xl font-bold leading-tight">{fmtBRL(receitaMes)}</p>
+                <p className={`${tamanhoValor(fmtBRL(receitaMes))} font-bold leading-tight whitespace-nowrap`}>{fmtBRL(receitaMes)}</p>
                 <p className="text-emerald-100 text-xs mt-1">pagamentos confirmados</p>
               </>
             )}
           </div>
 
-          <div className="rounded-2xl p-6 bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-200/60 text-white">
+          <div className="rounded-2xl p-4 md:p-6 min-w-0 bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-200/60 text-white">
             <div className="flex items-center justify-between mb-3">
               <span className="text-amber-100 text-sm font-medium">A receber</span>
               <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
@@ -303,13 +307,13 @@ export const AdminDashboard: React.FC = () => {
             </div>
             {loading ? <div className="h-10 bg-white/20 animate-pulse rounded-lg" /> : (
               <>
-                <p className="text-3xl font-bold leading-tight">{fmtBRL(aReceber)}</p>
+                <p className={`${tamanhoValor(fmtBRL(aReceber))} font-bold leading-tight whitespace-nowrap`}>{fmtBRL(aReceber)}</p>
                 <p className="text-amber-100 text-xs mt-1">pendente este mês</p>
               </>
             )}
           </div>
 
-          <div className="rounded-2xl p-6 bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-200/60 text-white">
+          <div className="rounded-2xl p-4 md:p-6 min-w-0 bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-200/60 text-white">
             <div className="flex items-center justify-between mb-3">
               <span className="text-violet-100 text-sm font-medium">Profissionais ativas</span>
               <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">

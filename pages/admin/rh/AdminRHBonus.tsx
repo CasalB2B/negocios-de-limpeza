@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../../components/Layout';
 import { UserRole, CargoRH } from '../../../types';
 import { useRH } from '../../../components/RHContext';
+import { useData } from '../../../components/DataContext';
+import { horasDoServico } from '../../../lib/collabIdentity';
 import { Button } from '../../../components/Button';
 import { Input } from '../../../components/Input';
 import { Modal } from '../../../components/Modal';
@@ -18,8 +20,9 @@ export const AdminRHBonus: React.FC = () => {
   const navigate = useNavigate();
   const {
     colaboradoras, bonusMensal, configBonusLider,
-    calcularBonus, addBonusMensal, getMediaAvaliacoesMes, avaliacoes,
+    calcularBonus, addBonusMensal, getMediaAvaliacoesMes, avaliacoes, configRemuneracao,
   } = useRH();
+  const { services } = useData();
 
   const lideres = useMemo(
     () => colaboradoras.filter(c => c.cargoAtual === CargoRH.LIDER && c.status === 'ATIVA'),
@@ -65,10 +68,31 @@ export const AdminRHBonus: React.FC = () => {
   const metaAtingida  = !isNaN(totalFaxinas) && totalFaxinas > meta;
   const progressoPct  = isNaN(totalFaxinas) ? 0 : Math.min(100, (totalFaxinas / meta) * 100);
 
+  // ── Leader's own dailies in the month (completed cleanings she was on, at the Líder rate) ──
+  // She earns the larger of: the sum of these dailies, or the fixed salary. Team and rating bonuses come on top.
+  const diariasLider = useMemo(() => {
+    const t = configRemuneracao.find(r => r.cargo === 'LIDER') ?? { diaria4h: 120, diaria6h: 160, diaria8h: 180 };
+    const doMes = services.filter(sv => {
+      if (sv.status !== 'COMPLETED') return false;
+      const ids = sv.collaboratorIds?.length ? sv.collaboratorIds : sv.collaboratorId ? [sv.collaboratorId] : [];
+      if (!ids.includes(colaboradoraId)) return false;
+      const [, m, a] = (sv.date || '').split('/').map(Number);
+      return m === mes && a === ano;
+    });
+    const total = doMes.reduce((soma, sv) => {
+      const h = horasDoServico(sv.duration);
+      return soma + (h === 4 ? t.diaria4h : h === 6 ? t.diaria6h : t.diaria8h);
+    }, 0);
+    return { qtd: doMes.length, total };
+  }, [services, configRemuneracao, colaboradoraId, mes, ano]);
+
   const calculo = useMemo(() => {
     if (isNaN(totalFaxinas) || isNaN(mediaEfetiva) || totalFaxinas < 0) return null;
-    return calcularBonus(totalFaxinas, mediaEfetiva);
-  }, [totalFaxinas, mediaEfetiva, calcularBonus]);
+    const c = calcularBonus(totalFaxinas, mediaEfetiva);
+    const fixo = cfg?.salarioFixo ?? 0;
+    const base = Math.max(diariasLider.total, fixo);
+    return { ...c, base, pelasDiarias: diariasLider.total > fixo, totalReceber: base + c.totalBonus };
+  }, [totalFaxinas, mediaEfetiva, calcularBonus, diariasLider.total, cfg?.salarioFixo]);
 
   // ── Salvar ────────────────────────────────────────────────────────────────
   const handleSave = async () => {
@@ -311,10 +335,21 @@ export const AdminRHBonus: React.FC = () => {
             </h2>
 
             <div className="space-y-0">
-              {/* Salário fixo */}
-              <div className="flex items-center justify-between py-3 border-b border-gray-50 dark:border-darkBorder">
-                <span className="text-sm text-lightText dark:text-darkTextSecondary">Salário fixo</span>
-                <span className="font-bold text-darkText dark:text-darkTextPrimary">{fmt(cfg.salarioFixo)}</span>
+              {/* Base: the larger of her dailies and the fixed salary */}
+              <div className="py-3 border-b border-gray-50 dark:border-darkBorder space-y-1.5">
+                <div className="flex items-center justify-between text-sm">
+                  <span className={calculo.pelasDiarias ? 'font-bold text-darkText dark:text-darkTextPrimary' : 'text-lightText dark:text-darkTextSecondary'}>
+                    Diárias dela no mês ({diariasLider.qtd} {diariasLider.qtd === 1 ? 'faxina concluída' : 'faxinas concluídas'})
+                  </span>
+                  <span className={calculo.pelasDiarias ? 'font-bold text-darkText dark:text-darkTextPrimary' : 'text-lightText dark:text-darkTextSecondary'}>{fmt(diariasLider.total)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className={!calculo.pelasDiarias ? 'font-bold text-darkText dark:text-darkTextPrimary' : 'text-lightText dark:text-darkTextSecondary'}>Salário fixo</span>
+                  <span className={!calculo.pelasDiarias ? 'font-bold text-darkText dark:text-darkTextPrimary' : 'text-lightText dark:text-darkTextSecondary'}>{fmt(cfg.salarioFixo)}</span>
+                </div>
+                <p className="text-xs font-bold text-primary">
+                  Recebe {calculo.pelasDiarias ? 'pelas diárias' : 'o salário fixo'}: {fmt(calculo.base)}
+                </p>
               </div>
 
               {/* Bônus faxinas */}
