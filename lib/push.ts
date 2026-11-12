@@ -87,13 +87,19 @@ export async function ativarPush(): Promise<EstadoPush> {
     let { receive: r } = await FirebaseMessaging.checkPermissions();
     if (r === 'prompt' || r === 'prompt-with-rationale') r = (await FirebaseMessaging.requestPermissions()).receive;
     if (r !== 'granted') return r === 'denied' ? 'negado' : 'pendente';
-    try {
-      const { token } = await FirebaseMessaging.getToken();
-      if (token) await registrarToken(token);
-      else ultimoErro = 'O iPhone não devolveu o código de notificação.';
-    } catch (e: any) {
-      ultimoErro = `iPhone: ${e?.message || e}`;
+    // The Apple (APNs) registration finishes a moment after the permission: asking Firebase for the token
+    // before that fails with "No APNS token specified". Wait and try again a few times.
+    ultimoErro = '';
+    for (const espera of [0, 1500, 3000, 5000, 8000]) {
+      if (espera) await new Promise(r => setTimeout(r, espera));
+      try {
+        const { token } = await FirebaseMessaging.getToken();
+        if (token) { await registrarToken(token); return 'ativo'; }
+      } catch (e: any) {
+        ultimoErro = `iPhone: ${e?.message || e}`;
+      }
     }
+    if (!ultimoErro) ultimoErro = 'O iPhone não devolveu o código de notificação.';
     return 'ativo';
   }
   let { receive } = await PushNotifications.checkPermissions();

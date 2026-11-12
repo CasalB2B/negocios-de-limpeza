@@ -33,18 +33,20 @@ export const AREAS: Area[] = [
 ];
 
 // Ready-made profiles; the owner can still tick or untick each area.
-export const PERFIS: { key: string; label: string; descricao: string; areas: AreaKey[] }[] = [
+export const PERFIS: { key: string; label: string; descricao: string; areas: AreaKey[]; somenteVer?: AreaKey[] }[] = [
   { key: 'atendimento', label: 'Atendimento', descricao: 'Agenda, ordens de serviço e clientes',
     areas: ['dashboard', 'agenda', 'os', 'clientes', 'servicos', 'recebimentos'] },
-  { key: 'lider', label: 'Líder de equipe', descricao: 'Agenda, OS e o dia a dia da equipe',
-    areas: ['agenda', 'os', 'clientes', 'rh_profissionais', 'rh_avisos', 'rh_avaliacoes', 'rh_desempenho'] },
+  { key: 'lider', label: 'Líder de equipe', descricao: 'Vê a agenda e as OS sem alterar; registra o diário, os feedbacks e o desempenho da equipe',
+    areas: ['agenda', 'os', 'clientes', 'rh_profissionais', 'rh_avisos', 'rh_avaliacoes', 'rh_desempenho'],
+    somenteVer: ['agenda', 'os', 'clientes', 'rh_avaliacoes'] },
   { key: 'financeiro', label: 'Financeiro', descricao: 'Contas, recebimentos, estoque e notas',
     areas: ['dashboard', 'financeiro', 'recebimentos', 'estoque', 'nfe', 'clientes'] },
   { key: 'rh', label: 'RH', descricao: 'Contratação e equipe',
     areas: ['rh_contratacao', 'rh_profissionais', 'rh_avisos', 'rh_avaliacoes', 'rh_desempenho', 'rh_config'] },
 ];
 
-export interface Permissoes { areas: AreaKey[] }
+// somenteVer: areas the person can open but not change (e.g. the leader sees the calendar but cannot move a cleaning).
+export interface Permissoes { areas: AreaKey[]; somenteVer?: AreaKey[] }
 
 const LS_PERM = 'ndl_permissoes';
 const LS_ATALHOS = 'ndl_atalhos';
@@ -79,6 +81,17 @@ export function podeVer(path: string, perm: Permissoes | null = permissoesAtuais
   return area === null || perm.areas.includes(area);
 }
 
+// Can open the page and also add, change or delete things there.
+export function podeEditar(path: string, perm: Permissoes | null = permissoesAtuais()): boolean {
+  if (!perm) return true;
+  const area = areaDaRota(path);
+  if (area === null) return true;
+  return perm.areas.includes(area) && !(perm.somenteVer ?? []).includes(area);
+}
+
+// For pages: true when the current screen is "view only" for this person.
+export const soLeitura = (path: string = (window.location.hash || '#/').slice(1).split('?')[0]) => !podeEditar(path);
+
 export function primeiraRotaPermitida(perm: Permissoes | null = permissoesAtuais()): string {
   if (!perm) return '/admin/dashboard';
   const a = AREAS.find(x => perm.areas.includes(x.key));
@@ -87,7 +100,8 @@ export function primeiraRotaPermitida(perm: Permissoes | null = permissoesAtuais
 
 export function nivelDeAcesso(perm: Permissoes | null): string {
   if (!perm) return 'Acesso total';
-  const igual = PERFIS.find(p => p.areas.length === perm.areas.length && p.areas.every(a => perm.areas.includes(a)));
+  const mesma = (a: AreaKey[] = [], b: AreaKey[] = []) => a.length === b.length && a.every(x => b.includes(x));
+  const igual = PERFIS.find(p => mesma(p.areas, perm.areas) && mesma(p.somenteVer, perm.somenteVer));
   return igual ? igual.label : 'Acesso personalizado';
 }
 

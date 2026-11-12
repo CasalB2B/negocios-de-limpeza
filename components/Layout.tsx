@@ -4,7 +4,7 @@ import { UserRole } from '../types';
 import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight, Eye, Package, Contact, Lock, Landmark, List, CreditCard , BellRing, Star, ShieldOff } from 'lucide-react';
 import { GeminiChat } from './GeminiChat';
 import { PermissoesApp } from './PermissoesApp';
-import { podeVer, atalhosAtuais, salvarAtalhos, atualizarDoBanco, permissoesAtuais, nivelDeAcesso, primeiraRotaPermitida } from '../lib/acesso';
+import { podeVer, podeEditar, atalhosAtuais, salvarAtalhos, atualizarDoBanco, permissoesAtuais, nivelDeAcesso, primeiraRotaPermitida } from '../lib/acesso';
 import { empresaId } from '../lib/empresa';
 import { FaixaTeste, TesteEncerrado, useEmpresaAtual } from './TesteGratis';
 import { Button } from './Button';
@@ -587,7 +587,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
               <p className="text-sm text-lightText dark:text-darkTextSecondary">Se precisar, peça ao administrador para liberar em Configurações → Usuários & Permissões.</p>
               <Button onClick={() => navigate(primeiraRotaPermitida(perm))}>Ir para o início</Button>
             </div>
-          ) : children}
+          ) : (<>
+            {isAdmin && !reviewerMode && !podeEditar(location.pathname, perm) && (
+              <div className="mb-4 flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold px-3 py-2">
+                <Eye size={14} className="shrink-0" /> Você pode consultar esta tela, mas não alterar.
+              </div>
+            )}
+            {children}
+          </>)}
         </main>
         {isAdmin && <TesteEncerrado empresa={empresaAtual} onSair={handleLogout} naTelaDeAssinatura={location.pathname === '/admin/assinatura'} />}
 

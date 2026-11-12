@@ -5,6 +5,7 @@ import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { Modal } from '../../components/Modal';
 import { Plus, X, User, Calendar, MapPin, Clock, DollarSign, ArrowRight, AlertCircle, CheckCircle2, Search, CreditCard, Copy, ExternalLink, MessageCircle, Pencil } from 'lucide-react';
+import { soLeitura } from '../../lib/acesso';
 import { useData, Service } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
 import { usePreAgendamentoAtivo, statusInicial } from '../../lib/preAgendamento';
@@ -50,6 +51,7 @@ interface RHColaboradora { id: string; nome: string; cargo_atual?: string; foto?
 interface SelectedCollab { id: string; nome: string; }
 
 export const AdminOS: React.FC = () => {
+  const leitura = soLeitura('/admin/os');
   const { services, clients, serviceDefinitions, addService, updateServiceStatus } = useData();
   const [colaboradoras, setColaboradoras] = useState<RHColaboradora[]>([]);
   const [selectedCollabs, setSelectedCollabs] = useState<SelectedCollab[]>([]);
@@ -213,7 +215,7 @@ export const AdminOS: React.FC = () => {
                 </button>
               ))}
             </div>
-            <Button icon={<Plus size={18} />} onClick={() => setShowCreate(true)}>Nova OS</Button>
+            {!leitura && <Button icon={<Plus size={18} />} onClick={() => setShowCreate(true)}>Nova OS</Button>}
           </div>
         </div>
 
@@ -233,7 +235,7 @@ export const AdminOS: React.FC = () => {
           <div className="flex gap-3 min-w-[950px] h-full" style={{ minHeight: 'calc(100vh - 240px)' }}>
             {COLUMNS.map(col => (
               <div key={col.key}
-                onDragOver={e => { if (arrastando) { e.preventDefault(); if (colunaAlvo !== col.key) setColunaAlvo(col.key); } }}
+                onDragOver={e => { if (arrastando && !leitura) { e.preventDefault(); if (colunaAlvo !== col.key) setColunaAlvo(col.key); } }}
                 onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setColunaAlvo(c => c === col.key ? null : c); }}
                 onDrop={e => { e.preventDefault(); soltarEm(col.key); }}
                 className={`flex-1 min-w-[185px] rounded-2xl border ${col.bg} ${col.border} flex flex-col transition-shadow ${colunaAlvo === col.key ? 'ring-2 ring-primary ring-offset-1' : ''}`}>
@@ -261,6 +263,7 @@ export const AdminOS: React.FC = () => {
                           next={NEXT[col.key] ? COLUMNS.find(c => c.key === NEXT[col.key])! : null}
                           onOpen={() => setSelected(service)}
                           onAdvance={next => handleAdvance(service, next)}
+                          leitura={leitura}
                           onDragStart={() => setArrastando(service.id)}
                           onDragEnd={() => { setArrastando(null); setColunaAlvo(null); }}
                         />
@@ -481,6 +484,7 @@ export const AdminOS: React.FC = () => {
           onClose={() => setSelected(null)}
           onEditar={() => setEditando({ ...selected, ...(services.find(s => s.id === selected.id) ?? {}) })}
           onStatusChange={next => handleAdvance(selected, next)}
+          leitura={leitura}
         />
       )}
       {editando && (
@@ -499,11 +503,12 @@ interface CardProps {
   onAdvance: (next: ColStatus) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
+  leitura?: boolean;
 }
 
-const OSCard: React.FC<CardProps> = ({ service, col, next, onOpen, onAdvance, onDragStart, onDragEnd }) => (
+const OSCard: React.FC<CardProps> = ({ service, col, next, onOpen, onAdvance, onDragStart, onDragEnd, leitura }) => (
   <div
-    draggable
+    draggable={!leitura}
     onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', service.id); onDragStart(); }}
     onDragEnd={onDragEnd}
     onClick={onOpen}
@@ -529,7 +534,7 @@ const OSCard: React.FC<CardProps> = ({ service, col, next, onOpen, onAdvance, on
       <span className="text-[10px] bg-gray-100 dark:bg-darkBg text-lightText dark:text-darkTextSecondary px-2 py-0.5 rounded-full truncate max-w-[100px]">
         {service.type}
       </span>
-      {next && (
+      {next && !leitura && (
         <button
           onClick={e => { e.stopPropagation(); onAdvance(next.key); }}
           className="text-[10px] text-primary hover:underline flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
@@ -547,13 +552,14 @@ interface DrawerProps {
   onClose: () => void;
   onEditar: () => void;
   onStatusChange: (next: ColStatus) => void;
+  leitura?: boolean;
 }
 
 type PaymentState = null | 'loading' | { url: string; phone: string | null } | { error: string };
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose, onEditar, onStatusChange }) => {
+const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose, onEditar, onStatusChange, leitura }) => {
   const currentCol = normCol(service.status);
   const nextStatus = NEXT[currentCol];
   const nextCol = nextStatus ? COLUMNS.find(c => c.key === nextStatus) : null;
@@ -610,9 +616,9 @@ const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={onEditar} className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl bg-white/70 dark:bg-white/10 text-primary hover:bg-white">
+            {!leitura && <button onClick={onEditar} className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl bg-white/70 dark:bg-white/10 text-primary hover:bg-white">
               <Pencil size={14} /> Editar
-            </button>
+            </button>}
             <button onClick={onClose} className="p-2 hover:bg-white/50 dark:hover:bg-white/10 rounded-full text-lightText dark:text-darkTextSecondary">
               <X size={20} />
             </button>
@@ -666,14 +672,14 @@ const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose
                     </div>
                   );
                 })}
-                <button onClick={onEditar} className="text-xs font-bold text-primary hover:underline">Trocar ou adicionar profissionais</button>
+                {!leitura && <button onClick={onEditar} className="text-xs font-bold text-primary hover:underline">Trocar ou adicionar profissionais</button>}
               </div>
             ) : (
               <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-xl border border-orange-100 dark:border-orange-800 space-y-2">
                 <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400 text-xs font-bold">
                   <AlertCircle size={14} /> Sem profissional atribuída
                 </div>
-                <Button size="sm" fullWidth onClick={onEditar}>Escolher profissionais</Button>
+                {!leitura && <Button size="sm" fullWidth onClick={onEditar}>Escolher profissionais</Button>}
               </div>
             )}
           </div>
@@ -683,7 +689,7 @@ const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose
             <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary mb-2">Etapa</p>
             <div className="flex flex-wrap gap-1.5">
               {COLUMNS.map(c => (
-                <button key={c.key} onClick={() => c.key !== currentCol && onStatusChange(c.key)}
+                <button key={c.key} disabled={leitura} onClick={() => !leitura && c.key !== currentCol && onStatusChange(c.key)}
                   className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-full border transition-colors ${c.key === currentCol ? `${c.bg} ${c.border} text-darkText dark:text-darkTextPrimary` : 'border-gray-200 dark:border-darkBorder text-lightText dark:text-darkTextSecondary hover:border-primary hover:text-primary'}`}>
                   <span className={`w-2 h-2 rounded-full ${c.dotColor}`} /> {c.label}
                 </button>
@@ -714,7 +720,7 @@ const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose
             </div>
           ) : null}
           {/* Gerar Cobrança InfinitePay */}
-          {service.price && service.price > 0 && service.paymentStatus !== 'FULL_PAID' && (
+          {!leitura && service.price && service.price > 0 && service.paymentStatus !== 'FULL_PAID' && (
             <div>
               {paymentState === null && (service.paymentStatus === 'SIGNAL_PAID' ? (
                 <button
@@ -793,12 +799,13 @@ const OSDetailDrawer: React.FC<DrawerProps> = ({ service, colaboradoras, onClose
             </div>
           )}
 
-          {nextCol && (
+          {leitura && <p className="text-xs text-lightText dark:text-darkTextSecondary">Você pode consultar as ordens de serviço, mas não alterar.</p>}
+          {nextCol && !leitura && (
             <Button fullWidth onClick={() => onStatusChange(nextCol.key)} icon={<ArrowRight size={16} />}>
               Avançar para: {nextCol.label}
             </Button>
           )}
-          {currentCol !== 'CANCELADO' && currentCol !== 'CONCLUIDO' && (
+          {!leitura && currentCol !== 'CANCELADO' && currentCol !== 'CONCLUIDO' && (
             <button
               onClick={() => onStatusChange('CANCELADO')}
               className="w-full py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"

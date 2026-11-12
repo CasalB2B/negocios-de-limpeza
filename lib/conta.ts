@@ -59,7 +59,7 @@ async function chamar(body: Record<string, unknown>): Promise<{ ok: boolean; err
 }
 
 // Administrator creates a login (collaborator, client or another admin).
-export const criarAcesso = (dados: { name: string; email: string; senha: string; role: Papel; phone?: string; photo?: string; level?: string; permissoes?: { areas: string[] } | null }) =>
+export const criarAcesso = (dados: { name: string; email: string; senha: string; role: Papel; phone?: string; photo?: string; level?: string; permissoes?: { areas: string[]; somenteVer?: string[] } | null }) =>
   chamar({ acao: 'criar', ...dados });
 
 // Administrator sets a new password for someone of the company.

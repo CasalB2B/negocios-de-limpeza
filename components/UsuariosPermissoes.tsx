@@ -15,7 +15,13 @@ const GRUPOS = Array.from(new Set(AREAS.map(a => a.grupo)));
 
 const EscolherAreas: React.FC<{ valor: Permissoes | null; onChange: (p: Permissoes | null) => void }> = ({ valor, onChange }) => {
   const areas = valor?.areas ?? [];
-  const alternar = (k: AreaKey) => onChange({ areas: areas.includes(k) ? areas.filter(a => a !== k) : [...areas, k] });
+  const soVer = valor?.somenteVer ?? [];
+  const alternar = (k: AreaKey) => onChange({
+    areas: areas.includes(k) ? areas.filter(a => a !== k) : [...areas, k],
+    somenteVer: soVer.filter(a => a !== k),
+  });
+  const alternarSoVer = (k: AreaKey) => onChange({ areas, somenteVer: soVer.includes(k) ? soVer.filter(a => a !== k) : [...soVer, k] });
+  const mesma = (a: AreaKey[] = [], b: AreaKey[] = []) => a.length === b.length && a.every(x => b.includes(x));
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
@@ -24,9 +30,9 @@ const EscolherAreas: React.FC<{ valor: Permissoes | null; onChange: (p: Permisso
           Acesso total
         </button>
         {PERFIS.map(p => {
-          const ativo = !!valor && p.areas.length === areas.length && p.areas.every(a => areas.includes(a));
+          const ativo = !!valor && mesma(p.areas, areas) && mesma(p.somenteVer, soVer);
           return (
-            <button key={p.key} type="button" title={p.descricao} onClick={() => onChange({ areas: [...p.areas] })}
+            <button key={p.key} type="button" title={p.descricao} onClick={() => onChange({ areas: [...p.areas], somenteVer: [...(p.somenteVer ?? [])] })}
               className={`text-xs font-bold px-3 py-1.5 rounded-full border ${ativo ? 'bg-primary text-white border-primary' : 'border-gray-200 dark:border-darkBorder text-darkText dark:text-darkTextPrimary'}`}>
               {p.label}
             </button>
@@ -35,24 +41,33 @@ const EscolherAreas: React.FC<{ valor: Permissoes | null; onChange: (p: Permisso
       </div>
       {!valor ? (
         <p className="text-xs text-lightText dark:text-darkTextSecondary">Vê e mexe em tudo, inclusive no acesso das outras pessoas.</p>
-      ) : (
+      ) : (<>
+        <p className="text-xs text-lightText dark:text-darkTextSecondary">Marque o que a pessoa pode abrir. Em cada área marcada, toque na etiqueta para trocar entre <b>Ver e editar</b> e <b>Só ver</b> (abre a tela, mas não muda nada: não cria, não edita, não exclui).</p>
         <div className="grid sm:grid-cols-2 gap-3">
           {GRUPOS.map(g => (
             <div key={g} className="rounded-xl border border-gray-100 dark:border-darkBorder p-3">
               <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">{g}</p>
               {AREAS.filter(a => a.grupo === g).map(a => (
-                <label key={a.key} className="flex items-start gap-2 py-1 cursor-pointer">
-                  <input type="checkbox" className="accent-[#a163ff] w-4 h-4 mt-0.5" checked={areas.includes(a.key)} onChange={() => alternar(a.key)} />
-                  <span className="text-sm text-darkText dark:text-darkTextPrimary leading-tight">
-                    {a.label}
-                    {a.dica && <span className="block text-[11px] text-lightText dark:text-darkTextSecondary">{a.dica}</span>}
-                  </span>
-                </label>
+                <div key={a.key} className="flex items-start gap-2 py-1">
+                  <label className="flex items-start gap-2 flex-1 min-w-0 cursor-pointer">
+                    <input type="checkbox" className="accent-[#a163ff] w-4 h-4 mt-0.5" checked={areas.includes(a.key)} onChange={() => alternar(a.key)} />
+                    <span className="text-sm text-darkText dark:text-darkTextPrimary leading-tight">
+                      {a.label}
+                      {a.dica && <span className="block text-[11px] text-lightText dark:text-darkTextSecondary">{a.dica}</span>}
+                    </span>
+                  </label>
+                  {areas.includes(a.key) && (
+                    <button type="button" onClick={() => alternarSoVer(a.key)} title="Só ver: abre a tela mas não altera nada"
+                      className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-full border ${soVer.includes(a.key) ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-green-50 border-green-200 text-green-700'}`}>
+                      {soVer.includes(a.key) ? 'Só ver' : 'Ver e editar'}
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           ))}
         </div>
-      )}
+      </>)}
     </div>
   );
 };

@@ -8,6 +8,7 @@ import {
   Search, Mail, Phone, MapPin, Edit, Trash2, UserPlus, X, Plus, Home,
   History, ChevronDown, Check, Save,
 } from 'lucide-react';
+import { soLeitura } from '../../lib/acesso';
 import { useData, ClientUser } from '../../components/DataContext';
 import { Address } from '../../types';
 import { CamposEndereco } from '../../components/CamposEndereco';
@@ -51,6 +52,7 @@ const BLANK_CLIENT = { name: '', email: '', phone: '', address: '', type: 'NOVO'
 const BLANK_ADDR: Partial<Address> = { alias: '', street: '', number: '', complement: '', district: '', city: '', state: '', cep: '', type: 'HOUSE' as const, isMain: false };
 
 export const AdminClients: React.FC = () => {
+  const leitura = soLeitura('/admin/clients');
   const { clients, services, deleteClient, registerClient, updateClient, addClientAddress, updateClientAddress, deleteClientAddress } = useData();
 
   const [search, setSearch] = useState('');
@@ -237,7 +239,7 @@ export const AdminClients: React.FC = () => {
             <h1 className="text-2xl md:text-3xl font-display font-bold text-darkText dark:text-darkTextPrimary">Clientes</h1>
             <p className="text-lightText dark:text-darkTextSecondary mt-1 text-sm">{clients.length} clientes cadastrados</p>
           </div>
-          <Button icon={<UserPlus size={18} />} onClick={abrirNovoCliente}>Novo Cliente</Button>
+          {!leitura && <Button icon={<UserPlus size={18} />} onClick={abrirNovoCliente}>Novo Cliente</Button>}
         </div>
 
         {/* Filters */}
@@ -338,7 +340,7 @@ export const AdminClients: React.FC = () => {
                               <button onClick={() => setConfirmDel(null)} className="px-2 py-1 bg-gray-200 dark:bg-darkBorder hover:bg-gray-300 text-darkText rounded-lg text-xs font-medium">Não</button>
                             </>
                           ) : (
-                            <button
+                            !leitura && <button
                               onClick={() => setConfirmDel(client.id)}
                               className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-lightText hover:text-red-500 transition-colors"
                             >
@@ -469,7 +471,7 @@ export const AdminClients: React.FC = () => {
                         <p className="text-[10px] text-lightText dark:text-darkTextSecondary font-bold uppercase mb-1">Total de atendimentos</p>
                         <p className="font-bold text-2xl text-primary">{clientServices.length}</p>
                       </div>
-                      <Button onClick={() => setEditInfo(true)} icon={<Edit size={16} />} fullWidth>Editar Informações</Button>
+                      {!leitura && <Button onClick={() => setEditInfo(true)} icon={<Edit size={16} />} fullWidth>Editar Informações</Button>}
                     </>
                   )}
                 </div>
@@ -492,7 +494,7 @@ export const AdminClients: React.FC = () => {
                           <p className="text-xs text-lightText dark:text-darkTextSecondary">{addr.district} – {addr.city}/{addr.state}</p>
                           {addr.cep && <p className="text-xs text-lightText dark:text-darkTextSecondary">CEP: {addr.cep}</p>}
                         </div>
-                        <div className="flex gap-1">
+                        {!leitura && <div className="flex gap-1">
                           <button
                             onClick={() => {
                               setEditingAddrId(addr.id);
@@ -509,7 +511,7 @@ export const AdminClients: React.FC = () => {
                           >
                             <Trash2 size={14} />
                           </button>
-                        </div>
+                        </div>}
                       </div>
                     </div>
                   ))}
@@ -533,7 +535,7 @@ export const AdminClients: React.FC = () => {
                         </button>
                       </div>
                     </div>
-                  ) : (
+                  ) : !leitura && (
                     <button
                       onClick={() => { setAddingAddr(true); setEditingAddrId(null); setAddrForm(BLANK_ADDR); }}
                       className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-gray-300 dark:border-darkBorder rounded-xl text-sm font-bold text-lightText dark:text-darkTextSecondary hover:border-primary hover:text-primary transition-colors"

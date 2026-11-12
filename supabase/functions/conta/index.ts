@@ -143,7 +143,9 @@ Deno.serve(async (req) => {
       if (!PAPEIS_CRIAVEIS.includes(role)) return json({ ok: false, erro: 'Perfil inválido.' }, 400);
       // Only someone with full access can add another person to the office team.
       if (role === 'ADMIN' && chamador.permissoes) return json({ ok: false, erro: 'Só quem tem acesso total pode adicionar pessoas da equipe administrativa.' }, 403);
-      const permissoes = role === 'ADMIN' && body.permissoes && Array.isArray(body.permissoes.areas) ? { areas: body.permissoes.areas.map(String) } : null;
+      const permissoes = role === 'ADMIN' && body.permissoes && Array.isArray(body.permissoes.areas)
+        ? { areas: body.permissoes.areas.map(String), somenteVer: Array.isArray(body.permissoes.somenteVer) ? body.permissoes.somenteVer.map(String) : [] }
+        : null;
       if (!email.includes('@') || senha.length < 6) return json({ ok: false, erro: 'E-mail inválido ou senha com menos de 6 caracteres.' }, 400);
       const { data: existe } = await db.from('app_users').select('id').eq('email', email).maybeSingle();
       if (existe) return json({ ok: false, erro: 'Já existe um usuário com este e-mail.' }, 409);

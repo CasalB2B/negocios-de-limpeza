@@ -9,6 +9,7 @@ import {
   Clock, MapPin, User, X, AlertTriangle, CheckCircle2, ArrowRight, Search, UserRound,
   Copy, Pencil,
 } from 'lucide-react';
+import { soLeitura } from '../../lib/acesso';
 import { useData, Service } from '../../components/DataContext';
 import { supabase } from '../../lib/supabase';
 import { usePreAgendamentoAtivo, statusInicial } from '../../lib/preAgendamento';
@@ -40,6 +41,7 @@ const parseDateBR = (s: string): Date | null => {
 };
 
 export const AdminCalendar: React.FC = () => {
+  const leitura = soLeitura('/admin/calendar');
   const { services, clients, serviceDefinitions, addService, updateServiceStatus } = useData();
   const [colaboradoras, setColaboradoras] = useState<RHColaboradora[]>([]);
   const [view, setView] = useState<ViewMode>('month');
@@ -155,6 +157,7 @@ export const AdminCalendar: React.FC = () => {
       })();
 
   const openCreate = (date?: string) => {
+    if (leitura) return; // view only: the calendar can be consulted, not changed
     // Calendar days come as DD/MM/YYYY; <input type="date"> only accepts YYYY-MM-DD.
     const m = (date || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
     const iso = m ? `${m[3]}-${m[2]}-${m[1]}` : (date || '');
@@ -647,7 +650,7 @@ export const AdminCalendar: React.FC = () => {
                 <UserRound size={14} /> Pessoa
               </button>
             </div>
-            <Button icon={<Plus size={18} />} onClick={() => openCreate()}>Agendar</Button>
+            {!leitura && <Button icon={<Plus size={18} />} onClick={() => openCreate()}>Agendar</Button>}
           </div>
         </div>
 
@@ -923,7 +926,9 @@ export const AdminCalendar: React.FC = () => {
                 </div>
               ) : null}
             </div>
-            <div className="p-5 border-t border-gray-100 dark:border-darkBorder flex gap-3">
+            {leitura ? (
+              <p className="p-5 border-t border-gray-100 dark:border-darkBorder text-xs text-lightText dark:text-darkTextSecondary">Você pode consultar a agenda, mas não alterar os agendamentos.</p>
+            ) : <div className="p-5 border-t border-gray-100 dark:border-darkBorder flex gap-3">
               <Button size="sm" variant="secondary" onClick={() => { setEditando(selectedEvent); setShowDetail(false); }} icon={<Pencil size={14} />}>Editar</Button>
               <Button size="sm" variant="secondary" onClick={() => duplicar(selectedEvent)} icon={<Copy size={14} />}>Duplicar</Button>
               {selectedEvent.status === 'SCHEDULED' || selectedEvent.status === 'WAITING_SIGNAL' ? (
@@ -954,7 +959,7 @@ export const AdminCalendar: React.FC = () => {
                   Concluir
                 </Button>
               ) : null}
-            </div>
+            </div>}
           </div>
         </div>
       )}

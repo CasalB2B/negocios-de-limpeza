@@ -359,7 +359,7 @@ export const VendasPage: React.FC = () => {
                 <h3 className="text-xl font-bold">Cada pessoa vê só o que precisa</h3>
                 <p className="mt-2 text-sm text-lightText dark:text-darkTextSecondary">Coloque a atendente, a líder ou quem cuida das contas no sistema e escolha o que cada uma acessa: perfis prontos ou área por área. E cada pessoa fixa nos atalhos as telas que mais usa e monta o Dashboard do jeito dela.</p>
                 <ul className="mt-4 space-y-2 text-sm font-semibold">
-                  {['Atendimento, Líder de equipe, Financeiro e RH prontos', 'O financeiro e as configurações ficam só com você', 'Atalhos no menu do computador e na barra do celular'].map(x => (
+                  {['Atendimento, Líder de equipe, Financeiro e RH prontos', 'Por área: ver e editar ou só ver (a líder consulta a agenda sem mudar uma faxina)', 'O financeiro e as configurações ficam só com você', 'Atalhos no menu do computador e na barra do celular'].map(x => (
                     <li key={x} className="flex gap-2"><Check size={16} className="text-primary shrink-0 mt-0.5" />{x}</li>
                   ))}
                 </ul>
