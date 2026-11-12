@@ -147,6 +147,11 @@
 
       /* Inside the phone app the page fills the screen under the status bar: keep the content below it. */
       .app-nativo #root { padding-top: env(safe-area-inset-top, 0px); }
+      /* The strip under the status bar takes the header colour, and the page does not "stretch" past the top
+         (that showed the dark background of the app). */
+      .app-nativo, .app-nativo body { overscroll-behavior: none; background: #ffffff; }
+      .app-nativo #root { background: #ffffff; }
+      .app-nativo.dark, .app-nativo.dark body, .app-nativo.dark #root { background: #1e293b; }
       .app-nativo #root .h-screen { height: calc(100vh - env(safe-area-inset-top, 0px)); }
       /* Full-screen windows and drawers: keep their buttons clear of the status bar and of the phone's own
          navigation bar / home indicator (elements marked .safe-proprio handle it themselves). */

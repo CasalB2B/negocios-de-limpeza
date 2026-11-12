@@ -21,6 +21,8 @@ const config: CapacitorConfig = {
     // The page draws under the status bar and home indicator and pads itself (env(safe-area-inset-*)),
     // so the app fills the whole screen instead of showing dark bars.
     contentInset: 'never',
+    // Colour behind the page (seen if it bounces).
+    backgroundColor: '#ffffff',
     includePlugins: ['@capacitor-firebase/messaging'],
   },
   plugins: {

@@ -99,6 +99,9 @@ export async function ativarPush(): Promise<EstadoPush> {
         ultimoErro = `iPhone: ${e?.message || e}`;
       }
     }
+    const w = window as any;
+    if (w.__apnsErro) ultimoErro = `Apple recusou o registro: ${w.__apnsErro}`;
+    else if (!w.__apnsOk) ultimoErro += ' (a Apple ainda não respondeu; feche e abra o app de novo)';
     if (!ultimoErro) ultimoErro = 'O iPhone não devolveu o código de notificação.';
     return 'ativo';
   }
