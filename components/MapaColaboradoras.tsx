@@ -306,7 +306,7 @@ export const MapaColaboradoras: React.FC<{ grande?: boolean }> = ({ grande = fal
             </button>
           )}
           {aberto && createPortal(
-            <div className="fixed inset-0 z-[200] bg-black/75 backdrop-blur-sm px-3 md:px-8 flex flex-col gap-3"
+            <div className="safe-proprio fixed inset-0 z-[200] bg-black/75 backdrop-blur-sm px-3 md:px-8 flex flex-col gap-3"
               style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}>
               <div className="flex items-center justify-between text-white">
                 <p className="font-bold flex items-center gap-2"><MapPin size={16} /> Mapa em tempo real · {ativas.length} ativa{ativas.length !== 1 ? 's' : ''}</p>

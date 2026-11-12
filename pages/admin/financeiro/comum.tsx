@@ -1,8 +1,9 @@
 // Peças comuns das telas do Financeiro: cabeçalho com abas e mês, janelas de cadastro.
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Plus, X, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, Trash2, LayoutDashboard, Landmark, List, CreditCard, Calendar, DollarSign, Tags, Upload, Star } from 'lucide-react';
 import { Layout } from '../../../components/Layout';
+import { atalhosAtuais, salvarAtalhos } from '../../../lib/acesso';
 import { UserRole } from '../../../types';
 import { supabase } from '../../../lib/supabase';
 import {
@@ -13,15 +14,16 @@ export const card = 'bg-white dark:bg-darkSurface border border-gray-200 dark:bo
 export const inputCls = 'w-full text-sm border border-gray-200 dark:border-darkBorder rounded-xl px-3 py-2.5 bg-white dark:bg-darkBg text-darkText dark:text-darkTextPrimary focus:outline-none focus:border-primary';
 export const labelCls = 'text-xs font-bold text-lightText dark:text-darkTextSecondary mb-1 block';
 
+// The side menu only has Painel and Recebimentos; every finance screen is reached from these tabs.
 const ABAS = [
-  { label: 'Painel', path: '/admin/financeiro' },
-  { label: 'Contas', path: '/admin/financeiro/contas' },
-  { label: 'Lançamentos', path: '/admin/financeiro/lancamentos' },
-  { label: 'Cartões', path: '/admin/financeiro/cartoes' },
-  { label: 'Calendário', path: '/admin/financeiro/calendario' },
-  { label: 'Recebimentos', path: '/admin/financeiro/recebimentos' },
-  { label: 'Categorias', path: '/admin/financeiro/categorias' },
-  { label: 'Importar', path: '/admin/financeiro/importar' },
+  { label: 'Painel', path: '/admin/financeiro', Icone: LayoutDashboard },
+  { label: 'Contas', path: '/admin/financeiro/contas', Icone: Landmark },
+  { label: 'Lançamentos', path: '/admin/financeiro/lancamentos', Icone: List },
+  { label: 'Cartões', path: '/admin/financeiro/cartoes', Icone: CreditCard },
+  { label: 'Calendário', path: '/admin/financeiro/calendario', Icone: Calendar },
+  { label: 'Recebimentos', path: '/admin/financeiro/recebimentos', Icone: DollarSign },
+  { label: 'Categorias', path: '/admin/financeiro/categorias', Icone: Tags },
+  { label: 'Importar', path: '/admin/financeiro/importar', Icone: Upload },
 ];
 
 export const FinShell: React.FC<{
@@ -30,23 +32,41 @@ export const FinShell: React.FC<{
   const nav = useNavigate();
   const { pathname } = useLocation();
   const ativa = [...ABAS].sort((a, b) => b.path.length - a.path.length).find(a => pathname === a.path || pathname.startsWith(a.path + '/'));
+  // Pin this tab to "Meus atalhos" (side menu and the phone's bottom bar).
+  const [atalhos, setAtalhos] = useState<string[]>(atalhosAtuais());
+  useEffect(() => {
+    const f = () => setAtalhos(atalhosAtuais());
+    window.addEventListener('ndl-atalhos', f);
+    return () => window.removeEventListener('ndl-atalhos', f);
+  }, []);
+  const fixada = !!ativa && atalhos.includes(ativa.path);
+  const alternarFixo = () => {
+    if (!ativa) return;
+    salvarAtalhos(fixada ? atalhos.filter(x => x !== ativa.path) : [...atalhos, ativa.path]);
+  };
   return (
     <Layout role={UserRole.ADMIN}>
       <div className="space-y-5">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-2xl font-extrabold text-darkText dark:text-darkTextPrimary">{titulo}</h1>
           <div className="flex items-center gap-2 flex-wrap">
+            {ativa && ativa.path !== '/admin/financeiro/importar' && (
+              <button onClick={alternarFixo} title={fixada ? 'Tirar dos meus atalhos' : 'Fixar esta tela nos meus atalhos'}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold ${fixada ? 'border-amber-200 bg-amber-50 text-amber-600' : 'border-gray-200 dark:border-darkBorder text-lightText hover:text-primary hover:border-primary'}`}>
+                <Star size={14} className={fixada ? 'fill-current' : ''} /> {fixada ? 'Nos atalhos' : 'Fixar nos atalhos'}
+              </button>
+            )}
             {mes && onMes && <SeletorMes mes={mes} onMes={onMes} />}
             {acoes}
           </div>
         </div>
-        <div className="flex gap-1 bg-gray-100 dark:bg-darkBorder rounded-xl p-1 overflow-x-auto max-w-full w-fit">
-          {ABAS.map(a => (
-            <button key={a.path} onClick={() => nav(a.path)}
-              className={`px-3.5 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${
-                ativa?.path === a.path ? 'bg-white dark:bg-darkSurface text-darkText dark:text-darkTextPrimary shadow-sm'
-                  : 'text-lightText dark:text-darkTextSecondary hover:text-darkText dark:hover:text-darkTextPrimary'}`}>
-              {a.label}
+        <div className="flex gap-1.5 bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder rounded-2xl p-1.5 overflow-x-auto max-w-full no-scrollbar">
+          {ABAS.map(({ label, path, Icone }) => (
+            <button key={path} onClick={() => nav(path)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[15px] font-bold whitespace-nowrap transition-colors ${
+                ativa?.path === path ? 'bg-primary text-white shadow-sm shadow-primary/30'
+                  : 'text-lightText dark:text-darkTextSecondary hover:bg-primary/5 hover:text-primary'}`}>
+              <Icone size={17} /> {label}
             </button>
           ))}
         </div>

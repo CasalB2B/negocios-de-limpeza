@@ -36,7 +36,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     resumo: 'Onde fica cada área do sistema no computador e no celular.',
     texto: [
       'No computador, o menu fica na lateral esquerda. No celular, a barra inferior tem Início, Agenda, OS e Clientes, e o botão Menu abre todas as áreas.',
-      'Áreas principais: Dashboard (serviços do dia, receita do mês, quanto falta receber e mapa da equipe), Operações (Agendamento, OS, Clientes e Serviços), Recursos Humanos (Contratação, Profissionais, Avaliações, Desempenho e Config. RH), Financeiro (Financeiro, Estoque e Nota Fiscal) e Configurações (Configurações, Assinatura, Central de Ajuda e WhatsApp).',
+      'Áreas principais: Dashboard (serviços do dia, receita do mês, quanto falta receber e mapa da equipe), Operações (Agendamento, OS, Clientes e Serviços), Recursos Humanos (Contratação, Profissionais, Avaliações, Desempenho e Config. RH), Financeiro (Painel, Recebimentos, Estoque e Nota Fiscal; as demais telas do financeiro ficam nas abas do topo) e Configurações (Configurações, Assinatura, Central de Ajuda e WhatsApp).',
       'Os grupos do menu ficam fechados; o grupo da tela em que você está abre sozinho. Clique no nome do grupo para abrir ou fechar.',
     ],
     palavras: ['menu', 'onde fica', 'navegação', 'celular', 'dashboard'],
@@ -60,13 +60,29 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     id: 'ver-como',
     categoria: 'Conta e assinatura',
     titulo: 'Usuários e permissões',
-    resumo: 'Quem tem acesso ao sistema da sua empresa.',
+    resumo: 'Quem tem acesso ao sistema e o que cada pessoa do escritório pode ver.',
     passos: [
-      'Configurações → Usuários & Permissões mostra os administradores e as profissionais que têm acesso ao app.',
-      'O acesso de uma profissional é criado em Recursos Humanos → Profissionais → abra a profissional → Dar acesso (e-mail e senha de pelo menos 6 caracteres). Ali também dá para trocar a senha dela.',
+      'Configurações → Configurações → Usuários & Permissões mostra a equipe do escritório (administradores) e quantas profissionais têm o app.',
+      'Para colocar alguém do escritório (ex.: atendente, financeiro, líder): Adicionar pessoa → nome, e-mail (é o login) e senha → escolha o que ela pode ver → Criar acesso. Ela entra em app.negociosdelimpeza.com.br/entrar.',
+      'Para mudar o que alguém vê: Editar acesso na linha da pessoa. Dá para escolher um perfil pronto (Atendimento, Líder de equipe, Financeiro, RH) ou marcar área por área (Agenda, OS, Clientes, Profissionais, Financeiro, Recebimentos, Configurações...). Acesso total vê tudo.',
+      'Quem tem acesso restrito só vê no menu as áreas liberadas; se abrir outra tela, aparece "Você não tem acesso a esta área". Só quem tem acesso total pode adicionar, remover ou mudar o acesso das pessoas.',
+      'O acesso de uma profissional ao app é criado em Recursos Humanos → Profissionais → abra a profissional → Dar acesso. No app ela vê só a agenda dela, os serviços, quanto vai receber e o próprio financeiro (nunca o valor que o cliente paga).',
     ],
-    dicas: ['Em breve: perfis de acesso (líder, financeiro, atendimento), escolhendo o que cada pessoa pode ver.'],
-    palavras: ['usuário', 'permissão', 'acesso', 'senha da profissional', 'dar acesso', 'login da equipe'],
+    dicas: ['"Ver o sistema como outra pessoa" (abrir as telas como uma profissional ou um cliente) também fica nessa tela, para o dono da plataforma.'],
+    palavras: ['usuário', 'permissão', 'permissões', 'acesso', 'perfil de acesso', 'atendente', 'secretária', 'equipe do escritório', 'senha da profissional', 'dar acesso', 'login da equipe', 'ver como'],
+  },
+  {
+    id: 'atalhos-menu',
+    categoria: 'Primeiros passos',
+    titulo: 'Meus atalhos (menu personalizado)',
+    resumo: 'Deixe à mão as telas que você mais usa, no computador e no celular.',
+    passos: [
+      'No computador: passe o mouse sobre um item do menu (ex.: Agendamento, Clientes, Contas) e clique na estrela. Ele aparece em "Meus atalhos", logo abaixo do Dashboard. Arraste os atalhos para mudar a ordem; clique na estrela de novo para tirar.',
+      'No celular: toque em Menu (barra de baixo) e na estrela do item. Os atalhos aparecem na barra de baixo, ao lado de Início (até 3).',
+      'As abas do Financeiro (Contas, Lançamentos, Cartões...) não ficam no menu: abra a aba e clique em "Fixar nos atalhos", no topo da tela.',
+      'Os atalhos são de cada pessoa e acompanham a conta: o que você fixar no computador aparece também no celular.',
+    ],
+    palavras: ['atalho', 'atalhos', 'favorito', 'favoritos', 'menu personalizado', 'fixar', 'estrela', 'barra de baixo'],
   },
 
   // ── Agenda e OS ───────────────────────────────────────────────────────
@@ -305,7 +321,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     titulo: 'Financeiro',
     resumo: 'Contas, cartões, categorias, lançamentos e próximos compromissos.',
     texto: [
-      'Financeiro → Financeiro organiza o dinheiro da empresa: contas, cartões de crédito (com parcelas e faturas), categorias, lançamentos, calendário e próximos compromissos.',
+      'Financeiro → Painel organiza o dinheiro da empresa. As telas Contas, Lançamentos, Cartões (com parcelas e faturas), Calendário, Recebimentos, Categorias e Importar ficam nas abas grandes no topo da página do Financeiro. No menu lateral ficam só Painel, Recebimentos, Estoque e Nota Fiscal (para deixar uma delas no menu, abra a aba e clique em "Fixar nos atalhos", no topo da tela).',
       'Pagamentos recebidos pelos links da InfinitePay entram sozinhos como receita, e os pagamentos às profissionais registrados no RH entram como despesa.',
       'Dá para importar o histórico de outro aplicativo (como o Mobills) ou de uma planilha.',
       'No Dashboard, os cartões "Receita do mês" e "A receber" somam os pagamentos confirmados (inclusive sinais) e o que ainda falta receber.',

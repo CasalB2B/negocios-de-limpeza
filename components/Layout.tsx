@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
-import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight, Eye, Package, Contact, Lock, Landmark, List, CreditCard , BellRing } from 'lucide-react';
+import { Home, Calendar, Users, FileText, Settings, LogOut, DollarSign, User, CheckCircle, Menu, X, HelpCircle, Briefcase, LayoutDashboard, Smile, MapPin, Sparkles, Grid, MessageSquare, MessageCircle, Kanban, Inbox, BarChart2, UserCog, Megaphone, UserPlus, BookOpen, ChevronDown, ChevronRight, Eye, Package, Contact, Lock, Landmark, List, CreditCard , BellRing, Star, ShieldOff } from 'lucide-react';
 import { GeminiChat } from './GeminiChat';
 import { PermissoesApp } from './PermissoesApp';
+import { podeVer, atalhosAtuais, salvarAtalhos, atualizarDoBanco, permissoesAtuais, nivelDeAcesso, primeiraRotaPermitida } from '../lib/acesso';
 import { empresaId } from '../lib/empresa';
 import { FaixaTeste, TesteEncerrado, useEmpresaAtual } from './TesteGratis';
 import { Button } from './Button';
@@ -29,6 +30,30 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   const [loadingClientList, setLoadingClientList] = useState(false);
   const { currentUser, logoutClient, logoutCollaborator, logoutAdmin, platformSettings, isRefreshing, reviewerMode } = useData();
   const mainRef = useRef<HTMLElement>(null);
+
+  // Office team access level and personal shortcuts (lib/acesso.ts), refreshed from the database on open.
+  const [perm, setPerm] = useState(permissoesAtuais());
+  const [atalhos, setAtalhos] = useState<string[]>(atalhosAtuais());
+  const [arrastandoAtalho, setArrastandoAtalho] = useState<string | null>(null);
+  useEffect(() => {
+    if (role !== UserRole.ADMIN) return;
+    atualizarDoBanco().then(res => { if (res) { setPerm(res.perm); setAtalhos(res.atalhos); } }).catch(() => {});
+    const aoMudar = () => setAtalhos(atalhosAtuais());
+    window.addEventListener('ndl-atalhos', aoMudar);
+    return () => window.removeEventListener('ndl-atalhos', aoMudar);
+  }, [role]);
+  const alternarAtalho = (path: string) => {
+    const nova = atalhos.includes(path) ? atalhos.filter(x => x !== path) : [...atalhos, path];
+    setAtalhos(nova);
+    salvarAtalhos(nova).catch(() => {});
+  };
+  const moverAtalho = (de: string, para: string) => {
+    if (de === para) return;
+    const nova = atalhos.filter(x => x !== de);
+    nova.splice(nova.indexOf(para), 0, de);
+    setAtalhos(nova);
+    salvarAtalhos(nova).catch(() => {});
+  };
 
   // Reset scroll to top on every route change
   useEffect(() => {
@@ -264,10 +289,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       icon: <DollarSign size={16} />,
       items: [
         { icon: <LayoutDashboard size={15} />, label: 'Painel',       path: '/admin/financeiro' },
-        { icon: <Landmark size={15} />,   label: 'Contas',        path: '/admin/financeiro/contas' },
-        { icon: <List size={15} />,       label: 'Lançamentos',   path: '/admin/financeiro/lancamentos' },
-        { icon: <CreditCard size={15} />, label: 'Cartões',       path: '/admin/financeiro/cartoes' },
-        { icon: <Calendar size={15} />,   label: 'Calendário',    path: '/admin/financeiro/calendario' },
         { icon: <DollarSign size={15} />, label: 'Recebimentos',  path: '/admin/financeiro/recebimentos' },
         { icon: <Package size={15} />,    label: 'Estoque',    path: '/admin/estoque' },
         { icon: <FileText size={15} />,   label: 'Nota Fiscal', path: '/admin/nfe' },
@@ -296,6 +317,23 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       ],
     }] : []),
   ];
+
+  // What this person can open, and their shortcuts in the order they chose.
+  const dashItem = { icon: <LayoutDashboard size={15} />, label: 'Dashboard', path: '/admin/dashboard' };
+  const verDashboard = podeVer('/admin/dashboard', perm);
+  const gruposVisiveis = adminGroups
+    .map(g => ({ ...g, items: g.items.filter(i => podeVer(i.path, perm)) }))
+    .filter(g => g.items.length > 0);
+  // Screens that are not in the side menu but can be pinned from their own page (finance tabs).
+  const extrasFixaveis = [
+    { icon: <Landmark size={15} />,   label: 'Contas',      path: '/admin/financeiro/contas' },
+    { icon: <List size={15} />,       label: 'Lançamentos', path: '/admin/financeiro/lancamentos' },
+    { icon: <CreditCard size={15} />, label: 'Cartões',     path: '/admin/financeiro/cartoes' },
+    { icon: <Calendar size={15} />,   label: 'Calendário financeiro', path: '/admin/financeiro/calendario' },
+    { icon: <FileText size={15} />,   label: 'Categorias',  path: '/admin/financeiro/categorias' },
+  ].filter(i => podeVer(i.path, perm));
+  const itemPorPath = new Map([...(verDashboard ? [dashItem] : []), ...gruposVisiveis.flatMap(g => g.items), ...extrasFixaveis].map(i => [i.path, i]));
+  const atalhosVisiveis = atalhos.map(x => itemPorPath.get(x)).filter(Boolean) as typeof dashItem[];
 
   // Desktop sidebar: only the section of the current page starts open; others open on click.
   const grupoDaRota = (path: string) =>
@@ -338,12 +376,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
   const mobileTabs = reviewerMode
     ? [{ icon: <MessageCircle size={20} />, label: 'WhatsApp', path: '/admin/whatsapp' }]
     : isAdmin
-    ? [
-        { icon: <LayoutDashboard size={20} />, label: 'Início', path: '/admin/dashboard' },
-        { icon: <Calendar size={20} />, label: 'Agenda', path: '/admin/calendar' },
-        { icon: <Kanban size={20} />, label: 'OS', path: '/admin/os' },
-        { icon: <Contact size={20} />, label: 'Clientes', path: '/admin/clients' },
-      ]
+    ? (() => {
+        const inicio = verDashboard ? [{ icon: <LayoutDashboard size={20} />, label: 'Início', path: '/admin/dashboard' }] : [];
+        const fixos = atalhosVisiveis.filter(a => a.path !== '/admin/dashboard')
+          .map(a => ({ icon: React.cloneElement(a.icon, { size: 20 }), label: a.label, path: a.path }));
+        const padrao = [
+          { icon: <Calendar size={20} />, label: 'Agenda', path: '/admin/calendar' },
+          { icon: <Kanban size={20} />, label: 'OS', path: '/admin/os' },
+          { icon: <Contact size={20} />, label: 'Clientes', path: '/admin/clients' },
+        ].filter(i => podeVer(i.path, perm));
+        return [...inicio, ...(fixos.length ? fixos : padrao)].slice(0, 4);
+      })()
     : menuItems.slice(0, 4);
   const showMobileMenuButton = isAdmin || menuItems.length > 4;
   // Um item só fica marcado quando nenhum outro item mais específico combina com a página (ex.: Painel /admin/financeiro x Contas /admin/financeiro/contas).
@@ -384,7 +427,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
             const dashLocked = isLocked('/admin/dashboard');
             return (
               <>
-                <button
+                {verDashboard && <button
                   onClick={() => !dashLocked && navigate('/admin/dashboard')}
                   disabled={dashLocked}
                   title={dashLocked ? 'Indisponível no modo revisor' : undefined}
@@ -397,9 +440,39 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                   </span>
                   <span className={`flex-1 text-[14px] font-bold ${dashActive ? 'text-primary' : 'text-darkText dark:text-darkTextPrimary'}`}>Dashboard</span>
                   {dashLocked && <Lock size={13} />}
-                </button>
+                </button>}
 
-                {adminGroups.map(group => {
+                {/* My shortcuts: star any item below; drag to reorder */}
+                {!reviewerMode && (atalhosVisiveis.length > 0 ? (
+                  <div className="mt-3 mb-1">
+                    <p className="px-3 mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1"><Star size={10} className="fill-current" /> Meus atalhos</p>
+                    <div className="space-y-0.5">
+                      {atalhosVisiveis.map(item => {
+                        const isActive = isPathActive(item.path);
+                        return (
+                          <div key={item.path} draggable
+                            onDragStart={() => setArrastandoAtalho(item.path)}
+                            onDragOver={e => { e.preventDefault(); if (arrastandoAtalho && arrastandoAtalho !== item.path) moverAtalho(arrastandoAtalho, item.path); }}
+                            onDragEnd={() => setArrastandoAtalho(null)}
+                            className={`relative group ${arrastandoAtalho === item.path ? 'opacity-50' : ''}`}>
+                            <button onClick={() => navigate(item.path)} className={`${itemCls(isActive, false)} pr-8 cursor-grab active:cursor-grabbing`}>
+                              <span className={iconCls(isActive)}>{React.cloneElement(item.icon, { size: 17 })}</span>
+                              <span className="truncate">{item.label}</span>
+                            </button>
+                            <button onClick={() => alternarAtalho(item.path)} title="Tirar dos atalhos"
+                              className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-amber-400 opacity-0 group-hover:opacity-100 hover:bg-amber-50">
+                              <Star size={13} className="fill-current" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="px-3 mt-2 mb-1 text-[11px] leading-snug text-gray-400">Dica: passe o mouse num item e clique na <Star size={10} className="inline -mt-0.5" /> para criar seus atalhos.</p>
+                ))}
+
+                {gruposVisiveis.map(group => {
                   const isOpen = reviewerMode || openGroups.has(group.key);
                   const hasActive = group.items.some(i => isPathActive(i.path));
                   return (
@@ -426,18 +499,26 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                           {group.items.map(item => {
                             const isActive = isPathActive(item.path);
                             const locked = isLocked(item.path);
+                            const fixado = atalhos.includes(item.path);
                             return (
-                              <button
-                                key={item.path}
-                                onClick={() => !locked && navigate(item.path)}
-                                disabled={locked}
-                                title={locked ? 'Indisponível no modo revisor' : undefined}
-                                className={itemCls(isActive, locked)}
-                              >
-                                <span className={iconCls(isActive)}>{React.cloneElement(item.icon, { size: 17 })}</span>
-                                <span className="truncate">{item.label}</span>
-                                {locked && <Lock size={12} className="ml-auto" />}
-                              </button>
+                              <div key={item.path} className="relative group">
+                                <button
+                                  onClick={() => !locked && navigate(item.path)}
+                                  disabled={locked}
+                                  title={locked ? 'Indisponível no modo revisor' : undefined}
+                                  className={`${itemCls(isActive, locked)} pr-8`}
+                                >
+                                  <span className={iconCls(isActive)}>{React.cloneElement(item.icon, { size: 17 })}</span>
+                                  <span className="truncate">{item.label}</span>
+                                  {locked && <Lock size={12} className="ml-auto" />}
+                                </button>
+                                {!locked && (
+                                  <button onClick={() => alternarAtalho(item.path)} title={fixado ? 'Tirar dos atalhos' : 'Adicionar aos atalhos'}
+                                    className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md transition-opacity hover:bg-amber-50 ${fixado ? 'text-amber-400 opacity-100' : 'text-gray-300 opacity-0 group-hover:opacity-100'}`}>
+                                    <Star size={13} className={fixado ? 'fill-current' : ''} />
+                                  </button>
+                                )}
+                              </div>
                             );
                           })}
                         </div>
@@ -450,106 +531,31 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
           })()}
         </nav>
 
-        <div className="p-4 border-t border-gray-100 dark:border-darkBorder">
-          <div className="flex justify-between items-center mb-4 px-2">
-             <ThemeToggle />
-          </div>
+        <div className="px-3 py-3 border-t border-gray-100 dark:border-darkBorder">
           {reviewerMode ? (
-            <div className="flex items-center gap-3 mb-4 px-2">
-              <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-darkBorder flex items-center justify-center shrink-0"><Lock size={16} className="text-gray-500" /></div>
-              <div>
-                <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">Revisor</p>
-                <p className="text-xs text-lightText dark:text-darkTextSecondary">Acesso só ao WhatsApp</p>
+            <div className="flex items-center gap-2.5 px-1">
+              <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-darkBorder flex items-center justify-center shrink-0"><Lock size={14} className="text-gray-500" /></div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-bold text-darkText dark:text-darkTextPrimary">Revisor</p>
+                <p className="text-[11px] text-lightText dark:text-darkTextSecondary">Acesso só ao WhatsApp</p>
               </div>
+              <button onClick={handleLogout} title="Sair" className="p-2 rounded-lg text-lightText hover:text-red-500 hover:bg-red-50"><LogOut size={16} /></button>
             </div>
           ) : (
-          <div className="flex items-center gap-3 mb-4 px-2 cursor-pointer" onClick={() => navigate('/admin/settings')}>
-             <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-darkBorder flex items-center justify-center overflow-hidden shrink-0">
-                {(platformSettings.adminPhoto || localStorage.getItem('admin_photo'))
-                  ? <img src={platformSettings.adminPhoto || localStorage.getItem('admin_photo')!} alt="Admin" className="w-full h-full object-cover"/>
-                  : <span className="text-lg">👤</span>}
-             </div>
-             <div>
-                <p className="text-sm font-bold text-darkText dark:text-darkTextPrimary">{platformSettings.adminName || localStorage.getItem('admin_name') || 'Administrador'}</p>
-                <p className="text-xs text-lightText dark:text-darkTextSecondary">Super Admin</p>
-             </div>
-          </div>
-          )}
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-2 rounded-xl w-full text-lightText dark:text-darkTextSecondary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs font-bold"
-          >
-            <LogOut size={16} />
-            Sair
-          </button>
-
-          {/* Vista Rápida — Super Admin only */}
-          {role === UserRole.ADMIN && !reviewerMode && localStorage.getItem('ndl_dono') === '1' && (
-            <div className="relative mt-2 border-t border-gray-100 pt-2">
-              <button
-                onClick={openPreviewPanel}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-400 hover:bg-purple-50 hover:text-purple-600 rounded-lg transition-colors"
-              >
-                <Eye size={13} />
-                Ver como profissional...
+            <div className="flex items-center gap-2.5 px-1">
+              <button onClick={() => podeVer('/admin/settings', perm) && navigate('/admin/settings')} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
+                <span className="w-8 h-8 rounded-full bg-gray-200 dark:bg-darkBorder flex items-center justify-center overflow-hidden shrink-0">
+                  {(platformSettings.adminPhoto || localStorage.getItem('admin_photo'))
+                    ? <img src={platformSettings.adminPhoto || localStorage.getItem('admin_photo')!} alt="" className="w-full h-full object-cover" />
+                    : <User size={15} className="text-gray-500" />}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-bold text-darkText dark:text-darkTextPrimary truncate">{currentUser?.name || platformSettings.adminName || localStorage.getItem('admin_name') || 'Administrador'}</span>
+                  <span className="block text-[11px] text-lightText dark:text-darkTextSecondary truncate">{nivelDeAcesso(perm)}</span>
+                </span>
               </button>
-              {showPreviewPanel && (
-                <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-gray-100 dark:bg-darkSurface dark:border-darkBorder rounded-xl shadow-xl overflow-hidden">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">Escolha uma profissional</p>
-                  <div className="max-h-44 overflow-y-auto">
-                    {loadingPreviewCollabs ? (
-                      <p className="text-xs text-gray-400 p-3 text-center">Carregando...</p>
-                    ) : previewCollabs.length === 0 ? (
-                      <p className="text-xs text-gray-400 p-3 text-center">Nenhuma ativa</p>
-                    ) : previewCollabs.map(c => (
-                      <button
-                        key={c.id}
-                        onClick={() => handlePreviewCollab(c)}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors"
-                      >
-                        {c.foto
-                          ? <img src={c.foto} alt={c.nome} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
-                          : <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-[10px] flex-shrink-0">{c.nome[0]}</div>
-                        }
-                        <span className="truncate">{c.nome}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Ver como cliente */}
-              <button
-                onClick={openClientPanel}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-400 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors mt-0.5"
-              >
-                <User size={13} />
-                Ver como cliente...
-              </button>
-              {showClientPanel && (
-                <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-gray-100 dark:bg-darkSurface dark:border-darkBorder rounded-xl shadow-xl overflow-hidden">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">Escolha um cliente</p>
-                  <div className="max-h-44 overflow-y-auto">
-                    {loadingClientList ? (
-                      <p className="text-xs text-gray-400 p-3 text-center">Carregando...</p>
-                    ) : clientPreviewList.length === 0 ? (
-                      <p className="text-xs text-gray-400 p-3 text-center">Nenhum cliente</p>
-                    ) : clientPreviewList.map(c => (
-                      <button
-                        key={c.id}
-                        onClick={() => handlePreviewClient(c)}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                      >
-                        {c.photo
-                          ? <img src={c.photo} alt={c.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
-                          : <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-[10px] flex-shrink-0">{c.name[0]}</div>
-                        }
-                        <span className="truncate">{c.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <ThemeToggle className="!p-1.5 shrink-0 [&_svg]:w-4 [&_svg]:h-4" />
+              <button onClick={handleLogout} title="Sair" className="p-1.5 rounded-lg text-lightText dark:text-darkTextSecondary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 shrink-0"><LogOut size={16} /></button>
             </div>
           )}
         </div>
@@ -574,7 +580,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
         <main ref={mainRef} className="flex-1 overflow-y-auto p-4 md:p-8 mobile-pb-nav md:pb-8">
           {isAdmin && <FaixaTeste empresa={empresaAtual} />}
           {role === UserRole.COLLABORATOR && <PermissoesApp />}
-          {children}
+          {isAdmin && !reviewerMode && !podeVer(location.pathname, perm) ? (
+            <div className="max-w-md mx-auto mt-16 text-center bg-white dark:bg-darkSurface border border-gray-200 dark:border-darkBorder rounded-2xl p-8 space-y-3">
+              <ShieldOff size={32} className="mx-auto text-gray-300" />
+              <p className="font-bold text-darkText dark:text-darkTextPrimary">Você não tem acesso a esta área</p>
+              <p className="text-sm text-lightText dark:text-darkTextSecondary">Se precisar, peça ao administrador para liberar em Configurações → Usuários & Permissões.</p>
+              <Button onClick={() => navigate(primeiraRotaPermitida(perm))}>Ir para o início</Button>
+            </div>
+          ) : children}
         </main>
         {isAdmin && <TesteEncerrado empresa={empresaAtual} onSair={handleLogout} naTelaDeAssinatura={location.pathname === '/admin/assinatura'} />}
 
@@ -628,7 +641,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                  
                  {isAdmin ? (
                    <div className="space-y-5">
-                     {adminGroups.map(group => (
+                     <p className="text-xs text-lightText dark:text-darkTextSecondary -mt-3">Toque na <Star size={11} className="inline -mt-0.5" /> para fixar uma tela na barra de baixo.</p>
+                     {gruposVisiveis.map(group => (
                        <div key={group.key}>
                          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 px-1">{group.label}</p>
                          <div className="grid grid-cols-3 gap-2">
@@ -643,6 +657,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                                  className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl text-center transition-colors ${locked ? 'bg-gray-50 dark:bg-darkBg text-gray-300 dark:text-gray-600 cursor-not-allowed' : active ? 'bg-primary text-white' : 'bg-gray-50 dark:bg-darkBg text-darkText dark:text-darkTextPrimary active:bg-primary/10'}`}
                                >
                                  {locked && <Lock size={11} className="absolute top-2 right-2" />}
+                                 {!locked && (
+                                   <span role="button" aria-label={atalhos.includes(item.path) ? 'Tirar dos atalhos' : 'Fixar nos atalhos'}
+                                     onClick={e => { e.stopPropagation(); alternarAtalho(item.path); }}
+                                     className={`absolute top-1 right-1 p-1 ${atalhos.includes(item.path) ? 'text-amber-400' : active ? 'text-white/60' : 'text-gray-300'}`}>
+                                     <Star size={12} className={atalhos.includes(item.path) ? 'fill-current' : ''} />
+                                   </span>
+                                 )}
                                  {item.icon}
                                  <span className="text-[11px] font-semibold leading-tight">{item.label}</span>
                                </button>
@@ -652,48 +673,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
                        </div>
                      ))}
 
-                     {!reviewerMode && localStorage.getItem('ndl_dono') === '1' && (
-                     <div className="border-t border-gray-100 dark:border-darkBorder pt-4 space-y-2">
-                       <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">Visualizar como</p>
-                       <div className="grid grid-cols-2 gap-2">
-                         <button
-                           onClick={() => { setShowClientPanel(false); openPreviewPanel(); }}
-                           className={`flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-semibold ${showPreviewPanel ? 'bg-purple-600 text-white' : 'bg-purple-50 text-purple-700'}`}
-                         >
-                           <Eye size={14} /> Profissional
-                         </button>
-                         <button
-                           onClick={openClientPanel}
-                           className={`flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-semibold ${showClientPanel ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700'}`}
-                         >
-                           <User size={14} /> Cliente
-                         </button>
-                       </div>
-                       {(showPreviewPanel || showClientPanel) && (
-                         <div className="max-h-56 overflow-y-auto rounded-xl border border-gray-100 dark:border-darkBorder divide-y divide-gray-50 dark:divide-darkBorder">
-                           {(showPreviewPanel ? loadingPreviewCollabs : loadingClientList) ? (
-                             <p className="text-xs text-gray-400 p-3 text-center">Carregando...</p>
-                           ) : (showPreviewPanel ? previewCollabs : clientPreviewList).length === 0 ? (
-                             <p className="text-xs text-gray-400 p-3 text-center">Nenhum registro encontrado</p>
-                           ) : showPreviewPanel ? previewCollabs.map(c => (
-                             <button key={c.id} onClick={() => handlePreviewCollab(c)} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-darkText dark:text-darkTextPrimary active:bg-purple-50">
-                               {c.foto
-                                 ? <img src={c.foto} alt={c.nome} className="w-8 h-8 rounded-full object-cover shrink-0" />
-                                 : <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-xs shrink-0">{(c.nome || '?').trim().charAt(0)}</div>}
-                               <span className="truncate">{(c.nome || '').trim()}</span>
-                             </button>
-                           )) : clientPreviewList.map(c => (
-                             <button key={c.id} onClick={() => handlePreviewClient(c)} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-darkText dark:text-darkTextPrimary active:bg-blue-50">
-                               {c.photo
-                                 ? <img src={c.photo} alt={c.name} className="w-8 h-8 rounded-full object-cover shrink-0" />
-                                 : <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs shrink-0">{(c.name || '?').trim().charAt(0)}</div>}
-                               <span className="truncate">{(c.name || '').trim()}</span>
-                             </button>
-                           ))}
-                         </div>
-                       )}
-                     </div>
-                     )}
                    </div>
                  ) : (
                  <div className="grid grid-cols-4 gap-4">

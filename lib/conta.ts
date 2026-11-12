@@ -32,6 +32,10 @@ export async function entrar(email: string, senha: string, papeis: Papel[]): Pro
     }
     localStorage.setItem('ndl_usuario', String(perfil.id));
     localStorage.setItem('ndl_papel', perfil.role);
+    // Office team access level and personal shortcuts (lib/acesso.ts).
+    perfil.permissoes && Array.isArray(perfil.permissoes.areas)
+      ? localStorage.setItem('ndl_permissoes', JSON.stringify(perfil.permissoes)) : localStorage.removeItem('ndl_permissoes');
+    localStorage.setItem('ndl_atalhos', JSON.stringify(Array.isArray(perfil.preferencias?.atalhos) ? perfil.preferencias.atalhos : []));
   } catch { /* storage unavailable */ }
   definirEmpresa(perfil.company_id);
   try { perfil.dono_plataforma ? localStorage.setItem('ndl_dono', '1') : localStorage.removeItem('ndl_dono'); } catch {}
@@ -40,7 +44,7 @@ export async function entrar(email: string, senha: string, papeis: Papel[]): Pro
 
 export async function sair() {
   await desligarPush().catch(() => {});
-  try { localStorage.removeItem('ndl_papel'); } catch {}
+  try { ['ndl_papel', 'ndl_permissoes', 'ndl_atalhos'].forEach(k => localStorage.removeItem(k)); } catch {}
   definirEmpresa(null);
   try { localStorage.removeItem('ndl_dono'); } catch {}
   await supabase.auth.signOut().catch(() => {});
@@ -54,7 +58,7 @@ async function chamar(body: Record<string, unknown>): Promise<{ ok: boolean; err
 }
 
 // Administrator creates a login (collaborator, client or another admin).
-export const criarAcesso = (dados: { name: string; email: string; senha: string; role: Papel; phone?: string; photo?: string; level?: string }) =>
+export const criarAcesso = (dados: { name: string; email: string; senha: string; role: Papel; phone?: string; photo?: string; level?: string; permissoes?: { areas: string[] } | null }) =>
   chamar({ acao: 'criar', ...dados });
 
 // Administrator sets a new password for someone of the company.

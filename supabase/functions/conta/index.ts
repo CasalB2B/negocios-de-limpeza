@@ -22,7 +22,7 @@ async function quemChama(req: Request) {
   if (!token) return null;
   const { data } = await db.auth.getUser(token);
   if (!data?.user) return null;
-  const { data: perfil } = await db.from('app_users').select('id, role, company_id').eq('auth_id', data.user.id).maybeSingle();
+  const { data: perfil } = await db.from('app_users').select('id, role, company_id, permissoes').eq('auth_id', data.user.id).maybeSingle();
   return perfil;
 }
 
@@ -141,13 +141,16 @@ Deno.serve(async (req) => {
       const senha = String(body.senha ?? '');
       const role = String(body.role ?? 'COLLABORATOR');
       if (!PAPEIS_CRIAVEIS.includes(role)) return json({ ok: false, erro: 'Perfil inválido.' }, 400);
+      // Only someone with full access can add another person to the office team.
+      if (role === 'ADMIN' && chamador.permissoes) return json({ ok: false, erro: 'Só quem tem acesso total pode adicionar pessoas da equipe administrativa.' }, 403);
+      const permissoes = role === 'ADMIN' && body.permissoes && Array.isArray(body.permissoes.areas) ? { areas: body.permissoes.areas.map(String) } : null;
       if (!email.includes('@') || senha.length < 6) return json({ ok: false, erro: 'E-mail inválido ou senha com menos de 6 caracteres.' }, 400);
       const { data: existe } = await db.from('app_users').select('id').eq('email', email).maybeSingle();
       if (existe) return json({ ok: false, erro: 'Já existe um usuário com este e-mail.' }, 409);
       const { data: perfil, error } = await db.from('app_users').insert({
         name: String(body.name ?? '').slice(0, 120), email, phone: String(body.phone ?? '').slice(0, 30),
         role, status: 'AVAILABLE', photo: body.photo ?? '', level: body.level ?? null,
-        company_id: chamador.company_id,
+        company_id: chamador.company_id, permissoes,
       }).select('id, role, company_id').single();
       if (error || !perfil) return json({ ok: false, erro: error?.message }, 400);
       try { await criarLogin(email, senha, perfil); }
@@ -191,8 +194,10 @@ Deno.serve(async (req) => {
     }
 
     if (acao === 'excluir') {
-      const { data: perfil } = await db.from('app_users').select('id, auth_id').eq('id', body.id).eq('company_id', chamador.company_id).maybeSingle();
+      const { data: perfil } = await db.from('app_users').select('id, auth_id, role').eq('id', body.id).eq('company_id', chamador.company_id).maybeSingle();
       if (!perfil) return json({ ok: false, erro: 'Usuário não encontrado.' }, 404);
+      if (perfil.role === 'ADMIN' && chamador.permissoes) return json({ ok: false, erro: 'Só quem tem acesso total pode remover pessoas da equipe administrativa.' }, 403);
+      if (perfil.id === chamador.id) return json({ ok: false, erro: 'Você não pode remover o seu próprio acesso.' }, 400);
       if (perfil.auth_id) await db.auth.admin.deleteUser(perfil.auth_id);
       await db.from('app_users').delete().eq('id', perfil.id);
       return json({ ok: true });

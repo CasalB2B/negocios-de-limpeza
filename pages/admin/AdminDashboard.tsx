@@ -67,7 +67,7 @@ const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julh
 
 // Big money values shrink on narrow phones so "R$ 12.345,67" stays inside the card.
 const tamanhoValor = (t: string) =>
-  t.length > 12 ? 'text-lg sm:text-2xl md:text-3xl' : t.length > 9 ? 'text-xl sm:text-3xl' : 'text-2xl sm:text-3xl';
+  t.length > 12 ? 'text-lg xl:text-2xl 2xl:text-3xl' : t.length > 9 ? 'text-xl xl:text-3xl' : 'text-2xl xl:text-3xl';
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -264,7 +264,7 @@ export const AdminDashboard: React.FC = () => {
         {/* ── Row 1: KPI cards ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
-          <div className="rounded-2xl p-4 md:p-6 min-w-0 bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-200/60 text-white">
+          <div className="rounded-2xl p-4 xl:p-6 min-w-0 bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-200/60 text-white">
             <div className="flex items-center justify-between mb-3">
               <span className="text-blue-100 text-sm font-medium">Serviços hoje</span>
               <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
@@ -283,7 +283,7 @@ export const AdminDashboard: React.FC = () => {
             )}
           </div>
 
-          <div className="rounded-2xl p-4 md:p-6 min-w-0 bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-200/60 text-white">
+          <div className="rounded-2xl p-4 xl:p-6 min-w-0 bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-200/60 text-white">
             <div className="flex items-center justify-between mb-3">
               <span className="text-emerald-100 text-sm font-medium">Receita do mês</span>
               <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
@@ -298,7 +298,7 @@ export const AdminDashboard: React.FC = () => {
             )}
           </div>
 
-          <div className="rounded-2xl p-4 md:p-6 min-w-0 bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-200/60 text-white">
+          <div className="rounded-2xl p-4 xl:p-6 min-w-0 bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-200/60 text-white">
             <div className="flex items-center justify-between mb-3">
               <span className="text-amber-100 text-sm font-medium">A receber</span>
               <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
@@ -313,7 +313,7 @@ export const AdminDashboard: React.FC = () => {
             )}
           </div>
 
-          <div className="rounded-2xl p-4 md:p-6 min-w-0 bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-200/60 text-white">
+          <div className="rounded-2xl p-4 xl:p-6 min-w-0 bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-200/60 text-white">
             <div className="flex items-center justify-between mb-3">
               <span className="text-violet-100 text-sm font-medium">Profissionais ativas</span>
               <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">

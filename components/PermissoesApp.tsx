@@ -122,7 +122,7 @@ export const PermissoesApp: React.FC = () => {
       )}
 
       {aberto && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
+        <div className="safe-proprio fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
           <div className="w-full sm:max-w-md bg-white dark:bg-darkSurface rounded-t-3xl sm:rounded-3xl p-5 space-y-4 max-h-[90vh] overflow-y-auto"
             style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)' }}>
             <div className="flex items-start justify-between gap-3">

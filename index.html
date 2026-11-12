@@ -148,6 +148,12 @@
       /* Inside the phone app the page fills the screen under the status bar: keep the content below it. */
       .app-nativo #root { padding-top: env(safe-area-inset-top, 0px); }
       .app-nativo #root .h-screen { height: calc(100vh - env(safe-area-inset-top, 0px)); }
+      /* Full-screen windows and drawers: keep their buttons clear of the status bar and of the phone's own
+         navigation bar / home indicator (elements marked .safe-proprio handle it themselves). */
+      .app-nativo .fixed.inset-0:not(.safe-proprio) {
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
 
       /* Safe area insets for notched phones (iPhone X+) */
       .pb-safe {

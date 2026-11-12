@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useAoVoltar } from '../../../lib/aoVoltar';
 import { useSearchParams } from 'react-router-dom';
@@ -904,8 +905,8 @@ export const AdminRHContratacao: React.FC = () => {
 
         {/* ═══ Painel full-screen de candidata ═══════════════════════════════ */}
         {/* z-[60]: fica acima do bottom nav (z-50) — evita nav cobrindo o footer do drawer */}
-        {aberta && (
-          <div className="fixed inset-0 z-[60] flex flex-col bg-white dark:bg-darkSurface">
+        {aberta && createPortal((
+          <div className="fixed inset-0 z-[60] flex flex-col bg-white dark:bg-darkSurface safe-proprio">
 
             {/* ── Header ──────────────────────────────────────────────────────── */}
             {/* Explicit notch-fill: a zero-height spacer inside the gradient pushes content
@@ -1511,7 +1512,7 @@ export const AdminRHContratacao: React.FC = () => {
               </div>
             </div>
           </div>
-        )}
+        ), document.body)}
       {/* Modal confirmação de exclusão */}
       <Modal isOpen={!!confirmDelete} onClose={() => setConfirmDelete(null)} title="Excluir candidatura?">
         <div className="flex items-start gap-3 mb-5">

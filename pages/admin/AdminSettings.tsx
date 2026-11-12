@@ -1,3 +1,4 @@
+import { UsuariosPermissoes } from '../../components/UsuariosPermissoes';
 import React, { useState, useEffect, useRef } from 'react';
 import { empresaId } from '../../lib/empresa';
 import { Layout } from '../../components/Layout';
@@ -294,51 +295,7 @@ export const AdminSettings: React.FC = () => {
            </div>
         );
       case 'users':
-         return (
-            <div className="space-y-8 animate-in fade-in duration-300">
-               <div>
-                  <h3 className="text-xl font-bold text-darkText dark:text-darkTextPrimary flex items-center gap-2"><Users size={20}/> Usuários & Permissões</h3>
-                  <p className="text-sm text-lightText dark:text-darkTextSecondary mt-1">Quem tem acesso ao sistema da sua empresa.</p>
-               </div>
-               <div className="divide-y divide-gray-100 dark:divide-darkBorder rounded-xl border border-gray-200 dark:border-darkBorder">
-                  {usuarios.length === 0 && <p className="p-4 text-sm text-lightText">Carregando...</p>}
-                  {usuarios.map(u => (
-                     <div key={u.id} className="p-4 flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                           <p className="font-bold text-darkText dark:text-darkTextPrimary text-sm truncate">{u.name}</p>
-                           <p className="text-xs text-lightText dark:text-darkTextSecondary truncate">{u.email}</p>
-                        </div>
-                        <span className={`shrink-0 text-xs font-bold px-2 py-1 rounded ${u.role === 'ADMIN' ? 'bg-primary/10 text-primary' : 'bg-blue-50 text-blue-700'}`}>
-                           {u.role === 'ADMIN' ? 'Administrador' : 'Profissional (app)'}
-                        </span>
-                     </div>
-                  ))}
-               </div>
-               <p className="text-xs text-lightText dark:text-darkTextSecondary">
-                  O acesso das profissionais ao app é criado em Recursos Humanos → Profissionais → Dar acesso.
-                  Em breve: perfis de acesso (líder, financeiro, atendimento) escolhendo o que cada pessoa pode ver.
-               </p>
-
-               {souDono && (
-                  <div className="border-t border-gray-100 dark:border-darkBorder pt-6">
-                     <h4 className="text-sm font-bold text-darkText dark:text-darkTextPrimary mb-3 flex items-center gap-2"><Shield size={16}/> Visualizar como usuário (só o dono da plataforma)</h4>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <a href="#/client/dashboard" target="_blank" rel="noopener noreferrer"
-                           className="flex items-center gap-4 p-5 bg-purple-50 dark:bg-primary/10 border border-purple-200 dark:border-primary/30 rounded-2xl hover:shadow-md transition-all">
-                           <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-white text-xl">👤</div>
-                           <div><p className="font-bold text-darkText dark:text-darkTextPrimary">Portal do Cliente</p><p className="text-xs text-lightText">Ver tela como cliente</p></div>
-                        </a>
-                        <a href="#/collab/agenda" target="_blank" rel="noopener noreferrer"
-                           className="flex items-center gap-4 p-5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-2xl hover:shadow-md transition-all">
-                           <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white text-xl">🧹</div>
-                           <div><p className="font-bold text-darkText dark:text-darkTextPrimary">Portal da Profissional</p><p className="text-xs text-lightText">Ver tela como profissional</p></div>
-                        </a>
-                     </div>
-                  </div>
-               )}
-            </div>
-         );
-      default:
+         return <UsuariosPermissoes />;
       case 'integracoes':
         return (
           <div className="space-y-5 animate-in fade-in duration-300">
