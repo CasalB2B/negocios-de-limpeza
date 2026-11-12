@@ -98,6 +98,10 @@
       {
         "t": "Aviso para a profissional",
         "d": "Mudou a agenda? Ela recebe o aviso no celular e vê o novo serviço no app."
+      },
+      {
+        "t": "Várias profissionais na mesma faxina",
+        "d": "Escale 2 ou 3 profissionais: todas aparecem na agenda, na ordem de serviço e para o cliente, e cada uma recebe a diária do cargo dela."
       }
     ],
     "passos": [
@@ -434,6 +438,10 @@
       {
         "t": "Acesso ao app",
         "d": "Cada profissional ganha login próprio e vê só o que é dela."
+      },
+      {
+        "t": "Permissões por pessoa",
+        "d": "Coloque a atendente, a líder ou o financeiro no sistema e escolha o que cada pessoa vê: perfis prontos ou área por área."
       }
     ],
     "passos": [

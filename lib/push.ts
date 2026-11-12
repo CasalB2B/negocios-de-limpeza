@@ -12,9 +12,14 @@ import { supabase } from './supabase';
 export const noAppNativo = () => Capacitor.isNativePlatform();
 const ehIos = () => Capacitor.getPlatform() === 'ios';
 
+// Last problem while registering this phone (shown on the notifications card so it can be fixed remotely).
+let ultimoErro = '';
+export const erroPush = () => ultimoErro;
+
 async function registrarToken(value: string) {
   ultimoToken = value;
-  await supabase.rpc('registrar_dispositivo', { p_token: value, p_plataforma: Capacitor.getPlatform() });
+  const { error } = await supabase.rpc('registrar_dispositivo', { p_token: value, p_plataforma: Capacitor.getPlatform() });
+  ultimoErro = error ? `Cadastro do celular: ${error.message}` : '';
 }
 
 let ouvintes = false;
@@ -57,7 +62,7 @@ async function prepararOuvintes() {
     importance: 4, visibility: 1, sound: 'default', vibration: true, lightColor: '#A163FF',
   }).catch(() => {});
   await PushNotifications.addListener('registration', ({ value }) => registrarToken(value));
-  await PushNotifications.addListener('registrationError', e => console.warn('push: registro falhou', e));
+  await PushNotifications.addListener('registrationError', e => { ultimoErro = `Registro: ${(e as any)?.error || JSON.stringify(e)}`; });
   await PushNotifications.addListener('pushNotificationReceived', n =>
     avisoNaTela(n.title || 'Negócios de Limpeza', n.body || '', (n.data as any)?.rota));
   await PushNotifications.addListener('pushNotificationActionPerformed', a =>
@@ -82,8 +87,13 @@ export async function ativarPush(): Promise<EstadoPush> {
     let { receive: r } = await FirebaseMessaging.checkPermissions();
     if (r === 'prompt' || r === 'prompt-with-rationale') r = (await FirebaseMessaging.requestPermissions()).receive;
     if (r !== 'granted') return r === 'denied' ? 'negado' : 'pendente';
-    const { token } = await FirebaseMessaging.getToken();
-    if (token) await registrarToken(token);
+    try {
+      const { token } = await FirebaseMessaging.getToken();
+      if (token) await registrarToken(token);
+      else ultimoErro = 'O iPhone não devolveu o código de notificação.';
+    } catch (e: any) {
+      ultimoErro = `iPhone: ${e?.message || e}`;
+    }
     return 'ativo';
   }
   let { receive } = await PushNotifications.checkPermissions();

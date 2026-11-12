@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Bell, BellOff, CheckCircle2, Send } from 'lucide-react';
-import { ativarPush, estadoPush, testarPush, noAppNativo, type EstadoPush } from '../lib/push';
+import { ativarPush, estadoPush, testarPush, noAppNativo, erroPush, type EstadoPush } from '../lib/push';
 
 // Phone notifications status card (only inside the Android/iPhone app).
 // modo 'perfil': always visible (collaborator profile). modo 'aviso' (admin dashboard): only while not active.
@@ -11,14 +11,21 @@ export const NotificacoesCelular: React.FC<{ modo?: 'perfil' | 'aviso' }> = ({ m
   const [ocupado, setOcupado] = useState(false);
   const [testado, setTestado] = useState(() => { try { return localStorage.getItem('ndl_push_testado') === '1'; } catch { return false; } });
 
-  useEffect(() => { estadoPush().then(setEstado).catch(() => {}); }, []);
+  const [erro, setErro] = useState('');
+  useEffect(() => {
+    estadoPush().then(setEstado).catch(() => {});
+    // The automatic registration runs a few seconds after opening; show its problem, if any.
+    const t = window.setTimeout(() => setErro(erroPush()), 6000);
+    return () => window.clearTimeout(t);
+  }, []);
   if (!noAppNativo() || estado === 'indisponivel') return null;
-  if (modo === 'aviso' && estado === 'ativo' && !acabouDeAtivar) return null;
+  if (modo === 'aviso' && estado === 'ativo' && !acabouDeAtivar && !erro) return null;
 
   const ativar = async () => {
     setOcupado(true);
     const e = await ativarPush().catch(() => 'pendente' as EstadoPush);
     setEstado(e);
+    setErro(erroPush());
     if (e === 'ativo') setAcabouDeAtivar(true);
     setOcupado(false);
   };
@@ -26,6 +33,7 @@ export const NotificacoesCelular: React.FC<{ modo?: 'perfil' | 'aviso' }> = ({ m
     setOcupado(true);
     // Make sure this phone is registered before testing (no-op if it already is).
     await ativarPush().catch(() => {});
+    setErro(erroPush());
     const r = await testarPush();
     setMsg(r);
     if (r.startsWith('Pronto')) { setTestado(true); try { localStorage.setItem('ndl_push_testado', '1'); } catch {} }
@@ -42,7 +50,7 @@ export const NotificacoesCelular: React.FC<{ modo?: 'perfil' | 'aviso' }> = ({ m
           <p className="font-bold text-darkText text-sm">Notificações no celular</p>
           <p className="text-xs text-lightText">
             {estado === 'ativo' ? 'Ativas: você recebe os avisos da agenda e dos pagamentos.'
-              : estado === 'negado' ? 'Bloqueadas. Libere em Configurações do Android → Apps → Negócios de Limpeza → Notificações.'
+              : estado === 'negado' ? 'Bloqueadas. Libere nas configurações do celular → Negócios de Limpeza → Notificações.'
               : 'Receba aviso de novos serviços, mudanças e lembretes.'}
           </p>
         </div>
@@ -54,6 +62,7 @@ export const NotificacoesCelular: React.FC<{ modo?: 'perfil' | 'aviso' }> = ({ m
         )}
       </div>
       {msg && <p className="mt-2 text-xs text-lightText">{msg}</p>}
+      {erro && <p className="mt-2 text-xs font-semibold text-red-600 break-words">Não consegui cadastrar este celular para notificações. {erro}</p>}
     </div>
   );
 };

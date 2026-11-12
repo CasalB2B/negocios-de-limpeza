@@ -5,7 +5,7 @@ import { Cabecalho, Rodape, Precos } from '../components/vendas/comum';
 import {
   ArrowRight, Check, CalendarDays, Smartphone, MessageCircle, Wallet, Users, Sparkles, MapPin,
   NotebookPen, PhoneOff, Calculator, UserX, ChevronDown, Menu, X, FileText, Star, BellRing, CheckCheck,
-  Package, UserPlus, Contact, Kanban, BarChart3, Instagram, Globe, ArrowUp, TrendingUp, Clock,
+  Package, UserPlus, Contact, Kanban, BarChart3, Instagram, Globe, ArrowUp, TrendingUp, Clock, ShieldCheck, Pin,
 } from 'lucide-react';
 
 // Sales page of the platform. AgencyFlow-inspired structure: rotating screens in the hero, pains and
@@ -46,8 +46,8 @@ const ANTES_DEPOIS: [string, string][] = [
 ];
 
 const RECURSOS: { icon: React.ElementType; t: string; slug?: string; d: string }[] = [
-  { icon: CalendarDays, t: 'Agenda da equipe', slug: 'agenda', d: 'Mês, semana, equipe lado a lado e a semana de cada profissional.' },
-  { icon: Kanban, t: 'Ordens de serviço', slug: 'ordens-de-servico', d: 'Do aguardando sinal ao concluído, com o status de cada faxina.' },
+  { icon: CalendarDays, t: 'Agenda da equipe', slug: 'agenda', d: 'Mês, semana e equipe lado a lado. Faxina com 2 ou 3 profissionais, repetir toda semana e editar em um clique.' },
+  { icon: Kanban, t: 'Ordens de serviço', slug: 'ordens-de-servico', d: 'Arraste o card do aguardando sinal ao concluído e veja a equipe de cada faxina.' },
   { icon: Contact, t: 'Clientes', slug: 'clientes', d: 'Fixos, eventuais e novos, com histórico, endereços e clientes sumidos.' },
   { icon: Wallet, t: 'Cobrança automática', slug: 'cobranca', d: 'Link de sinal e de restante pela InfinitePay, com baixa sozinha.' },
   { icon: MessageCircle, t: 'WhatsApp automático', slug: 'whatsapp', d: 'Confirmação, lembrete na véspera e pós-serviço do seu número.' },
@@ -55,12 +55,14 @@ const RECURSOS: { icon: React.ElementType; t: string; slug?: string; d: string }
   { icon: Smartphone, t: 'App da profissional', slug: 'app-colaboradora', d: 'Agenda, endereço no mapa, check-in, fotos e quanto vai receber.' },
   { icon: Users, t: 'Equipe e RH', slug: 'equipe', d: 'Cargos, diárias, desempenho, bônus e plano de carreira.' },
   { icon: UserPlus, t: 'Contratação', d: 'Candidatas por etapa, entrevista e banco de freelas.' },
-  { icon: Star, t: 'Avaliações', d: 'Pedido de avaliação no Google e nota de cada profissional.' },
+  { icon: Star, t: 'Avaliações', d: 'Google na primeira faxina e nota de cada profissional, ligada à faxina e ao cliente.' },
   { icon: MapPin, t: 'Mapa da equipe', d: 'Onde cada profissional está, em tempo real.' },
   { icon: Package, t: 'Estoque', d: 'Produtos e equipamentos com alerta de estoque baixo.' },
   { icon: FileText, t: 'Nota fiscal', d: 'NFS-e com o CNPJ da sua empresa (adicional).' },
   { icon: Sparkles, t: 'Assistente com IA', slug: 'assistente-ia', d: 'Pergunte sobre o seu negócio e receba a resposta com números.' },
   { icon: BellRing, t: 'Avisos para a equipe', d: 'Mudou a agenda? A profissional recebe o aviso no celular.' },
+  { icon: ShieldCheck, t: 'Permissões por pessoa', d: 'A atendente vê a agenda e os clientes; o financeiro fica só com você.' },
+  { icon: Pin, t: 'Meus atalhos', d: 'Cada pessoa fixa as telas que mais usa, no computador e na barra do celular.' },
 ];
 
 const PERGUNTAS_IA = [
@@ -74,6 +76,7 @@ const FAQ = [
   { p: 'Preciso instalar alguma coisa?', r: 'Não. Funciona no navegador do computador e do celular, e também nos apps para Android e iPhone.' },
   { p: 'Como funciona o teste grátis?', r: 'São 14 dias com todas as funções liberadas, sem cartão. Você cria a conta, configura e usa com a sua equipe. No fim, escolhe o plano.' },
   { p: 'Minhas profissionais pagam alguma coisa?', r: 'Não. O acesso delas ao app está incluído no plano da sua empresa.' },
+  { p: 'Posso dar acesso para a atendente sem ela ver o financeiro?', r: 'Sim. Em Usuários & Permissões você escolhe o que cada pessoa do escritório vê: perfis prontos (Atendimento, Líder de equipe, Financeiro, RH) ou área por área. As profissionais, no app, nunca veem o valor que o cliente paga.' },
   { p: 'O WhatsApp continua no meu celular?', r: 'Sim. As mensagens automáticas (confirmação, lembrete da véspera, pós-serviço) saem do seu próprio número, e você continua usando o WhatsApp Business normalmente.' },
   { p: 'Quanto custa o WhatsApp?', r: 'Cada plano inclui um limite de lembretes automáticos por mês. A Meta cobra direto no seu cartão só o que for enviado (centavos por mensagem). Para enviar mais ou usar o atendimento automático, há o adicional.' },
   { p: 'Meus dados ficam seguros?', r: 'Sim. Cada empresa só acessa os próprios dados, com login protegido. Nenhuma outra empresa vê seus clientes, sua equipe ou seu financeiro.' },
@@ -349,6 +352,18 @@ export const VendasPage: React.FC = () => {
               <h3 className="text-xl font-bold">Equipe e RH</h3>
               <p className="mt-2 text-sm text-lightText dark:text-darkTextSecondary">Contratação, cargo e diária, avaliações e carreira.</p>
               <div className="mt-6 flex-1"><Recorte src="equipe-rh.webp" alt="Equipe e RH" altura="h-48" /></div>
+            </div>
+            <div className={`${cartao} p-6 md:p-8 md:col-span-6 grid md:grid-cols-5 gap-6 items-center`}>
+              <div className="md:col-span-2">
+                <h3 className="text-xl font-bold">Cada pessoa vê só o que precisa</h3>
+                <p className="mt-2 text-sm text-lightText dark:text-darkTextSecondary">Coloque a atendente, a líder ou quem cuida das contas no sistema e escolha o que cada uma acessa: perfis prontos ou área por área. E cada pessoa fixa nos atalhos as telas que mais usa.</p>
+                <ul className="mt-4 space-y-2 text-sm font-semibold">
+                  {['Atendimento, Líder de equipe, Financeiro e RH prontos', 'O financeiro e as configurações ficam só com você', 'Atalhos no menu do computador e na barra do celular'].map(x => (
+                    <li key={x} className="flex gap-2"><Check size={16} className="text-primary shrink-0 mt-0.5" />{x}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="md:col-span-3"><Recorte src="permissoes.webp" alt="Usuários e permissões" altura="h-56 md:h-72" /></div>
             </div>
           </div>
         </section>
