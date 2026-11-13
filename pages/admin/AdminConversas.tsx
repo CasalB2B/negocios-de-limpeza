@@ -96,6 +96,9 @@ export const AdminConversas: React.FC = () => {
       }
       setClientes(mapa);
       await carregarContatos();
+      // Coming from Orçamentos: ?fone=55279... opens that conversation.
+      const fone = new URLSearchParams((window.location.hash.split('?')[1] || '')).get('fone');
+      if (fone) abrir(fone.startsWith('55') ? fone : '55' + fone);
     })();
     // Live: new messages and contact changes (RLS keeps it to this company).
     const canal = supabase.channel('conversas')
@@ -284,6 +287,7 @@ export const AdminConversas: React.FC = () => {
                     {cli
                       ? <button onClick={() => navigate('/admin/clients')} className="hidden xl:inline-flex text-xs font-bold px-2.5 py-1.5 rounded-lg text-primary hover:bg-primary/5">Ver cliente</button>
                       : <button onClick={() => navigate('/admin/clients')} className="hidden xl:inline-flex text-xs font-bold px-2.5 py-1.5 rounded-lg text-primary hover:bg-primary/5">Cadastrar cliente</button>}
+                    <button onClick={() => navigate(`/admin/orcamentos?novo=1&nome=${encodeURIComponent(cli?.name || contato.nome || '')}&fone=${contato.phone}`)} className="inline-flex text-xs font-bold px-2.5 py-1.5 rounded-lg text-primary hover:bg-primary/5">Orçamento</button>
                     <button onClick={() => navigate('/admin/calendar')} className="hidden xl:inline-flex text-xs font-bold px-2.5 py-1.5 rounded-lg text-primary hover:bg-primary/5">Agendar</button>
                     {contato.atendente_id !== eu?.id && (
                       <button onClick={assumir} title="Eu vou atender" className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-green-50 text-green-700"><UserCheck size={14} /> <span className="hidden lg:inline">Atender</span></button>

@@ -265,9 +265,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       items: [
         { icon: <Calendar size={15} />,   label: 'Agendamento',   path: '/admin/calendar' },
         { icon: <Kanban size={15} />,     label: 'OS / Pipeline', path: '/admin/os' },
-        { icon: <MessageCircle size={15} />, label: 'Conversas',  path: '/admin/conversas' },
         { icon: <Contact size={15} />,    label: 'Clientes',      path: '/admin/clients' },
         { icon: <Sparkles size={15} />,   label: 'Serviços',      path: '/admin/services' },
+      ],
+    },
+    {
+      key: 'ATENDIMENTO',
+      label: 'Atendimento',
+      icon: <MessageCircle size={16} />,
+      items: [
+        { icon: <MessageCircle size={15} />, label: 'Conversas',  path: '/admin/conversas' },
+        { icon: <FileText size={15} />,      label: 'Orçamentos', path: '/admin/orcamentos' },
       ],
     },
     {

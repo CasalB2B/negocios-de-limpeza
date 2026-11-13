@@ -51,6 +51,7 @@ const RECURSOS: { icon: React.ElementType; t: string; slug?: string; d: string }
   { icon: Contact, t: 'Clientes', slug: 'clientes', d: 'Fixos, eventuais e novos, com histórico, endereços e clientes sumidos.' },
   { icon: Wallet, t: 'Cobrança automática', slug: 'cobranca', d: 'Link de sinal e de restante pela InfinitePay, com baixa sozinha.' },
   { icon: MessageCircle, t: 'WhatsApp automático', slug: 'whatsapp', d: 'Confirmação, lembrete na véspera e pós-serviço do seu número.' },
+  { icon: Kanban, t: 'Funil de orçamentos', slug: 'whatsapp', d: 'Quem mandou mensagem vira contato no funil; arraste até fechado e veja quanto está em jogo.' },
   { icon: MessageCircle, t: 'Conversas do WhatsApp', slug: 'whatsapp', d: 'O WhatsApp da empresa dentro do sistema, como no WhatsApp Web: a equipe responde e o número continua no celular.' },
   { icon: BarChart3, t: 'Financeiro', slug: 'financeiro', d: 'Contas, cartões, categorias, lançamentos e quanto sobrou no mês.' },
   { icon: Smartphone, t: 'App da profissional', slug: 'app-colaboradora', d: 'Agenda, endereço no mapa, check-in, fotos e quanto vai receber.' },

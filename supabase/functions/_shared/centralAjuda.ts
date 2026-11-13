@@ -259,13 +259,32 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     palavras: ['token', 'autenticação', 'authentication error', 'não chega', 'falhou', 'modelo', 'template', 'aprovação', 'criar modelo', 'reconectar'],
   },
   {
+    id: 'orcamentos-funil',
+    categoria: 'WhatsApp',
+    titulo: 'Orçamentos: o funil de quem pediu preço',
+    resumo: 'Acompanhe cada contato de Novo contato até Fechado, arrastando os cards.',
+    passos: [
+      'Abra Atendimento → Orçamentos. As colunas são: Novo contato, Orçamento a enviar, Orçamento enviado, Negociando, Fechado e Perdido (marque "Mostrar perdidos" para ver).',
+      'Arraste o card para a etapa certa, ou abra o card e toque na etapa.',
+      'No card: preencha o valor e toque em "Enviar pelo WhatsApp" (a mensagem do orçamento já vem pronta; o card vai sozinho para Orçamento enviado). Se passaram 24 horas da última mensagem do cliente, use Copiar e mande pelo celular.',
+      'Fechou? Toque em "Fechou: agendar" (o card vai para Fechado e abre a Agenda). Não fechou: "Marcar como perdido".',
+      'Para criar à mão: botão Novo (nome, WhatsApp, serviço e valor). Dentro de uma conversa em Atendimento → Conversas, o botão Orçamento cria o card com o nome e o número.',
+    ],
+    texto: [
+      'Contato novo entra sozinho: quando alguém que não é cliente nem da equipe manda a primeira mensagem para o WhatsApp da empresa, ele aparece em Novo contato, com o nome do perfil do WhatsApp e a primeira mensagem. Pedidos feitos pelo atendimento automático e pelo chat do site também entram aqui.',
+      'Em cima aparecem quantos estão em aberto, o valor total em jogo e quantos fecharam nos últimos 30 dias. Cards parados há 2 dias ou mais em Novo contato, Orçamento a enviar ou Orçamento enviado ganham o aviso "parado há X dias".',
+      'Quem pode usar: área "Orçamentos" em Usuários & Permissões (o perfil Atendimento já vem com ela).',
+    ],
+    palavras: ['orçamento', 'orçamentos', 'funil', 'pipeline', 'lead', 'leads', 'crm', 'proposta', 'novo contato', 'fechado', 'perdido'],
+  },
+  {
     id: 'conversas-whatsapp',
     categoria: 'WhatsApp',
     titulo: 'Conversas: o WhatsApp da empresa dentro do sistema',
     resumo: 'Ler e responder os clientes pelo sistema, como no WhatsApp Web, com o número continuando no celular.',
     passos: [
       'Primeiro conecte o WhatsApp da empresa em Configurações → WhatsApp, pela conexão oficial em modo coexistência (o número continua funcionando no app WhatsApp Business do celular).',
-      'Abra Operações → Conversas. À esquerda ficam os contatos (os não lidos com bolinha verde); toque em um para ver a conversa inteira.',
+      'Abra Atendimento → Conversas. À esquerda ficam os contatos (os não lidos com bolinha verde); toque em um para ver a conversa inteira.',
       'Responda pela caixa de baixo (Enter envia). O clipe envia foto, PDF, vídeo ou áudio.',
       'Atender: marca que você está cuidando daquela conversa (o nome aparece para a equipe). Resolver: tira da lista de abertas; se o cliente escrever de novo, ela reabre sozinha.',
       'Filtros: Abertas, Não lidas, Minhas (as que você atende) e Resolvidas. A busca procura nome, número ou texto.',
