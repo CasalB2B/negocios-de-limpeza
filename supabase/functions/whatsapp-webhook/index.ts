@@ -9,7 +9,7 @@
 //   message_template_status_update  modelo aprovado/rejeitado
 // Responde 200 na hora e processa em segundo plano (a Meta reenvia se demorar).
 
-import { supabase, getConnectionByPhoneId } from '../_shared/whatsapp.ts';
+import { supabase, getConnectionByPhoneId, toWaNumber } from '../_shared/whatsapp.ts';
 import { handleInbound, handleEcho } from '../_shared/waBot.ts';
 
 const VERIFY_TOKEN = Deno.env.get('WA_WEBHOOK_VERIFY_TOKEN') || '';
@@ -25,6 +25,31 @@ async function validSignature(raw: string, header: string | null): Promise<boole
   let diff = 0;
   for (let i = 0; i < hex.length; i++) diff |= hex.charCodeAt(i) ^ given.charCodeAt(i);
   return diff === 0;
+}
+
+// Old conversations from the phone: stored as status 'history' (they do not become new leads
+// nor unread conversations). Messages from the business number are "sent from the phone" (echo).
+async function importarHistorico(companyId: number, value: any): Promise<void> {
+  let total = 0;
+  for (const bloco of value.history ?? []) {
+    for (const thread of bloco.threads ?? []) {
+      const cliente = toWaNumber(thread.id || '');
+      if (cliente.length < 12) continue;
+      const linhas = (thread.messages ?? []).map((m: any) => {
+        const doCliente = toWaNumber(m.from || '') === cliente;
+        const texto = m.text?.body ?? m.image?.caption ?? m.video?.caption ?? m.document?.caption ?? `[${m.type}]`;
+        return {
+          company_id: companyId, wa_message_id: m.id, direction: doCliente ? 'in' : 'echo', phone: cliente, type: m.type,
+          body: texto, status: 'history', created_at: new Date(Number(m.timestamp || 0) * 1000 || Date.now()).toISOString(),
+        };
+      }).filter((l: any) => l.wa_message_id);
+      if (!linhas.length) continue;
+      await supabase.from('whatsapp_messages').upsert(linhas, { onConflict: 'wa_message_id', ignoreDuplicates: true });
+      total += linhas.length;
+    }
+  }
+  const fase = value.history?.[0]?.metadata;
+  console.log(`[WEBHOOK] histórico importado: ${total} mensagens${fase ? ` (fase ${fase.phase}, parte ${fase.chunk_order}, ${fase.progress}%)` : ''}`);
 }
 
 async function processChange(wabaId: string, field: string, value: any): Promise<void> {
@@ -52,14 +77,25 @@ async function processChange(wabaId: string, field: string, value: any): Promise
     return;
   }
 
-  if (field === 'history' || field === 'smb_app_state_sync') {
-    // A sincronização inicial só é registrada; as conversas antigas ficam no celular.
-    console.log(`[WEBHOOK] ${field}:`, JSON.stringify(value).slice(0, 200));
-    return;
-  }
-
   const conn = phoneNumberId ? await getConnectionByPhoneId(phoneNumberId) : null;
   if (!conn) { console.warn('[WEBHOOK] número não conectado:', phoneNumberId); return; }
+
+  // Coexistence: when the number is connected, Meta sends up to 6 months of the phone's conversations
+  // (history) and the phone's contacts (smb_app_state_sync). They fill the "Conversas" screen.
+  if (field === 'history') {
+    await importarHistorico(conn.company_id, value);
+    return;
+  }
+  if (field === 'smb_app_state_sync') {
+    for (const item of value.state_sync ?? []) {
+      const c = item.contact;
+      const fone = toWaNumber(c?.phone_number || '');
+      const nome = c?.full_name || c?.first_name || '';
+      if (item.type !== 'contact' || fone.length < 12 || !nome || item.action === 'remove') continue;
+      await supabase.from('whatsapp_contatos').upsert({ company_id: conn.company_id, phone: fone, nome }, { onConflict: 'company_id,phone' });
+    }
+    return;
+  }
 
   if (field === 'smb_message_echoes') {
     for (const echo of value.message_echoes ?? []) await handleEcho(conn, echo);

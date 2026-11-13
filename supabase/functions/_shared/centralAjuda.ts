@@ -293,6 +293,8 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       'Aparecem aqui: as mensagens dos clientes, o que for respondido pelo celular (com o ícone de celular), o que a equipe responder pelo sistema e as mensagens automáticas (lembretes, confirmações), marcadas como Automático. Os tiques mostram enviada, entregue e lida (azul).',
       'Se o número for de um cliente cadastrado, o nome do cadastro aparece no lugar do número.',
       'Regra do WhatsApp: só dá para mandar texto livre até 24 horas depois da última mensagem do cliente. Depois disso, responda pelo celular ou use um modelo aprovado (tela WhatsApp → Modelos); a tela avisa quando a janela fechou.',
+      'Etiquetas: dentro da conversa, toque em "+ Adicionar etiqueta" e escolha (Entrar em contato, Enviar orçamento, Orçamento enviado, Cliente, Urgente, Pós-venda) ou crie uma nova. As etiquetas aparecem na lista e servem de filtro (linha de etiquetas em cima da lista). As etiquetas do app WhatsApp Business do celular não vêm para o sistema: a Meta não as compartilha.',
+      'Histórico: quando o número da empresa é conectado em coexistência, a Meta envia até 6 meses de conversas antigas do celular e os contatos; eles aparecem aqui já como lidos, e não viram contatos novos no funil.',
       'Quem pode usar: em Usuários & Permissões, a área "Conversas do WhatsApp" (o perfil Atendimento já vem com ela). Com "Só ver", a pessoa lê mas não responde.',
     ],
     palavras: ['conversas', 'whatsapp web', 'responder cliente', 'caixa de entrada', 'inbox', 'atendimento', 'atendente', 'mensagens', 'coexistência', 'chat'],

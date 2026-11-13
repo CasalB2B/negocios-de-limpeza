@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, Check, CheckCheck, Clock, Loader2, MessageCircle, Paperclip, RotateCcw, Search, Send, Smartphone, UserCheck, X, Bot,
+  ArrowLeft, Check, CheckCheck, Clock, Loader2, MessageCircle, Paperclip, RotateCcw, Search, Send, Smartphone, UserCheck, X, Bot, Tag, Plus,
 } from 'lucide-react';
 import { Layout } from '../../components/Layout';
 import { UserRole } from '../../types';
@@ -17,7 +17,7 @@ import { waAdmin } from '../../lib/whatsapp';
 
 interface Contato {
   phone: string; nome: string | null; atendente_id: string | null; atendente_nome: string | null;
-  status: 'aberta' | 'resolvida'; lida_em: string | null; ultima_msg: string | null; ultima_direcao: string | null;
+  status: 'aberta' | 'resolvida'; lida_em: string | null; ultima_msg: string | null; ultima_direcao: string | null; etiquetas?: string[];
   ultima_em: string | null; ultima_entrada_em: string | null;
 }
 interface Mensagem { id: string; direction: 'in' | 'out' | 'echo'; body: string | null; type: string | null; status: string | null; created_at: string; template_name?: string | null }
@@ -52,6 +52,18 @@ const textoDe = (m: Mensagem) => {
 
 type Filtro = 'todas' | 'naolidas' | 'minhas' | 'resolvidas';
 
+// Our own labels (the WhatsApp Business app labels are not shared by Meta). Each company edits its list.
+interface Etiqueta { id?: string; nome: string; cor: string }
+const CORES: Record<string, string> = {
+  amber: 'bg-amber-100 text-amber-800', orange: 'bg-orange-100 text-orange-800', sky: 'bg-sky-100 text-sky-800',
+  green: 'bg-green-100 text-green-800', red: 'bg-red-100 text-red-700', violet: 'bg-violet-100 text-violet-800', gray: 'bg-gray-100 text-gray-700',
+};
+const ETIQUETAS_PADRAO: Etiqueta[] = [
+  { nome: 'Entrar em contato', cor: 'amber' }, { nome: 'Enviar orçamento', cor: 'orange' }, { nome: 'Orçamento enviado', cor: 'sky' },
+  { nome: 'Cliente', cor: 'green' }, { nome: 'Urgente', cor: 'red' }, { nome: 'Pós-venda', cor: 'violet' },
+];
+const corDa = (lista: Etiqueta[], nome: string) => CORES[lista.find(e => e.nome === nome)?.cor || 'gray'] || CORES.gray;
+
 export const AdminConversas: React.FC = () => {
   const navigate = useNavigate();
   const leitura = soLeitura('/admin/conversas');
@@ -68,6 +80,10 @@ export const AdminConversas: React.FC = () => {
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<Filtro>('todas');
   const [eu, setEu] = useState<{ id: string; nome: string } | null>(null);
+  const [etiquetas, setEtiquetas] = useState<Etiqueta[]>([]);
+  const [filtroEtiqueta, setFiltroEtiqueta] = useState<string | null>(null);
+  const [editandoEtiquetas, setEditandoEtiquetas] = useState(false);
+  const [novaEtiqueta, setNovaEtiqueta] = useState('');
   const fimRef = useRef<HTMLDivElement>(null);
   const arquivoRef = useRef<HTMLInputElement>(null);
   const abertoRef = useRef<string | null>(null);
@@ -95,6 +111,13 @@ export const AdminConversas: React.FC = () => {
         if (d.length >= 10) mapa.set((d.startsWith('55') ? d : '55' + d).slice(-11), { id: String(x.id), name: x.name });
       }
       setClientes(mapa);
+      const { data: et } = await supabase.from('whatsapp_etiquetas').select('id, nome, cor').eq('company_id', empresaId()).order('ordem');
+      if (et?.length) setEtiquetas(et as Etiqueta[]);
+      else {
+        const { data: criadas } = await supabase.from('whatsapp_etiquetas')
+          .insert(ETIQUETAS_PADRAO.map((e, i) => ({ ...e, ordem: i, company_id: empresaId() }))).select('id, nome, cor');
+        setEtiquetas((criadas as Etiqueta[]) ?? ETIQUETAS_PADRAO);
+      }
       await carregarContatos();
       // Coming from Orçamentos: ?fone=55279... opens that conversation.
       const fone = new URLSearchParams((window.location.hash.split('?')[1] || '')).get('fone');
@@ -145,13 +168,14 @@ export const AdminConversas: React.FC = () => {
   const lista = useMemo(() => {
     const q = busca.trim().toLowerCase();
     return contatos.filter(c => {
+      if (filtroEtiqueta && !(c.etiquetas || []).includes(filtroEtiqueta)) return false;
       if (filtro === 'naolidas' && !naoLida(c)) return false;
       if (filtro === 'minhas' && c.atendente_id !== eu?.id) return false;
       if (filtro === 'resolvidas' ? c.status !== 'resolvida' : filtro !== 'todas' && c.status === 'resolvida') return false;
       if (!q) return true;
       return nomeDe(c).toLowerCase().includes(q) || soDigitos(c.phone).includes(soDigitos(q) || '##') || (c.ultima_msg || '').toLowerCase().includes(q);
     });
-  }, [contatos, busca, filtro, clientes, eu]);
+  }, [contatos, busca, filtro, filtroEtiqueta, clientes, eu]);
 
   const contato = contatos.find(c => c.phone === aberto) || null;
 
@@ -195,6 +219,33 @@ export const AdminConversas: React.FC = () => {
     await supabase.from('whatsapp_contatos').update({ status }).eq('company_id', empresaId()).eq('phone', aberto);
   };
 
+  const alternarEtiqueta = async (nome: string) => {
+    if (!aberto) return;
+    const atual = contatos.find(c => c.phone === aberto)?.etiquetas || [];
+    const nova = atual.includes(nome) ? atual.filter(x => x !== nome) : [...atual, nome];
+    setContatos(l => l.map(c => c.phone === aberto ? { ...c, etiquetas: nova } : c));
+    await supabase.from('whatsapp_contatos').update({ etiquetas: nova }).eq('company_id', empresaId()).eq('phone', aberto);
+  };
+  const criarEtiqueta = async () => {
+    const nome = novaEtiqueta.trim().slice(0, 30);
+    if (!nome || etiquetas.some(e => e.nome.toLowerCase() === nome.toLowerCase())) { setNovaEtiqueta(''); return; }
+    const cores = Object.keys(CORES);
+    const cor = cores[etiquetas.length % cores.length];
+    const { data } = await supabase.from('whatsapp_etiquetas').insert({ company_id: empresaId(), nome, cor, ordem: etiquetas.length }).select('id, nome, cor').single();
+    setEtiquetas(l => [...l, (data as Etiqueta) ?? { nome, cor }]);
+    setNovaEtiqueta('');
+    if (aberto) alternarEtiqueta(nome);
+  };
+  const apagarEtiqueta = async (e: Etiqueta) => {
+    if (!window.confirm(`Apagar a etiqueta "${e.nome}"? Ela sai de todas as conversas.`)) return;
+    if (e.id) await supabase.from('whatsapp_etiquetas').delete().eq('id', e.id);
+    setEtiquetas(l => l.filter(x => x.nome !== e.nome));
+    const comEla = contatos.filter(c => (c.etiquetas || []).includes(e.nome));
+    setContatos(l => l.map(c => ({ ...c, etiquetas: (c.etiquetas || []).filter(x => x !== e.nome) })));
+    for (const c of comEla) await supabase.from('whatsapp_contatos').update({ etiquetas: (c.etiquetas || []).filter(x => x !== e.nome) }).eq('company_id', empresaId()).eq('phone', c.phone);
+    if (filtroEtiqueta === e.nome) setFiltroEtiqueta(null);
+  };
+
   const qtdNaoLidas = contatos.filter(c => c.status !== 'resolvida' && naoLida(c)).length;
 
   if (conectado === false) {
@@ -233,6 +284,15 @@ export const AdminConversas: React.FC = () => {
                   className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${filtro === k ? 'bg-green-600 text-white' : 'bg-gray-100 dark:bg-darkBg text-lightText'}`}>{l}</button>
               ))}
             </div>
+            {etiquetas.length > 0 && (
+              <div className="flex gap-1 overflow-x-auto no-scrollbar items-center">
+                <Tag size={12} className="text-gray-400 shrink-0" />
+                {etiquetas.map(e => (
+                  <button key={e.nome} onClick={() => setFiltroEtiqueta(f => f === e.nome ? null : e.nome)}
+                    className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${CORES[e.cor] || CORES.gray} ${filtroEtiqueta === e.nome ? 'ring-2 ring-offset-1 ring-green-600' : filtroEtiqueta ? 'opacity-50' : ''}`}>{e.nome}</button>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex-1 overflow-y-auto">
             {conectado === null && <p className="p-4 text-sm text-lightText flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Carregando…</p>}
@@ -255,6 +315,9 @@ export const AdminConversas: React.FC = () => {
                       <span className={`flex-1 truncate text-xs ${nl ? 'text-darkText dark:text-darkTextPrimary font-semibold' : 'text-lightText'}`}>{textoDe({ body: c.ultima_msg } as Mensagem)}</span>
                       {nl && <span className="w-2.5 h-2.5 rounded-full bg-green-600 shrink-0" />}
                     </span>
+                    {(c.etiquetas || []).length > 0 && (
+                      <span className="flex flex-wrap gap-1 mt-1">{(c.etiquetas || []).map(n => <span key={n} className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${corDa(etiquetas, n)}`}>{n}</span>)}</span>
+                    )}
                     {(c.atendente_nome || c.status === 'resolvida') && (
                       <span className="block text-[10px] text-lightText mt-0.5">{c.status === 'resolvida' ? '✓ Resolvida' : `Atendendo: ${c.atendente_nome}`}</span>
                     )}
@@ -298,6 +361,40 @@ export const AdminConversas: React.FC = () => {
                   </div>
                 )}
               </header>
+              <div className="px-3 py-1.5 bg-white/80 dark:bg-darkSurface/80 border-b border-gray-100 dark:border-darkBorder flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                <Tag size={12} className="text-gray-400 shrink-0" />
+                {(contato.etiquetas || []).map(n => (
+                  <span key={n} className={`shrink-0 inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${corDa(etiquetas, n)}`}>
+                    {n}{!leitura && <button onClick={() => alternarEtiqueta(n)} aria-label={`Tirar ${n}`}><X size={10} /></button>}
+                  </span>
+                ))}
+                {!leitura && (
+                  <button onClick={() => setEditandoEtiquetas(v => !v)} className="shrink-0 text-[11px] font-bold text-green-700 px-2 py-0.5 rounded-full border border-dashed border-green-300">
+                    {editandoEtiquetas ? 'Fechar' : (contato.etiquetas || []).length ? '+ etiqueta' : '+ Adicionar etiqueta'}
+                  </button>
+                )}
+              </div>
+              {editandoEtiquetas && !leitura && (
+                <div className="px-3 py-2 bg-white dark:bg-darkSurface border-b border-gray-100 dark:border-darkBorder space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {etiquetas.map(e => {
+                      const tem = (contato.etiquetas || []).includes(e.nome);
+                      return (
+                        <span key={e.nome} className={`inline-flex items-center gap-1 text-xs font-bold pl-2.5 pr-1.5 py-1 rounded-full ${CORES[e.cor] || CORES.gray} ${tem ? 'ring-2 ring-green-600' : ''}`}>
+                          <button onClick={() => alternarEtiqueta(e.nome)} className="inline-flex items-center gap-1">{tem && <Check size={11} />}{e.nome}</button>
+                          <button onClick={() => apagarEtiqueta(e)} className="opacity-40 hover:opacity-100" aria-label={`Apagar etiqueta ${e.nome}`}><X size={11} /></button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <div className="flex gap-2">
+                    <input value={novaEtiqueta} onChange={e => setNovaEtiqueta(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') criarEtiqueta(); }}
+                      placeholder="Nova etiqueta (ex.: Retornar amanhã)" maxLength={30}
+                      className="flex-1 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-darkBg border border-gray-200 dark:border-darkBorder text-xs outline-none focus:border-green-500 text-darkText dark:text-darkTextPrimary" />
+                    <button onClick={criarEtiqueta} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-bold"><Plus size={12} /> Criar</button>
+                  </div>
+                </div>
+              )}
 
               <div className="flex-1 overflow-y-auto px-3 md:px-8 py-4 space-y-1.5">
                 {carregandoMsgs && <p className="text-center text-xs text-lightText"><Loader2 size={14} className="inline animate-spin" /> Carregando…</p>}
