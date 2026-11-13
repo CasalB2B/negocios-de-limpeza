@@ -265,6 +265,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
       items: [
         { icon: <Calendar size={15} />,   label: 'Agendamento',   path: '/admin/calendar' },
         { icon: <Kanban size={15} />,     label: 'OS / Pipeline', path: '/admin/os' },
+        { icon: <MessageCircle size={15} />, label: 'Conversas',  path: '/admin/conversas' },
         { icon: <Contact size={15} />,    label: 'Clientes',      path: '/admin/clients' },
         { icon: <Sparkles size={15} />,   label: 'Serviços',      path: '/admin/services' },
       ],
@@ -598,7 +599,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, role }) => {
         </main>
         {isAdmin && <TesteEncerrado empresa={empresaAtual} onSair={handleLogout} naTelaDeAssinatura={location.pathname === '/admin/assinatura'} />}
 
-        {isAdmin && !reviewerMode && <GeminiChat />}
+        {/* The AI button would cover the send button of the WhatsApp screen. */}
+        {isAdmin && !reviewerMode && location.pathname !== '/admin/conversas' && <GeminiChat />}
 
         {/* Mobile Bottom Nav (Admin/Collab) */}
         <nav className="md:hidden bg-white dark:bg-darkSurface border-t border-gray-200 dark:border-darkBorder flex justify-around px-2 pt-2 fixed bottom-0 left-0 w-full z-40 pb-nav-safe">

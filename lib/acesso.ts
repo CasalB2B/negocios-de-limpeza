@@ -4,7 +4,7 @@
 import { supabase } from './supabase';
 
 export type AreaKey =
-  | 'dashboard' | 'agenda' | 'os' | 'clientes' | 'servicos'
+  | 'dashboard' | 'agenda' | 'os' | 'clientes' | 'servicos' | 'conversas'
   | 'rh_contratacao' | 'rh_profissionais' | 'rh_avisos' | 'rh_avaliacoes' | 'rh_desempenho' | 'rh_config'
   | 'financeiro' | 'recebimentos' | 'estoque' | 'nfe'
   | 'config' | 'whatsapp' | 'assinatura';
@@ -17,6 +17,7 @@ export const AREAS: Area[] = [
   { key: 'os', label: 'OS / Pipeline', grupo: 'Operações', paths: ['/admin/os'] },
   { key: 'clientes', label: 'Clientes', grupo: 'Operações', paths: ['/admin/clients', '/admin/crm', '/admin/marketing'] },
   { key: 'servicos', label: 'Serviços e preços', grupo: 'Operações', paths: ['/admin/services'] },
+  { key: 'conversas', label: 'Conversas do WhatsApp', grupo: 'Operações', paths: ['/admin/conversas'], dica: 'Ler e responder os clientes pelo WhatsApp da empresa' },
   { key: 'rh_contratacao', label: 'Contratação', grupo: 'Recursos Humanos', paths: ['/admin/rh/contratacao'] },
   { key: 'rh_profissionais', label: 'Profissionais', grupo: 'Recursos Humanos', paths: ['/admin/rh/colaboradoras', '/admin/rh/plano-carreira', '/admin/collaborators', '/admin/rh'], dica: 'Cadastro, acesso ao app e pagamentos da equipe' },
   { key: 'rh_avisos', label: 'Avisos para a equipe', grupo: 'Recursos Humanos', paths: ['/admin/avisos'] },
@@ -35,7 +36,7 @@ export const AREAS: Area[] = [
 // Ready-made profiles; the owner can still tick or untick each area.
 export const PERFIS: { key: string; label: string; descricao: string; areas: AreaKey[]; somenteVer?: AreaKey[] }[] = [
   { key: 'atendimento', label: 'Atendimento', descricao: 'Agenda, ordens de serviço e clientes',
-    areas: ['dashboard', 'agenda', 'os', 'clientes', 'servicos', 'recebimentos'] },
+    areas: ['dashboard', 'agenda', 'os', 'clientes', 'servicos', 'recebimentos', 'conversas'] },
   { key: 'lider', label: 'Líder de equipe', descricao: 'Vê a agenda e as OS sem alterar; registra o diário, os feedbacks e o desempenho da equipe',
     areas: ['agenda', 'os', 'clientes', 'rh_profissionais', 'rh_avisos', 'rh_avaliacoes', 'rh_desempenho'],
     somenteVer: ['agenda', 'os', 'clientes', 'rh_avaliacoes'] },

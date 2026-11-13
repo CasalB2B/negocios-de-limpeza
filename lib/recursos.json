@@ -278,6 +278,10 @@
     "whatsapp": true,
     "beneficios": [
       {
+        "t": "Conversas como no WhatsApp Web",
+        "d": "Todas as conversas do número da empresa aparecem no sistema: a equipe lê, responde, marca quem está atendendo e resolve. O número continua funcionando no celular."
+      },
+      {
         "t": "Confirmação do agendamento",
         "d": "Assim que você agenda, o cliente recebe data, horário e endereço."
       },

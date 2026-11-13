@@ -75,6 +75,12 @@ async function processChange(wabaId: string, field: string, value: any): Promise
     }
     const names: Record<string, string> = {};
     for (const c of value.contacts ?? []) names[c.wa_id] = c.profile?.name || '';
+    // Profile name for the "Conversas" screen (never overwrites a name typed by the team).
+    for (const [phone, nome] of Object.entries(names)) {
+      if (!nome) continue;
+      await supabase.from('whatsapp_contatos').upsert({ company_id: conn.company_id, phone, nome }, { onConflict: 'company_id,phone', ignoreDuplicates: true });
+      await supabase.from('whatsapp_contatos').update({ nome }).eq('company_id', conn.company_id).eq('phone', phone).is('nome', null);
+    }
     for (const msg of value.messages ?? []) {
       try { await handleInbound(conn, msg, names[msg.from] || ''); }
       catch (e) { console.error('[WEBHOOK] erro ao tratar mensagem:', e); }
