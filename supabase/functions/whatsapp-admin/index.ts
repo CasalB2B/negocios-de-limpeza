@@ -50,12 +50,47 @@ async function requestSync(companyId: number, phoneNumberId: string, token: stri
   return out;
 }
 
+// Quem pode usar:
+//  - painel: usuário logado (JWT do Supabase Auth) com perfil ADMIN; REVIEWER só consulta o 'status'.
+//    A empresa vem do perfil (app_users.company_id), nunca do corpo do pedido;
+//  - servidor→servidor: cabeçalho x-wa-internal-secret igual ao segredo WA_INTERNAL_SECRET;
+//    aí o company_id do corpo é aceito (obrigatório).
+const INTERNAL_SECRET = Deno.env.get('WA_INTERNAL_SECRET') ?? '';
+const READ_ONLY_ACTIONS = ['status'];
+
+function sameSecret(a: string, b: string): boolean {
+  if (!a || !b || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+async function callerCompany(req: Request, action: string, bodyCompanyId: unknown): Promise<{ companyId: number } | { status: number; error: string }> {
+  const secret = req.headers.get('x-wa-internal-secret') ?? '';
+  if (secret) {
+    if (!sameSecret(secret, INTERNAL_SECRET)) return { status: 401, error: 'Não autorizado.' };
+    const companyId = Number(bodyCompanyId);
+    return companyId > 0 ? { companyId } : { status: 400, error: 'company_id obrigatório.' };
+  }
+  const token = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
+  if (!token) return { status: 401, error: 'Entre no sistema primeiro.' };
+  const { data } = await supabase.auth.getUser(token);
+  if (!data?.user) return { status: 401, error: 'Entre no sistema primeiro.' };
+  const { data: me } = await supabase.from('app_users').select('role, company_id, bloqueado').eq('auth_id', data.user.id).maybeSingle();
+  const allowed = me && !me.bloqueado && (me.role === 'ADMIN' || (me.role === 'REVIEWER' && READ_ONLY_ACTIONS.includes(action)));
+  if (!allowed) return { status: 403, error: 'Só administradores mexem na conexão do WhatsApp.' };
+  const companyId = Number(me.company_id);
+  return companyId > 0 ? { companyId } : { status: 403, error: 'Perfil sem empresa.' };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   let body: any = {};
   try { body = await req.json(); } catch { /* sem corpo */ }
-  const companyId = Number(body.company_id) || 1;
-  const action = body.action as string;
+  const action = String(body.action || '');
+  const who = await callerCompany(req, action, body.company_id);
+  if ('status' in who) return json({ ok: false, error: who.error }, who.status);
+  const companyId = who.companyId;
 
   try {
     if (action === 'status') {
