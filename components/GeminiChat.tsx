@@ -456,6 +456,13 @@ export const GeminiChat: React.FC = () => {
               )}
             </div>
 
+            {!painel && (
+              <button onClick={() => { setOpen(false); window.location.hash = '#/suporte'; }}
+                className="shrink-0 text-[11px] text-lightText hover:text-primary underline underline-offset-2 py-1.5">
+                Falar com uma pessoa do suporte
+              </button>
+            )}
+
             {/* Input */}
             {!painel && (
               <div className="px-3 pt-2.5 border-t border-gray-100 dark:border-darkBorder shrink-0" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>

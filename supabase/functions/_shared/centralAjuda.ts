@@ -57,6 +57,24 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     palavras: ['começar', 'primeiro acesso', 'configurar', 'implantação'],
   },
   {
+    id: 'suporte',
+    categoria: 'Conta e assinatura',
+    titulo: 'Falar com o suporte (chat, chamado e WhatsApp)',
+    resumo: 'Como pedir ajuda para a equipe da Negócios de Limpeza Gestão.',
+    passos: [
+      'Abra Configurações → Suporte (ou toque em "Falar com uma pessoa do suporte", embaixo do chat do assistente).',
+      'Conversar agora: abre um chat ao vivo com a equipe de suporte. Você recebe uma notificação no celular quando responderem.',
+      'Abrir chamado: para erro ou pedido que precisa de mais tempo. Escolha o tipo (Dúvida, Erro, Sugestão, Assinatura e pagamento), escreva o que aconteceu (em qual tela, o que você fez, o que apareceu) e anexe um print. O chamado ganha um número.',
+      'WhatsApp do suporte: quando aparece o cartão verde, toque em "Chamar no WhatsApp" ou copie o número.',
+    ],
+    texto: [
+      'Etapas do chamado: Aberto → Em atendimento → Com o desenvolvedor (quando precisa de ajuste no sistema) → Aguardando você (quando o suporte precisa de uma resposta sua) → Resolvido. Se você escrever num chamado resolvido, ele reabre.',
+      'Em "Seus atendimentos" ficam todas as conversas e chamados, com a etapa e uma bolinha quando há resposta nova.',
+      'Antes de chamar o suporte, vale perguntar ao assistente (botão roxo com estrelinhas): ele responde na hora pelo conteúdo desta Central de Ajuda.',
+    ],
+    palavras: ['suporte', 'ajuda', 'chamado', 'ticket', 'chat', 'atendimento', 'falar com alguém', 'erro', 'bug', 'reclamação', 'whatsapp do suporte'],
+  },
+  {
     id: 'ver-como',
     categoria: 'Conta e assinatura',
     titulo: 'Usuários e permissões',

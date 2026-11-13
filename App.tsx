@@ -51,6 +51,8 @@ import { AdminCRM } from './pages/admin/AdminCRM';
 import { AdminInbox } from './pages/admin/AdminInbox';
 import { AdminConversas } from './pages/admin/AdminConversas';
 import { AdminOrcamentos } from './pages/admin/AdminOrcamentos';
+import { AdminSuporte } from './pages/admin/AdminSuporte';
+import { Suporte } from './pages/Suporte';
 import { AdminAnalytics } from './pages/admin/AdminAnalytics';
 import { QuoteChat } from './pages/client/QuoteChat';
 import { PWAManager } from './components/PWAManager';
@@ -205,6 +207,8 @@ const App: React.FC = () => {
               <Route path="/admin/inbox" element={<AdminInbox />} />
               <Route path="/admin/conversas" element={<AdminConversas />} />
               <Route path="/admin/orcamentos" element={<AdminOrcamentos />} />
+              <Route path="/admin/suporte" element={<AdminSuporte />} />
+              <Route path="/suporte" element={<Suporte />} />
                   <Route path="/admin/analytics" element={<AdminAnalytics />} />
               <Route path="/admin/payments" element={<Navigate to="/admin/financeiro" replace />} />
               <Route path="/admin/financeiro" element={<FinPainel />} />

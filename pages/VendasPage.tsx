@@ -84,6 +84,7 @@ const FAQ = [
   { p: 'Quanto custa o WhatsApp?', r: 'Cada plano inclui um limite de lembretes automáticos por mês. A Meta cobra direto no seu cartão só o que for enviado (centavos por mensagem). Para enviar mais ou usar o atendimento automático, há o adicional.' },
   { p: 'Meus dados ficam seguros?', r: 'Sim. Cada empresa só acessa os próprios dados, com login protegido. Nenhuma outra empresa vê seus clientes, sua equipe ou seu financeiro.' },
   { p: 'Emite nota fiscal?', r: 'Sim, com o adicional de Nota Fiscal (NFS-e), emitida com o CNPJ e o certificado da sua empresa.' },
+  { p: 'E se eu precisar de ajuda?', r: 'O assistente com IA responde na hora dentro do sistema. Se precisar de uma pessoa, em Suporte você conversa ao vivo com a nossa equipe, abre um chamado e acompanha cada etapa, ou chama no WhatsApp do suporte.' },
   { p: 'Posso cancelar quando quiser?', r: 'Sim. No plano mensal não tem fidelidade nem multa.' },
 ];
 
