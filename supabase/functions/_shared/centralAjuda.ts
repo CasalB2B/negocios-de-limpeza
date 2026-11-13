@@ -426,7 +426,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     resumo: 'Tire dúvidas de uso e pergunte sobre os números da empresa, por texto, áudio ou print.',
     texto: [
       'Botão roxo com estrelinhas, no canto inferior direito de todas as telas do painel. É uma conversa só: você não precisa escolher o tipo; o assistente entende se é uma dúvida de como usar o sistema (responde com base nesta Central de Ajuda) ou uma pergunta sobre o negócio (consulta os dados: faturamento, a receber, links não pagos, sinais pendentes, agenda, retorno por profissional, clientes sumidos, avaliações, estoque e pagamentos).',
-      'Áudio: toque no microfone, fale a pergunta e toque no quadrado para enviar (ou em Cancelar). O assistente mostra o que entendeu e responde. No celular, na primeira vez ele pede permissão para usar o microfone.',
+      'Falar em vez de digitar: toque no microfone, fale a pergunta e toque em Pronto (ou Cancelar). O que você falou vira texto na caixa de mensagem: confira, corrija se alguma palavra saiu errada e toque em enviar. No celular, na primeira vez ele pede permissão para usar o microfone.',
       'Foto, print ou PDF: toque no clipe e escolha até 3 arquivos (ex.: o print de uma mensagem de erro, a foto de um orçamento). Dá para escrever uma pergunta junto.',
       'Conversas anteriores (ícone de relógio, em cima): lista das suas conversas para voltar a qualquer uma; o lápis começa uma conversa nova. Ficam salvas na sua conta, no computador e no celular.',
       'Respostas salvas (ícone de marcador): toque em Salvar embaixo de uma resposta útil (ex.: um passo a passo) para guardar e achar depois.',

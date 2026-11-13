@@ -130,6 +130,8 @@ export const GeminiChat: React.FC = () => {
   const [salvos, setSalvos] = useState<{ id: string; pergunta: string | null; resposta: string; criado_em: string }[]>([]);
   const [salvas, setSalvas] = useState<Set<number>>(new Set());
   const [gravando, setGravando] = useState<{ inicio: number } | null>(null);
+  const [transcrevendo, setTranscrevendo] = useState(false);
+  const [ditado, setDitado] = useState(false);
   const [segundos, setSegundos] = useState(0);
   const gravador = useRef<{ rec: MediaRecorder; partes: Blob[]; stream: MediaStream; cancelar: boolean } | null>(null);
   const corpoRef = useRef<HTMLDivElement>(null);
@@ -182,7 +184,7 @@ export const GeminiChat: React.FC = () => {
     const text = (textoDireto ?? input).trim();
     const lista = anexosDiretos ?? anexos;
     if ((!text && !lista.length) || loading) return;
-    setInput(''); setAnexos([]); setError(''); setPainel(null);
+    setInput(''); setAnexos([]); setError(''); setPainel(null); setDitado(false);
 
     const minha: Message = { role: 'user', content: text, anexos: lista.map(({ tipo, nome, previa, segundos: s }) => ({ tipo, nome, previa, segundos: s })) };
     const novas: Message[] = [...messages, minha];
@@ -260,9 +262,23 @@ export const GeminiChat: React.FC = () => {
         if (atual.cancelar) return;
         const blob = new Blob(atual.partes, { type: rec.mimeType || tipo || 'audio/webm' });
         const seg = (Date.now() - inicio) / 1000;
-        if (seg < 0.8 || !blob.size) { setError('Áudio muito curto. Segure e fale a sua pergunta.'); return; }
+        if (seg < 0.8 || !blob.size) { setError('Áudio muito curto. Toque no microfone e fale a sua pergunta.'); return; }
         const mime = (blob.type || 'audio/webm').split(';')[0];
-        await enviar(input.trim(), [...anexos, { tipo: 'audio', nome: 'audio', mime, dados: await paraBase64(blob), segundos: seg }]);
+        // Dictation: the text goes into the box so the person can fix a wrong word before sending.
+        setTranscrevendo(true);
+        try {
+          const { data, error: e } = await supabase.functions.invoke('assistente', { body: { acao: 'transcrever', audio: { mime, dados: await paraBase64(blob) } } });
+          if (e || data?.error) throw new Error(data?.error || e?.message);
+          const texto = String(data?.texto || '').trim();
+          if (!texto) { setError('Não entendi o áudio. Tente falar de novo, mais perto do microfone.'); return; }
+          setInput(antes => (antes.trim() ? antes.trim() + ' ' : '') + texto);
+          setDitado(true);
+          setTimeout(() => { const el = inputRef.current; if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }, 50);
+        } catch {
+          setError('Não consegui transcrever agora. Tente de novo ou escreva a pergunta.');
+        } finally {
+          setTranscrevendo(false);
+        }
       };
       rec.start();
       setSegundos(0);
@@ -458,18 +474,26 @@ export const GeminiChat: React.FC = () => {
                 {gravando ? (
                   <div className="flex items-center gap-2 h-11">
                     <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                    <span className="flex-1 text-sm font-semibold text-darkText dark:text-darkTextPrimary">Gravando… {duracao(segundos)}</span>
+                    <span className="flex-1 text-sm font-semibold text-darkText dark:text-darkTextPrimary">Ouvindo… {duracao(segundos)}</span>
                     <button onClick={() => pararGravacao(true)} className="px-3 h-10 rounded-xl text-xs font-bold text-lightText">Cancelar</button>
-                    <button onClick={() => pararGravacao(false)} className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center" aria-label="Parar e enviar"><Square size={14} className="fill-current" /></button>
+                    <button onClick={() => pararGravacao(false)} className="flex items-center gap-1.5 px-3 h-10 rounded-xl bg-primary text-white text-xs font-bold" aria-label="Parar e transcrever"><Square size={12} className="fill-current" /> Pronto</button>
+                  </div>
+                ) : transcrevendo ? (
+                  <div className="flex items-center gap-2 h-11 text-sm text-lightText dark:text-darkTextSecondary">
+                    <Loader2 size={15} className="animate-spin text-primary" /> Transcrevendo o que você falou…
                   </div>
                 ) : (
+                  <div className="space-y-1.5">
+                  {ditado && input.trim() && (
+                    <p className="text-[11px] text-primary font-semibold px-1">Confira o texto. Se alguma palavra saiu errada, corrija e toque em enviar.</p>
+                  )}
                   <div className="flex items-end gap-1.5">
                     <input ref={arquivoRef} type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={e => escolherArquivos(e.target.files)} />
                     <button onClick={() => arquivoRef.current?.click()} className="w-10 h-10 shrink-0 rounded-xl text-lightText hover:text-primary hover:bg-primary/5 flex items-center justify-center" aria-label="Anexar foto, print ou PDF" title="Anexar foto, print ou PDF">
                       <Paperclip size={18} />
                     </button>
                     <textarea
-                      ref={inputRef} rows={1} value={input}
+                      ref={inputRef} rows={input.length > 60 ? 3 : 1} value={input}
                       onChange={e => setInput(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }}
                       placeholder="Digite uma mensagem"
@@ -480,10 +504,11 @@ export const GeminiChat: React.FC = () => {
                         <Send size={16} />
                       </button>
                     ) : (
-                      <button onClick={gravar} disabled={loading} className="w-10 h-10 shrink-0 bg-primary hover:brightness-110 disabled:opacity-40 text-white rounded-full flex items-center justify-center active:scale-95" aria-label="Gravar áudio" title="Gravar áudio">
+                      <button onClick={gravar} disabled={loading} className="w-10 h-10 shrink-0 bg-primary hover:brightness-110 disabled:opacity-40 text-white rounded-full flex items-center justify-center active:scale-95" aria-label="Falar (vira texto)" title="Falar: vira texto para você conferir antes de enviar">
                         <Mic size={17} />
                       </button>
                     )}
+                  </div>
                   </div>
                 )}
               </div>

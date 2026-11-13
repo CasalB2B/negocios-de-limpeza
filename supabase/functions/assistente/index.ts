@@ -91,14 +91,30 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   try {
-    const corpoReq = (await req.json()) as { modo?: 'ajuda' | 'gestao' | 'auto'; messages: Msg[] };
-    const messages = corpoReq.messages;
-    const modo = corpoReq.modo ?? 'auto';
-    if (!Array.isArray(messages) || messages.length === 0) return json({ error: 'Mensagem vazia.' }, 400);
+    const corpoReq = (await req.json()) as { acao?: string; audio?: Anexo; modo?: 'ajuda' | 'gestao' | 'auto'; messages: Msg[] };
 
     const { data: settings } = await db.from('platform_settings').select('gemini_key').eq('id', 1).single();
     const apiKey = settings?.gemini_key || Deno.env.get('GEMINI_API_KEY');
     if (!apiKey) return json({ error: 'Gemini não configurado. Adicione a chave em Configurações > Integrações.' }, 503);
+
+    // Dictation: the chat records the voice, we only turn it into text; the person checks/edits it and sends.
+    if (corpoReq.acao === 'transcrever') {
+      const a = corpoReq.audio;
+      if (!a?.dados || !MIMES_OK.test(a.mime || '') || !/^audio\//i.test(a.mime)) return json({ error: 'Áudio inválido.' }, 400);
+      if (a.dados.length > 10_000_000) return json({ error: 'Áudio longo demais.' }, 400);
+      const { ok, data } = await generateContent(apiKey, {
+        systemInstruction: { parts: [{ text: 'Você transcreve áudios em português do Brasil. Responda SOMENTE com o texto falado, com pontuação correta e sem comentários. Termos comuns do sistema: faxina, profissional, agendamento, OS, sinal, InfinitePay, WhatsApp. Se não houver fala, responda vazio.' }] },
+        contents: [{ role: 'user', parts: [{ inlineData: { mimeType: a.mime.split(';')[0], data: a.dados } }, { text: 'Transcreva este áudio.' }] }],
+        generationConfig: { temperature: 0 },
+      });
+      if (!ok) return json({ error: data?.error?.message ?? 'Falha ao transcrever' }, 502);
+      const texto = (data.candidates?.[0]?.content?.parts ?? []).map((p: any) => p.text ?? '').join('').trim();
+      return json({ texto });
+    }
+
+    const messages = corpoReq.messages;
+    const modo = corpoReq.modo ?? 'auto';
+    if (!Array.isArray(messages) || messages.length === 0) return json({ error: 'Mensagem vazia.' }, 400);
 
     // Who is asking: business numbers only for a logged-in member, and only of their own company.
     const auth = req.headers.get('Authorization') ?? '';
