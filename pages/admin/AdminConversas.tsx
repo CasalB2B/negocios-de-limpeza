@@ -196,7 +196,10 @@ export const AdminConversas: React.FC = () => {
     setEnviando(false);
     if (error || !data?.ok) {
       const fora = data?.code === 131047 || String(data?.error || '').includes('24');
-      setAviso(fora ? 'O cliente não mandou mensagem nas últimas 24 horas. Pela regra do WhatsApp, só dá para responder pelo celular ou com um modelo aprovado (tela WhatsApp → Modelos).' : (data?.error || 'Não foi possível enviar.'));
+      const tokenVencido = /authentication|access token|oauth|session has expired/i.test(String(data?.error || ''));
+      setAviso(fora ? 'O cliente não mandou mensagem nas últimas 24 horas. Pela regra do WhatsApp, só dá para responder pelo celular ou com um modelo aprovado (tela WhatsApp → Modelos).'
+        : tokenVencido ? 'A chave de acesso da Meta (token) venceu, então o sistema não consegue enviar. Receber continua funcionando. Troque a chave em Configurações → WhatsApp → "Trocar o token ou o número".'
+        : (data?.error || 'Não foi possível enviar.'));
       if (fora) setJanelaAberta(false);
       return;
     }
@@ -213,7 +216,10 @@ export const AdminConversas: React.FC = () => {
     const { data } = await supabase.functions.invoke('whatsapp-send', { body: { action: 'sendMedia', payload: { number: aberto, base64, mimeType: f.type || 'application/octet-stream', mediaType: tipo, fileName: f.name, caption: texto.trim() } } });
     setEnviando(false);
     if (arquivoRef.current) arquivoRef.current.value = '';
-    if (!data?.ok) { setAviso(data?.error || 'Não foi possível enviar o arquivo.'); return; }
+    if (!data?.ok) {
+      setAviso(/authentication|access token|oauth/i.test(String(data?.error || '')) ? 'A chave de acesso da Meta (token) venceu. Troque em Configurações → WhatsApp → "Trocar o token ou o número".' : (data?.error || 'Não foi possível enviar o arquivo.'));
+      return;
+    }
     setTexto('');
   };
 
