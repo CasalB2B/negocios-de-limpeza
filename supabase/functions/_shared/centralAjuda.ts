@@ -259,6 +259,26 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     palavras: ['token', 'autenticação', 'authentication error', 'não chega', 'falhou', 'modelo', 'template', 'aprovação', 'criar modelo', 'reconectar'],
   },
   {
+    id: 'conversas-whatsapp',
+    categoria: 'WhatsApp',
+    titulo: 'Conversas: o WhatsApp da empresa dentro do sistema',
+    resumo: 'Ler e responder os clientes pelo sistema, como no WhatsApp Web, com o número continuando no celular.',
+    passos: [
+      'Primeiro conecte o WhatsApp da empresa em Configurações → WhatsApp, pela conexão oficial em modo coexistência (o número continua funcionando no app WhatsApp Business do celular).',
+      'Abra Operações → Conversas. À esquerda ficam os contatos (os não lidos com bolinha verde); toque em um para ver a conversa inteira.',
+      'Responda pela caixa de baixo (Enter envia). O clipe envia foto, PDF, vídeo ou áudio.',
+      'Atender: marca que você está cuidando daquela conversa (o nome aparece para a equipe). Resolver: tira da lista de abertas; se o cliente escrever de novo, ela reabre sozinha.',
+      'Filtros: Abertas, Não lidas, Minhas (as que você atende) e Resolvidas. A busca procura nome, número ou texto.',
+    ],
+    texto: [
+      'Aparecem aqui: as mensagens dos clientes, o que for respondido pelo celular (com o ícone de celular), o que a equipe responder pelo sistema e as mensagens automáticas (lembretes, confirmações), marcadas como Automático. Os tiques mostram enviada, entregue e lida (azul).',
+      'Se o número for de um cliente cadastrado, o nome do cadastro aparece no lugar do número.',
+      'Regra do WhatsApp: só dá para mandar texto livre até 24 horas depois da última mensagem do cliente. Depois disso, responda pelo celular ou use um modelo aprovado (tela WhatsApp → Modelos); a tela avisa quando a janela fechou.',
+      'Quem pode usar: em Usuários & Permissões, a área "Conversas do WhatsApp" (o perfil Atendimento já vem com ela). Com "Só ver", a pessoa lê mas não responde.',
+    ],
+    palavras: ['conversas', 'whatsapp web', 'responder cliente', 'caixa de entrada', 'inbox', 'atendimento', 'atendente', 'mensagens', 'coexistência', 'chat'],
+  },
+  {
     id: 'lembretes-automaticos',
     categoria: 'WhatsApp e lembretes',
     titulo: 'Lembretes e avisos automáticos',
