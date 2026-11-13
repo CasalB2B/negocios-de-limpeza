@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase';
 import { empresaId } from '../../lib/empresa';
 import { soLeitura } from '../../lib/acesso';
 import { waAdmin } from '../../lib/whatsapp';
+import { WA_TEMPLATES, fillTemplate } from '../../supabase/functions/_shared/waTemplates';
 
 // "Conversas": the company's WhatsApp inside the system, like WhatsApp Web. With the official
 // connection in coexistence mode the number keeps working on the phone; messages from clients,
@@ -44,7 +45,15 @@ const tituloDia = (iso: string) => {
   return d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
 };
 const naoLida = (c: Contato) => !!c.ultima_entrada_em && (!c.lida_em || c.ultima_entrada_em > c.lida_em);
+// Automatic messages are stored with only their variables ("Carlos | Maria | link"): rebuild the full text the client got.
+const textoModelo = (m: Mensagem) => {
+  const t = WA_TEMPLATES.find(x => x.name === m.template_name);
+  const corpo = m.body || '';
+  // Sent with the full text as preview → show it; sent with only the variables ("a | b | c") → fill the model.
+  return t && corpo.includes(' | ') ? fillTemplate(t.body, corpo.split(' | ')) : corpo;
+};
 const textoDe = (m: Mensagem) => {
+  if (m.template_name) return textoModelo(m);
   const b = m.body || '';
   const tipos: Record<string, string> = { '[image]': '📷 Foto', '[audio]': '🎤 Áudio', '[video]': '🎬 Vídeo', '[document]': '📄 Documento', '[sticker]': 'Figurinha', '[location]': '📍 Localização', '[reaction]': 'Reação' };
   return tipos[b] || b || (m.type ? `[${m.type}]` : '');
@@ -406,11 +415,12 @@ export const AdminConversas: React.FC = () => {
                       {novoDia && <div className="flex justify-center my-2"><span className="text-[11px] font-semibold bg-white/90 dark:bg-darkSurface text-lightText px-3 py-1 rounded-lg shadow-sm capitalize">{tituloDia(m.created_at)}</span></div>}
                       <div className={`flex ${minha ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[80%] md:max-w-[65%] rounded-xl px-3 py-1.5 shadow-sm text-sm whitespace-pre-wrap break-words ${minha ? 'bg-[#d9fdd3] dark:bg-[#005c4b] dark:text-white rounded-tr-sm' : 'bg-white dark:bg-darkSurface text-darkText dark:text-darkTextPrimary rounded-tl-sm'}`}>
-                          {minha && m.direction === 'out' && (m.template_name ? <p className="text-[10px] font-bold text-green-700 dark:text-green-300 flex items-center gap-1 mb-0.5"><Bot size={11} /> Automático · {m.template_name}</p> : null)}
+                          {minha && m.direction === 'out' && (m.template_name ? <p className="text-[10px] font-bold text-green-700 dark:text-green-300 flex items-center gap-1 mb-0.5"><Bot size={11} /> Mensagem automática{WA_TEMPLATES.find(x => x.name === m.template_name) ? ` · ${WA_TEMPLATES.find(x => x.name === m.template_name)!.label}` : ''}</p> : null)}
                           <span>{textoDe(m)}</span>
                           <span className="float-right ml-2 mt-1 flex items-center gap-1 text-[10px] text-gray-500 dark:text-white/60">
                             {m.direction === 'echo' && <Smartphone size={10} />}
                             {hora(m.created_at)}
+                            {m.status === 'failed' && <span className="text-red-500 font-semibold">não entregue</span>}
                             {minha && (m.status === 'read' ? <CheckCheck size={13} className="text-sky-500" /> : m.status === 'delivered' ? <CheckCheck size={13} /> : m.status === 'failed' ? <X size={12} className="text-red-500" /> : <Check size={12} />)}
                           </span>
                         </div>

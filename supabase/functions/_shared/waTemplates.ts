@@ -71,7 +71,7 @@ export const WA_TEMPLATES: WaTemplateDef[] = [
   },
   {
     name: 'avaliacao_colaboradora',
-    label: 'Avaliação da colaboradora',
+    label: 'Avaliação da profissional',
     category: 'UTILITY',
     body: 'Olá, {{1}}! Como foi o atendimento de {{2}} na sua última limpeza? Deixe sua nota e um comentário neste link:\n{{3}}\n\nSua opinião ajuda a nossa equipe a melhorar sempre.',
     example: ['Ana', 'Maria', 'https://app.suaempresa.com.br/#/avaliar?c=exemplo'],
