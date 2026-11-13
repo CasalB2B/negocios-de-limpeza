@@ -182,7 +182,7 @@ export const AdminWhatsApp: React.FC = () => {
   };
 
   const fetchTemplates = async () => {
-    const { data } = await supabase.from('whatsapp_templates').select('name, status, rejected_reason, body, custom, category').eq('company_id', 1);
+    const { data } = await supabase.from('whatsapp_templates').select('name, status, rejected_reason, body, custom, category').eq('company_id', empresaId());
     const map: Record<string, { status: string; rejected_reason?: string | null }> = {};
     for (const t of data ?? []) map[t.name] = { status: t.status, rejected_reason: t.rejected_reason };
     setTplStatus(map);
