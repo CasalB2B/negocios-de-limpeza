@@ -70,6 +70,8 @@
 	<string>A localização mostra à empresa onde a colaboradora está durante o expediente e confirma o check-in no endereço do serviço.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>A câmera é usada para tirar as fotos de antes e depois da limpeza.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>O microfone é usado para mandar perguntas por áudio ao assistente.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>A galeria é usada para enviar fotos do serviço e do perfil.</string>
 	<key>UIBackgroundModes</key>

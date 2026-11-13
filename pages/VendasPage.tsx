@@ -59,7 +59,7 @@ const RECURSOS: { icon: React.ElementType; t: string; slug?: string; d: string }
   { icon: MapPin, t: 'Mapa da equipe', d: 'Onde cada profissional está, em tempo real.' },
   { icon: Package, t: 'Estoque', d: 'Produtos e equipamentos com alerta de estoque baixo.' },
   { icon: FileText, t: 'Nota fiscal', d: 'NFS-e com o CNPJ da sua empresa (adicional).' },
-  { icon: Sparkles, t: 'Assistente com IA', slug: 'assistente-ia', d: 'Pergunte sobre o seu negócio e receba a resposta com números.' },
+  { icon: Sparkles, t: 'Assistente com IA', slug: 'assistente-ia', d: 'Pergunte por texto, áudio ou print: dúvidas do sistema e os números do seu negócio.' },
   { icon: BellRing, t: 'Avisos para a equipe', d: 'Mudou a agenda? A profissional recebe o aviso no celular.' },
   { icon: ShieldCheck, t: 'Permissões por pessoa', d: 'A atendente vê a agenda e os clientes; o financeiro fica só com você.' },
   { icon: Pin, t: 'Meus atalhos', d: 'Cada pessoa fixa as telas que mais usa, no computador e na barra do celular.' },

@@ -62,13 +62,38 @@ Regras:
 - Você só lê dados; não consegue criar, alterar ou apagar nada. Se pedirem, explique onde fazer isso no painel.`;
 }
 
-type Msg = { role: 'user' | 'assistant'; content: string };
+// One assistant for everything (the chat no longer asks the person to pick "Ajuda" or "Gestão"):
+// how-to questions use the help base, business questions use the data tools.
+function promptUnico(hoje: string, hojeIso: string, aprendidos: string, logado: boolean) {
+  return `Você é o assistente com inteligência artificial da plataforma Negócios de Limpeza, um sistema usado por empresas de limpeza para gerir agenda, equipe, clientes e financeiro. Hoje é ${hoje} (${hojeIso}).
+Você faz duas coisas, e decide sozinho qual a pessoa precisa:
+1) DÚVIDAS DE USO ("como faço", "onde fica", "como configuro"): responda com base SOMENTE na Central de Ajuda abaixo. Se algo não estiver nela, diga que essa função ainda não existe ou que não tem certeza e chame registrar_lacuna; nunca invente telas ou botões. Se você respondeu juntando informações dos artigos para uma dúvida que eles não cobrem com essas palavras, chame sugerir_aprendizado (não avise a pessoa). Para saber se uma integração já está configurada, use status_integracoes.
+2) NÚMEROS E GESTÃO DO NEGÓCIO (faturamento, agenda, equipe, clientes, cobranças, estoque): ${logado ? `use as ferramentas de dados. TODO número que você citar deve vir de uma ferramenta; nunca estime nem invente valores. Converta períodos em datas YYYY-MM-DD ("este mês" = do dia 1 até hoje; "mês passado" = mês anterior inteiro; se não disserem, use o mês atual). Para comparações chame a ferramenta uma vez para cada período. Se vier vazio, diga com naturalidade e sugira o próximo passo prático. Sugestões só sobre a operação (agenda e ocupação, custo e produtividade da equipe, retenção de clientes, cobranças e preços). Para "quanto cada profissional dá de retorno", use retorno_por_colaboradora e explique o cálculo em uma linha.` : 'peça para a pessoa entrar no sistema para consultar os números da empresa.'}
+
+Regras gerais:
+- Responda em português do Brasil, curto, claro e amigável, para quem não é técnico. "Como faço" vira passo a passo numerado. Números: primeiro a resposta, depois 2 a 4 tópicos curtos. Valores em R$ 1.234,56; **negrito** só no mais importante.
+- Responda completo aqui mesmo: não mande a pessoa ler outro lugar nem cite links de artigos.
+- Você só lê dados; não cria, altera nem apaga nada. Se pedirem, explique onde fazer isso no painel.
+- A equipe se chama "profissionais" (não "colaboradoras").
+- A pessoa pode mandar ÁUDIO, FOTO, PRINT de tela ou PDF. Áudio: entenda o que foi falado e comece a resposta com uma linha em itálico com o que você entendeu (ex.: _"Quantas faxinas tenho amanhã?"_). Imagem ou PDF: descreva rapidamente o que viu só se ajudar, e responda o que a pessoa quer (ex.: um print de erro → explique o que significa e como resolver usando a Central de Ajuda).
+
+CENTRAL DE AJUDA:
+${AJUDA_BASE}${aprendidos ? `\n\nPERGUNTAS FREQUENTES APROVADAS PELA EQUIPE:\n${aprendidos}` : ''}`;
+}
+
+// Attachments sent with the last message: images, PDF or a voice message (base64), at most ~8 MB in total.
+type Anexo = { mime: string; dados: string; nome?: string };
+const MIMES_OK = /^(image\/(png|jpe?g|webp|heic|heif)|application\/pdf|audio\/(webm|ogg|mp4|mpeg|mp3|wav|aac|x-m4a|m4a))(;.*)?$/i;
+
+type Msg = { role: 'user' | 'assistant'; content: string; anexos?: Anexo[] };
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   try {
-    const { modo, messages } = (await req.json()) as { modo: 'ajuda' | 'gestao'; messages: Msg[] };
+    const corpoReq = (await req.json()) as { modo?: 'ajuda' | 'gestao' | 'auto'; messages: Msg[] };
+    const messages = corpoReq.messages;
+    const modo = corpoReq.modo ?? 'auto';
     if (!Array.isArray(messages) || messages.length === 0) return json({ error: 'Mensagem vazia.' }, 400);
 
     const { data: settings } = await db.from('platform_settings').select('gemini_key').eq('id', 1).single();
@@ -91,15 +116,32 @@ Deno.serve(async (req) => {
 
     const hoje = hojeSP();
     const gestao = modo === 'gestao';
-    const declaracoes = gestao ? DECLARACOES_GESTAO : DECLARACOES_AJUDA;
+    const auto = modo === 'auto';
+    const logado = !!perfil && ['ADMIN', 'COLLABORATOR'].includes(perfil.role);
+    const declaracoes = auto ? [...DECLARACOES_AJUDA, ...(logado ? DECLARACOES_GESTAO : [])] : gestao ? DECLARACOES_GESTAO : DECLARACOES_AJUDA;
     const permitidas = declaracoes.map(d => d.name);
     const ctx = { db: dbUsuario, admin: db, empresa, hoje: hoje.iso };
 
-    const historico: any[] = messages.slice(-20).map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: String(m.content).slice(0, 4000) }],
-    }));
-    const systemInstruction = { parts: [{ text: gestao ? promptGestao(hoje.extenso, hoje.iso) : promptAjuda(hoje.extenso, await carregarAprendidos()) }] };
+    const ultimas = messages.slice(-20);
+    let bytes = 0;
+    const historico: any[] = ultimas.map((m, i) => {
+      const parts: any[] = [];
+      // Files only go with the newest message (older turns keep just their text).
+      if (m.role === 'user' && i === ultimas.length - 1) {
+        for (const a of (m.anexos ?? []).slice(0, 4)) {
+          if (!MIMES_OK.test(a.mime || '') || !a.dados) continue;
+          bytes += a.dados.length * 0.75;
+          if (bytes > 8_000_000) break;
+          parts.push({ inlineData: { mimeType: a.mime.split(';')[0], data: a.dados } });
+        }
+      }
+      const texto = String(m.content || '').slice(0, 4000);
+      if (texto || !parts.length) parts.push({ text: texto || '(veja o anexo)' });
+      return { role: m.role === 'assistant' ? 'model' : 'user', parts };
+    });
+    const systemInstruction = { parts: [{ text: auto
+      ? promptUnico(hoje.extenso, hoje.iso, await carregarAprendidos(), logado)
+      : gestao ? promptGestao(hoje.extenso, hoje.iso) : promptAjuda(hoje.extenso, await carregarAprendidos()) }] };
 
     let ultimoErro = 'Erro no Gemini';
     // If a model fails mid-conversation (overload/timeout), start over once on the next model.
@@ -114,7 +156,7 @@ Deno.serve(async (req) => {
           systemInstruction,
           contents,
           tools: [{ functionDeclarations: declaracoes }],
-          generationConfig: { temperature: gestao ? 0.2 : 0.4 },
+          generationConfig: { temperature: gestao ? 0.2 : auto ? 0.3 : 0.4 },
         }, modelo);
         if (!ok) {
           ultimoErro = data?.error?.message ?? ultimoErro;
@@ -137,7 +179,8 @@ Deno.serve(async (req) => {
             falhou = true;
             break;
           }
-          if (!gestao) {
+          // Only how-to answers feed the help-center learning queue.
+          if (!gestao && !(auto && [...usadas].some(n => !['registrar_lacuna', 'sugerir_aprendizado', 'status_integracoes'].includes(n)))) {
             const ultima = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';
             await db.from('ajuda_perguntas').insert({
               company_id: empresa,

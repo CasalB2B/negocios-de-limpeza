@@ -565,6 +565,10 @@
       {
         "t": "Só os seus dados",
         "d": "A IA só enxerga os dados da sua empresa."
+      },
+      {
+        "t": "Por áudio, foto ou print",
+        "d": "Mande um áudio com a pergunta ou o print de uma tela: ele entende e responde. As conversas ficam no histórico e dá para salvar as respostas úteis."
       }
     ],
     "passos": [

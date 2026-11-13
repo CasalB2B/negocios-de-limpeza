@@ -42,5 +42,8 @@
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
     <!-- Before/after photos of the service -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Voice messages to the AI assistant -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 </manifest>
